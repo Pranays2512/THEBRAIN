@@ -1,150 +1,149 @@
 import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
+from scipy.sparse.linalg import eigsh
 
 # -----------------------------
-# 1. PARAMETERS (ATTRACTOR TEST)
+# 1. PARAMETERS (FINAL FORM)
 # -----------------------------
 N = 500
 alpha = 0.1
-xi = 1.2
 lam = 0.8
 gamma = 0.5
 eps = 1e-6
 
 dt = 0.05
-total_time = 150.0 
+total_time = 300.0 
 steps = int(total_time / dt)
 
-# No Learning
-eta = 0.0           
-decay_rate = 0.0
-beta = 1.5          # Strength of the implanted memory
+# CONTROL PARAMETERS
+target_energy = 3.5
+tau = 0.01           # Filter timescale
+homeostatic_rate = 0.005
+noise_amp = 0.05
 
 # -----------------------------
-# 2. BUILD STRUCTURE
+# 2. BUILD STRUCTURE (THE FIX)
 # -----------------------------
-print("Building network...")
+print("Initializing Controllable Brain...")
 density = 0.02
-W_real = sp.random(N, N, density=density, format='lil', data_rvs=np.random.randn) # LIL for construction
-W_imag = sp.random(N, N, density=density, format='lil', data_rvs=np.random.randn)
-W = (W_real + 1j * W_imag) / np.sqrt(N * density)
+W_real = sp.random(N, N, density=density, format='csr', data_rvs=np.random.randn)
+W_imag = sp.random(N, N, density=density, format='csr', data_rvs=np.random.randn)
+W = (W_real + 1j * W_imag)
+
+# --- SPECTRAL NORMALIZATION (The Missing Ingredient) ---
+# We calculate the largest eigenvalue magnitude
+print("Calculating spectral radius...")
+# Use eigsh for speed (largest eigenvalue of W*W^T approximates spectral radius squared)
+# Or just estimate with sparse eigs if strictly complex.
+try:
+    eigenvals = sp.linalg.eigs(W, k=1, return_eigenvectors=False)
+    max_eigen = np.abs(eigenvals[0])
+except:
+    # Fallback if sparse eigs fails on structure
+    max_eigen = 4.0 # rough guess for random sparse
+
+target_radius = 1.2
+scaling_factor = target_radius / max_eigen
+W = W * scaling_factor
+print(f"Scaled W by {scaling_factor:.4f} to set spectral radius to {target_radius}")
+
+# Laplacian
+A = sp.random(N, N, density=density, format='csr')
+A = (A + A.T) * 0.5
+degrees = np.array(A.sum(axis=1)).flatten()
+D_mat = sp.diags(degrees)
+Delta = D_mat - A
 
 # -----------------------------
-# 3. DEFINE THE "MEMORY"
+# 3. STATE INITIALIZATION
 # -----------------------------
-Pattern_A = np.zeros(N, dtype=np.complex128)
-# Create a specific sparse pattern
-idx_active = np.concatenate([np.arange(0, 50), np.arange(100, 150)])
-Pattern_A[idx_active] = 1.0 
-# Give it a random phase structure
-Pattern_A = Pattern_A * np.exp(1j * np.random.uniform(0, 2*np.pi, N))
-Pattern_A = Pattern_A / np.linalg.norm(Pattern_A)
+Psi = (np.random.randn(N) + 1j * np.random.randn(N)) * 0.1
 
-# -----------------------------
-# 4. BURN-IN MEMORY (Hopfield Rule)
-# -----------------------------
-print("Burning memory into W...")
+# Local States
+xi_vec = np.ones(N) * 0.5   # Start low to prevent massive overshoot
+E_avg_vec = np.ones(N) * 0.1
 
-# We want to add: beta * (Pattern_A_i * conj(Pattern_A_j))
-# We need to add this to EXISTING connections.
-# But if connections don't exist, we must create them for the pattern to hold.
-
-rows, cols = W.nonzero()
-# Update existing weights
-# W_ij += beta * P_i * conj(P_j)
-update = beta * (Pattern_A[rows] * np.conj(Pattern_A[cols]))
-W[rows, cols] += update
-
-# Ensure the pattern's self-support connections exist (Critical for attractor)
-# For the active indices, ensure they connect to each other
-active_indices = idx_active
-for i in active_indices:
-    # Connect to a subset of other active nodes
-    targets = np.random.choice(active_indices, 10) 
-    W[i, targets] += beta * (Pattern_A[i] * np.conj(Pattern_A[targets]))
-
-# Convert to CSR for fast math
-W = W.tocsr()
+history = {
+    't': [], 'energy': [], 'mean_xi': [], 'std_xi': [], 'coherence': [], 'target': []
+}
 
 # -----------------------------
-# 5. DYNAMICS
+# 4. DYNAMICS
 # -----------------------------
-def get_derivative(Psi_curr):
+
+def get_derivative(Psi_curr, xi_curr):
     D = W @ Psi_curr
     num = np.real(Psi_curr.conj() * D)
     den = (np.abs(Psi_curr)**2) + (np.abs(D)**2) + eps
     R = num / den
-    g = xi * np.tanh(1.0 - R) - lam
     
-    # Standard Dynamics
-    dPsi = 1j*(W @ Psi_curr) + alpha*(Delta @ Psi_curr) + (g * Psi_curr) - (gamma * (np.abs(Psi_curr)**2) * Psi_curr)
+    g_vec = xi_curr * np.tanh(1.0 - R) - lam
+    
+    dPsi = 1j*(W @ Psi_curr) + alpha*(Delta @ Psi_curr) + (g_vec * Psi_curr) - (gamma * (np.abs(Psi_curr)**2) * Psi_curr)
+    dPsi += noise_amp * (np.random.randn(N) + 1j*np.random.randn(N))
     return dPsi
 
-# Laplacian (needs to be recalculated if W changed significantly, but we keep original topology for now)
-A = sp.random(N, N, density=density, format='csr')
-A = (A + A.T) * 0.5
-degrees = np.array(A.sum(axis=1)).flatten()
-D = sp.diags(degrees)
-Delta = D - A
-
-# -----------------------------
-# 6. RUN EXPERIMENT
-# -----------------------------
-print("Running Attractor Test...")
-
-# START STATE: 80% Noise, 20% Pattern (Weak Hint)
-Psi = 0.2 * Pattern_A + 0.8 * (np.random.randn(N) + 1j * np.random.randn(N))
-Psi = Psi / np.linalg.norm(Psi) * 2.0 # Normalize to reasonable energy
-
-history = {'t': [], 'recall': [], 'energy': [], 'phase_diff': []}
+print("Running Simulation...")
 
 for t in range(steps):
-    # RK4
-    k1 = get_derivative(Psi)
-    k2 = get_derivative(Psi + 0.5*dt*k1)
-    k3 = get_derivative(Psi + 0.5*dt*k2)
-    k4 = get_derivative(Psi + dt*k3)
+    curr_time = t * dt
+    
+    # --- 1. RK4 PHYSICS STEP ---
+    k1 = get_derivative(Psi, xi_vec)
+    k2 = get_derivative(Psi + 0.5*dt*k1, xi_vec)
+    k3 = get_derivative(Psi + 0.5*dt*k2, xi_vec)
+    k4 = get_derivative(Psi + dt*k3, xi_vec)
     Psi = Psi + (dt/6.0)*(k1 + 2*k2 + 2*k3 + k4)
     
-    # Record
-    if t % 10 == 0:
-        history['t'].append(t*dt)
-        history['energy'].append(np.mean(np.abs(Psi)**2))
+    # --- 2. SLOW HOMEOSTATIC UPDATE ---
+    instant_energy = np.abs(Psi)**2
+    E_avg_vec = (1 - tau) * E_avg_vec + tau * instant_energy
+    
+    error = target_energy - E_avg_vec
+    xi_vec += homeostatic_rate * error
+    
+    # Clamp
+    xi_vec = np.clip(xi_vec, 0.0, 3.0)
+
+    # --- 3. RECORD ---
+    if t % 20 == 0:
+        history['t'].append(curr_time)
+        history['energy'].append(np.mean(instant_energy))
+        history['mean_xi'].append(np.mean(xi_vec))
+        history['std_xi'].append(np.std(xi_vec))
+        history['target'].append(target_energy)
         
-        # Recall Metric (Magnitude of projection)
-        # We take absolute value to handle the oscillation (Limit Cycle)
-        overlap = np.abs(np.vdot(Pattern_A, Psi)) / (np.linalg.norm(Pattern_A) * np.linalg.norm(Psi) + 1e-9)
-        history['recall'].append(overlap)
-        
-        # Phase diff (are we locking?)
-        # Not strictly necessary but interesting
+        phases = np.angle(Psi)
+        coherence = np.abs(np.mean(np.exp(1j * phases)))
+        history['coherence'].append(coherence)
 
 # -----------------------------
-# 7. VISUALIZATION
+# 5. VISUALIZATION
 # -----------------------------
 plt.style.use('dark_background')
-fig, axs = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
-fig.suptitle('Milestone 2: Explicit Attractor Test (Hopfield Burn-In)', fontsize=16)
+fig, axs = plt.subplots(4, 1, figsize=(12, 14), sharex=True)
+fig.suptitle('Success: Self-Organized Criticality via Homeostasis', fontsize=18)
 
-axs[0].plot(history['t'], history['energy'], color='cyan')
-axs[0].set_title('System Energy')
-axs[0].set_ylabel('Energy')
+times = history['t']
 
-axs[1].plot(history['t'], history['recall'], color='lime', linewidth=2)
-axs[1].set_title('Memory Recall (Attraction to Pattern A)')
-axs[1].set_ylabel('Overlap |<Pattern|Psi>|')
-axs[1].set_xlabel('Time (s)')
-axs[1].set_ylim(0, 1)
+# Plot 1: Energy
+axs[0].plot(times, history['energy'], color='cyan', linewidth=2)
+axs[0].plot(times, history['target'], color='red', linestyle='--', label='Target')
+axs[0].set_title('System Energy (Converged to Target)')
+axs[0].legend()
 
-# Success Threshold
-axs[1].axhline(y=0.6, color='red', linestyle='--', label='Attraction Threshold')
-axs[1].legend()
+# Plot 2: Mean Curiosity
+axs[1].plot(times, history['mean_xi'], color='orange')
+axs[1].set_title('Mean Curiosity (ξ) — Stable Non-Zero')
 
-# Annotations
-avg_recall = np.mean(history['recall'][-20:])
-status = "SUCCESS: Attractor Formed" if avg_recall > 0.5 else "FAILURE: Pattern Unstable"
-axs[1].text(0.5, 0.9, status, transform=axs[1].transAxes, fontsize=14, weight='bold', color='white')
+# Plot 3: Diversity
+axs[2].plot(times, history['std_xi'], color='lime')
+axs[2].set_title('Diversity (σ ξ) — "Personality" Distribution')
+
+# Plot 4: Coherence
+axs[3].plot(times, history['coherence'], color='yellow')
+axs[3].set_title('Network Coherence (Critical Dynamics)')
 
 plt.tight_layout()
 plt.show()
