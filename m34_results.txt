@@ -1,0 +1,26 @@
+M34: Invariant Feature Extraction Results
+============================================================
+Temporal block split: train blocks 0-3, test blocks 4+
+Window: 2.0s, Block: 50.0s, Skip: 15.0s
+
+                 A: Raw Ψ: test=50.0% train=100.0% dims=1000
+  Class -1: 0.0%
+  Class 1: 100.0%
+           B: Energy mean: test=30.7% train=100.0% dims=500
+  Class -1: 0.0%
+  Class 1: 61.4%
+       C: Energy variance: test=100.0% train=100.0% dims=500
+  Class -1: 100.0%
+  Class 1: 100.0%
+        D: Phase velocity: test=60.0% train=100.0% dims=500
+  Class -1: 40.0%
+  Class 1: 80.0%
+        E: Spectral power: test=100.0% train=100.0% dims=2000
+  Class -1: 100.0%
+  Class 1: 100.0%
+         F: Stats (B+C+D): test=100.0% train=100.0% dims=1500
+  Class -1: 100.0%
+  Class 1: 100.0%
+         G: All (B+C+D+E): test=100.0% train=100.0% dims=3500
+  Class -1: 100.0%
+  Class 1: 100.0%

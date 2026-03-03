@@ -1,21 +1,24 @@
 """
-M35: MULTI-TIMESCALE RESERVOIR + INVARIANT FEATURES
-=====================================================
-M34 proved invariant features (energy variance, spectral power)
-generalize across temporal block splits — 100% on 0.5 vs 2.0 Hz.
+M34: INVARIANT FEATURE EXTRACTION
+===================================
+M33's 100% was data leakage — raw Ψ is non-repeating across blocks.
+The reservoir trajectory drifts even under identical inputs.
 
-But frequency resolution hit 1/T window limit. T=2s → Δf≈0.2Hz.
-T=10s resolves Δf=0.01Hz but starves sample count.
+Root cause: raw Ψ encodes WHERE on the trajectory you are, not WHAT
+the input signal is. We need features that are invariant properties
+of the dynamical regime.
 
-Fix: Multi-timescale reservoir.
-  - Distribute gamma (damping) across neurons: 0.1 → 2.0
-  - Distribute tau_adapt (adaptation τ): 0.2 → 5.0
-  - Fast neurons (γ=2.0): capture high-freq fluctuations
-  - Slow neurons (γ=0.1): integrate over long timescales
-  - Single T=5s window captures all scales via neuron diversity
+Strategy: Store full Ψ trajectory, then extract features from
+sliding windows that characterize the regime, not the instant:
+  A. Raw Ψ snapshot (baseline — expect ~50%)
+  B. Windowed energy mean per neuron
+  C. Windowed energy variance per neuron
+  D. Windowed phase velocity per neuron
+  E. Spectral power (FFT of windowed energy)
+  F. Combined B+C+D
+  G. Combined B+C+D+E
 
-This is how the cochlea works — graded hair cell properties
-create a tonotopic map without explicit multi-scale windows.
+All tested with TEMPORAL BLOCK SPLIT (no leakage).
 """
 
 import numpy as np
@@ -30,10 +33,7 @@ import time as clock
 # =============================================================
 N = 500
 lam = 0.8
-# M35: Distributed gamma — tonotopic gradient
-# Fast neurons (high γ): rapid damping, capture fast oscillations
-# Slow neurons (low γ): long integration, capture slow oscillations
-gamma_vec = np.linspace(0.1, 2.0, N)
+gamma = 0.5
 eps = 1e-6
 dt = 0.05
 target_energy = 2.5
@@ -42,8 +42,7 @@ eta_xi_up = 0.005
 eta_xi_down = 0.002
 xi_min = 0.1
 xi_max = 3.0
-# M35: Distributed tau_adapt — multi-scale adaptation
-tau_adapt_vec = np.linspace(0.2, 5.0, N)
+tau_adapt = 1.0
 kappa_adapt = 0.5
 adapt_max = 2.0
 alpha_base = 0.1
@@ -65,9 +64,8 @@ block_duration = 50.0
 transition_skip = 15.0
 
 # Sliding window for feature extraction
-# M35: T=5s window — multi-timescale neurons handle internal integration
-window_seconds = 5.0
-window_steps = int(window_seconds / dt)  # 100 steps
+window_seconds = 2.0  # 2s window → captures at least 1 period of 0.5Hz
+window_steps = int(window_seconds / dt)  # 40 steps
 feature_sample_interval = 10  # extract features every 10 steps (0.5s)
 
 
@@ -98,8 +96,7 @@ def get_derivative(Psi_curr, xi_curr, adapt_curr, alpha_curr, noise_in, I_in, W_
     den = (np.abs(Psi_curr)**2) + (np.abs(D)**2) + eps
     R = num / den
     g_vec = xi_curr * np.tanh(1.0 - R) - lam
-    # M35: gamma_vec — each neuron has its own damping timescale
-    effective_gamma = gamma_vec + adapt_curr
+    effective_gamma = gamma + adapt_curr
     dPsi = (1j*(W_eff @ Psi_curr)
             + alpha_curr*(Delta @ Psi_curr)
             + (g_vec * Psi_curr)
@@ -206,8 +203,7 @@ for t in range(steps):
         xi_vec = xi_frozen_val.copy()
 
     excess_energy = np.maximum(0, E_avg_vec - target_energy)
-    # M35: tau_adapt_vec — each neuron adapts at its own rate
-    A_vec = np.clip(A_vec + dt*((kappa_adapt*excess_energy - A_vec)/tau_adapt_vec), 0, adapt_max)
+    A_vec = np.clip(A_vec + dt*((kappa_adapt*excess_energy - A_vec)/tau_adapt), 0, adapt_max)
 
     # Chaos control
     current_dist = np.linalg.norm(Psi_ghost - Psi)
