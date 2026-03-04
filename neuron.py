@@ -1,71 +1,85 @@
 """
-M35: MULTI-TIMESCALE RESERVOIR + INVARIANT FEATURES
-=====================================================
-M34 proved invariant features (energy variance, spectral power)
-generalize across temporal block splits — 100% on 0.5 vs 2.0 Hz.
+M36: RESONANT RESERVOIR
+========================
+M35 proved the reservoir encodes frequency via energy variance + spectral
+features, but regression failed due to manifold compression at edges.
 
-But frequency resolution hit 1/T window limit. T=2s → Δf≈0.2Hz.
-T=10s resolves Δf=0.01Hz but starves sample count.
+Root cause: statistical estimation (counting cycles) hits time-bandwidth limit.
 
-Fix: Multi-timescale reservoir.
-  - Distribute gamma (damping) across neurons: 0.1 → 2.0
-  - Distribute tau_adapt (adaptation τ): 0.2 → 5.0
-  - Fast neurons (γ=2.0): capture high-freq fluctuations
-  - Slow neurons (γ=0.1): integrate over long timescales
-  - Single T=5s window captures all scales via neuron diversity
+M36 fix: Replace with Hopf oscillator reservoir.
+  - Each neuron has intrinsic frequency ω_i (log-spaced 0.3→3.0 Hz)
+  - Constant-Q bandwidth: γ_i = ω_i / Q (Q=15)
+  - Dynamics: dΨ_i = (iω_i + g_i - γ_i|Ψ_i|²)Ψ_i + weak coupling + input
+  - Readout: |Ψ_i|² snapshot (spatial frequency map)
 
-This is how the cochlea works — graded hair cell properties
-create a tonotopic map without explicit multi-scale windows.
+When input=f Hz, neuron with ω_i≈f resonates (large |Ψ_i|).
+No windowing needed — single snapshot IS a frequency spectrum.
 """
 
 import numpy as np
 import scipy.sparse as sp
-from sklearn.linear_model import Ridge, RidgeClassifier
+from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import time as clock
 
 # =============================================================
-# PHYSICS (identical to neuron.py M33)
+# M36: RESONANT RESERVOIR PHYSICS
 # =============================================================
 N = 500
 lam = 0.8
-# M35: Distributed gamma — tonotopic gradient\ngamma_vec = np.linspace(0.1, 2.0, N)
 eps = 1e-6
 dt = 0.05
 target_energy = 2.5
-input_gain = 1.5
-eta_xi_up = 0.005
-eta_xi_down = 0.002
+input_gain = 3.0  # M36: strong input to drive resonance
+
+# M36: Natural frequencies — log-spaced from 0.3 to 3.0 Hz (in radians/s: ×2π)
+omega_hz = np.logspace(np.log10(0.3), np.log10(3.0), N)
+omega_vec = 2.0 * np.pi * omega_hz  # convert to angular frequency
+
+# M36: Constant-Q damping — bandwidth scales with frequency
+Q_factor = 15.0
+gamma_vec = omega_hz / Q_factor  # bandwidth ~ ω/Q
+
+# M36: Global homeostatic excitation (NOT per-neuron — that destroys resonance pattern)
+# Per-neuron xi equalizes energy across neurons, killing the spatial frequency map
+# Global xi controls overall gain without masking which neurons resonate
+eta_xi = 0.002
 xi_min = 0.1
 xi_max = 3.0
-# M35: Distributed tau_adapt — multi-scale adaptation
+
+# Adaptation
 tau_adapt_vec = np.linspace(0.2, 5.0, N)
 kappa_adapt = 0.5
 adapt_max = 2.0
-alpha_base = 0.1
-alpha_max = 0.3
-target_lyap = 0.1
+
+# Chaos control (may be less relevant for resonant system)
+alpha_base = 0.01   # reduced — less diffusion needed
+alpha_max = 0.1
+target_lyap = 0.05
 eta_alpha = 0.0005
 lyap_window = 100
-S_global = 1.0
+
+# M36: Very weak coupling — preserve individual resonances
+coupling_strength = 0.1
+
+# Learning
 learning_end_time = 100.0
 learn_interval = 20
-eta_hebb = 0.002
+eta_hebb = 0.001    # reduced — don't want coupling to overwhelm resonance
 decay_hebb = 0.0001
-noise_amp = 0.05
+noise_amp = 0.02    # reduced noise
+
+# Protocol
 stabilization_time = 120.0
-energy_gate = 0.5
+energy_gate = 1.0   # wider gate for resonant system
 ridge_alpha = 1000.0
 density = 0.02
 block_duration = 50.0
-transition_skip = 15.0
+transition_skip = 5.0  # resonance settles faster than attractor
 
-# Sliding window for feature extraction
-# M35: T=5s window — multi-timescale neurons handle internal integration
-window_seconds = 5.0
-window_steps = int(window_seconds / dt)  # 100 steps
-feature_sample_interval = 10  # extract features every 10 steps (0.5s)
+# M36: No windowing needed — snapshot readout
+feature_sample_interval = 10  # sample every 0.5s
 
 
 def build_network():
@@ -89,20 +103,34 @@ def build_network():
 
 
 def get_derivative(Psi_curr, xi_curr, adapt_curr, alpha_curr, noise_in, I_in, W_curr, W_in, Delta):
-    W_eff = S_global * W_curr
-    D = W_eff @ Psi_curr
-    num = np.real(Psi_curr.conj() * D)
-    den = (np.abs(Psi_curr)**2) + (np.abs(D)**2) + eps
+    """M36: Hopf oscillator dynamics with weak coupling."""
+
+    # Intrinsic Hopf oscillation — each neuron rotates at its own ω_i
+    hopf_rotation = 1j * omega_vec * Psi_curr
+
+    # Gain/loss
+    num = np.real(Psi_curr.conj() * (W_curr @ Psi_curr))
+    den = (np.abs(Psi_curr)**2) + eps
     R = num / den
     g_vec = xi_curr * np.tanh(1.0 - R) - lam
-    # M35: gamma_vec — each neuron has its own damping timescale
+
+    # Saturation with constant-Q damping
     effective_gamma = gamma_vec + adapt_curr
-    dPsi = (1j*(W_eff @ Psi_curr)
-            + alpha_curr*(Delta @ Psi_curr)
-            + (g_vec * Psi_curr)
-            - (effective_gamma * (np.abs(Psi_curr)**2) * Psi_curr))
-    dPsi += noise_amp * noise_in
-    dPsi += W_in * I_in * input_gain
+
+    # Weak coupling (ε * W @ Ψ) — preserves individual resonances
+    coupling = coupling_strength * (W_curr @ Psi_curr)
+
+    # Spatial diffusion (very weak for resonant system)
+    diffusion = alpha_curr * (Delta @ Psi_curr)
+
+    dPsi = (hopf_rotation                                      # intrinsic frequency
+            + g_vec * Psi_curr                                  # gain
+            - effective_gamma * (np.abs(Psi_curr)**2) * Psi_curr  # saturation
+            + coupling                                          # weak network coupling
+            + diffusion                                         # spatial smoothing
+            + noise_amp * noise_in                              # noise
+            + W_in * I_in * input_gain)                         # input
+
     return dPsi
 
 
@@ -116,22 +144,24 @@ def get_signal(t):
 
 
 # =============================================================
-# RUN SIMULATION — Store full trajectory for feature extraction
+# RUN SIMULATION — Snapshot readout (no windowing)
 # =============================================================
 print("=" * 65)
-print("  M34: INVARIANT FEATURE EXTRACTION")
+print("  M36: RESONANT RESERVOIR")
 print("=" * 65)
 print(f"  N={N}, dt={dt}, total=400s")
-print(f"  Window: {window_seconds}s ({window_steps} steps)")
-print(f"  Feature sampling: every {feature_sample_interval} steps ({feature_sample_interval*dt}s)")
-print(f"  Block: {block_duration}s, transition skip: {transition_skip}s")
+print(f"  Natural frequencies: {omega_hz[0]:.2f} — {omega_hz[-1]:.2f} Hz (log-spaced)")
+print(f"  Q factor: {Q_factor} → bandwidth: {gamma_vec[0]:.4f} — {gamma_vec[-1]:.4f}")
+print(f"  Coupling strength: {coupling_strength}")
+print(f"  Readout: |Ψ|² snapshot (no windowing)")
+print(f"  Block: {block_duration}s, skip: {transition_skip}s")
 print()
 
 W, W_in, Delta = build_network()
 
 # State
 Psi = (np.random.randn(N) + 1j * np.random.randn(N)) * 0.1
-xi_vec = np.ones(N) * 0.5
+xi_global = 0.5  # M36: SINGLE global gain, not per-neuron
 A_vec = np.zeros(N)
 E_avg_vec = np.ones(N) * 0.1
 alpha_global = alpha_base
@@ -144,19 +174,11 @@ xi_frozen_val = None
 total_time = 400.0
 steps = int(total_time / dt)
 
-# Rolling window buffer for recent Ψ states
-psi_buffer = np.zeros((window_steps, N), dtype=complex)
-buf_idx = 0
-buf_filled = False
-
-# Feature storage
-features_raw = []       # A: raw Ψ snapshot
-features_energy_mean = []  # B: windowed mean |Ψ|²
-features_energy_var = []   # C: windowed var |Ψ|²
-features_phase_vel = []    # D: windowed mean phase velocity
-features_spectral = []     # E: FFT power of windowed energy
+# M36: Snapshot features — just |Ψ|² at each harvest point
+features_X = []
 targets_Y = []
 harvest_times = []
+skipped = 0
 
 print("  Running simulation...")
 t0 = clock.time()
@@ -165,20 +187,21 @@ for t in range(steps):
     ct = t * dt
     noise_vec = (np.random.randn(N) + 1j*np.random.randn(N))
     I_val, Y_val = get_signal(ct)
+    xi_vec_broadcast = np.full(N, xi_global)  # broadcast scalar to vector
     Wc = W.tocsr()
 
     # RK4
-    k1 = get_derivative(Psi, xi_vec, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
-    k2 = get_derivative(Psi+0.5*dt*k1, xi_vec, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
-    k3 = get_derivative(Psi+0.5*dt*k2, xi_vec, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
-    k4 = get_derivative(Psi+dt*k3, xi_vec, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
+    k1 = get_derivative(Psi, xi_vec_broadcast, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
+    k2 = get_derivative(Psi+0.5*dt*k1, xi_vec_broadcast, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
+    k3 = get_derivative(Psi+0.5*dt*k2, xi_vec_broadcast, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
+    k4 = get_derivative(Psi+dt*k3, xi_vec_broadcast, A_vec, alpha_global, noise_vec, I_val, Wc, W_in, Delta)
     Psi = Psi + (dt/6.0)*(k1+2*k2+2*k3+k4)
 
     # Ghost
-    k1g = get_derivative(Psi_ghost, xi_vec, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
-    k2g = get_derivative(Psi_ghost+0.5*dt*k1g, xi_vec, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
-    k3g = get_derivative(Psi_ghost+0.5*dt*k2g, xi_vec, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
-    k4g = get_derivative(Psi_ghost+dt*k3g, xi_vec, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
+    k1g = get_derivative(Psi_ghost, xi_vec_broadcast, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
+    k2g = get_derivative(Psi_ghost+0.5*dt*k1g, xi_vec_broadcast, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
+    k3g = get_derivative(Psi_ghost+0.5*dt*k2g, xi_vec_broadcast, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
+    k4g = get_derivative(Psi_ghost+dt*k3g, xi_vec_broadcast, A_vec, alpha_global, noise_vec, 0, Wc, W_in, Delta)
     Psi_ghost = Psi_ghost + (dt/6.0)*(k1g+2*k2g+2*k3g+k4g)
 
     # Homeostasis
@@ -188,22 +211,18 @@ for t in range(steps):
 
     if ct >= stabilization_time and not xi_frozen:
         xi_frozen = True
-        xi_frozen_val = xi_vec.copy()
-        print(f"    Xi FROZEN at t={ct:.1f}s, mean xi={np.mean(xi_vec):.3f}")
+        xi_frozen_val = xi_global
+        print(f"    Xi FROZEN at t={ct:.1f}s, xi_global={xi_global:.3f}")
 
+    # M36: Global gain control — single scalar, preserves spatial pattern
     if not xi_frozen:
-        error_energy = target_energy - E_avg_vec
-        if ct < 10.0:
-            dXi = eta_xi_up * np.maximum(0, error_energy)
-        else:
-            rate = np.where(error_energy < 0, eta_xi_down, eta_xi_up)
-            dXi = rate * error_energy
-        xi_vec = np.clip(xi_vec + dXi, xi_min, xi_max)
+        mean_E = np.mean(E_avg_vec)
+        error = target_energy - mean_E
+        xi_global = np.clip(xi_global + eta_xi * error, xi_min, xi_max)
     else:
-        xi_vec = xi_frozen_val.copy()
+        xi_global = xi_frozen_val
 
     excess_energy = np.maximum(0, E_avg_vec - target_energy)
-    # M35: tau_adapt_vec — each neuron adapts at its own rate
     A_vec = np.clip(A_vec + dt*((kappa_adapt*excess_energy - A_vec)/tau_adapt_vec), 0, adapt_max)
 
     # Chaos control
@@ -219,7 +238,7 @@ for t in range(steps):
     lyap_smooth = np.mean(Lyap_history) if Lyap_history else 0.0
     alpha_global = np.clip(alpha_global + eta_alpha*(target_lyap - lyap_smooth), alpha_base, alpha_max)
 
-    # Learning
+    # Learning (weak)
     if ct < learning_end_time and (t % learn_interval == 0):
         rows, cols = W.nonzero()
         corr = Psi[rows] * np.conj(Psi[cols])
@@ -232,70 +251,15 @@ for t in range(steps):
         except:
             pass
 
-    # Update rolling buffer
-    psi_buffer[buf_idx] = Psi.copy()
-    buf_idx = (buf_idx + 1) % window_steps
-    if t >= window_steps:
-        buf_filled = True
-
-    # Harvest features (only after stabilization, buffer filled, within energy gate)
-    if ct > stabilization_time and buf_filled and (t % feature_sample_interval == 0):
-        if abs(mean_energy - target_energy) < energy_gate:
-            # Skip transition period
-            time_in_block = ct % block_duration
-            if time_in_block < transition_skip:
-                continue
-
-            # Get ordered buffer (oldest to newest)
-            ordered = np.roll(psi_buffer, -buf_idx, axis=0)  # shape: (window_steps, N)
-
-            # A: Raw Ψ snapshot
-            features_raw.append(np.concatenate([Psi.real, Psi.imag]))
-
-            # B: Windowed mean energy per neuron
-            energy_series = np.abs(ordered)**2  # (window_steps, N)
-            feat_energy_mean = np.mean(energy_series, axis=0)  # (N,)
-            features_energy_mean.append(feat_energy_mean)
-
-            # C: Windowed energy variance per neuron
-            feat_energy_var = np.var(energy_series, axis=0)  # (N,)
-            features_energy_var.append(feat_energy_var)
-
-            # D: Windowed phase velocity per neuron
-            phases = np.angle(ordered)  # (window_steps, N)
-            # Phase differences (unwrapped)
-            dphase = np.diff(phases, axis=0)  # (window_steps-1, N)
-            # Wrap to [-pi, pi]
-            dphase = (dphase + np.pi) % (2*np.pi) - np.pi
-            feat_phase_vel = np.mean(np.abs(dphase), axis=0) / dt  # mean |dφ/dt| per neuron
-            features_phase_vel.append(feat_phase_vel)
-
-            # E: Spectral power of energy fluctuations
-            # FFT of energy time series for each neuron, take power at key frequencies
-            energy_centered = energy_series - energy_series.mean(axis=0, keepdims=True)
-            fft_result = np.fft.rfft(energy_centered, axis=0)
-            power = np.abs(fft_result)**2  # (window_steps//2+1, N)
-            # Frequencies: 0 to 1/(2*dt) Hz
-            freqs = np.fft.rfftfreq(window_steps, d=dt)
-            # Take power at a few frequency bands
-            # Band 1: 0.3-0.7 Hz (around slow input 0.5 Hz)
-            # Band 2: 0.8-1.5 Hz (mid)
-            # Band 3: 1.5-2.5 Hz (around fast input 2.0 Hz)
-            # Band 4: 2.5-5.0 Hz (harmonics)
-            bands = [(0.3, 0.7), (0.8, 1.5), (1.5, 2.5), (2.5, 5.0)]
-            spectral_features = []
-            for f_lo, f_hi in bands:
-                band_mask = (freqs >= f_lo) & (freqs <= f_hi)
-                if np.any(band_mask):
-                    band_power = np.mean(power[band_mask], axis=0)  # (N,)
-                    spectral_features.append(band_power)
-                else:
-                    spectral_features.append(np.zeros(N))
-            feat_spectral = np.concatenate(spectral_features)  # (4*N,)
-            features_spectral.append(feat_spectral)
-
+    # M36: SNAPSHOT HARVEST — just |Ψ|², no windowing
+    if ct > stabilization_time and (t % feature_sample_interval == 0):
+        time_in_block = ct % block_duration
+        if time_in_block >= transition_skip:
+            features_X.append(np.abs(Psi)**2)  # energy per neuron = spatial freq map
             targets_Y.append(Y_val)
             harvest_times.append(ct)
+        else:
+            skipped += 1
 
     # Progress
     if t % 4000 == 0:
@@ -304,230 +268,104 @@ for t in range(steps):
 t1 = clock.time()
 print(f"  Simulation done in {t1-t0:.1f}s")
 
-# Convert to arrays
-X_raw = np.array(features_raw)
-X_emean = np.array(features_energy_mean)
-X_evar = np.array(features_energy_var)
-X_pvel = np.array(features_phase_vel)
-X_spec = np.array(features_spectral)
+X = np.array(features_X)
 Y = np.array(targets_Y)
 T = np.array(harvest_times)
 
-# Combined features
-X_stats = np.hstack([X_emean, X_evar, X_pvel])  # F: energy mean + var + phase vel
-X_all = np.hstack([X_emean, X_evar, X_pvel, X_spec])  # G: all combined
-
-print(f"\n  Samples: {len(Y)}")
-print(f"  Feature dimensions:")
-print(f"    A (raw Ψ):          {X_raw.shape[1]}")
-print(f"    B (energy mean):    {X_emean.shape[1]}")
-print(f"    C (energy var):     {X_evar.shape[1]}")
-print(f"    D (phase velocity): {X_pvel.shape[1]}")
-print(f"    E (spectral):       {X_spec.shape[1]}")
-print(f"    F (B+C+D stats):    {X_stats.shape[1]}")
-print(f"    G (all combined):   {X_all.shape[1]}")
+print(f"\n  Samples: {len(Y)} (skipped {skipped} transition)")
+print(f"  Feature dims: {X.shape[1]} (|Ψ|² per neuron)")
 
 
 # =============================================================
-# TEMPORAL BLOCK SPLIT CLASSIFIER
+# TEMPORAL BLOCK SPLIT — Train on blocks 0-3, test on 4+
 # =============================================================
+print(f"\n--- Temporal Block Split Classification ---")
 
-def classify_temporal(X, Y, T, n_train_blocks=4, pca_dims=50, label=''):
-    """Train on first n blocks, test on rest. No leakage."""
-    block_idx = (T / block_duration).astype(int)
-    first_block = int(stabilization_time / block_duration)
-    rel_block = block_idx - first_block
+block_idx = (T / block_duration).astype(int)
+first_block = int(stabilization_time / block_duration)
+rel_block = block_idx - first_block
 
-    train_mask = rel_block < n_train_blocks
-    test_mask = rel_block >= n_train_blocks
+n_train_blocks = 4
+train_mask = rel_block < n_train_blocks
+test_mask = rel_block >= n_train_blocks
 
-    X_train, Y_train = X[train_mask], Y[train_mask]
-    X_test, Y_test = X[test_mask], Y[test_mask]
+X_train, Y_train = X[train_mask], Y[train_mask]
+X_test, Y_test = X[test_mask], Y[test_mask]
 
-    if len(X_test) < 5 or len(X_train) < 5:
-        return 0.0, 0.0, {}, len(X_train), len(X_test)
+# Balance
+classes = np.unique(Y_train)
+min_c = min(np.sum(Y_train == c) for c in classes)
+bal_idx = []
+rng = np.random.default_rng(42)
+for c in classes:
+    ci = np.where(Y_train == c)[0]
+    if len(ci) > min_c:
+        ci = rng.choice(ci, size=min_c, replace=False)
+    bal_idx.extend(ci)
+X_tr = X_train[np.sort(bal_idx)]
+Y_tr = Y_train[np.sort(bal_idx)]
 
-    # Balance
-    classes = np.unique(Y_train)
-    if len(classes) < 2:
-        return 0.0, 0.0, {}, len(X_train), len(X_test)
+# Scale + PCA + Ridge
+scaler = StandardScaler()
+X_tr_sc = scaler.fit_transform(X_tr)
+X_te_sc = scaler.transform(X_test)
 
-    min_c = min(np.sum(Y_train == c) for c in classes)
-    bal_idx = []
-    rng = np.random.default_rng(42)
-    for c in classes:
-        ci = np.where(Y_train == c)[0]
-        if len(ci) > min_c:
-            ci = rng.choice(ci, size=min_c, replace=False)
-        bal_idx.extend(ci)
-    X_tr = X_train[np.sort(bal_idx)]
-    Y_tr = Y_train[np.sort(bal_idx)]
+n_pca = min(50, len(X_tr), X_tr_sc.shape[1])
+pca = PCA(n_components=n_pca)
+X_tr_p = pca.fit_transform(X_tr_sc)
+X_te_p = pca.transform(X_te_sc)
 
-    # Scale + PCA + Ridge
-    scaler = StandardScaler()
-    X_tr_sc = scaler.fit_transform(X_tr)
-    X_te_sc = scaler.transform(X_test)
+model = Ridge(alpha=ridge_alpha)
+model.fit(X_tr_p, Y_tr)
 
-    n_pca = min(pca_dims, len(X_tr), X_tr_sc.shape[1])
-    pca = PCA(n_components=n_pca)
-    X_tr_p = pca.fit_transform(X_tr_sc)
-    X_te_p = pca.transform(X_te_sc)
+pred_tr = model.predict(X_tr_p)
+pred_te = model.predict(X_te_p)
+acc_tr = np.mean((pred_tr > 0) == (Y_tr > 0))
+acc_te = np.mean((pred_te > 0) == (Y_test > 0))
 
-    model = Ridge(alpha=ridge_alpha)
-    model.fit(X_tr_p, Y_tr)
+acc_A = np.mean((pred_te[Y_test == -1] > 0) == (Y_test[Y_test == -1] > 0)) if np.any(Y_test == -1) else 0
+acc_B = np.mean((pred_te[Y_test == 1] > 0) == (Y_test[Y_test == 1] > 0)) if np.any(Y_test == 1) else 0
 
-    pred_tr = model.predict(X_tr_p)
-    pred_te = model.predict(X_te_p)
-    acc_tr = np.mean((pred_tr > 0) == (Y_tr > 0))
-    acc_te = np.mean((pred_te > 0) == (Y_test > 0))
+print(f"\n{'='*55}")
+print(f"  M36: RESONANT RESERVOIR RESULTS")
+print(f"{'='*55}")
+print(f"  Features:    |Ψ|² snapshot ({X.shape[1]} dims)")
+print(f"  Split:       Temporal blocks (train 0-{n_train_blocks-1}, test {n_train_blocks}+)")
+print(f"  Samples:     {len(X_tr)} train, {len(X_test)} test")
+print(f"  Train acc:   {acc_tr*100:.1f}%")
+print(f"  Test acc:    {acc_te*100:.1f}%")
+print(f"  Class A:     {acc_A*100:.1f}% (0.5 Hz)")
+print(f"  Class B:     {acc_B*100:.1f}% (2.0 Hz)")
+print(f"  Gap:         {(acc_tr-acc_te)*100:.1f}pp")
+print(f"{'='*55}")
 
-    per_class = {}
-    for c in classes:
-        m = Y_test == c
-        per_class[c] = np.mean((pred_te[m] > 0) == (Y_test[m] > 0)) if np.any(m) else 0.0
+# Resonance diagnostic: which neurons respond to each frequency?
+print(f"\n--- Resonance Diagnostic ---")
+slow_mask = Y == -1  # 0.5 Hz
+fast_mask = Y == 1   # 2.0 Hz
 
-    return acc_te, acc_tr, per_class, len(X_tr), len(X_test)
+mean_energy_slow = np.mean(X[slow_mask], axis=0)
+mean_energy_fast = np.mean(X[fast_mask], axis=0)
 
+# Find peak neurons for each class
+peak_slow = omega_hz[np.argmax(mean_energy_slow)]
+peak_fast = omega_hz[np.argmax(mean_energy_fast)]
 
-# =============================================================
-# COMPARE ALL FEATURE TYPES
-# =============================================================
-print("\n" + "=" * 70)
-print("  M34 RESULTS: TEMPORAL BLOCK SPLIT (train blocks 0-3, test 4+)")
-print("=" * 70)
+# Expected peaks
+print(f"  Input 0.5 Hz → peak neuron at: {peak_slow:.2f} Hz (expected: 0.50)")
+print(f"  Input 2.0 Hz → peak neuron at: {peak_fast:.2f} Hz (expected: 2.00)")
 
-feature_sets = [
-    ("A: Raw Ψ", X_raw),
-    ("B: Energy mean", X_emean),
-    ("C: Energy variance", X_evar),
-    ("D: Phase velocity", X_pvel),
-    ("E: Spectral power", X_spec),
-    ("F: Stats (B+C+D)", X_stats),
-    ("G: All (B+C+D+E)", X_all),
-]
+# Selectivity: ratio of peak to off-peak
+selectivity_slow = np.max(mean_energy_slow) / (np.mean(mean_energy_slow) + eps)
+selectivity_fast = np.max(mean_energy_fast) / (np.mean(mean_energy_fast) + eps)
+print(f"  Selectivity (slow): {selectivity_slow:.2f}x peak-to-mean")
+print(f"  Selectivity (fast): {selectivity_fast:.2f}x peak-to-mean")
 
-print(f"\n  {'Feature':>25}  {'Dims':>6}  {'Train%':>8}  {'Test%':>8}  {'A%':>6}  {'B%':>6}  {'Gap':>6}")
-print(f"  {'─'*25}  {'─'*6}  {'─'*8}  {'─'*8}  {'─'*6}  {'─'*6}  {'─'*6}")
+if selectivity_slow > 3 and selectivity_fast > 3:
+    print(f"  ✓ Strong resonance — spatial frequency map working")
+elif selectivity_slow > 1.5 or selectivity_fast > 1.5:
+    print(f"  ~ Moderate resonance — some frequency selectivity")
+else:
+    print(f"  ✗ No resonance — neurons not frequency-selective")
 
-best_test = 0
-best_name = ""
-results = []
-
-for name, X_feat in feature_sets:
-    acc_te, acc_tr, pc, n_tr, n_te = classify_temporal(X_feat, Y, T, n_train_blocks=4)
-    a = pc.get(-1, 0)
-    b = pc.get(1, 0)
-    gap = acc_tr - acc_te
-    print(f"  {name:>25}  {X_feat.shape[1]:6d}  {acc_tr*100:7.1f}%  {acc_te*100:7.1f}%  "
-          f"{a*100:5.1f}%  {b*100:5.1f}%  {gap*100:5.1f}pp")
-    results.append((name, acc_te, acc_tr, pc, X_feat.shape[1]))
-    if acc_te > best_test:
-        best_test = acc_te
-        best_name = name
-
-
-# =============================================================
-# ALSO TRY DIFFERENT PCA DIMS AND RIDGE ALPHAS FOR BEST FEATURE
-# =============================================================
-print(f"\n  Best feature set: {best_name} ({best_test*100:.1f}%)")
-
-# Retry best with different hyperparameters
-print(f"\n  Hyperparameter sweep for {best_name}:")
-best_X = dict(feature_sets)[best_name]
-
-print(f"\n  {'PCA':>6}  {'Alpha':>10}  {'Train%':>8}  {'Test%':>8}  {'A%':>6}  {'B%':>6}")
-print(f"  {'─'*6}  {'─'*10}  {'─'*8}  {'─'*8}  {'─'*6}  {'─'*6}")
-
-for n_pca in [10, 20, 50, 100, 200]:
-    for alpha in [1.0, 10.0, 100.0, 1000.0, 10000.0]:
-        # Inline classify with custom params
-        block_idx = (T / block_duration).astype(int)
-        first_block = int(stabilization_time / block_duration)
-        rel_block = block_idx - first_block
-        train_mask = rel_block < 4
-        test_mask = rel_block >= 4
-
-        X_train, Y_train = best_X[train_mask], Y[train_mask]
-        X_test, Y_test = best_X[test_mask], Y[test_mask]
-
-        if len(X_train) < 5 or len(X_test) < 5:
-            continue
-
-        classes = np.unique(Y_train)
-        if len(classes) < 2:
-            continue
-
-        min_c = min(np.sum(Y_train == c) for c in classes)
-        bal_idx = []
-        rng = np.random.default_rng(42)
-        for c in classes:
-            ci = np.where(Y_train == c)[0]
-            if len(ci) > min_c:
-                ci = rng.choice(ci, size=min_c, replace=False)
-            bal_idx.extend(ci)
-        X_tr = X_train[np.sort(bal_idx)]
-        Y_tr = Y_train[np.sort(bal_idx)]
-
-        scaler = StandardScaler()
-        X_tr_sc = scaler.fit_transform(X_tr)
-        X_te_sc = scaler.transform(X_test)
-
-        actual_pca = min(n_pca, len(X_tr), X_tr_sc.shape[1])
-        pca = PCA(n_components=actual_pca)
-        X_tr_p = pca.fit_transform(X_tr_sc)
-        X_te_p = pca.transform(X_te_sc)
-
-        model = Ridge(alpha=alpha)
-        model.fit(X_tr_p, Y_tr)
-
-        pred_tr = model.predict(X_tr_p)
-        pred_te = model.predict(X_te_p)
-        acc_tr = np.mean((pred_tr > 0) == (Y_tr > 0))
-        acc_te = np.mean((pred_te > 0) == (Y_test > 0))
-        a = np.mean((pred_te[Y_test == -1] > 0) == (Y_test[Y_test == -1] > 0))
-        b = np.mean((pred_te[Y_test == 1] > 0) == (Y_test[Y_test == 1] > 0))
-
-        if acc_te > 0.55:  # Only print interesting results
-            print(f"  {actual_pca:6d}  {alpha:10.1f}  {acc_tr*100:7.1f}%  {acc_te*100:7.1f}%  "
-                  f"{a*100:5.1f}%  {b*100:5.1f}%  ★")
-        elif n_pca == 50 and alpha == 1000.0:  # Default params
-            print(f"  {actual_pca:6d}  {alpha:10.1f}  {acc_tr*100:7.1f}%  {acc_te*100:7.1f}%  "
-                  f"{a*100:5.1f}%  {b*100:5.1f}%  (default)")
-
-
-# =============================================================
-# ALSO TRY DIFFERENT WINDOW SIZES (post-hoc not possible,
-# but we can use sub-windows of our buffer)
-# =============================================================
-print(f"\n\n  Window size analysis (using subsets of stored {window_seconds}s window):")
-# We can't easily redo different windows, but we report the one we used
-print(f"  Current window: {window_seconds}s ({window_steps} steps)")
-print(f"  For proper window sweep, would need separate runs.")
-
-
-# =============================================================
-# SUMMARY
-# =============================================================
-print("\n" + "=" * 70)
-print("  SUMMARY")
-print("=" * 70)
-print(f"  Temporal split guarantees NO data leakage.")
-print(f"  Train on blocks 0-3, test on blocks 4+.")
 print()
-for name, acc_te, acc_tr, pc, dims in results:
-    status = "✓ ABOVE CHANCE" if acc_te > 0.6 else ("~ MARGINAL" if acc_te > 0.55 else "✗ AT CHANCE")
-    print(f"  {status}  {name:>25}  test={acc_te*100:.1f}%  (train={acc_tr*100:.1f}%, {dims}d)")
-print()
-
-# Save results
-with open('/Users/pranay./Documents/THEBRAIN/m34_results.txt', 'w') as f:
-    f.write("M34: Invariant Feature Extraction Results\n")
-    f.write("=" * 60 + "\n")
-    f.write(f"Temporal block split: train blocks 0-3, test blocks 4+\n")
-    f.write(f"Window: {window_seconds}s, Block: {block_duration}s, Skip: {transition_skip}s\n\n")
-    for name, acc_te, acc_tr, pc, dims in results:
-        f.write(f"{name:>25}: test={acc_te*100:.1f}% train={acc_tr*100:.1f}% dims={dims}\n")
-        for c in sorted(pc.keys()):
-            f.write(f"  Class {c}: {pc[c]*100:.1f}%\n")
-
-print("Results saved to m34_results.txt")
