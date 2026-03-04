@@ -30,10 +30,10 @@ import time as clock
 # =============================================================
 N = 500
 lam = 0.8
-# M35: Distributed gamma — tonotopic gradient
-# Fast neurons (high γ): rapid damping, capture fast oscillations
-# Slow neurons (low γ): long integration, capture slow oscillations
-gamma_vec = np.linspace(0.1, 2.0, N)
+# M35b: Log-spaced gamma — cochlear tonotopic gradient
+# Log spacing gives MORE slow neurons (better low-freq resolution)
+# and wider dynamic range (0.05→3.0 vs 0.1→2.0)
+gamma_vec = np.logspace(np.log10(0.05), np.log10(3.0), N)
 eps = 1e-6
 dt = 0.05
 target_energy = 2.5
@@ -42,8 +42,8 @@ eta_xi_up = 0.005
 eta_xi_down = 0.002
 xi_min = 0.1
 xi_max = 3.0
-# M35: Distributed tau_adapt — multi-scale adaptation
-tau_adapt_vec = np.linspace(0.2, 5.0, N)
+# M35b: Log-spaced tau_adapt — multi-scale adaptation
+tau_adapt_vec = np.logspace(np.log10(0.1), np.log10(8.0), N)
 kappa_adapt = 0.5
 adapt_max = 2.0
 alpha_base = 0.1

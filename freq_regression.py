@@ -26,10 +26,10 @@ import time as clock
 # M35 PHYSICS
 # =============================================================
 N = 500; lam = 0.8; eps = 1e-6; dt = 0.05
-gamma_vec = np.linspace(0.1, 2.0, N)
+gamma_vec = np.logspace(np.log10(0.05), np.log10(3.0), N)
 target_energy = 2.5; input_gain = 1.5
 eta_xi_up = 0.005; eta_xi_down = 0.002; xi_min = 0.1; xi_max = 3.0
-tau_adapt_vec = np.linspace(0.2, 5.0, N)
+tau_adapt_vec = np.logspace(np.log10(0.1), np.log10(8.0), N)
 kappa_adapt = 0.5; adapt_max = 2.0
 alpha_base = 0.1; alpha_max = 0.3; target_lyap = 0.1; eta_alpha = 0.0005
 lyap_window = 100; S_global = 1.0
