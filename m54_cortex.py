@@ -107,6 +107,21 @@ CONSCIENCE_LEAK   = 0.002   # EMA decay for win frequency p[i]
 # Surprise threshold (unchanged)
 SURPRISE_THRESH = 0.15
 
+# ── L2 → M54 feedback ────────────────────────────────────────
+# When L2's sequence predictor was wrong (high prediction_error),
+# the cortex should learn faster — something unexpected happened
+# that the map should update toward.
+#
+# eta_sequence = (ETA_BASE - ETA_MIN) * SEQUENCE_ERROR_BOOST * prediction_error
+# At prediction_error=1.0: adds up to 0.14 to eta (same ceiling as novelty boost)
+# At prediction_error=0.0: adds nothing (no change vs old behaviour)
+# Final eta is capped at ETA_BASE * 2 = 0.30 to prevent explosion.
+#
+# Biologically: L2 prediction error maps to dopamine prediction error —
+# unexpected events trigger heightened synaptic plasticity in cortex.
+SEQUENCE_ERROR_BOOST = 1.0    # scale factor for L2→M54 feedback
+ETA_MAX              = ETA_BASE * 2   # hard ceiling including all boosts
+
 
 # ═══════════════════════════════════════════════════════════════
 # INPUT PREPARATION  (unchanged from M51)
@@ -221,9 +236,18 @@ class CortexM54:
 
     # ── Core SOM step ─────────────────────────────────────────
 
-    def step(self, decoded_freq, stability_w, novelty_flag, plv_vector):
+    def step(self, decoded_freq, stability_w, novelty_flag, plv_vector,
+             prediction_error: float = 0.0):
         """
-        One online learning step. Interface identical to M51.step().
+        One online learning step.
+
+        Parameters
+        ----------
+        prediction_error : float [0,1]
+            L2 sequence prediction error from previous step.
+            0 = L2 predicted correctly, no extra boost.
+            1 = L2 was completely wrong, maximum cortical plasticity boost.
+            Default 0.0 preserves old behaviour when feedback not wired.
         """
         # 1. Prepare input
         x = prepare_input(decoded_freq, stability_w, novelty_flag, plv_vector)
@@ -271,7 +295,10 @@ class CortexM54:
         # even when the current signal is noisy/transitioning.
         eta_base      = ETA_MIN + (ETA_BASE - ETA_MIN) * float(stability_w)
         eta_curiosity = (ETA_BASE - ETA_MIN) * NOVELTY_BOOST * qe_norm_now
-        eta           = max(eta_base + eta_curiosity, ETA_MIN)
+        # L2 → M54 feedback: sequence surprise boosts cortical plasticity
+        eta_sequence  = (ETA_BASE - ETA_MIN) * SEQUENCE_ERROR_BOOST * float(prediction_error)
+        eta           = float(np.clip(eta_base + eta_curiosity + eta_sequence,
+                                      ETA_MIN, ETA_MAX))
 
         # Update EMA AFTER computing qe_norm (so current novel QE doesn't
         # inflate the baseline for the current sample — only future ones)
@@ -308,8 +335,9 @@ class CortexM54:
             'bmu_pos':   (bmu_neuron.row, bmu_neuron.col),
             'sigma':     sigma,
             'eta':       eta,
-            'is_novel':  qe > SURPRISE_THRESH,
-            'input_vec': x,
+            'is_novel':          qe > SURPRISE_THRESH,
+            'input_vec':         x,
+            'prediction_error':  float(prediction_error),
         }
 
     # ── Analysis tools (identical interface to M51) ────────────

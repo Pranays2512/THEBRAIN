@@ -159,6 +159,19 @@ FAMILIARITY_SPEED_THRESH = 4
 # Prevents near-zero traces from adding noise to W
 MIN_TRACE_TO_WRITE = 0.05
 
+# ── L2 → M55 feedback ────────────────────────────────────────
+# When L2's curiosity is high (unfamiliar sequence territory),
+# memories should be written more strongly — novel experiences
+# deserve stronger consolidation.
+#
+# eta_effective = ETA_HEBB * (1 + CURIOSITY_HEBB_BOOST * curiosity)
+# At curiosity=1.0: ETA_HEBB * 2.0 = 0.08 (double write strength)
+# At curiosity=0.0: ETA_HEBB * 1.0 = 0.04 (normal, unchanged)
+#
+# Biologically: acetylcholine release during novel/uncertain states
+# enhances hippocampal encoding — exactly what this implements.
+CURIOSITY_HEBB_BOOST = 1.0    # max multiplier: doubles ETA_HEBB at curiosity=1.0
+
 
 # ═══════════════════════════════════════════════════════════════
 # ASSOCIATIVE MEMORY
@@ -212,7 +225,8 @@ class AssociativeMemory:
 
     # ── Core step ─────────────────────────────────────────────
 
-    def step(self, bmu_idx: int, qe_norm: float) -> dict:
+    def step(self, bmu_idx: int, qe_norm: float,
+             curiosity: float = 0.0) -> dict:
         """
         One memory step. Call after every cortex.step().
 
@@ -223,6 +237,11 @@ class AssociativeMemory:
         qe_norm : float
             Normalized surprise from M54 [0, 1]
             0 = completely familiar, 1 = maximally novel
+        curiosity : float [0,1]
+            L2 sustained sequence novelty signal from previous step.
+            0 = sequences are familiar, write at base rate.
+            1 = sequences are novel, write at up to 2× base rate.
+            Default 0.0 preserves old behaviour when feedback not wired.
 
         Returns
         -------
@@ -259,8 +278,11 @@ class AssociativeMemory:
 
         if active.sum() > 1:
             # Outer product of active traces
+            # L2 → M55 feedback: curiosity scales write strength
+            # Novel sequences (high curiosity) → stronger memory consolidation
+            eta_effective = ETA_HEBB * (1.0 + CURIOSITY_HEBB_BOOST * float(curiosity))
             t_active = self._trace * active.astype(np.float32)
-            delta_W  = ETA_HEBB * np.outer(t_active, t_active)
+            delta_W  = eta_effective * np.outer(t_active, t_active)
 
             # No self-connections (diagonal = 0)
             np.fill_diagonal(delta_W, 0.0)
@@ -298,6 +320,7 @@ class AssociativeMemory:
             'trace_decay': float(self._trace_decay),
             'w_mean':      w_mean,
             'w_max':       float(self._W.max()),
+            'curiosity':   float(curiosity),
         }
 
     # ── Recall ────────────────────────────────────────────────
