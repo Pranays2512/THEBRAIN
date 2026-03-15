@@ -226,7 +226,8 @@ class AssociativeMemory:
     # ── Core step ─────────────────────────────────────────────
 
     def step(self, bmu_idx: int, qe_norm: float,
-             curiosity: float = 0.0) -> dict:
+             curiosity:    float = 0.0,
+             rpe_positive: float = 0.0) -> dict:
         """
         One memory step. Call after every cortex.step().
 
@@ -242,6 +243,13 @@ class AssociativeMemory:
             0 = sequences are familiar, write at base rate.
             1 = sequences are novel, write at up to 2× base rate.
             Default 0.0 preserves old behaviour when feedback not wired.
+        rpe_positive : float [0,1]
+            Positive reward prediction error from V1 (Valence) module.
+            "This outcome was better than expected — consolidate more."
+            Boosts Hebbian write rate on top of curiosity boost.
+            Formula: eta = ETA_HEBB * (1 + curiosity_boost + rpe_boost)
+            Default 0.0 preserves old behaviour when V1 not wired.
+            Biologically: dopamine burst → hippocampal LTP enhancement.
 
         Returns
         -------
@@ -280,7 +288,14 @@ class AssociativeMemory:
             # Outer product of active traces
             # L2 → M55 feedback: curiosity scales write strength
             # Novel sequences (high curiosity) → stronger memory consolidation
-            eta_effective = ETA_HEBB * (1.0 + CURIOSITY_HEBB_BOOST * float(curiosity))
+            # V1 → M55 feedback: positive RPE also boosts write strength
+            # Better-than-expected outcomes → stronger hippocampal LTP
+            from valence import RPE_M55_BOOST
+            eta_effective = ETA_HEBB * (
+                1.0
+                + CURIOSITY_HEBB_BOOST * float(curiosity)
+                + RPE_M55_BOOST * float(rpe_positive)
+            )
             t_active = self._trace * active.astype(np.float32)
             delta_W  = eta_effective * np.outer(t_active, t_active)
 

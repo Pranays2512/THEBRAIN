@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THEBRAIN — Mathematical Formula Flow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:       #0a0c0f;
+    --panel:    #0f1318;
+    --border:   #1e2530;
+    --dim:      #2a3340;
+    --muted:    #4a5568;
+    --text:     #c8d6e5;
+    --bright:   #e8f0f8;
+    --accent:   #00d4ff;
+    --gold:     #f0b429;
+    --green:    #38ef7d;
+    --red:      #ff6b6b;
+    --purple:   #a78bfa;
+    --orange:   #fb923c;
+
+    --m50:      #00d4ff;
+    --m56:      #38ef7d;
+    --m55:      #f0b429;
+    --l2:       #a78bfa;
+    --l3:       #fb923c;
+    --att:      #ff6b6b;
+    --val:      #f472b6;
+    --tho:      #34d399;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  header p {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    padding: 14px 40px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Main layout ── */
+  .canvas {
+    padding: 32px 40px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Layer block ── */
+  .layer {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    min-height: 0;
+    position: relative;
+  }
+
+  .layer-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 18px 20px 18px 0;
+    border-right: 2px solid var(--border);
+    position: relative;
+  }
+  .layer-label::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 22px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dim);
+  }
+  .layer-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .layer-desc {
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .layer-content {
+    padding: 18px 0 18px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ── Connector between layers ── */
+  .connector {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    padding: 0 0 0 158px;
+    height: 32px;
+    position: relative;
+  }
+  .connector::before {
+    content: '';
+    position: absolute;
+    left: 159px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .connector-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--dim));
+    flex: 1;
+    margin-left: 28px;
+    position: relative;
+  }
+  .flow-tags {
+    display: flex;
+    gap: 8px;
+    margin-left: 8px;
+    flex-wrap: wrap;
+  }
+  .flow-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  /* ── Formula card ── */
+  .formula-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .fcard {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-width: 200px;
+    max-width: 380px;
+    position: relative;
+    transition: border-color 0.2s;
+    cursor: default;
+  }
+  .fcard:hover {
+    border-color: var(--muted);
+  }
+  .fcard.wide {
+    max-width: 540px;
+  }
+
+  .fcard-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    opacity: 0.8;
+  }
+  .fcard-eq {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--bright);
+    line-height: 1.6;
+    margin-bottom: 4px;
+  }
+  .fcard-note {
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .fcard-output {
+    margin-top: 6px;
+    font-size: 9px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .out-label {
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .out-val {
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 8px;
+    border: 1px solid;
+    margin-right: 4px;
+    display: inline-block;
+  }
+
+  /* ── Output arrow block ── */
+  .outputs-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 4px;
+  }
+  .output-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    border: 1px solid;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .output-chip::before {
+    content: '→';
+    font-size: 10px;
+    opacity: 0.6;
+  }
+
+  /* ── Flow arrow between rows ── */
+  .arrow-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 2px 0;
+    flex-wrap: wrap;
+  }
+  .arrow-eq {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .arrow-eq span.sym {
+    color: var(--dim);
+    font-size: 12px;
+  }
+
+  /* ── Big matrix display ── */
+  .matrix-block {
+    background: #080a0d;
+    border: 1px solid var(--dim);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .matrix-block .row-label {
+    color: var(--muted);
+    margin-right: 6px;
+    font-size: 9px;
+  }
+
+  /* color per layer */
+  .c-m50   { color: var(--m50); border-color: var(--m50); }
+  .c-m56   { color: var(--m56); border-color: var(--m56); }
+  .c-m55   { color: var(--m55); border-color: var(--m55); }
+  .c-l2    { color: var(--l2);  border-color: var(--l2); }
+  .c-l3    { color: var(--l3);  border-color: var(--l3); }
+  .c-att   { color: var(--att); border-color: var(--att); }
+  .c-val   { color: var(--val); border-color: var(--val); }
+  .c-tho   { color: var(--tho); border-color: var(--tho); }
+
+  .b-m50 { border-left: 3px solid var(--m50); }
+  .b-m56 { border-left: 3px solid var(--m56); }
+  .b-m55 { border-left: 3px solid var(--m55); }
+  .b-l2  { border-left: 3px solid var(--l2);  }
+  .b-l3  { border-left: 3px solid var(--l3);  }
+  .b-att { border-left: 3px solid var(--att); }
+  .b-val { border-left: 3px solid var(--val); }
+  .b-tho { border-left: 3px solid var(--tho); }
+
+  .dot-m50 { background: var(--m50); }
+  .dot-m56 { background: var(--m56); }
+  .dot-m55 { background: var(--m55); }
+  .dot-l2  { background: var(--l2); }
+  .dot-l3  { background: var(--l3); }
+  .dot-att { background: var(--att); }
+  .dot-val { background: var(--val); }
+  .dot-tho { background: var(--tho); }
+
+  /* highlight var */
+  .v { color: var(--bright); font-weight: 600; }
+  .kw { color: var(--accent); }
+  .num { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>THEBRAIN — Mathematical Formula Flow</h1>
+  <p>Complete equation map · 7 layers · signal routing from audio input to prediction</p>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot dot-m50"></div>M50  EAR / OSCILLATOR</div>
+  <div class="legend-item"><div class="dot dot-m56"></div>M56  CORTEX / SOM</div>
+  <div class="legend-item"><div class="dot dot-m55"></div>M55  ASSOCIATIVE MEMORY</div>
+  <div class="legend-item"><div class="dot dot-l2"></div>L2  SEQUENCE PREDICTOR</div>
+  <div class="legend-item"><div class="dot dot-l3"></div>L3  CONCEPT / ZONE LAYER</div>
+  <div class="legend-item"><div class="dot dot-att"></div>ATT  ATTENTION</div>
+  <div class="legend-item"><div class="dot dot-val"></div>VAL  VALENCE</div>
+  <div class="legend-item"><div class="dot dot-tho"></div>THO  THOUGHT</div>
+</div>
+
+<div class="canvas">
+
+  <!-- ═══════════════════ M50 ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-m50">M50</div>
+      <div class="layer-desc">Ear / Oscillator<br>500 Hopf neurons<br>0.4 – 2.2 Hz</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Hopf Network Dynamics</div>
+          <div class="fcard-eq">
+            dΨ/dt = j·ω·Ψ + W·Ψ + α·Δ·Ψ<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ g(ξ,R)·Ψ − γ·|Ψ|²·Ψ − A·Ψ<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ σ·noise + W_in·I·g_in
+          </div>
+          <div class="fcard-note">RK4 integration, dt=0.05s. Ψ∈ℂ⁵⁰⁰. ω=logspace(0.4,2.2,500)×2π</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Nonlinear Gain g(ξ,R)</div>
+          <div class="fcard-eq">
+            R = Re(Ψ* · W·Ψ) / (|Ψ|² + |W·Ψ|²)<br>
+            g = ξ · tanh(1 − R) − λ
+          </div>
+          <div class="fcard-note">λ=0.8  ξ∈[0.1,3.0] adaptive gain</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Adaptation A (per neuron)</div>
+          <div class="fcard-eq">
+            dA/dt = (κ·max(E − E_target, 0) − A) / τ_A<br>
+            E_avg ← 0.99·E_avg + 0.01·|Ψ|²
+          </div>
+          <div class="fcard-note">κ=0.5  E_target=2.5  A∈[0,2]</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Leaky Phasor (PLV computation)</div>
+          <div class="fcard-eq">
+            φ_in = 2π·f·t<br>
+            phasor = exp(j·(∠Ψ − φ_in))<br>
+            X_plv ← (1−α)·X_plv + α·phasor
+          </div>
+          <div class="fcard-note">α_fast = dt/τ_fast (τ=1s)  α_slow = dt/τ_slow (τ=5s)</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">PLV Decoder (raw frequency)</div>
+          <div class="fcard-eq">
+            w_i = |PLV_i|⁸ · E_i<br>
+            f_raw = Σ(ω_i · w_i) / Σ(w_i)
+          </div>
+          <div class="fcard-note">PLV sharpening exponent=8. Weighted centroid over oscillator bank.</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Calibrated Decode + Fusion</div>
+          <div class="fcard-eq">
+            f_cal = interp(f_raw; table)<br>
+            w = stability(PLV_history)<br>
+            f_fused = w·f_slow + (1−w)·f_fast
+          </div>
+          <div class="fcard-note">Reverse lookup table (44 cal pts). w∈[0,1] from PLV min over 20-step window.</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">PLV Stability Weight</div>
+          <div class="fcard-eq">
+            plv_min = min(PLV_history_20)<br>
+            w = clip((plv_min − 0.30) / (0.90 − 0.30), 0, 1)
+          </div>
+          <div class="fcard-note">0 = unstable/sweeping. 1 = fully locked to frequency.</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">CUSUM Change Detector</div>
+          <div class="fcard-eq">
+            div = |f_fast − f_slow|<br>
+            if w &lt; 0.30: accum = 0 (gated)<br>
+            else: accum += max(div − 0.038, 0)<br>
+            novel = (accum &gt; 0.038)
+          </div>
+          <div class="fcard-note">Threshold=0.038 Hz. Gate prevents false positives during settling.</div>
+        </div>
+        <div class="fcard b-m50">
+          <div class="fcard-tag c-m50">Hebb + Lyapunov (training)</div>
+          <div class="fcard-eq">
+            ΔW[i,j] = η·Re(Ψ_i·Ψ_j*)·|Ψ_i||Ψ_j|<br>
+            W ← W·(1 − δ·W)<br>
+            α ← α + η_α·(λ_target − λ̄)
+          </div>
+          <div class="fcard-note">η=0.002  δ=0.0001. Lyapunov target=0.1. Used only during first 60s.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-m50">f_fused (Hz)</div>
+        <div class="output-chip c-m50">w (stability)</div>
+        <div class="output-chip c-m50">novel (bool)</div>
+        <div class="output-chip c-m50">PLV vector (500,)</div>
+        <div class="output-chip c-m50">f_fast, f_slow</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector M50 → M56 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-m50">f_fused → decoded_freq</span>
+      <span class="flow-tag c-m50">w → stability_w</span>
+      <span class="flow-tag c-m50">novel → novelty_flag</span>
+      <span class="flow-tag c-m50">PLV[:20] → plv_vector</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ M56 ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-m56">M56 CORTEX</div>
+      <div class="layer-desc">SOM 8×8 grid<br>64 neurons<br>Input dim=30</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">Input Preparation</div>
+          <div class="fcard-eq">
+            freq_norm = clip((f − 0.41)/(2.20−0.41), 0, 1)<br>
+            x = [freq_norm×8, w, novel, PLV_top20]
+          </div>
+          <div class="fcard-note">freq_norm repeated 8× → 26.7% of input mass. dim=30.</div>
+        </div>
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">BMU Selection (Conscience)</div>
+          <div class="fcard-eq">
+            d[i] = ||x − W[i]||²<br>
+            d_eff[i] = d[i] · (1 + 0.5·(p[i] − 1/64))<br>
+            BMU = argmin(d_eff)
+          </div>
+          <div class="fcard-note">Conscience prevents any neuron from winning too often. QE = √d[BMU]</div>
+        </div>
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">Learning Rate η</div>
+          <div class="fcard-eq">
+            η_base    = 0.01 + 0.14·w<br>
+            η_curiosity = 0.14·2.0·qe_norm<br>
+            η_sequence  = 0.14·1.0·PE<br>
+            η_fam       = 1.5·0.14·familiarity<br>
+            η = clip(η_base + η_cur + η_seq − η_fam, 0.01, 0.30)
+          </div>
+          <div class="fcard-note">Familiarity suppresses (LTD). Prediction error boosts. Novel input overrides.</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">Neighbourhood Function h</div>
+          <div class="fcard-eq">
+            σ = 0.8 + (3.5−0.8)·mean(surprise_hist)<br>
+            h[i] = exp(−grid_dist²[BMU,i] / 2σ²)
+          </div>
+          <div class="fcard-note">σ_min=0.8 (consolidation). σ_max=3.5 (exploration). 100-step history.</div>
+        </div>
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">Weight Update</div>
+          <div class="fcard-eq">
+            ΔW[i] = η · h[i] · (x − W[i])<br>
+            W ← clip(W + ΔW, 0, 1)
+          </div>
+        </div>
+        <div class="fcard b-m56">
+          <div class="fcard-tag c-m56">Surprise (EMA-based qe_norm)</div>
+          <div class="fcard-eq">
+            qe_norm = clip((QE − QE_ema)/(QE_ema + ε), 0, 1)<br>
+            QE_ema ← 0.99·QE_ema + 0.01·QE<br>
+            p[i] ← p[i] + 0.002·(win[i] − p[i])
+          </div>
+          <div class="fcard-note">Surprise = excess above familiar baseline. Conscience win-freq EMA.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-m56">BMU_idx (0–63)</div>
+        <div class="output-chip c-m56">QE (quantisation error)</div>
+        <div class="output-chip c-m56">qe_norm [0,1]</div>
+        <div class="output-chip c-m56">η (learning rate)</div>
+        <div class="output-chip c-m56">σ (neighbourhood)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector M56 → M55 + L2 + L3 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-m56">BMU_idx → M55, L2, L3</span>
+      <span class="flow-tag c-m56">qe_norm → M55, L2, ATT</span>
+      <span class="flow-tag c-m55">familiarity(t-1) → M56.η</span>
+      <span class="flow-tag c-l2">PE(t-1) → M56.η</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ M55 ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-m55">M55 MEMORY</div>
+      <div class="layer-desc">Hebbian assoc.<br>W matrix 64×64<br>Recall + familiarity</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-m55">
+          <div class="fcard-tag c-m55">Adaptive Eligibility Trace</div>
+          <div class="fcard-eq">
+            τ_decay = max(0.02, 0.05 − 0.03·qe_norm)<br>
+            trace ← trace · (1 − τ_decay)<br>
+            trace[BMU] = 1.0
+          </div>
+          <div class="fcard-note">Novel input → slow decay → longer memory window (~40 steps). Familiar → ~10 steps.</div>
+        </div>
+        <div class="fcard b-m55">
+          <div class="fcard-tag c-m55">Hebbian Weight Update</div>
+          <div class="fcard-eq">
+            η_eff = 0.04·(1 + curiosity + RPE·pos_rpe)<br>
+            ΔW = η_eff · outer(trace, trace)<br>
+            diag(ΔW) = 0<br>
+            W ← W + ΔW
+          </div>
+          <div class="fcard-note">Only neurons with trace ≥ 0.05 participate. Curiosity doubles η at max.</div>
+        </div>
+        <div class="fcard b-m55">
+          <div class="fcard-tag c-m55">Decay + Homeostasis</div>
+          <div class="fcard-eq">
+            W ← W · (1 − 0.0005)<br>
+            W ← W · clip(1/(max_row+ε), ·, 1)  [row norm]<br>
+            W ← (W + Wᵀ) · 0.5  [symmetry]
+          </div>
+          <div class="fcard-note">τ_forget≈2000 steps. Row max capped at W_MAX=1. Symmetric association.</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-m55 wide">
+          <div class="fcard-tag c-m55">Recall — Pattern Completion</div>
+          <div class="fcard-eq">
+            activation = W · pattern<br>
+            new_pattern = softmax(activation / 0.5)<br>
+            new_pattern[BMU] = max(new_pattern[BMU], 0.5)  [anchor]<br>
+            repeat ≤10 steps until peak_non_cue &gt; 0.15
+          </div>
+          <div class="fcard-note">Hopfield-style settling. E = −½ pᵀWp. Convergence when recalled pattern reaches confidence threshold.</div>
+        </div>
+        <div class="fcard b-m55">
+          <div class="fcard-tag c-m55">Familiarity Score</div>
+          <div class="fcard-eq">
+            exposure_score = log(1+N) / log(201)<br>
+            breadth_score  = (pattern&gt;0.02).sum() / 6.4<br>
+            depth_score    = ΔE / 0.05<br>
+            speed_score    = 1 − steps/10<br>
+            fam = 0.5·exp + 0.3·brd + 0.1·dep + 0.1·spd
+          </div>
+          <div class="fcard-note">Primary = exposure count (monotonic). W-based signals give quality signal.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-m55">familiarity [0,1]</div>
+        <div class="output-chip c-m55">settled_pattern (64,)</div>
+        <div class="output-chip c-m55">W (64×64)</div>
+        <div class="output-chip c-m55">trace_peak</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector → L2 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-m55">familiarity → L2, M56, ATT</span>
+      <span class="flow-tag c-m55">W[BMU] row → Thought</span>
+      <span class="flow-tag c-l2">curiosity(t-1) → M55.η</span>
+      <span class="flow-tag c-val">pos_rpe(t-1) → M55.η</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ L2 ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-l2">L2 PREDICTOR</div>
+      <div class="layer-desc">Sequence memory<br>P matrix 64×64<br>Context vector c</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">Prediction (before BMU fires)</div>
+          <div class="fcard-eq">
+            raw_scores = Pᵀ · c   (64,)<br>
+            exp_s = exp((raw − max) / T)   T=0.15<br>
+            norm_scores = exp_s / Σexp_s<br>
+            predicted_BMU = argmax(norm_scores)
+          </div>
+          <div class="fcard-note">Softmax with T=0.15 sharpens competition. Confidence = (top − 1/64)/(1 − 1/64).</div>
+        </div>
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">Spatial Prediction Error</div>
+          <div class="fcard-eq">
+            dist² = (row_pred−row_act)² + (col_pred−col_act)²<br>
+            PE = 1 − exp(−dist² / 2·σ²)   σ=2.0<br>
+            PE ← PE · (1 − 0.3·familiarity)
+          </div>
+          <div class="fcard-note">Grid distance on 8×8 cortex. Familiarity reduces PE by up to 30%.</div>
+        </div>
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">Adaptive Context Decay</div>
+          <div class="fcard-eq">
+            τ_c = max(0.10, 0.30 − 0.20·PE)<br>
+            c ← c · (1 − τ_c)<br>
+            c[BMU] = 1.0  (after learning)
+          </div>
+          <div class="fcard-note">High PE → slow decay → longer context window (~10 steps). Low PE → ~3 steps.</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">P Matrix Update (STDP-inspired)</div>
+          <div class="fcard-eq">
+            η = 0.05 + 0.10·PE  (if PE&gt;0.5)<br>
+            active = (c ≥ 0.50)<br>
+            P[:,BMU] += η · c · active<br>
+            P[BMU,BMU] = 0  (no self-predict)<br>
+            P[:,BMU] ← clip(P[:,BMU], 0, P_MAX)
+          </div>
+          <div class="fcard-note">Context that preceded BMU gets credit. Learning BEFORE imprint. Causal order.</div>
+        </div>
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">P Decay + Normalisation</div>
+          <div class="fcard-eq">
+            P ← P · (1 − 0.001)   τ≈1000 steps<br>
+            col_max = P.max(axis=0)<br>
+            P ← P · (P_MAX / max(col_max, P_MAX))
+          </div>
+          <div class="fcard-note">Column-wise normalisation prevents monopoly. τ=1000 keeps rare transitions.</div>
+        </div>
+        <div class="fcard b-l2">
+          <div class="fcard-tag c-l2">Curiosity Signal</div>
+          <div class="fcard-eq">
+            curiosity ← (1−0.05)·curiosity + 0.05·PE
+          </div>
+          <div class="fcard-note">EMA of PE. τ≈20 steps. Sustained high PE = novel sequence territory.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-l2">PE [0,1] → M56, L3, VAL</div>
+        <div class="output-chip c-l2">curiosity → M55, ATT</div>
+        <div class="output-chip c-l2">predicted_BMU</div>
+        <div class="output-chip c-l2">norm_scores (64,) → L3, THO</div>
+        <div class="output-chip c-l2">confidence</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector → L3 -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-l2">PE → Valence, M56</span>
+      <span class="flow-tag c-l2">norm_scores → L3 fallback</span>
+      <span class="flow-tag c-l2">curiosity → M55, ATT</span>
+      <span class="flow-tag c-l3">freq_idx (GT) → L3.Z</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ L3 ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-l3">L3 CONCEPTS</div>
+      <div class="layer-desc">Zone ownership<br>Z matrix n×n<br>Grammar predictor</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-l3">
+          <div class="fcard-tag c-l3">Zone Assignment (Direct Ownership)</div>
+          <div class="fcard-eq">
+            visits[fi, bmu] = freq_bmu_counters[fi][bmu]<br>
+            zone[bmu] = argmax_fi(visits[:, bmu])<br>
+            conf[bmu]  = visits[zone,bmu] / Σ_fi(visits[fi,bmu])
+          </div>
+          <div class="fcard-note">Runs every 2000 steps after 5000-step warmup. Requires ≥10 visits.</div>
+        </div>
+        <div class="fcard b-l3">
+          <div class="fcard-tag c-l3">Z Matrix Update</div>
+          <div class="fcard-eq">
+            if freq_idx ≠ Z_ctx:<br>
+            &nbsp;&nbsp;Z[Z_ctx, freq_idx] += 1.0<br>
+            Z_ctx = freq_idx
+          </div>
+          <div class="fcard-note">Raw integer counts. Updated only on zone CHANGE (not self-transition). Uses GT freq_idx.</div>
+        </div>
+        <div class="fcard b-l3">
+          <div class="fcard-tag c-l3">Zone Probability Prediction</div>
+          <div class="fcard-eq">
+            z_row = Z[src_zone, :]<br>
+            zone_probs = z_row / Σ(z_row)<br>
+            pred_zone = argmax(zone_probs)
+          </div>
+          <div class="fcard-note">Fallback to L2 zone aggregation if Z row is all-zero (early training).</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-l3 wide">
+          <div class="fcard-tag c-l3">Calibration Score (primary metric)</div>
+          <div class="fcard-eq">
+            g[j]  = grammar_prob[src→j]   (sparse, sums to 1)<br>
+            calib = dot(zone_probs, g) / dot(g, g)<br>
+            <br>
+            calib = 1.0  ↔  Z perfectly mirrors grammar<br>
+            calib &gt; 1.0 ↔  Z over-concentrates on top successor<br>
+            calib = 0.0  ↔  Z predicts invalid successors only
+          </div>
+          <div class="fcard-note">Normalised inner product. Rewards distributional accuracy, not just top-1. Tie zones (50/50) correctly score 1.0.</div>
+        </div>
+        <div class="fcard b-l3">
+          <div class="fcard-tag c-l3">Zone Probs (get_zone_probs)</div>
+          <div class="fcard-eq">
+            row = Z[zone_idx, :]<br>
+            if sum &gt; 0: return row/sum<br>
+            else: return uniform(n_zones)
+          </div>
+          <div class="fcard-note">Used by score function and downstream layers for zone-level planning.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-l3">zone_idx (0–7)</div>
+        <div class="output-chip c-l3">zone_probs (n,)</div>
+        <div class="output-chip c-l3">pred_zone</div>
+        <div class="output-chip c-l3">calib score</div>
+        <div class="output-chip c-l3">zone_conf</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector → Attention -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-m56">qe_norm → Attention</span>
+      <span class="flow-tag c-m55">familiarity → Attention</span>
+      <span class="flow-tag c-l2">curiosity_delta → Attention</span>
+      <span class="flow-tag c-l2">PE → Valence</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ ATTENTION ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name c-att">ATTENTION</div>
+      <div class="layer-desc">Salience gate<br>Gaussian spatial<br>64-dim gate</div>
+    </div>
+    <div class="layer-content">
+
+      <div class="formula-row">
+        <div class="fcard b-att wide">
+          <div class="fcard-tag c-att">Raw Salience (5-drive mixture)</div>
+          <div class="fcard-eq">
+            raw = clip(<br>
+            &nbsp;&nbsp;0.35·surprise_signal<br>
+            &nbsp;&nbsp;+ 0.25·qe_norm<br>
+            &nbsp;&nbsp;+ 0.20·curiosity_delta<br>
+            &nbsp;&nbsp;+ 0.15·(1−familiarity)<br>
+            &nbsp;&nbsp;− 0.15·thought_confidence_delta,  0, 1)
+          </div>
+          <div class="fcard-note">Familiarity is suppressive (familiar = less need to attend). Thought prediction also mild suppressive.</div>
+        </div>
+        <div class="fcard b-att">
+          <div class="fcard-tag c-att">Delta Rule (EMA)</div>
+          <div class="fcard-eq">
+            salience_delta = clip(raw − EMA, 0, 1)<br>
+            EMA ← (1−α)·EMA + α·raw   α=0.1
+          </div>
+          <div class="fcard-note">Only upward spikes propagate. Near-zero when salience is stably high.</div>
+        </div>
+      </div>
+
+      <div class="formula-row">
+        <div class="fcard b-att">
+          <div class="fcard-tag c-att">Spatial Attention Gate</div>
+          <div class="fcard-eq">
+            gate = baseline_uniform + GATE_BOOST·raw·gauss<br>
+            gauss[i] = exp(−grid_dist²[BMU,i] / 2σ²)<br>
+            gate /= Σgate   (normalise to prob simplex)
+          </div>
+          <div class="fcard-note">Gaussian centered on BMU. At raw=0: pure uniform. At raw=1: full Gaussian peak.</div>
+        </div>
+        <div class="fcard b-att">
+          <div class="fcard-tag c-att">Gate Entropy</div>
+          <div class="fcard-eq">
+            H = −Σ gate[i] · log(gate[i])<br>
+            gate_entropy = H / log(64)
+          </div>
+          <div class="fcard-note">0 = maximally focused (single neuron). 1 = uniform (diffuse attention).</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-att">salience [0,1]</div>
+        <div class="output-chip c-att">salience_delta</div>
+        <div class="output-chip c-att">gate (64,)</div>
+        <div class="output-chip c-att">attended_BMU</div>
+        <div class="output-chip c-att">gate_entropy</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connector → Valence + Thought -->
+  <div class="connector">
+    <div class="connector-line"></div>
+    <div class="flow-tags">
+      <span class="flow-tag c-att">attended_BMU → Thought</span>
+      <span class="flow-tag c-att">salience → Thought</span>
+      <span class="flow-tag c-tho">confidence_delta → Attention</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ VALENCE + THOUGHT (side by side) ═══════════════════ -->
+  <div class="layer">
+    <div class="layer-label">
+      <div class="layer-name" style="color:#f472b6">VALENCE</div>
+      <div class="layer-desc" style="margin-bottom:16px">RPE signal<br>reward baseline</div>
+      <div class="layer-name c-tho" style="margin-top:8px">THOUGHT</div>
+      <div class="layer-desc">Prediction bias<br>L2 + M55 blend</div>
+    </div>
+    <div class="layer-content">
+
+      <!-- Valence row -->
+      <div class="formula-row">
+        <div class="fcard b-val">
+          <div class="fcard-tag c-val">Intrinsic + Total Reward</div>
+          <div class="fcard-eq">
+            intrinsic = 1 − PE<br>
+            total_reward = 0.5·reward + 0.5·intrinsic<br>
+            &nbsp;&nbsp;(pure intrinsic if reward=0)
+          </div>
+          <div class="fcard-note">Perfect prediction = max intrinsic reward. External reward blended equally.</div>
+        </div>
+        <div class="fcard b-val">
+          <div class="fcard-tag c-val">Reward Prediction Error (RPE)</div>
+          <div class="fcard-eq">
+            RPE = clip(total_reward − EMA, −1, 1)<br>
+            pos_RPE = max(RPE, 0)<br>
+            neg_RPE = max(−RPE, 0)<br>
+            EMA ← (1−0.05)·EMA + 0.05·total_reward
+          </div>
+          <div class="fcard-note">Signed deviation above/below expected reward. Dopamine analogue.</div>
+        </div>
+      </div>
+
+      <!-- Thought row -->
+      <div class="formula-row" style="margin-top:8px; padding-top:10px; border-top:1px solid var(--border)">
+        <div class="fcard b-tho">
+          <div class="fcard-tag c-tho">Prediction Bias (L2 + M55 blend)</div>
+          <div class="fcard-eq">
+            l2_bias  = normalise(P_top_k(attended_BMU))<br>
+            m55_bias = normalise(W[attended_BMU])<br>
+            bias = 0.6·l2_bias + 0.4·m55_bias<br>
+            bias /= Σbias
+          </div>
+          <div class="fcard-note">L2 = temporal sequence. M55 = associative co-occurrence. Falls back to uniform if no signal.</div>
+        </div>
+        <div class="fcard b-tho">
+          <div class="fcard-tag c-tho">Thought Confidence + Delta</div>
+          <div class="fcard-eq">
+            raw_conf = clip(max(bias) − 1/64, 0, 1)<br>
+            conf_delta = clip(raw_conf − EMA, 0, 1)<br>
+            EMA ← (1−0.1)·EMA + 0.1·raw_conf
+          </div>
+          <div class="fcard-note">Spike when Thought suddenly forms a clear prediction. Suppresses Attention slightly.</div>
+        </div>
+        <div class="fcard b-tho">
+          <div class="fcard-tag c-tho">Expectation Error</div>
+          <div class="fcard-eq">
+            dist² = (row_exp−row_act)² + (col_exp−col_act)²<br>
+            exp_err = 1 − exp(−dist²/(2·σ²))   σ=2
+          </div>
+          <div class="fcard-note">Spatial check on previous expected_BMU vs actual fired BMU. Same spatial soft-match as L2.</div>
+        </div>
+      </div>
+
+      <div class="outputs-row">
+        <div class="output-chip c-val">pos_RPE → M55.η</div>
+        <div class="output-chip c-val">RPE signal</div>
+        <div class="output-chip c-tho">prediction_bias (64,) → L2 context</div>
+        <div class="output-chip c-tho">confidence_delta → ATT</div>
+        <div class="output-chip c-tho">expected_BMU</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════ FULL SIGNAL ROUTING SUMMARY ═══════════════════ -->
+  <div style="margin-top:40px; padding:28px; background:var(--panel); border:1px solid var(--border); border-radius:8px;">
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:20px;">Complete Signal Routing Map</div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+      <div>
+        <div style="font-size:9px; color:var(--muted); margin-bottom:10px; letter-spacing:0.1em;">FEEDFORWARD (bottom-up)</div>
+        <table style="width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:9px;">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m50)">f_fused, w, novel, PLV</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m56)">M56 input x[30]</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m56)">BMU_idx, qe_norm</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m55)">M55 trace update</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m56)">BMU_idx, qe_norm</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--l2)">L2 context + learn</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m56)">BMU_idx + freq_idx</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--l3)">L3 Z update</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m56)">qe_norm</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--att)">Attention salience</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m55)">familiarity</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--att)">Attention (suppress)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--l2)">PE, curiosity</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--att)">Attention salience</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px; color:var(--l2)">PE</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--val)">Valence intrinsic</td>
+          </tr>
+        </table>
+      </div>
+
+      <div>
+        <div style="font-size:9px; color:var(--muted); margin-bottom:10px; letter-spacing:0.1em;">FEEDBACK (top-down / cross-layer)</div>
+        <table style="width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:9px;">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--m55)">familiarity(t-1)</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m56)">M56 η_fam (LTD suppress)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--l2)">PE(t-1)</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m56)">M56 η_seq (boost)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--l2)">curiosity(t-1)</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m55)">M55 η_eff (ACh boost)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--val)">pos_RPE(t-1)</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--m55)">M55 η_eff (DA boost)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--tho)">prediction_bias</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--l2)">L2 context pre-warm</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--tho)">conf_delta</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--att)">Attention (suppress)</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:4px 8px; color:var(--att)">attended_BMU</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--tho)">Thought query point</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px; color:var(--m55)">W[attended_BMU]</td>
+            <td style="padding:4px; color:var(--muted)">→</td>
+            <td style="padding:4px 8px; color:var(--tho)">Thought M55 bias</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Key parameter table -->
+    <div style="margin-top:24px; font-size:9px; color:var(--muted); letter-spacing:0.1em; margin-bottom:10px;">KEY PARAMETERS AT A GLANCE</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--m50)">M50</span> &nbsp;N=500 &middot; dt=0.05s &middot; PLV^8 &middot; τ_fast=1s τ_slow=5s &middot; CUSUM_thr=0.038
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--m56)">M56</span> &nbsp;64 neurons &middot; η∈[0.01,0.30] &middot; σ∈[0.8,3.5] &middot; conscience=0.5 &middot; FAM_SUPPRESS=1.5
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--m55)">M55</span> &nbsp;W:64×64 &middot; η=0.04 &middot; decay=0.0005 &middot; trace_τ∈[10,40] steps
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--l2)">L2</span> &nbsp;P:64×64 &middot; η=0.05 &middot; P_decay=0.001 &middot; context_τ∈[3,10] steps &middot; T=0.15
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--l3)">L3</span> &nbsp;Z:8×8 raw counts &middot; update every 2000 steps &middot; warmup 5000 steps
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--att)">ATT</span> &nbsp;5 drives &middot; EMA α=0.1 &middot; Gaussian gate σ=2 &middot; entropy H/log(64)
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--val)">VAL</span> &nbsp;RPE = reward − EMA &middot; α_RPE=0.05 &middot; intrinsic = 1−PE
+      </div>
+      <div style="background:#080a0d;border:1px solid var(--dim);border-radius:4px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;">
+        <span style="color:var(--tho)">THO</span> &nbsp;L2×0.6 + M55×0.4 &middot; conf=max(bias)−1/64 &middot; σ_exp=2
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- canvas -->
+
+</body>
+</html>

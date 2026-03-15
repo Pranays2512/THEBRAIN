@@ -148,11 +148,11 @@ ERROR_THRESH = 0.5
 
 # Synaptic decay on P — unused predictions fade
 # τ ≈ 1/P_DECAY ≈ 1000 steps ≈ ~50s
-# At 0.0005 (τ=2000), P fills to 94% nonzero at steady state —
-# too dense for predictions to be selective. Increasing to 0.001
-# keeps P sparser: unused transitions decay faster, only strongly
-# reinforced sequences survive. This improves multi-pass learning
-# because each pass can still grow the signal above the noise floor.
+# Fix 7 (P_DECAY=0.005) was reverted. τ=200 cleared the P matrix within
+# ~500 steps, causing top_predictions() to return [] for any frequency
+# whose modal BMU hadn't fired recently. Rare frequencies (G=10%, H=12%)
+# routinely had >500-step gaps, producing BestDist=999 artifacts.
+# At τ=1000, P survives long enough for the probe while staying selective.
 P_DECAY = 0.001
 
 # Column normalization ceiling (per outcome BMU)
@@ -196,7 +196,45 @@ MIN_CONTEXT_TO_LEARN = 0.50
 # Falls when predictions improve
 CURIOSITY_EMA_ALPHA = 0.05   # τ ≈ 20 steps — medium smoothing
 
-# ── Confidence scoring ───────────────────────────────────────
+# ── Spatial soft-match ───────────────────────────────────────
+# Instead of binary correct/wrong, prediction error is the spatial
+# distance between predicted BMU and actual BMU on the 8×8 cortical grid.
+#   error = 1 - exp(-dist² / (2 × SPATIAL_SIGMA²))
+# At dist=0 (exact match): error = 0.0
+# At dist=1 (adjacent):    error ≈ 0.12  (SIGMA=2.0)
+# At dist=3 (same cluster): error ≈ 0.64
+# At dist=6 (wrong region): error ≈ 0.95
+#
+# WHY: the SOM fires a REGION of 15-30 BMU indices per frequency,
+# not a single locked index. L2 cannot reliably predict the exact
+# next index in a region. Binary error treats a 1-cell miss identically
+# to a full-grid miss (both score 1.0), so curiosity never falls even
+# after L2 has learned the correct frequency zone. Spatial error
+# falls when L2 predicts within the right neighbourhood, giving
+# the curiosity EMA and Brain's delta feedback meaningful gradients.
+#
+# SIGMA=2.0 corresponds to ~2 grid cells ≈ one SOM neighbourhood.
+# Predictions within the typical firing cluster count as near-correct.
+SPATIAL_SIGMA = 2.0
+
+# ── Familiarity modulation ───────────────────────────────────
+# High familiarity (M55) scales down prediction error.
+#   effective_error = spatial_error × (1 - FAMILIARITY_ERROR_SCALE × familiarity)
+# At familiarity=1.0: error is reduced by FAMILIARITY_ERROR_SCALE (30%).
+# At familiarity=0.0: no reduction.
+#
+# WHY: familiarity signals that this context has been visited before.
+# Recognised contexts are less surprising — even if the exact sequence
+# transition is not predicted, the brain expects something coherent.
+# Biologically: hippocampal familiarity suppresses prediction error
+# signals in prefrontal prediction circuits.
+#
+# Effect: curiosity falls faster on frequently-visited sequences,
+# and Brain's delta feedback to M54 is smaller for familiar material.
+FAMILIARITY_ERROR_SCALE = 0.3
+
+# Grid dimensions (must match M54)
+GRID_W = 8   # columns in M54's neuron grid
 # Softmax temperature for reading prediction scores.
 # Lower = sharper discrimination between predicted and background.
 # At T=0.3, even a fully trained correct prediction scores ~0.47
@@ -332,8 +370,9 @@ class SequencePredictor:
     # ── Step ──────────────────────────────────────────────────
 
     def step(self, bmu_idx: int,
-             qe_norm:    float = 0.0,
-             familiarity: float = 0.0) -> dict:
+             qe_norm:         float = 0.0,
+             familiarity:     float = 0.0,
+             prediction_bias: np.ndarray = None) -> dict:
         """
         Update L2 after the actual BMU fires.
 
@@ -341,9 +380,14 @@ class SequencePredictor:
 
         Parameters
         ----------
-        bmu_idx     : int   — actual BMU that fired (from M54)
-        qe_norm     : float — perceptual surprise from M54 [0,1]
-        familiarity : float — recognition signal from M55 [0,1]
+        bmu_idx          : int      — actual BMU that fired (from M54)
+        qe_norm          : float    — perceptual surprise from M54 [0,1]
+        familiarity      : float    — recognition signal from M55 [0,1]
+        prediction_bias  : ndarray  — (64,) soft distribution from Thought
+                                       over expected next BMUs. If provided,
+                                       gently pre-warms context toward the
+                                       expected region before prediction.
+                                       Defaults to None (no top-down bias).
 
         Returns
         -------
@@ -359,15 +403,36 @@ class SequencePredictor:
             'p_max'             float
         """
         # ── 1. Compute prediction error ───────────────────────
-        # Error = 1 - probability assigned to the actual BMU
-        # If we predicted BMU k with prob 0.9 → error = 0.1 (good)
-        # If we assigned BMU k prob 0.02    → error = 0.98 (bad)
-        # If no prediction was made yet     → error = 1.0 (no info)
+        # Spatial soft-match: error = 1 - exp(-dist² / 2σ²)
+        # where dist is the grid distance between predicted and actual BMU.
+        #
+        # WHY NOT probability-based error (old: 1 - scores[bmu_idx]):
+        # The SOM fires a region of ~20 BMU indices per frequency, so
+        # L2 cannot learn to concentrate all prediction mass on one exact
+        # index. scores[actual] stays low (~0.02-0.05) even after the
+        # correct frequency zone is well-learned. Binary error stays at
+        # ~0.97 permanently. Spatial error reflects what L2 actually knows:
+        # it can learn the right frequency zone (low spatial error) even
+        # if it cannot predict the exact index within that zone.
+        #
+        # The P matrix learning (below) still uses exact bmu_idx —
+        # this change only affects what the error SIGNAL reports.
         if self._prediction_ready:
-            error = float(1.0 - self._last_scores[bmu_idx])
-            error = float(np.clip(error, 0.0, 1.0))
+            predicted = self._last_predicted
+            row_p, col_p = predicted // GRID_W, predicted % GRID_W
+            row_a, col_a = bmu_idx   // GRID_W, bmu_idx   % GRID_W
+            dist2 = float((row_p - row_a)**2 + (col_p - col_a)**2)
+            spatial_correct = float(np.exp(-dist2 / (2.0 * SPATIAL_SIGMA**2)))
+            error = float(np.clip(1.0 - spatial_correct, 0.0, 1.0))
         else:
             error = 1.0   # cold start — no prediction made yet
+
+        # Familiarity modulation: recognised contexts are less surprising.
+        # Scales down error proportionally to how familiar this BMU is.
+        error = float(np.clip(
+            error * (1.0 - FAMILIARITY_ERROR_SCALE * familiarity),
+            0.0, 1.0
+        ))
 
         correct = (self._last_predicted == bmu_idx) and self._prediction_ready
 
@@ -382,6 +447,25 @@ class SequencePredictor:
 
         # ── 3. Decay context (all past BMUs fade) ─────────────
         self._c *= (1.0 - self._context_decay)
+
+        # ── 3b. Inject Thought's prediction bias (top-down) ───
+        # Thought pre-warms the context toward the BMU region it expects
+        # to fire next. This is a gentle nudge — PREDICTION_BIAS_STRENGTH
+        # keeps the bias contribution well below a full BMU imprint (1.0).
+        #
+        # Applied AFTER decay but BEFORE learning, so the bias participates
+        # in the P update if it rises above MIN_CONTEXT_TO_LEARN.
+        # This means: if Thought correctly anticipates the next BMU, that
+        # pathway gets slightly more credit in P — reinforcing the prediction.
+        #
+        # Biologically: PFC pre-activation of striatal prediction circuits
+        # before the actual stimulus arrives.
+        if prediction_bias is not None:
+            pb = np.asarray(prediction_bias, dtype=np.float32)
+            pb_sum = pb.sum()
+            if pb_sum > 1e-9:
+                pb = pb / pb_sum   # ensure normalized
+            self._c = np.clip(self._c + 0.10 * pb, 0.0, 1.0)
 
         # ── 4. Learn from context BEFORE imprinting current BMU ──
         # CRITICAL ORDER: learning must use the context that existed

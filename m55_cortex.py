@@ -65,7 +65,7 @@ N_NEURONS = GRID_H * GRID_W   # 64
 # Input
 N_PLV_COMPONENTS = 20
 N_SCALARS        = 3
-INPUT_DIM        = N_SCALARS + N_PLV_COMPONENTS  # 23
+INPUT_DIM        = 8 + 2 + N_PLV_COMPONENTS     # 30 (8x freq_norm, stability, novelty, 20 PLV)
 
 # Normalization
 FREQ_MIN_HZ = 0.41
@@ -182,8 +182,13 @@ def prepare_input(decoded_freq, stability_w, novelty_flag, plv_vector):
     if plv_max > 1e-9:
         top_plv = top_plv / plv_max
 
+    # Repeat freq_norm 8x so it carries ~28% of input signal
+    # (vs 4% before). PLV normalised per-step loses freq info,
+    # so freq_norm must dominate for the SOM to separate zones.
+    freq_repeated = np.full(8, freq_norm, dtype=np.float32)
     return np.concatenate([
-        [freq_norm, float(stability_w), float(novelty_flag)],
+        freq_repeated,
+        [float(stability_w), float(novelty_flag)],
         top_plv
     ]).astype(np.float32)
 

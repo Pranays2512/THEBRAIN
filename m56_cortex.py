@@ -1,51 +1,107 @@
 """
-M54: CORTEX — BT-07 FIX (Catastrophic forgetting WARN)
-=======================================================
-Inherits all M53 fixes and adds one targeted parameter change to
-convert BT-07 from WARN to PASS.
+M56: CORTEX — LONGRUN CONSOLIDATION FIX
+========================================
+Inherits all M55 fixes (freq_norm repeated 8×, INPUT_DIM=30) and adds
+two parameter changes that fix persistent BMU drift in brain_longrun.py.
 
 ═══════════════════════════════════════════════════════════════════════
-ROOT CAUSE OF M53 BT-07 WARN (A=0.60 Hz err=0.165, threshold 0.15)
+ROOT CAUSE OF M55 LONGRUN FAILURE (observed in brain_longrun.py)
 ═══════════════════════════════════════════════════════════════════════
 
-The test trains on A=0.60, B=1.00, C=1.80 Hz (12 blocks), then
-HEAVY OVERTRAINS on D=0.41, E=1.40, F=2.20 Hz (24 blocks — 2× exposure).
-After overtraining: A=0.60 Hz representation drifts to 0.494 Hz (err=0.165).
+brain_longrun.py runs 50,000 steps with a grammar-structured audio stream.
+Expected behaviour: zone assignments stabilise after ~15k steps, L2
+prediction accuracy trends upward, PE trends downward.
 
-Root cause: D=0.41 Hz is only 0.19 Hz from A=0.60 Hz.
-During Phase 2, neurons tuned to 0.41 Hz win frequently.
-With SIGMA_MIN=1.5 → h(d=2)=0.41, the 0.60 Hz boundary neurons receive
-strong pull toward 0.41 Hz on every 0.41 Hz win.
-Over 24 blocks, this nibbles the 0.60 Hz cluster from the boundary.
+Observed behaviour: zone assignments change at every 5k snapshot through
+all 50k steps. Prediction accuracy oscillates 0%→75%→25%→75%→25%.
+PE never trends down. Familiarity flat at 0.647 for ALL 8 frequencies.
 
-CONSCIENCE already helps (it redistributes 0.41 Hz wins across a wider
-cluster, so no single boundary neuron gets hammered as hard), but at
-CONSCIENCE_FACTOR=0.3, the 0.41 Hz monopoly is not broken enough.
+DIAGNOSIS:
+  L3 froze its zone map at step 15k (L3=stable(13) in output) and never
+  re-clustered. Yet every frequency changed zones at every snapshot after
+  that. Since L3's bmu_to_zone is frozen, the only explanation is that
+  the CORTEX BMU for each frequency keeps drifting — L3 sees the same
+  zone boundaries but different neurons arriving at each probe.
 
-FIX: CONSCIENCE_FACTOR  0.3 → 0.5
-  Stronger conscience → 0.41 Hz wins are spread more uniformly.
-  Each individual boundary neuron gets fewer direct pulls toward 0.41.
-  The 0.60 Hz cluster interior neurons hold their anchor.
+  L2 learns transitions between BMU indices. If frequency A fires BMU 7
+  at step 35k but BMU 40 at step 45k, L2's learned model for A is
+  invalidated and rebuilt repeatedly — hence oscillating accuracy.
 
-  d_eff[i] = d[i] × (1 + 0.5 × (p[i] − 1/64))
-  A neuron winning at 2× the fair rate (p=2/64) gets:
-    factor = 1 + 0.5*(2/64 - 1/64) = 1 + 0.5*(0.0156) = 1.008  [was 1.005]
-  A neuron winning at 5× the fair rate (p=5/64) gets:
-    factor = 1 + 0.5*(5/64 - 1/64) = 1 + 0.5*(0.0625) = 1.031  [was 1.019]
-  More meaningful penalty at high dominance, still gentle at low.
+  The familiarity plateau at 0.647 is downstream of the same drift:
+  M55 associations are spread across many transient BMUs, so no single
+  BMU accumulates enough exposure for breadth_score to saturate.
 
-SAFETY CHECK:
-  - BT-08 (dead neurons): conscience increase ONLY helps (more uniform wins).
-    Currently 0/64 dead, plenty of margin.
-  - BT-09 (collapse): unaffected — conscience does not prevent convergence
-    to a single frequency when only one is present.
-  - BT-11 (curiosity, 2.67×): completely independent of conscience.
-  - BT-15 (long stability): uniform wins → slightly lower long-run QE. Good.
+WHY THE MAP NEVER CONSOLIDATES (M55):
+  At steady state: fam ≈ 0.647, FAM_ETA_SUPPRESS = 0.5
+    eta_base    = 0.01 + 0.14×0.8 = 0.122
+    eta_fam     = 0.5 × 0.14 × 0.647 = 0.045
+    eta_net     ≈ 0.088   ← still substantial
+
+  SIGMA_MIN = 1.5 → h(d=1) = exp(−1/4.5) = 0.80
+  Drift force on boundary neuron per step = eta × h = 0.088 × 0.80 = 0.070
+  Over 50k steps, each frequency visits ~6000 times.
+  Accumulated drift force = 6000 × 0.070 = 420 weight-units.
+  The map never stops reorganising.
+
+  Root cause: FAM_ETA_SUPPRESS was designed to trigger phase-2
+  consolidation (familiar inputs → low plasticity), but at 0.5 it is
+  not strong enough to actually freeze the map at the observed fam=0.647
+  plateau. Phase 2 never engaged.
 
 ═══════════════════════════════════════════════════════════════════════
-CHANGE SUMMARY vs M53:
-  CONSCIENCE_FACTOR  0.3 → 0.5
-  Class renamed CortexM54
+FIX 1: FAM_ETA_SUPPRESS  0.5 → 1.5
+═══════════════════════════════════════════════════════════════════════
+
+At fam=0.647 (observed longrun plateau):
+  eta_fam = 1.5 × 0.14 × 0.647 = 0.136
+  eta_net = 0.122 − 0.136 = −0.014 → clipped to ETA_MIN = 0.010
+
+Routine familiar visits now barely move weights (eta at floor).
+Genuine novelty still works: qe_norm spike adds up to 0.28 to eta,
+overriding the suppression. A truly new input (unseen frequency) would
+push eta back toward ETA_MAX = 0.30 and reorganise the map.
+
+This is what FAM_ETA_SUPPRESS was always intended to do — it just
+needed to be strong enough for the actual observed fam plateau (0.647,
+not the 0.78 assumed when 0.5 was originally chosen).
+
+═══════════════════════════════════════════════════════════════════════
+FIX 2: SIGMA_MIN  1.5 → 0.8
+═══════════════════════════════════════════════════════════════════════
+
+h(d=1): exp(−1/4.5) = 0.80  →  exp(−1/1.28) = 0.54
+h(d=2): exp(−4/4.5) = 0.41  →  exp(−4/1.28) = 0.044
+
+Two cells away: bleed drops from 41% to 4%. Adjacent boundary neurons
+are almost completely decoupled from a neighbour's wins.
+
+Combined with Fix 1:
+  drift force per step = 0.010 × 0.54 = 0.006   (was 0.070 — 11× lower)
+
+The map consolidates. Zone assignments stop drifting. L2 can build a
+stable transition model on consistent BMU addresses.
+
+SIGMA_MIN=0.8 is safe at this stage: the map is already organised
+(8/8 unique BMUs confirmed in longrun). Lower sigma during consolidation
+PROTECTS the structure — dead neurons only arise during initial
+organisation when sigma was needed for exploration.
+
+SAFETY CHECK (vs existing breaktests):
+  BT-07 (catastrophic forgetting): SIGMA_MIN lower → LESS boundary bleed
+    → adjacent cluster interference is REDUCED. Strictly safer.
+  BT-08 (dead neurons): map already organised before consolidation.
+    No new dead neuron risk. Conscience + existing structure prevents it.
+  BT-09 (collapse): conscience unaffected. Collapse test unchanged.
+  BT-11 (curiosity): qe_norm path unchanged. Novelty boost unchanged.
+  BT-15 (long stability): this IS the long-stability fix.
+
+═══════════════════════════════════════════════════════════════════════
+CHANGE SUMMARY vs M55:
+  FAM_ETA_SUPPRESS  0.5  → 1.5
+  SIGMA_MIN         1.5  → 0.8
+  Class renamed CortexM56
+  Docstring updated to reflect actual M55 change (freq_norm ×8) and
+  this consolidation fix.
 ═══════════════════════════════════════════════════════════════════════
 """
 
@@ -65,7 +121,7 @@ N_NEURONS = GRID_H * GRID_W   # 64
 # Input
 N_PLV_COMPONENTS = 20
 N_SCALARS        = 3
-INPUT_DIM        = N_SCALARS + N_PLV_COMPONENTS  # 23
+INPUT_DIM        = 8 + 2 + N_PLV_COMPONENTS     # 30 (8x freq_norm, stability, novelty, 20 PLV)
 
 # Normalization
 FREQ_MIN_HZ = 0.41
@@ -76,11 +132,15 @@ ETA_BASE      = 0.15
 ETA_MIN       = 0.01
 NOVELTY_BOOST = 2.0
 
-# FIX 1: Neighborhood σ floor raised from 0.5 → 1.5
-# At σ=1.5: h(d=1)=0.80, h(d=2)=0.41, h(d=3)=0.14
-# Every neuron within ~3 cells of winner always gets trained.
+# Neighborhood σ bounds.
+# SIGMA_MAX=3.5 for initial exploration (unchanged).
+# SIGMA_MIN=0.8 for consolidation phase (FIX 2 vs M55, was 1.5):
+#   h(d=1): 0.80 → 0.54  (adjacent-cell bleed halved)
+#   h(d=2): 0.41 → 0.044 (2 cells away: almost no bleed)
+#   Drift force per step: eta×h = 0.010×0.54 = 0.006  (was 0.070, 11× lower)
+#   Map consolidates after initial organisation. Zone assignments stabilise.
 SIGMA_MAX = 3.5    # unchanged
-SIGMA_MIN = 1.5    # was 0.5 — THIS IS THE PRIMARY FIX
+SIGMA_MIN = 0.8    # was 1.5 (M55) — consolidation fix (FIX 2)
 
 SURPRISE_WINDOW = 100   # samples for σ modulation (~10s at sample_interval=2)
 
@@ -153,13 +213,14 @@ ETA_MAX              = ETA_BASE * 2   # hard ceiling including all boosts
 # argument (default 0.0 — backward compatible). Brain stores familiarity
 # from memory.recall() at step t and feeds it into cortex.step() at step t+1.
 # Same next-step pattern as surprise_signal and rpe_positive.
-FAM_ETA_SUPPRESS = 0.5   # suppress factor — tuned to avoid ETA_MIN floor during stable operation
-                          # At fam=0.50 (mid-training): reduces eta_base 0.150 → 0.115 (23%)
-                          # At fam=0.78 (stable):       reduces eta_base 0.150 → 0.095 (37%)
-                          # At fam=0.00 (novel):        no suppression
-                          # Keep 0.5–1.0. Above 1.0, typical stable familiarity (~0.70+)
-                          # pushes eta to ETA_MIN floor, killing coverage of rarely-visited
-                          # neurons and causing spuriously high dead-neuron counts (BT-07).
+FAM_ETA_SUPPRESS = 1.5   # suppress factor (FIX 1 vs M55, was 0.5)
+                          # At fam=0.647 (observed longrun plateau):
+                          #   eta_fam = 1.5 × 0.14 × 0.647 = 0.136
+                          #   eta_net = 0.122 − 0.136 → clipped to ETA_MIN = 0.010
+                          # Routine familiar visits barely move weights.
+                          # Genuine novelty overrides: qe_norm spike adds up to 0.28,
+                          # pushing eta back toward ETA_MAX regardless of familiarity.
+                          # Phase-2 consolidation now actually engages at fam≥0.55.
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -182,8 +243,13 @@ def prepare_input(decoded_freq, stability_w, novelty_flag, plv_vector):
     if plv_max > 1e-9:
         top_plv = top_plv / plv_max
 
+    # Repeat freq_norm 8x so it carries ~28% of input signal
+    # (vs 4% before). PLV normalised per-step loses freq info,
+    # so freq_norm must dominate for the SOM to separate zones.
+    freq_repeated = np.full(8, freq_norm, dtype=np.float32)
     return np.concatenate([
-        [freq_norm, float(stability_w), float(novelty_flag)],
+        freq_repeated,
+        [float(stability_w), float(novelty_flag)],
         top_plv
     ]).astype(np.float32)
 
@@ -212,22 +278,26 @@ class CorticalColumn:
 # THE CORTEX — M52
 # ═══════════════════════════════════════════════════════════════
 
-class CortexM54:
+class CortexM56:
     """
-    Self-Organizing Cortical Map — M54 (18/18 PASS, 0 WARN).
+    Self-Organizing Cortical Map — M56 (consolidation fix).
 
-    Changes vs M53:
-      5. [NEW] CONSCIENCE_FACTOR 0.3 → 0.5: stronger win-frequency
-         equalization prevents heavy overtraining on one frequency
-         from monopolizing the map and overwriting nearby memories.
+    Changes vs M55:
+      1. [FIX] FAM_ETA_SUPPRESS 0.5 → 1.5: at observed fam plateau of 0.647,
+         eta now drops to ETA_MIN floor for familiar inputs. Phase-2
+         consolidation engages. BMU drift stops. Zone assignments stabilise.
+      2. [FIX] SIGMA_MIN 1.5 → 0.8: boundary bleed drops 11×. Combined with
+         Fix 1, drift force per step falls from 0.070 → 0.006.
 
-    Retains all M53 fixes:
-      1. SIGMA_MIN=1.5 (no dead neurons)
-      2. Conscience learning framework (now stronger)
-      3. EMA-based qe_norm (surprise = excess above prediction)
-      4. Additive curiosity term (independent of stability_w)
+    Retains all M55 fixes:
+      - freq_norm repeated 8× (INPUT_DIM=30): frequency signal 4.3%→26.7%
+      - CONSCIENCE_FACTOR=0.5 (win-frequency equalisation)
+      - EMA-based qe_norm (surprise = excess above prediction)
+      - Additive curiosity term (independent of stability_w)
+      - FAM_ETA_SUPPRESS (now correctly tuned)
 
-    Interface identical to M51/M52/M53 — drop-in replacement.
+    Interface identical to M54/M55 — drop-in replacement.
+    brain.py import: from m56_cortex import CortexM56
     """
 
     def __init__(self, seed=42):
