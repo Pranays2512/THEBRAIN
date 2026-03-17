@@ -180,25 +180,53 @@ class Planner:
              focus_entropy:      float = 1.0,
              salience:           float = 0.0,
              l3                       = None,
+             tpe_accuracy:       float = 0.0,
+             prev_zone:          int   = -1,
+             l4_top_node:        str   = None,
+             l4_top_prob:        float = 0.0,
+             l4_confident:       bool  = False,
              ) -> dict:
 
         # ── 1. Planning weight ────────────────────────────────
+        # TPE accuracy gates planning weight directly.
+        # planning_weight = BASE × thought_confidence × (1-focus_entropy)
+        #                   × salience × tpe_accuracy
+        #
+        # tpe_accuracy = 0.0 when model is untrusted (< TPE_MIN_TRANSITIONS)
+        #   → planning_weight = 0 → planning never activates
+        #   → M57 is completely silent until it has verified its model
+        #
+        # tpe_accuracy = 0.50 (at threshold) → planning_weight halved
+        #   → M57 can still activate but needs higher thought_confidence
+        #     and salience to clear PLANNING_GATE_THRESH
+        #
+        # tpe_accuracy = 1.0 (perfect model) → full planning_weight
+        #   → M57 operates at maximum influence
+        #
+        # This means M57's influence scales continuously with model quality.
+        # A noisy transition model (accuracy 0.3) contributes 30% of its
+        # potential weight. A well-validated model (accuracy 0.9) contributes
+        # 90%. The brain must earn its planning capacity.
         planning_weight = float(np.clip(
             PLANNING_WEIGHT_BASE
             * float(thought_confidence)
             * max(0.0, 1.0 - float(focus_entropy))
-            * float(salience),
+            * float(salience)
+            * float(tpe_accuracy),   # TPE gate — zero until model verified
             0.0, 1.0
         ))
 
         # ── 2. Simulate ───────────────────────────────────────
         if planning_weight > (PLANNING_GATE_THRESH * 0.5) and pred is not None:
             sim_values, sim_depth = self._simulate(
-                start_bmu = bmu_idx,
-                pred      = pred,
-                valence   = valence,
-                memory    = memory,
-                l3        = l3,
+                start_bmu   = bmu_idx,
+                pred        = pred,
+                valence     = valence,
+                memory      = memory,
+                l3          = l3,
+                prev_zone   = prev_zone,
+                l4_top_node = l4_top_node,
+                l4_confident = l4_confident,
             )
         else:
             sim_values = np.zeros(self.n_actions, dtype=np.float32)
@@ -326,43 +354,69 @@ class Planner:
             'sim_values':          sim_values,
             'sim_depth':           sim_depth,
             'plan_vs_habit_delta': plan_vs_habit,
+            'tpe_accuracy':        float(tpe_accuracy),
             't':                   self.t,
         }
 
     # ── Simulation engine ─────────────────────────────────────
 
-    def _simulate(self, start_bmu: int, pred, valence, memory, l3=None) -> tuple:
+    def _simulate(self, start_bmu: int, pred, valence, memory, l3=None,
+                  prev_zone: int = -1,
+                  l4_top_node: str = None,
+                  l4_confident: bool = False) -> tuple:
         """
         Compute action values using L3's action-conditioned zone model
         (primary) or L2's PA matrix (fallback).
 
-        PRIMARY PATH (L3 zone model):
-          Used when _T[zone_idx] has T_MIN_TRANSITIONS counts.
-          sim_values[a] = l3.action_value(zone_idx)[a]
-          = sum_j P(zone_j | zone_i, a) * zone_value[j]
-          Answers: "which action points toward the highest-value zone?"
+        PRIMARY PATH — context-aware (TC table):
+          Used when prev_zone is known and TC[(prev_zone, curr_zone)] has
+          sufficient data. Disambiguates aliased nodes (A vs I, B vs J, etc.)
+
+        L4 ENHANCEMENT:
+          When L4 is confident about the current node, use zone_value
+          seeded with a node-specific reward signal. Concretely: if L4
+          says "I'm at node I with p=0.85", M57 uses TC[(prev_zone, fi_I)]
+          which is the same as before — but the zone_value being planned
+          toward now includes curiosity from nodes reachable from I, not
+          just from the zone-0 merged model. This is automatically handled
+          because TC separates the transition models by context. The main
+          L4 benefit is that M57 logs the top_node for diagnostics and
+          future extensions can route to node-specific Q tables.
+
+        PRIMARY PATH — zone-only (T table):
+          Fallback when TC is cold.
 
         FALLBACK PATH (L2 PA simulation):
-          Used during warmup or for zones with sparse T data.
-          Uses pred.top_predictions_for_action(bmu, action, k)
-          to predict the next BMU per action — now action-aware.
-          Scores simulated states using familiarity + zone bonus.
+          Used during warmup or sparse data.
 
         READ-ONLY on all modules.
         """
         sim_values = np.zeros(self.n_actions, dtype=np.float32)
 
-        # ── Primary: zone-level planning ─────────────────────
+        # ── Primary: context-aware zone planning (TC table) ──
         if l3 is not None:
             try:
                 zone_idx = int(l3._bmu_to_zone[start_bmu])
                 if zone_idx >= 0:
-                    # FIX 1: require T_MIN_TRANSITIONS before trusting _T_norm
+                    # Try context-aware TC first — can distinguish aliased nodes
+                    if (prev_zone >= 0 and
+                            hasattr(l3, 'action_value_ctx') and
+                            hasattr(l3, '_TC_n_trans')):
+                        ctx = int(prev_zone * l3.n_zones + zone_idx)
+                        if l3._TC_n_trans[ctx] >= l3._TC_MIN_TRANS:
+                            av = l3.action_value_ctx(prev_zone, zone_idx)
+                            for action in range(self.n_actions):
+                                next_bmu, conf = self._predict_next_bmu_for_action(
+                                    start_bmu, action, pred)
+                                l2_bonus = 0.10 * float(np.clip(conf, 0.0, 1.0))
+                                sim_values[action] = float(av[action]) + l2_bonus
+                            return sim_values.astype(np.float32), 1
+
+                    # Fall through to zone-only T table
                     T_total = float(l3._T[zone_idx].sum())
                     if T_total >= T_MIN_TRANSITIONS:
                         av = l3.action_value(zone_idx)
                         for action in range(self.n_actions):
-                            # L2 PA bonus — small confidence signal per action
                             next_bmu, conf = self._predict_next_bmu_for_action(
                                 start_bmu, action, pred)
                             l2_bonus = 0.10 * float(np.clip(conf, 0.0, 1.0))

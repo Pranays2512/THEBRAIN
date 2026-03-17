@@ -79,6 +79,41 @@ MIN_VISITS_FOR_ZONE = 10   # BMU needs this many visits to get a zone
 ZONE_CURIOSITY_WEIGHT = 0.15
 ZONE_VISIT_TAU        = 0.001   # EMA decay for zone visit fraction
 
+# ── Transition Prediction Error (TPE) ────────────────────────
+# TPE measures how accurately L3's action-conditioned model (_T_norm)
+# predicts the next zone given (current_zone, action).
+#
+# Every time the brain makes a real move (world_moved=True), L3:
+#   1. Looks up its prediction: predicted_zone = argmax T_norm[zone, action]
+#   2. Observes the actual outcome: actual_zone (from bucketed_fi)
+#   3. Computes error: 0.0 if correct, 1.0 if wrong
+#   4. Updates a per-zone model accuracy EMA: _tpe_accuracy[zone]
+#
+# M57 reads _tpe_accuracy[current_zone] before planning:
+#   - High accuracy (close to 1.0): model is reliable → M57 may plan
+#   - Low accuracy (close to 0.0): model is unreliable → M57 defers to M56
+#
+# This prevents M57 from planning using stale or noisy transition data.
+# The model must earn trust through verified predictions, not just accumulate
+# counts. A zone that has many transitions but keeps getting them wrong
+# (e.g. noisy bucketed_fi) will have low accuracy → M57 stays silent.
+#
+# TPE_ACCURACY_ALPHA: EMA decay for model accuracy per zone.
+#   Slow (0.05) — accuracy should reflect sustained model quality,
+#   not just the last few steps. At 0.05, tau ≈ 20 transitions per zone.
+#
+# TPE_MIN_TRANSITIONS: minimum real transitions observed from a zone
+#   before TPE accuracy is meaningful. Below this, accuracy defaults to 0
+#   (untrusted) so M57 doesn't plan from newly-entered zones.
+#
+# TPE_ACCURACY_THRESH: minimum accuracy M57 requires before planning.
+#   At 0.50: model must be right more than half the time. This is a soft
+#   threshold — M57's planning weight is multiplied by accuracy, so a
+#   0.51-accurate zone gets very little M57 influence.
+TPE_ACCURACY_ALPHA  = 0.05
+TPE_MIN_TRANSITIONS = 10
+TPE_ACCURACY_THRESH = 0.50
+
 
 # ═══════════════════════════════════════════════════════════════
 # CONCEPT LAYER
@@ -148,6 +183,41 @@ class ConceptLayer:
         # Initialised to 0 (no visits yet — all zones maximally curious).
         self._zone_visit_ema = np.zeros(n_zones, dtype=np.float32)
 
+        # ── Context-aware transition table (TC) ─────────────
+        # TC[(prev_fi * N_ZONES + curr_fi), action, next_fi]
+        # When the brain knows both the previous frequency and current
+        # frequency, it can distinguish aliased nodes:
+        #   A (fi=0, reached from E fi=4) → context_zone = 4*8+0 = 32
+        #   I (fi=0, reached from H fi=7) → context_zone = 7*8+0 = 56
+        # TC has N_ZONES^2 = 64 context-zones × 4 actions × N_ZONES.
+        # M57 queries TC first; falls back to T when TC has < TC_MIN_TRANS.
+        # TC_MIN_TRANS is higher than T_MIN_TRANSITIONS because context-zones
+        # are visited less often (need prev+curr match, not just curr).
+        N_CTX = self.n_zones * self.n_zones   # 64 context zones
+        self._N_CTX       = N_CTX
+        self._TC          = np.zeros((N_CTX, 4, self.n_zones), dtype=np.float32)
+        self._TC_norm     = np.ones((N_CTX, 4, self.n_zones), dtype=np.float32) / self.n_zones
+        self._TC_accuracy = np.zeros(N_CTX, dtype=np.float32)
+        self._TC_n_trans  = np.zeros(N_CTX, dtype=np.int32)
+        TC_MIN_TRANS      = 20   # lower bar — context zones are rarer
+        self._TC_MIN_TRANS = TC_MIN_TRANS
+
+        # ── Transition Prediction Error (TPE) state ───────────
+        # Per-zone model accuracy EMA — how often T_norm correctly
+        # predicted the next zone for each starting zone.
+        # Initialised to 0 (untrusted) — must earn accuracy through
+        # verified predictions before M57 is allowed to plan from it.
+        self._tpe_accuracy      = np.zeros(n_zones, dtype=np.float32)
+
+        # Per-zone transition count — how many real moves have been
+        # observed from each zone. TPE accuracy is only meaningful
+        # once this exceeds TPE_MIN_TRANSITIONS.
+        self._tpe_n_transitions = np.zeros(n_zones, dtype=np.int32)
+
+        # Last TPE outcome per zone (for diagnostics)
+        self._tpe_last_correct  = np.zeros(n_zones, dtype=np.float32)
+        self._tpe_last_predicted_zone = -np.ones(n_zones, dtype=np.int32)
+
     # ── Zone reward tracking ──────────────────────────────────
 
     def update_zone_reward(self, zone_idx: int, reward: float) -> None:
@@ -183,14 +253,18 @@ class ConceptLayer:
                 self._recompute_zone_values()
 
     def update_action_transition(self, prev_zone: int, action: int,
-                                  curr_zone: int) -> None:
+                                  curr_zone: int,
+                                  prev_prev_zone: int = -1) -> None:
         """
         Update the action-conditioned zone transition model.
         Call from Brain on every real world move (world_moved=True).
 
-        prev_zone : zone before taking action
-        action    : action taken (0-3)
-        curr_zone : zone after taking action (ground-truth freq_idx)
+        prev_zone      : zone before taking action (freq_idx)
+        action         : action taken (0-3)
+        curr_zone      : zone after taking action (ground-truth freq_idx)
+        prev_prev_zone : zone TWO steps back (freq_idx), used for TC context.
+                         When supplied, also updates the context-aware TC table
+                         indexed by (prev_prev_zone * n_zones + prev_zone).
         """
         if (0 <= prev_zone < self.n_zones and
                 0 <= action < self._N_ACTIONS and
@@ -201,6 +275,80 @@ class ConceptLayer:
             s = row.sum()
             if s > 0:
                 self._T_norm[prev_zone, action] = row / s
+
+        # Context-aware TC update — needs two history steps
+        if (0 <= prev_prev_zone < self.n_zones and
+                0 <= prev_zone < self.n_zones and
+                0 <= action < self._N_ACTIONS and
+                0 <= curr_zone < self.n_zones):
+            ctx = int(prev_prev_zone * self.n_zones + prev_zone)
+            self._TC[ctx, action, curr_zone] += 1.0
+            row = self._TC[ctx, action]
+            s = row.sum()
+            if s > 0:
+                self._TC_norm[ctx, action] = row / s
+
+    def record_transition_outcome(self, prev_zone: int, action: int,
+                                    actual_zone: int,
+                                    prev_prev_zone: int = -1) -> float:
+        """
+        Record whether L3's transition prediction was correct.
+
+        Call AFTER update_action_transition, every real world move.
+
+        Compares T_norm[prev_zone, action]'s top prediction to actual_zone.
+        Updates _tpe_accuracy[prev_zone] EMA with 1.0 (correct) or 0.0 (wrong).
+        When prev_prev_zone supplied, also updates TC accuracy.
+
+        Returns the prediction error (0.0=correct, 1.0=wrong) for diagnostics.
+        """
+        if not (0 <= prev_zone < self.n_zones and
+                0 <= action < self._N_ACTIONS and
+                0 <= actual_zone < self.n_zones):
+            return 1.0
+
+        # What did the model predict for this (zone, action)?
+        predicted_zone = int(np.argmax(self._T_norm[prev_zone, action]))
+        self._tpe_last_predicted_zone[prev_zone] = predicted_zone
+
+        # Was it correct?
+        correct = float(predicted_zone == actual_zone)
+        self._tpe_last_correct[prev_zone] = correct
+
+        # Update transition count
+        self._tpe_n_transitions[prev_zone] += 1
+
+        # Update accuracy EMA — only after minimum transitions
+        if self._tpe_n_transitions[prev_zone] >= TPE_MIN_TRANSITIONS:
+            self._tpe_accuracy[prev_zone] = (
+                (1.0 - TPE_ACCURACY_ALPHA) * self._tpe_accuracy[prev_zone]
+                + TPE_ACCURACY_ALPHA * correct
+            )
+
+        # TC accuracy update
+        if 0 <= prev_prev_zone < self.n_zones:
+            ctx = int(prev_prev_zone * self.n_zones + prev_zone)
+            tc_pred = int(np.argmax(self._TC_norm[ctx, action]))
+            tc_correct = float(tc_pred == actual_zone)
+            self._TC_n_trans[ctx] += 1
+            if self._TC_n_trans[ctx] >= self._TC_MIN_TRANS:
+                self._TC_accuracy[ctx] = (
+                    (1.0 - TPE_ACCURACY_ALPHA) * self._TC_accuracy[ctx]
+                    + TPE_ACCURACY_ALPHA * tc_correct
+                )
+
+        return 1.0 - correct   # return error (0=correct, 1=wrong)
+
+    def get_tpe_accuracy(self, zone: int) -> float:
+        """
+        Return model accuracy for zone, or 0.0 if insufficient data.
+        Used by M57 to gate planning confidence.
+        """
+        if not (0 <= zone < self.n_zones):
+            return 0.0
+        if self._tpe_n_transitions[zone] < TPE_MIN_TRANSITIONS:
+            return 0.0   # untrusted — not enough data
+        return float(self._tpe_accuracy[zone])
 
     def action_value(self, zone: int) -> np.ndarray:
         """
@@ -213,6 +361,31 @@ class ConceptLayer:
         # P(next_zone | zone, action) @ zone_value
         # Shape: (N_ACTIONS, n_zones) @ (n_zones,) → (N_ACTIONS,)
         return self._T_norm[zone] @ self._zone_value   # (N_ACTIONS,)
+
+    def action_value_ctx(self, prev_zone: int, curr_zone: int) -> np.ndarray:
+        """
+        Context-aware action value: uses TC table indexed by (prev_zone, curr_zone).
+        Falls back to action_value(curr_zone) if TC has insufficient data.
+        Returns ndarray of shape (N_ACTIONS,).
+        """
+        if not (0 <= prev_zone < self.n_zones and 0 <= curr_zone < self.n_zones):
+            return self.action_value(curr_zone)
+        ctx = int(prev_zone * self.n_zones + curr_zone)
+        if self._TC_n_trans[ctx] < self._TC_MIN_TRANS:
+            return self.action_value(curr_zone)   # fallback
+        return self._TC_norm[ctx] @ self._zone_value   # (N_ACTIONS,)
+
+    def get_tpe_accuracy_ctx(self, prev_zone: int, curr_zone: int) -> float:
+        """
+        Return TC model accuracy for context (prev_zone, curr_zone).
+        Returns 0.0 if insufficient data — M57 will fall back to T.
+        """
+        if not (0 <= prev_zone < self.n_zones and 0 <= curr_zone < self.n_zones):
+            return 0.0
+        ctx = int(prev_zone * self.n_zones + curr_zone)
+        if self._TC_n_trans[ctx] < self._TC_MIN_TRANS:
+            return 0.0
+        return float(self._TC_accuracy[ctx])
 
     def _recompute_zone_values(self) -> None:
         """

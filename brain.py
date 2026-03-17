@@ -127,6 +127,7 @@ from valence import Valence
 from m56_action import ActionLayer
 from m57_planner import Planner
 from l3_concepts import ConceptLayer
+from l4_position import PositionBelief
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -165,7 +166,7 @@ class Brain:
         Random seed passed to all modules that accept one.
     """
 
-    def __init__(self, seed: int = 42):
+    def __init__(self, seed: int = 42, node_fi: dict = None):
         self.cortex    = CortexM56(seed=seed)
         self.memory    = AssociativeMemory(seed=seed)
         self.pred      = SequencePredictor()
@@ -175,6 +176,16 @@ class Brain:
         self.action    = ActionLayer(seed=seed)
         self.planner   = Planner(n_actions=self.action._n_actions)
         self.l3        = ConceptLayer(n_zones=8)
+
+        # L4: position belief module.
+        # If node_fi is provided, L4 tracks a belief distribution over nodes.
+        # node_fi: dict mapping node names to freq_indices — e.g. {'A':0,'B':1,...}
+        # This is information M50 genuinely has: which sounds map to which zones.
+        # L4 does NOT receive the adjacency graph — it learns transitions from experience.
+        if node_fi is not None:
+            self.l4 = PositionBelief(node_fi=node_fi)
+        else:
+            self.l4 = None   # L4 inactive — backward compatible
 
         # freq_bmu_counters[fi][bmu] = visit count — fed to L3.assign_zones periodically
         from collections import Counter
@@ -196,8 +207,9 @@ class Brain:
         self._last_curiosity        = 0.0
 
         self.t = 0
-        self._prev_zone_for_T   = -1
-        self._prev_action_for_T = -1
+        self._prev_zone_for_T      = -1
+        self._prev_action_for_T    = -1
+        self._prev_prev_zone_for_T = -1   # two steps back — for TC context disambiguation
 
     # ── Main step ─────────────────────────────────────────────
 
@@ -233,11 +245,21 @@ class Brain:
                         attention_gate, attended_bmu, gate_entropy
         """
         # ── 0. Update action-conditioned zone transition model ─
+        # Also record whether the transition was correctly predicted (TPE).
+        # Both calls are gated on world_moved — wall hits don't update the
+        # transition model and don't count as prediction opportunities.
         if world_moved and self._prev_zone_for_T >= 0 and self._prev_action_for_T >= 0 and freq_idx >= 0:
             self.l3.update_action_transition(
-                prev_zone = self._prev_zone_for_T,
-                action    = self._prev_action_for_T,
-                curr_zone = freq_idx,
+                prev_zone      = self._prev_zone_for_T,
+                action         = self._prev_action_for_T,
+                curr_zone      = freq_idx,
+                prev_prev_zone = self._prev_prev_zone_for_T,
+            )
+            self.l3.record_transition_outcome(
+                prev_zone      = self._prev_zone_for_T,
+                action         = self._prev_action_for_T,
+                actual_zone    = freq_idx,
+                prev_prev_zone = self._prev_prev_zone_for_T,
             )
 
         # ── 1. Predict BEFORE cortex fires ────────────────────
@@ -314,6 +336,27 @@ class Brain:
         if reward != 0.0:
             zone_for_reward = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
             self.l3.update_zone_reward(zone_for_reward, reward)
+
+        # ── 5c. L4 Position Belief — Bayesian location tracking ──
+        # L4 updates its belief distribution over all nodes using the
+        # observed frequency and the action taken last step.
+        # It learns the transition model from experience — no map given.
+        # When confident (top_prob > L4_CONFIDENCE_THRESH), its top_node
+        # estimate grounds M57's planning in a specific location.
+        if self.l4 is not None:
+            l4_out = self.l4.step(
+                curr_fi     = freq_idx if freq_idx >= 0 else -1,
+                action      = self._prev_action_for_T,
+                world_moved = world_moved,
+            )
+        else:
+            l4_out = {
+                'top_node':       None,
+                'top_prob':       0.0,
+                'belief_entropy': 1.0,
+                'confident':      False,
+                'belief_vector':  None,
+            }
 
         # ── 6. Compute delta signals, update EMAs ─────────────
         # Delta = how much the signal ROSE above its own running average.
@@ -392,6 +435,14 @@ class Brain:
         # Overrides M56's habit action when planning_weight >
         # PLANNING_GATE_THRESH (confidence × focus × salience).
         # When planning is inactive it returns M56's action unchanged.
+        # Get TPE accuracy for current zone — passed to M57 to gate planning.
+        # Use context-aware TC table when available (disambiguates aliased nodes).
+        # Falls back to freq_idx-only T table when TC has insufficient data.
+        _curr_zone = freq_idx if freq_idx >= 0 else self.l3._last_zone_idx
+        _tpe_acc   = self.l3.get_tpe_accuracy_ctx(self._prev_zone_for_T, _curr_zone)
+        if _tpe_acc == 0.0:
+            _tpe_acc = self.l3.get_tpe_accuracy(_curr_zone)
+
         m57_out = self.planner.step(
             bmu_idx            = bmu_idx,
             pred               = self.pred,
@@ -403,11 +454,17 @@ class Brain:
             focus_entropy      = thought_out['focus_entropy'],
             salience           = attn_out['salience'],
             l3                 = self.l3,
+            tpe_accuracy       = _tpe_acc,
+            prev_zone          = self._prev_zone_for_T,
+            l4_top_node        = l4_out['top_node'],
+            l4_top_prob        = l4_out['top_prob'],
+            l4_confident       = l4_out['confident'],
         )
 
         self.t += 1
-        self._prev_zone_for_T   = freq_idx
-        self._prev_action_for_T = int(m57_out['action'])
+        self._prev_prev_zone_for_T = self._prev_zone_for_T
+        self._prev_zone_for_T      = freq_idx
+        self._prev_action_for_T    = int(m57_out['action'])
 
         # ── 9. Return unified output ──────────────────────────
         return {
@@ -475,12 +532,18 @@ class Brain:
             'sim_depth':             m57_out['sim_depth'],
             'plan_vs_habit_delta':   m57_out['plan_vs_habit_delta'],
             # L3 Concept Layer
+            'tpe_accuracy':          _tpe_acc,
             'zone_idx':              l3_out['zone_idx'],
             'zone_confidence':       l3_out['zone_confidence'],
             'zone_probs':            l3_out['zone_probs'],
             'top_zone_pred':         l3_out['top_zone_pred'],
             'zone_pred_conf':        l3_out['zone_pred_conf'],
             'zones_stable':          l3_out['zones_stable'],
+            # L4 Position Belief
+            'l4_top_node':           l4_out['top_node'],
+            'l4_top_prob':           l4_out['top_prob'],
+            'l4_belief_entropy':     l4_out['belief_entropy'],
+            'l4_confident':          l4_out['confident'],
         }
 
     # ── Convenience accessors ─────────────────────────────────
