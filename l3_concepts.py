@@ -61,6 +61,24 @@ Z_DECAY = 0.0002   # tau ~5000 steps
 
 MIN_VISITS_FOR_ZONE = 10   # BMU needs this many visits to get a zone
 
+# ── Zone curiosity bonus ──────────────────────────────────────
+# Unvisited / undervisited zones get an intrinsic reward bonus so
+# M57 is steered toward unexplored territory even when one food
+# source is already found.
+#
+# ZONE_CURIOSITY_WEIGHT: how much bonus an unvisited zone contributes
+#   to zone_value via value iteration. Scaled by (1 - visit_fraction)
+#   so zones visited 0 times get full bonus, fully visited zones get 0.
+#   0.15 keeps it below food reward (1.0) but meaningful enough to
+#   pull the brain toward the H★ path after finding E★.
+#
+# ZONE_VISIT_TAU: EMA decay for zone visit counts → visit_fraction.
+#   Slow (0.001) so the curiosity bonus persists across many steps
+#   and doesn't evaporate after a single visit. A zone must be visited
+#   repeatedly over ~1000 steps before its curiosity bonus fully fades.
+ZONE_CURIOSITY_WEIGHT = 0.15
+ZONE_VISIT_TAU        = 0.001   # EMA decay for zone visit fraction
+
 
 # ═══════════════════════════════════════════════════════════════
 # CONCEPT LAYER
@@ -96,18 +114,46 @@ class ConceptLayer:
         self._last_zone_pred_conf = 0.0
 
         # Zone reward EMA — updated by Brain when external reward arrives.
-        # M57 uses this to bias simulation toward historically rewarded zones.
         self._zone_reward_ema     = np.zeros(n_zones, dtype=np.float32)
         self._zone_reward_alpha   = 0.05   # slow EMA — reward signal is sparse
+
+        # Zone value — Bellman backup of reward through transition matrix Z.
+        # _zone_value[i] = expected future reward reachable from zone i.
+        # Recomputed whenever zone_reward_ema changes (after each food event).
+        # M57 uses zone_value (not raw zone_reward_ema) for scoring, so that
+        # zones on the PATH to food score highly, not just the food zone itself.
+        self._zone_value          = np.zeros(n_zones, dtype=np.float32)
+        self._value_gamma         = 0.85   # Bellman discount (matches M57 GAMMA)
+        self._value_iters         = 20     # VI iterations — converges fast on 8 zones
+
+        # Action-conditioned zone transition model.
+        # T[zone_i, action, zone_j] = count of times taking action `a` from
+        # zone `i` led to zone `j` (on real world moves, world_moved=True).
+        # T_norm[i, a, :] = normalised row = P(next_zone | zone_i, action_a).
+        # M57 uses T_norm @ zone_value to score each action: pick the action
+        # that leads to the highest expected zone value in expectation.
+        # This is the action-conditioned cognitive map the brain builds by
+        # observing which directions lead to which zones during navigation.
+        # Size: n_zones × N_ACTIONS × n_zones = 8×4×8 = 256 entries.
+        self._N_ACTIONS   = 4
+        self._T           = np.zeros((n_zones, 4, n_zones), dtype=np.float32)
+        self._T_norm      = np.ones((n_zones, 4, n_zones), dtype=np.float32) / n_zones
+        self._T_prev_zone = -1   # zone at the step BEFORE current (for update)
+        self._T_prev_action = -1
+
+        # Zone visit EMA — tracks how much each zone has been visited.
+        # Rises toward 1.0 as a zone is visited repeatedly.
+        # Used to compute curiosity bonus: unvisited zones get a pull
+        # from M57's planning so the brain explores the full map.
+        # Initialised to 0 (no visits yet — all zones maximally curious).
+        self._zone_visit_ema = np.zeros(n_zones, dtype=np.float32)
 
     # ── Zone reward tracking ──────────────────────────────────
 
     def update_zone_reward(self, zone_idx: int, reward: float) -> None:
         """
-        Update EMA of reward received while in zone_idx.
-        Called by Brain when external reward > 0.
-        M57 uses _zone_reward_ema to bias simulated trajectories
-        toward historically rewarded zones.
+        Update EMA of reward received in zone_idx, then recompute zone values.
+        Called by Brain when external reward arrives.
         """
         if 0 <= zone_idx < self.n_zones:
             alpha = self._zone_reward_alpha
@@ -115,6 +161,93 @@ class ConceptLayer:
                 (1.0 - alpha) * self._zone_reward_ema[zone_idx]
                 + alpha * float(np.clip(reward, 0.0, 1.0))
             )
+            self._recompute_zone_values()
+
+    def update_zone_visit(self, zone_idx: int) -> None:
+        """
+        Record a visit to zone_idx. Updates visit EMA and recomputes zone
+        values (curiosity bonus changes as zones become more familiar).
+        Call from Brain.step() every step, passing the current zone.
+        """
+        if 0 <= zone_idx < self.n_zones:
+            # Decay all zones toward 0, then boost the visited zone toward 1.
+            # This gives a running estimate of visit frequency per zone.
+            self._zone_visit_ema *= (1.0 - ZONE_VISIT_TAU)
+            self._zone_visit_ema[zone_idx] = min(
+                1.0,
+                self._zone_visit_ema[zone_idx] + ZONE_VISIT_TAU
+            )
+            # Recompute zone values so curiosity bonus reflects new visit counts.
+            # Only recompute every 100 calls to avoid per-step overhead.
+            if self.t % 100 == 0:
+                self._recompute_zone_values()
+
+    def update_action_transition(self, prev_zone: int, action: int,
+                                  curr_zone: int) -> None:
+        """
+        Update the action-conditioned zone transition model.
+        Call from Brain on every real world move (world_moved=True).
+
+        prev_zone : zone before taking action
+        action    : action taken (0-3)
+        curr_zone : zone after taking action (ground-truth freq_idx)
+        """
+        if (0 <= prev_zone < self.n_zones and
+                0 <= action < self._N_ACTIONS and
+                0 <= curr_zone < self.n_zones):
+            self._T[prev_zone, action, curr_zone] += 1.0
+            # Renormalise this row
+            row = self._T[prev_zone, action]
+            s = row.sum()
+            if s > 0:
+                self._T_norm[prev_zone, action] = row / s
+
+    def action_value(self, zone: int) -> np.ndarray:
+        """
+        For each action, compute expected zone_value of the predicted next zone.
+        Returns ndarray of shape (N_ACTIONS,).
+        Used by M57 to select the action pointing toward highest-value zone.
+        """
+        if not (0 <= zone < self.n_zones):
+            return np.zeros(self._N_ACTIONS, dtype=np.float32)
+        # P(next_zone | zone, action) @ zone_value
+        # Shape: (N_ACTIONS, n_zones) @ (n_zones,) → (N_ACTIONS,)
+        return self._T_norm[zone] @ self._zone_value   # (N_ACTIONS,)
+
+    def _recompute_zone_values(self) -> None:
+        """
+        Value iteration on zone transition matrix, including curiosity bonus.
+
+        R_effective[i] = zone_reward_ema[i]
+                       + ZONE_CURIOSITY_WEIGHT * (1 - zone_visit_ema[i])
+
+        The curiosity term gives unvisited zones intrinsic value.
+        V[i] = R_effective[i] + gamma * sum_j( T[i,j] * V[j] )
+
+        This propagates the curiosity pull backward through the zone graph:
+        zones on the PATH to unvisited zones also gain value, steering M57
+        toward unexplored territory even from several steps away.
+
+        Example: H★ zone unvisited (visit_ema≈0) → R_eff[H]≈0.15
+                 G zone visit_ema≈0 → R_eff[G]≈0.15
+                 After VI: V[F]≈0.15*0.85, V[D]≈0.15*0.85^2
+                 → M57 sees D→F→G→H★ path has value even before food found there.
+        """
+        Z = self._Z.copy()
+        row_sums = Z.sum(axis=1, keepdims=True) + 1e-9
+        T = Z / row_sums   # (n_zones, n_zones)
+
+        # Effective reward = food reward + curiosity bonus for unvisited zones
+        curiosity_bonus = ZONE_CURIOSITY_WEIGHT * (1.0 - self._zone_visit_ema)
+        R_eff = np.clip(self._zone_reward_ema + curiosity_bonus, 0.0, 1.0)
+
+        V = R_eff.copy()
+        gamma = self._value_gamma
+        for _ in range(self._value_iters):
+            V_new = R_eff + gamma * (T @ V)
+            np.clip(V_new, 0.0, 1.0 / (1.0 - gamma + 1e-9), out=V_new)
+            V = V_new
+        self._zone_value = V.astype(np.float32)
 
     # ── Zone assignment ───────────────────────────────────────
 

@@ -141,14 +141,20 @@ def run_open_loop(brain, library):
     # food RPE ≈ +0.015 (invisible) and wall RPE ≈ -1.0 (maximum punishment).
     # Starting from ema=0.0 gives food RPE ≈ +1.0 and wall RPE ≈ -0.05.
     import numpy as np
-    brain.action._Q[:]   = 0.0   # BMU Q: reset open-loop directional contamination
+    # Reset navigation state after open loop.
+    # _Q[:] = 0 was tried but proved harmful: resetting causes BMU trace
+    # contamination to overwhelm the early signal (F.West gets E★ food credit
+    # via trace before F.East builds real credit, blocking the H★ path).
+    # The open-loop _Q values (~0.1 range) act as a weak prior helping correct
+    # exits stay ahead of wall-hitting actions during early closed-loop learning.
+    # _Q_f, traces, context pointers, and reward_ema are all still reset.
     brain.action._Q_f[:] = 0.0  # freq-idx Q: reset open-loop intrinsic RPE values
-    brain.action._e[:]   = 0.0  # BMU eligibility trace: no stale credit from open loop
+    brain.action._e[:]   = 0.0  # BMU eligibility trace
     brain.action._e_f[:] = 0.0  # Q_f eligibility trace
     brain.action._transition_action = -1
     brain.action._prev_freq_idx     = -1
     brain.valence._reward_ema = 0.0
-    print(f"  Navigation state reset (_Q, _Q_f, _e, _e_f, reward_ema).\n")
+    print(f"  Navigation state reset (_Q_f, _e, _e_f, reward_ema).\n")
 
 
 def get_policy_snapshot(brain, world, library):

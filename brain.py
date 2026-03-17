@@ -196,6 +196,8 @@ class Brain:
         self._last_curiosity        = 0.0
 
         self.t = 0
+        self._prev_zone_for_T   = -1
+        self._prev_action_for_T = -1
 
     # ── Main step ─────────────────────────────────────────────
 
@@ -230,6 +232,14 @@ class Brain:
         Attention keys: salience, salience_ema, salience_delta,
                         attention_gate, attended_bmu, gate_entropy
         """
+        # ── 0. Update action-conditioned zone transition model ─
+        if world_moved and self._prev_zone_for_T >= 0 and self._prev_action_for_T >= 0 and freq_idx >= 0:
+            self.l3.update_action_transition(
+                prev_zone = self._prev_zone_for_T,
+                action    = self._prev_action_for_T,
+                curr_zone = freq_idx,
+            )
+
         # ── 1. Predict BEFORE cortex fires ────────────────────
         pred_out = self.pred.predict()
 
@@ -264,11 +274,17 @@ class Brain:
         self._last_familiarity = familiarity
 
         # ── 5. L2 learns and outputs raw signals ──────────────
+        # Pass last_action and world_moved so L2's PA matrix learns
+        # action-conditioned transitions (v2 feature).
+        # _prev_action_for_T is the action taken before this step.
+        # world_moved is whether that action caused a real transition.
         l2_out = self.pred.step(
             bmu_idx          = bmu_idx,
             qe_norm          = qe_norm,
             familiarity      = familiarity,
             prediction_bias  = self.thought._last_prediction_bias,
+            last_action      = self._prev_action_for_T,
+            world_moved      = world_moved,
         )
 
         raw_error     = l2_out['prediction_error']
@@ -288,6 +304,13 @@ class Brain:
             l2_scores = l3_scores,
             freq_idx  = freq_idx,
         )
+        # Update zone visit EMA every step — drives curiosity bonus in zone_value.
+        # Uses bucketed freq_idx (sound-derived) so the brain tracks which zones
+        # it has been spending time in, without needing ground-truth labels.
+        visit_zone = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
+        if visit_zone >= 0:
+            self.l3.update_zone_visit(visit_zone)
+
         if reward != 0.0:
             zone_for_reward = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
             self.l3.update_zone_reward(zone_for_reward, reward)
@@ -383,6 +406,8 @@ class Brain:
         )
 
         self.t += 1
+        self._prev_zone_for_T   = freq_idx
+        self._prev_action_for_T = int(m57_out['action'])
 
         # ── 9. Return unified output ──────────────────────────
         return {

@@ -384,14 +384,18 @@ class ActionLayer:
         self._e *= (1.0 - TRACE_DECAY)
 
         # ── 2. Set trace for BMU-keyed Q ───────────────────────
-        # Gate on BMU change only. The BMU trace is the credit-assignment
-        # mechanism for the BMU Q table — it must fire on every real BMU
-        # transition so food reward propagates backward through the path.
-        # world_moved does NOT gate the trace: even if the world didn't move
-        # (wall hit), the trace still needs to DECAY every step (line above),
-        # and we want BMU-based credit assignment to work normally.
-        # world_moved gates Q_f updates and replay (steps 3b and 4) separately.
-        bmu_moved = (self._prev_bmu != self._current_bmu)
+        # Gate on world_moved AND BMU change.
+        # world_moved=False means a wall hit — no real transition occurred.
+        # Without the world_moved gate, BMU drift during wall hits (the SOM
+        # fires a slightly different BMU even when the agent didn't move)
+        # causes wall-hitting actions to receive food credit via the trace.
+        # Example without gate: brain hits West at F (wall), BMU drifts,
+        # trace fires for F.West, E★ food arrives → F.West gets credit → +1.0.
+        # This permanently blocks the F→G→H★ path.
+        # With gate: only real world transitions set the trace.
+        # G→H (shared BMU=4): bmu_moved=False, so no BMU Q credit.
+        # Q_f handles G/H disambiguation separately (step 3b).
+        bmu_moved = world_moved and (self._prev_bmu != self._current_bmu)
         if bmu_moved:
             self._e[self._prev_bmu, self._current_bmu, self._current_action] = 1.0
 
@@ -476,22 +480,11 @@ class ActionLayer:
 
         self._reward_freq_idx = food_freq_idx   # used inside the loop below
 
-        # Scale replay strength by novelty of the reward node
+        # Scale replay strength by novelty of the reward node.
         replay_strength = float(reward) * (1.0 - float(np.clip(familiarity, 0.0, 1.0)))
         if replay_strength < 1e-4:
-            return 0   # familiar node — skip replay, don't reinforce C→E
+            return 0
 
-        # Iterate backward through buffer, applying discounted reward.
-        # Q_f update only applies to entries whose freq_idx matches the
-        # food node's freq_idx (passed as food_freq_idx).
-        # Rationale: E★ food should credit the path TO E★, not transitions at
-        # H★ that happen to be stale entries in the buffer from an earlier walk.
-        # The replay buffer spans 25 steps and often contains transitions from
-        # completely different parts of the map. Propagating food credit to ALL
-        # freq_idx entries (the old behaviour) caused H.South to receive E★
-        # food credit whenever the brain had recently visited H.
-        # BMU Q still updates all entries (BMU trace already handles cross-node
-        # credit assignment via eligibility traces; replay BMU is secondary).
         transitions = list(self._replay_buffer)   # oldest first
         replayed = 0
         for i, entry in enumerate(reversed(transitions)):
@@ -499,11 +492,9 @@ class ActionLayer:
             fi = entry[3] if len(entry) > 3 else -1
             discount = REPLAY_GAMMA ** i
             q_delta  = REPLAY_ALPHA * replay_strength * discount
-            # Update BMU Q (all entries — BMU credit is already node-specific)
             self._Q[prev_bmu, curr_bmu, action] = float(np.clip(
                 self._Q[prev_bmu, curr_bmu, action] + q_delta, Q_MIN, Q_MAX
             ))
-            # Update freq_idx Q only for the rewarded node's own transitions
             if fi >= 0 and fi == self._reward_freq_idx:
                 self._Q_f[fi, action] = float(np.clip(
                     self._Q_f[fi, action] + q_delta, Q_MIN, Q_MAX
