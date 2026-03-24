@@ -67,26 +67,38 @@ HISTORY_LEN           = 200
 
 # ── M57 override gate (NEW) ───────────────────────────────────
 # M57 does not override M56 until this many steps have elapsed.
-# This gives M56 time to accumulate Q values and find food before
-# M57 is allowed to interfere. zone_value rises from food events;
-# only then do M57's sim_values carry meaningful signal.
-# At 200k total steps, 30k warmup = first 15% of training = M56-only.
-M57_WARMUP_STEPS  = 30_000
+# Raised from 30k → 50k: in World 3, aliased zones (A/I, B/J, D/L, E/K)
+# mean M57's zone_value signal is ambiguous for the first ~40k steps
+# while L3's TC table is being built. Giving M56 50k steps of uncontested
+# Q-learning lets it solidify the A→B→C→E★ path before M57 can interfere.
+# The W7 spike to 19.38 food/100 happened when M56 was strong — then M57
+# turned on at 30k and thrashed the policy down to 3.14 by W10.
+M57_WARMUP_STEPS  = 80_000  # raised: M57's L3 zone signal can't distinguish E★ from K★
+                             # (both zone 4) until Q_f has directional signal from wall
+                             # penalty learning. At 50k M57 activates and steers the brain
+                             # back toward "zone 4" which reinforces K corridor exploitation.
 
 # M57 only overrides M56 when its planned sim_value exceeds M56's
 # current Q-value by at least this margin.
 # At 0.02: M57 needs to be meaningfully better, not just randomly higher.
 # This prevents M57 from suppressing a correct M56 habit with noisy sims.
-PLAN_MERIT_THRESH = 0.25   # sim_margin scale [0,1] — M57 best action must beat 2nd-best by 25% of sim range
+PLAN_MERIT_THRESH = 0.50   # raised from 0.25: M57 must have a much stronger opinion
+                           # (best simulated action beats 2nd-best by 50% of sim range)
+                           # before it is allowed to influence action selection.
+                           # At 0.25, noisy uniform-ish sim_values with tiny diffs still
+                           # cleared the bar and thrashed the M56 policy. At 0.50, M57
+                           # stays silent unless its simulation strongly prefers one action.
 
 # ── M57-M56 blend weight ──────────────────────────────────────
 # When planning_active, final action = argmax of blended Q:
 #   blend_q = (1 - BLEND_WEIGHT) * m56_q + BLEND_WEIGHT * sim_values
-# At 0.40: M57 contributes 40%, M56 contributes 60%.
-# Strong M56 habits (large Q gap) resist M57 pressure.
-# Weak M56 states (near-uniform Q) yield to M57 planning.
-# Keeps M56 as the primary policy; M57 as a bias, not an override.
-BLEND_WEIGHT = 0.30   # lowered from 0.40 — M57 biases, not dominates
+# At 0.15: M57 contributes only 15%, M56 contributes 85%.
+# A well-learned M56 habit (large Q gap) is almost impossible to override.
+# Only a completely uncertain M56 state (near-uniform Q) can be nudged.
+# Lowered from 0.30: even when M57 activates, it must not flip an M56 decision
+# that has real Q signal behind it. The collapse from W7→W10 (19→3 food/100)
+# was caused by M57 overriding correct M56 Q-values with noisy zone_values.
+BLEND_WEIGHT = 0.15   # lowered from 0.30 — M57 barely nudges, never overrides
 
 # ── T population threshold (FIX 1) ───────────────────────────
 # Minimum total transition counts in _T[zone_idx] (summed over all
@@ -185,34 +197,49 @@ class Planner:
              l4_top_node:        str   = None,
              l4_top_prob:        float = 0.0,
              l4_confident:       bool  = False,
+             gws_curiosity_pull: float = 0.0,
+             gws_tension:        float = 0.0,
              ) -> dict:
 
         # ── 1. Planning weight ────────────────────────────────
         # TPE accuracy gates planning weight directly.
         # planning_weight = BASE × thought_confidence × (1-focus_entropy)
-        #                   × salience × tpe_accuracy
+        #                   × salience × tpe_accuracy × tc_coverage
         #
-        # tpe_accuracy = 0.0 when model is untrusted (< TPE_MIN_TRANSITIONS)
-        #   → planning_weight = 0 → planning never activates
-        #   → M57 is completely silent until it has verified its model
-        #
-        # tpe_accuracy = 0.50 (at threshold) → planning_weight halved
-        #   → M57 can still activate but needs higher thought_confidence
-        #     and salience to clear PLANNING_GATE_THRESH
-        #
-        # tpe_accuracy = 1.0 (perfect model) → full planning_weight
-        #   → M57 operates at maximum influence
-        #
-        # This means M57's influence scales continuously with model quality.
-        # A noisy transition model (accuracy 0.3) contributes 30% of its
-        # potential weight. A well-validated model (accuracy 0.9) contributes
-        # 90%. The brain must earn its planning capacity.
+        # tc_coverage: extra gate for aliased zones (zones shared by >1 node).
+        # When the current zone is aliased AND TC context data is unavailable
+        # (prev_zone < 0 or TC_n_trans too low), the T table is ambiguous —
+        # it conflates transitions from different physical nodes into one row.
+        # In this case we cap M57's influence by the TC coverage fraction:
+        #   0.0 when no TC data at all → M57 completely silent on aliased zones
+        #   scales up as TC fills in → M57 earns planning on aliased zones
+        # This prevents M57 from running the L2-BMU fallback on zone_values
+        # that are corrupted by aliasing (e.g. zone 4 = E★+K★ merged reward).
+        tc_coverage = 1.0   # default: non-aliased zones get full weight
+        if l3 is not None and prev_zone >= 0:
+            try:
+                # Check if this is an aliased zone by seeing if TC has context data
+                curr_zone = int(l3._last_zone_idx)
+                if 0 <= curr_zone < l3.n_zones:
+                    ctx = int(prev_zone * l3.n_zones + curr_zone)
+                    tc_n = int(l3._TC_n_trans[ctx])
+                    tc_total_for_zone = int(l3._TC_n_trans[
+                        prev_zone * l3.n_zones:
+                        prev_zone * l3.n_zones + l3.n_zones
+                    ].sum())
+                    # Scale by how much TC context data we have
+                    tc_coverage = float(np.clip(
+                        tc_n / max(l3._TC_MIN_TRANS, 1), 0.0, 1.0))
+            except (AttributeError, IndexError, TypeError):
+                tc_coverage = 1.0
+
         planning_weight = float(np.clip(
             PLANNING_WEIGHT_BASE
             * float(thought_confidence)
             * max(0.0, 1.0 - float(focus_entropy))
             * float(salience)
-            * float(tpe_accuracy),   # TPE gate — zero until model verified
+            * float(tpe_accuracy)
+            * tc_coverage,   # TC gate — silences M57 when zone is aliased and TC is cold
             0.0, 1.0
         ))
 
@@ -231,6 +258,39 @@ class Planner:
         else:
             sim_values = np.zeros(self.n_actions, dtype=np.float32)
             sim_depth  = 0
+
+        # ── 2b. GWS bias — curiosity_pull and tension reshape sim_values ──
+        # This is the key change: GWS signals are not just epsilon noise.
+        # They actively steer WHERE the planner wants to go.
+        #
+        # curiosity_pull: brain is drawn toward zones with high prediction error
+        #   and low familiarity. When curiosity_pull is high, the planner adds a
+        #   bonus to actions that lead away from the current zone (exploration pull).
+        #   Specifically: actions that lead to a DIFFERENT predicted BMU region get
+        #   the bonus — "go toward the unknown thing, not the familiar corridor."
+        #
+        # tension: brain is stuck in familiar territory with unmet needs.
+        #   When tension is high, the planner penalises actions that predict
+        #   staying near the current BMU (self-transitions = wall or loop).
+        #   "If the current strategy isn't working, don't repeat it."
+        #
+        # Both signals are gated by sim_depth > 0 (planner must have simulated).
+        # Scale is kept small (max 0.10 each) so M56's Q-values dominate.
+        if sim_depth > 0:
+            cur_row, cur_col = divmod(bmu_idx, GRID_W)
+            for action in range(self.n_actions):
+                dr, dc = self._action_offsets[action] if action < len(self._action_offsets) else (0, 0)
+                # predicted landing position for this action (grid estimate)
+                pr = int(np.clip(cur_row + dr, 0, GRID_W - 1))
+                pc = int(np.clip(cur_col + dc, 0, GRID_W - 1))
+                pred_bmu = pr * GRID_W + pc
+                # distance from current BMU to predicted BMU in the SOM grid
+                dist = float(np.sqrt(_GRID_DIST_SQ[bmu_idx, pred_bmu]))
+                # curiosity_pull: bonus for moving AWAY (dist > 0 = not a wall/loop)
+                curiosity_bonus = float(gws_curiosity_pull) * 0.10 * float(np.clip(dist, 0.0, 1.0))
+                # tension: penalty for staying PUT (dist == 0 = self-transition)
+                tension_penalty = float(gws_tension) * 0.08 * float(1.0 - np.clip(dist, 0.0, 1.0))
+                sim_values[action] = float(sim_values[action]) + curiosity_bonus - tension_penalty
 
         # ── 3. Choose planned action ──────────────────────────
         planned_action = int(np.argmax(sim_values)) if sim_depth > 0 else m56_action

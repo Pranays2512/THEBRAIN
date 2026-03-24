@@ -1,6 +1,36 @@
 """
-BRAIN — Integrated Cognitive Stack with Feedback Loops  (v10)
+BRAIN — Integrated Cognitive Stack with Global Workspace  (v11)
 =============================================================
+
+v11: Global Workspace (GWS) integration layer added.
+
+All module signals now converge into a single unified internal state
+before action selection. This is the integration that turns a pipeline
+of modules into something with a coherent "moment" — arousal, valence
+tone, and curiosity pull all exist simultaneously and shape behavior
+together, not sequentially.
+
+New module: gws.py — GlobalWorkspace
+  Reads: qe_norm, familiarity, prediction_error, thought_confidence,
+         rpe, intrinsic_rwd, corridor_boredom, steps_since_reward,
+         salience, l4_top_prob
+  Broadcasts:
+    arousal        — global activation (noradrenaline tone)
+    valence_tone   — motivational direction (dopamine baseline)
+    curiosity_pull — directed pull toward unresolved zones
+    epsilon_boost  — additive exploration from global state
+
+New behavior: curiosity is now a PULL not just epsilon noise.
+  When L2's prediction error is high at a zone, GWS accumulates
+  surprise_debt for that zone. The debt vector becomes curiosity_pull
+  — a directed bias toward zones the brain doesn't understand yet.
+  The brain is drawn back toward what confused it, not just toward
+  random novelty.
+
+Call order (per step):
+  1-8b. All existing modules unchanged.
+  8c.   gws.step() — integrates all signals simultaneously.
+  9.    action.step(epsilon_floor=max(wm_floor, gws_boost)) — combined floor.
 
 This file owns the cognitive modules, wires their feedback loops,
 and hosts Attention, Thought, Valence, M56 (ActionLayer), and
@@ -128,6 +158,8 @@ from m56_action import ActionLayer
 from m57_planner import Planner
 from l3_concepts import ConceptLayer
 from l4_position import PositionBelief
+from m58_workingmemory import WorkingMemory
+from global_workspace import GlobalWorkspace
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -176,14 +208,25 @@ class Brain:
         self.action    = ActionLayer(seed=seed)
         self.planner   = Planner(n_actions=self.action._n_actions)
         self.l3        = ConceptLayer(n_zones=8)
+        self.wm        = WorkingMemory(n_zones=8, seed=seed)
+        self.gws       = GlobalWorkspace(n_zones=8)
 
         # L4: position belief module.
-        # If node_fi is provided, L4 tracks a belief distribution over nodes.
-        # node_fi: dict mapping node names to freq_indices — e.g. {'A':0,'B':1,...}
-        # This is information M50 genuinely has: which sounds map to which zones.
-        # L4 does NOT receive the adjacency graph — it learns transitions from experience.
         if node_fi is not None:
             self.l4 = PositionBelief(node_fi=node_fi)
+            # Tell ActionLayer about node frequency uniqueness for Q_n gating.
+            # Unique nodes (fi shared by no other node) use standard threshold.
+            # Aliased nodes (fi shared with another node) use higher threshold —
+            # L4 must be more certain before Q_n is trusted for these nodes.
+            from collections import Counter as _Counter
+            fi_counts = _Counter(node_fi.values())
+            import m56_action as _m56
+            _m56.L4_Q_N_UNIQUE_NODES = {
+                n for n, fi in node_fi.items() if fi_counts[fi] == 1
+            }
+            _m56.L4_Q_N_ALIASED_NODES = {
+                n for n, fi in node_fi.items() if fi_counts[fi] > 1
+            }
         else:
             self.l4 = None   # L4 inactive — backward compatible
 
@@ -334,6 +377,10 @@ class Brain:
             self.l3.update_zone_visit(visit_zone)
 
         if reward != 0.0:
+            # Credit the zone where food IS (current freq_idx) — this tells
+            # L3/M57 "zone 4 contains food", which is correct for planning.
+            # TD credit (Q learning) correctly uses the previous action via
+            # M56's eligibility trace — that's separate from zone valuation.
             zone_for_reward = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
             self.l3.update_zone_reward(zone_for_reward, reward)
 
@@ -412,6 +459,35 @@ class Brain:
             memory       = self.memory,
         )
 
+        # ── 8b. Working Memory (M58) — trajectory buffer ──────
+        # Runs before M56 so epsilon_floor is available for action selection.
+        # Records (freq_idx, action, reward) for this step.
+        # _prev_action_for_T is the action taken to reach the current state.
+        wm_out = self.wm.step(
+            freq_idx = freq_idx if freq_idx >= 0 else -1,
+            action   = self._prev_action_for_T,
+            reward   = float(reward),
+        )
+
+        # ── 8c. Global Workspace — unified integration ─────────
+        # All signals from all modules exist here simultaneously.
+        # Broadcasts: arousal (global activation), valence_tone (motivational
+        # direction), curiosity_pull (directed pull toward uncertain zones),
+        # epsilon_boost (additive exploration from global state).
+        gws_out = self.gws.step(
+            qe_norm            = qe_norm,
+            familiarity        = familiarity,
+            freq_idx           = freq_idx if freq_idx >= 0 else -1,
+            prediction_error   = raw_error,
+            thought_confidence = thought_out['thought_confidence'],
+            rpe                = v1_out['rpe'],
+            intrinsic_rwd      = v1_out['intrinsic_reward'],
+            corridor_boredom   = wm_out['corridor_boredom'],
+            steps_since_reward = wm_out['steps_since_reward'],
+            salience           = attn_out['salience'],
+            l4_top_prob        = l4_out['top_prob'],
+        )
+
         # ── 9. Action layer (M56) ─────────────────────────────
         # Runs last: reads rpe from V1 and focus signals from Thought.
         # Selects the action for the NEXT step AND updates Q from this
@@ -427,6 +503,10 @@ class Brain:
             thought_confidence = thought_out['thought_confidence'],
             freq_idx           = freq_idx,     # ground-truth node index
             world_moved        = world_moved,  # False on wall hits — gates replay/trace
+            l4_top_node        = l4_out['top_node'],
+            l4_top_prob        = l4_out['top_prob'],
+            epsilon_floor      = max(wm_out['epsilon_floor'],
+                                     gws_out['epsilon_boost']),  # best of M58 + GWS
         )
 
         # ── 10. Planner (M57) — mental simulation / look-ahead ──
@@ -459,6 +539,8 @@ class Brain:
             l4_top_node        = l4_out['top_node'],
             l4_top_prob        = l4_out['top_prob'],
             l4_confident       = l4_out['confident'],
+            gws_curiosity_pull = gws_out['curiosity_pull'],
+            gws_tension        = gws_out['tension'],
         )
 
         self.t += 1
@@ -544,6 +626,25 @@ class Brain:
             'l4_top_prob':           l4_out['top_prob'],
             'l4_belief_entropy':     l4_out['belief_entropy'],
             'l4_confident':          l4_out['confident'],
+            # Working Memory (M58)
+            'wm_zone_recency':       wm_out['zone_recency'],
+            'wm_corridor_boredom':   wm_out['corridor_boredom'],
+            'wm_steps_since_reward': wm_out['steps_since_reward'],
+            'wm_hunger_norm':        wm_out['steps_since_reward_norm'],
+            'wm_epsilon_floor':      wm_out['epsilon_floor'],
+            # Global Workspace (GWS) — unified integration
+            'gws_arousal':           gws_out['arousal'],
+            'gws_arousal_raw':       gws_out['arousal_raw'],
+            'gws_valence_tone':      gws_out['valence_tone'],
+            'gws_valence_raw':       gws_out['valence_raw'],
+            'gws_curiosity_pull':    gws_out['curiosity_pull'],
+            'gws_surprise_debt':     gws_out['surprise_debt'],
+            'gws_epsilon_boost':     gws_out['epsilon_boost'],
+            'gws_coherence':         gws_out['coherence'],
+            'gws_tension':           gws_out['tension'],
+            'gws_readiness':         gws_out['readiness'],
+            'gws_ignited':           gws_out['ignited'],
+            'gws_ignition_rate':     gws_out['ignition_rate'],
         }
 
     # ── Convenience accessors ─────────────────────────────────

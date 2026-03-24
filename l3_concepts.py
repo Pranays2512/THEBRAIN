@@ -149,8 +149,15 @@ class ConceptLayer:
         self._last_zone_pred_conf = 0.0
 
         # Zone reward EMA — updated by Brain when external reward arrives.
-        self._zone_reward_ema     = np.zeros(n_zones, dtype=np.float32)
-        self._zone_reward_alpha   = 0.05   # slow EMA — reward signal is sparse
+        self._zone_reward_ema   = np.zeros(n_zones, dtype=np.float32)
+        # Raised from 0.05 → 0.10: in worlds with aliased food nodes (e.g.
+        # World 3 where E★ and K★ both map to zone 4), each food event
+        # only updates a single shared zone. At alpha=0.05 the EMA rises
+        # extremely slowly — the output showed zone_reward_ema[4]=0.003 after
+        # 200k steps. M57's zone_value for the food zone was near-zero, so
+        # it couldn't steer the brain toward food at all and fell back to
+        # curiosity-driven exploration (high wall rate, random-walk behaviour).
+        self._zone_reward_alpha = 0.10
 
         # Zone value — Bellman backup of reward through transition matrix Z.
         # _zone_value[i] = expected future reward reachable from zone i.

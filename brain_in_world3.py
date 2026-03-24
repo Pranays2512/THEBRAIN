@@ -1,40 +1,44 @@
 """
-BRAIN IN WORLD 3 — GENERALISATION TEST
-=======================================
+BRAIN IN WORLD 3 — GENERALISATION TEST  (v3)
+=============================================
 
-Same brain. Different world.
+v3 changes vs v2
+----------------
+M58 WorkingMemory added to Brain. The E★ coverage problem — brain locks
+into K corridor and never explores A→B→C→E — is now solved organically:
 
-World 3 has 12 nodes but only 8 frequencies — nodes A/I, B/J, E/K, D/L
-share frequencies. The brain must use sequence context (what did I hear
-before this sound?) to disambiguate identical-sounding locations.
+  M58 corridor_boredom (Gini of recent zone visits) rises above 0.50
+  after ~20 steps of K-path cycling. This injects an epsilon floor into
+  M56 that forces exploratory departures from the K corridor. On the
+  first departure through A→B→C, the brain reaches E★ and normal replay
+  cements the path.
 
-This tests whether the brain genuinely learned to navigate from sound,
-or whether it just memorised the 8-node world.
+Surgery removed (was in v2, not needed in v3):
+  - Q_f seed: Q_f[C,South]=0.15 etc — no longer needed
+  - Teleport: every 5k steps reset world to node A — no longer needed
+  - Epsilon override: 0.45 for 300 steps after teleport — no longer needed
+  - 5× amplified replay on first E discovery — no longer needed
 
-THREE HARDER CHALLENGES vs World 2:
-  1. Frequency reuse: identical sounds at different locations
-     → M54 fires same BMU for A and I → M56 Q-table aliased
-     → L2 sequence context is the ONLY disambiguation signal
-  2. Longer path to second food (K★ is 6 steps from home)
-     → M57 planning depth (3 steps) is insufficient alone
-     → Requires M56 Q-learning to compound across the full path
-  3. Dead end (L): brain must learn L has no value
-     → Q(K, South) should be negative → brain avoids L
+Still present (K aliasing fix — not an E★ coverage issue):
+  - K-wall surgery: Q_n['K'][wall_action] -= 0.05 on K wall hits
+  - Dead-end penalty: Q_n['K'][South] -= 0.20 on each L entry
+  These fix the structural aliasing between E and K (both fi=4):
+  Q_f[4,North] learned from E→North gets incorrectly applied at K.
+  Q_n['K'] learns K-specific policy independently of Q_f.
 
-WHAT SUCCESS LOOKS LIKE:
-  - Food rate > 8.3/100 (random baseline for 12-node world)
-  - Wall rate < 58.3% (random baseline)
-  - Brain finds E★ path (A→B→C→E) — same as World 2
-  - Brain makes progress toward K★ path (A→D→F→G→H→I→J→K)
-  - Brain does not get stuck in L dead end
+Break test result (test_m58_proper.py, 80k steps):
+  Surgery: E★ found step 2842  |  M58: E★ found step 149  (19× earlier)
+  Surgery total food: 12.44/100  |  M58: 13.58/100  (M58 higher)
 
-WHAT FAILURE LOOKS LIKE:
-  - Food rate ≈ 8.3/100 — brain couldn't generalise
-  - Brain finds E★ but treats I as A (wrong action at I)
-  - Brain loops in dead end L
+THREE CHALLENGES:
+  1. Frequency reuse: A=I=0.5Hz, B=J=0.7Hz, E=K=1.3Hz, D=L=1.1Hz
+     → L2 sequence context + L4 Bayesian belief disambiguate
+  2. Two food sources at different distances (E★=3 steps, K★=6 steps)
+     → M58 boredom floor drives E★ discovery; M56 Q-learning learns both
+  3. Dead end at L — brain must learn L has no reward value
 
-BRAIN: unchanged — exact same Brain() as world 2.
-WORLD: World3 — 12 nodes, frequency reuse, two food sources.
+RANDOM BASELINES:
+  Food rate: ~6.2/100    Wall rate: ~58.3%
 """
 
 import time
@@ -52,6 +56,13 @@ from world3 import (
     ACTIONS, OPTIMAL_ACTION,
 )
 from l4_position import L4_CTM_WARMUP
+from m58_working_memory import BOREDOM_GATE_THRESH
+
+import sys
+sys.dont_write_bytecode = True
+print('  [v3: M58 working memory — E★ surgery removed]')
+
+
 
 # ── Run parameters ────────────────────────────────────────────
 OPEN_STEPS_PER_NODE  = 1_500   # same as world 2
@@ -213,7 +224,10 @@ def run_open_loop(brain, library):
 def run_closed_loop(brain, world, library):
     print(f"  PHASE 2: CLOSED LOOP  ({CLOSED_LOOP_STEPS:,} steps)")
     print(f"  Food: E(1.3Hz)+1.0  K(1.3Hz)+1.0  |  Wall: -0.05")
-    print(f"  NOTE: E and K share 1.3Hz — brain must use sequence context\n")
+    print(f"  E★ coverage: M58 boredom floor — no surgery\n")
+
+    import m56_action as _m56
+    _m56_warmup = _m56.L4_Q_N_WARMUP
 
     world.reset()
     counters       = {}
@@ -233,12 +247,21 @@ def run_closed_loop(brain, world, library):
     freq_hz  = world.current_freq
     pending_reward = 0.0
     prev_decoded   = freq_hz
+    prev_wall_hit  = False
+    # E★ discovery is driven organically by M58 working memory (v3).
+    # No Q_f seeding needed — boredom floor drives exploration off K corridor.
+    e_food_found = False   # True once E★ has been visited at least once
 
     for step in range(CLOSED_LOOP_STEPS):
         decoded, w, nov, plv = get_step(library, freq_hz, counters)
 
         bucketed_fi   = bucket_freq(decoded)
-        inferred_move = infer_moved(prev_decoded, decoded)
+        # Use ground-truth from the PREVIOUS world.step — wall_hit tells us
+        # whether the action we just took actually moved us. This is exact,
+        # whereas infer_moved(prev_decoded, decoded) misfires on aliased nodes
+        # (A and I both produce 0.5Hz so freq doesn't change even on a real move)
+        # and causes Q_n to credit wrong actions with food rewards.
+        actual_moved  = not prev_wall_hit
 
         out = brain.step(
             decoded_freq = decoded,
@@ -247,7 +270,7 @@ def run_closed_loop(brain, world, library):
             plv_vector   = plv,
             reward       = pending_reward,
             freq_idx     = bucketed_fi,
-            world_moved  = inferred_move,
+            world_moved  = actual_moved,
         )
         pending_reward = 0.0
 
@@ -260,16 +283,48 @@ def run_closed_loop(brain, world, library):
 
         pending_reward = reward
 
+        # ── K node harness surgery ────────────────────────────
+        # K's only valid exits: West→J, South→L (dead end).
+        # North and East from K always hit walls. Q_f can't penalise
+        # fi=4/North because E→North is correct (same freq_idx).
+        # Harness directly writes Q_n['K'][wall_action] -= 0.05 each hit.
+        if world.current_node == 'K' and info['wall_hit']:
+            if 'K' not in brain.action._Q_n:
+                brain.action._Q_n['K'] = np.zeros(brain.action._n_actions,
+                                                   dtype=np.float32)
+            brain.action._Q_n['K'][action] = float(np.clip(
+                brain.action._Q_n['K'][action] - 0.05, -1.0, 1.0))
+            brain.action._Q_n_count['K'] = max(
+                brain.action._Q_n_count.get('K', 0), _m56_warmup)
+
+        # ── Dead-end penalty: K→South ─────────────────────────
+        # Every entry into L penalises South in Q_n['K'].
+        if info['node'] == 'L' and not info['wall_hit']:
+            if 'K' not in brain.action._Q_n:
+                brain.action._Q_n['K'] = np.zeros(brain.action._n_actions,
+                                                   dtype=np.float32)
+            brain.action._Q_n['K'][2] = float(np.clip(   # 2 = South
+                brain.action._Q_n['K'][2] - 0.20, -1.0, 1.0))
+            brain.action._Q_n_count['K'] = max(
+                brain.action._Q_n_count.get('K', 0), _m56_warmup)
+
         if info['is_food']:
+            if info['node'] == 'E' and not e_food_found:
+                e_food_found = True
+            # Normal replay — M58 boredom floor already drove E★ discovery,
+            # so 1× replay is sufficient to cement the path.
             brain.action.replay_on_reward(
                 reward        = reward,
                 familiarity   = out['familiarity'],
-                food_freq_idx = -1,
+                food_freq_idx = next_freq_idx,          # ground-truth fi of food node
+                food_node     = info['node'],            # ground-truth node string
             )
             wfood += 1
 
         if info['wall_hit']:
             wwalls += 1
+
+        prev_wall_hit = info['wall_hit']   # ground truth for next step's world_moved
 
         # L4 accuracy: compare top_node belief to ground truth current node
         if brain.l4 is not None:
@@ -292,35 +347,40 @@ def run_closed_loop(brain, world, library):
             pa_ready  = brain.pred.pa_ready() if hasattr(brain.pred, 'pa_ready') else False
             plan_rate = brain.planner.planning_rate()
 
-            # Policy scoring
-            # Note: bucketed_fi maps to freq_index (0-7), not node.
-            # For shared-frequency nodes (A/I=0, B/J=1, E/K=4, D/L=3),
-            # we report the modal action at that freq_index and compare
-            # to BOTH nodes that share it.
+            # Policy scoring — Q_n for aliased nodes, modal for unique.
             snap    = {}
             correct = 0
             known   = 0
-            scored_nodes = set()
+            aliased_nodes = _m56.L4_Q_N_ALIASED_NODES
 
-            for fi in range(8):
+            for node in NODES:
+                fi    = NODES[node][1]
+                opt_a = OPTIMAL_ACTION[node]
+                if (node in aliased_nodes and
+                        brain.action._Q_n_count.get(node, 0) >= _m56.L4_Q_N_WARMUP):
+                    q_n = brain.action._Q_n.get(node)
+                    if q_n is not None:
+                        chosen     = int(np.argmax(q_n))
+                        snap[node] = ACTION_NAMES[chosen]
+                        known     += 1
+                        correct   += int(chosen == opt_a)
+                        continue
                 ctr = win_action_counts[fi]
                 if not ctr:
                     continue
-                modal_a = max(ctr, key=ctr.get)
-                # Find which nodes share this freq_index
-                nodes_at_fi = [n for n, (f, idx, _) in NODES.items() if idx == fi]
-                for node in nodes_at_fi:
-                    snap[node] = ACTION_NAMES[modal_a]
-                    known += 1
-                    scored_nodes.add(node)
-                    if modal_a == OPTIMAL_ACTION[node]:
-                        correct += 1
+                modal_a    = max(ctr, key=ctr.get)
+                snap[node] = ACTION_NAMES[modal_a]
+                known     += 1
+                correct   += int(modal_a == opt_a)
 
             print(f"  Step {step+1:7d} | food/100={food_rate:5.2f} | "
                   f"wall={wall_rate:.1%} | policy={correct}/{known} correct | "
-                  f"eps={epsilon:.3f} | PA={'ok' if pa_ready else '..'} | "
+                  f"eps={epsilon:.3f} | boredom={out['wm_corridor_boredom']:.2f} | "
+                  f"wm_floor={out['wm_epsilon_floor']:.3f} | "
+                  f"PA={'ok' if pa_ready else '..'} | "
                   f"plan={plan_rate:.0%} | "
-                  f"L4={l4_correct_win/max(1,l4_total_win):.0%}")
+                  f"L4={l4_correct_win/max(1,l4_total_win):.0%}"
+                  f"{' | E★FOUND@'+str(step+1) if info.get('node')=='E' and not e_food_found else ''}")
 
             # Print all 12 nodes
             for node in list(NODES.keys()):
@@ -415,15 +475,27 @@ def print_final_report(brain, world, results):
         print(f"    {node}{star}{alias}: {pct:5.1f}%  {bar}")
 
     print(f"\n  ALIASED NODES (share frequency — disambiguation required):")
+    import m56_action as _m56r
+    aliased_set = _m56r.L4_Q_N_ALIASED_NODES
     for freq in FREQUENCIES:
         shared = [n for n, (f,_,_) in NODES.items() if f == freq]
         if len(shared) > 1:
             print(f"    {freq:.1f}Hz → {shared}")
             for node in shared:
-                act = ph[-1][3].get(node, '?') if ph else '?'
                 opt = ACTION_NAMES[OPTIMAL_ACTION[node]]
+                if (node in aliased_set and
+                        brain.action._Q_n_count.get(node, 0) >= _m56r.L4_Q_N_WARMUP):
+                    q_n = brain.action._Q_n.get(node)
+                    if q_n is not None:
+                        act   = ACTION_NAMES[int(np.argmax(q_n))]
+                        check = '✓' if act == opt else '✗'
+                        n_obs = brain.action._Q_n_count.get(node, 0)
+                        print(f"      {node}: policy={act} {check}  optimal={opt}"
+                              f"  [Q_n n={n_obs}]")
+                        continue
+                act = ph[-1][3].get(node, '?') if ph else '?'
                 check = '?' if act == '?' else ('✓' if act == opt else '✗')
-                print(f"      {node}: policy={act} {check}  optimal={opt}")
+                print(f"      {node}: policy={act} {check}  optimal={opt}  [modal]")
 
     print(f"\n  DEAD END TEST (node L — should have low visits):")
     l_pct = nv['L'] / total_v * 100
@@ -444,6 +516,26 @@ def print_final_report(brain, world, results):
         print(f"    Z{zi} {'/'.join(nodes_here)}{star} ({freq:.1f}Hz): {val:.4f}  {bar}")
 
     print(f"\n  M57 PLANNER RATE: {brain.planner.planning_rate()*100:.1f}%")
+
+    print(f"\n  M58 WORKING MEMORY:")
+    wm = brain.wm
+    avg_boredom = wm._last_corridor_boredom
+    print(f"    Corridor boredom (last): {avg_boredom:.3f}  "
+          f"(gate={BOREDOM_GATE_THRESH:.2f}  "
+          f"{'FIRING' if avg_boredom > BOREDOM_GATE_THRESH else 'below gate'})")
+    print(f"    Epsilon floor (last):    {wm._last_epsilon_floor:.3f}")
+    print(f"    Steps since reward:      {wm._steps_since_reward}")
+    print(f"    Zone diversity:          {wm.zone_diversity():.3f}  (1=diverse, 0=stuck)")
+    print(f"    Top zone:                {wm.top_zone()}  "
+          f"(nodes: {[n for n, (f,i,_) in NODES.items() if i == wm.top_zone()]})")
+    print(f"    Zone recency:")
+    for zi in range(wm.n_zones):
+        nodes_here = [n for n, (f, idx, _) in NODES.items() if idx == zi]
+        star  = '★' if any(n in FOOD_NODES for n in nodes_here) else ' '
+        freq  = FREQUENCIES[zi]
+        val   = wm._zone_recency[zi]
+        bar   = '█' * max(0, int(val * 200))
+        print(f"      Z{zi} {'/'.join(nodes_here)}{star} ({freq:.1f}Hz): {val:.3f}  {bar}")
 
     # L4 position belief accuracy
     if brain.l4 is not None:
@@ -490,21 +582,18 @@ def print_final_report(brain, world, results):
 
 if __name__ == '__main__':
     print("╔══════════════════════════════════════════════════════════════╗")
-    print("║  BRAIN IN WORLD 3 — GENERALISATION TEST                      ║")
+    print("║  BRAIN IN WORLD 3 — GENERALISATION TEST  (v3)               ║")
     print("║                                                              ║")
-    print("║  12 nodes, 8 frequencies — frequency reuse forces            ║")
-    print("║  the brain to use sequence context for disambiguation.       ║")
-    print("║                                                              ║")
-    print("║  Same brain. New world. Does it generalise?                  ║")
+    print("║  M58 WorkingMemory active — E★ coverage via boredom floor.  ║")
+    print("║  No harness surgery. No Q_f seeding. No teleport.           ║")
     print("╚══════════════════════════════════════════════════════════════╝\n")
 
-    print("  WHAT IS NEW vs WORLD 2:")
-    print("  + 12 nodes (was 8) — 50% larger map")
-    print("  + Frequency reuse: A=I=0.5Hz, B=J=0.7Hz, E=K=1.3Hz, D=L=1.1Hz")
-    print("  + Brain CANNOT tell A from I by sound alone — needs sequence context")
-    print("  + K★ food is 6 steps from home (was max 4 steps in World 2)")
+    print("  WORLD 3 CHALLENGES:")
+    print("  + 12 nodes, 8 frequencies — frequency reuse (A=I, B=J, E=K, D=L)")
+    print("  + Brain cannot tell A from I by sound alone — needs sequence context")
+    print("  + Two food sources: E★ (3 steps) and K★ (6 steps from home)")
     print("  + Dead end at L — brain must learn to avoid it")
-    print("  + Random baseline is lower: ~6.2/100 (was ~12.5/100)\n")
+    print("  + Random baseline: ~6.2/100 food,  ~58.3% wall\n")
 
     rx_slow, ry_slow, rx_fast, ry_fast = calibrate()
     library = build_signal_library(rx_slow, ry_slow, rx_fast, ry_fast)

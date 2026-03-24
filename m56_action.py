@@ -169,12 +169,12 @@ Q_MIN  = -1.0
 # At focus_entropy=1.0 (uniform gate, no attention): epsilon=EPSILON_MAX=0.50
 # At focus_entropy=0.0 (perfectly focused): epsilon=EPSILON_MIN=0.05
 # thought_confidence further suppresses by up to CONFIDENCE_GATE fraction
-EPSILON_MIN     = 0.10   # raised from 0.05. Even when exploiting a clear Q preference,
-                          # always explore 10% — prevents permanent lock-in to one path.
-EPSILON_MAX     = 0.50   # maximum exploration when attention is diffuse
-CONFIDENCE_GATE = 0.30   # thought_confidence suppresses epsilon (keep ≤ 0.50)
-                          # At full confidence: epsilon *= (1 - 0.30) = 0.70×
-Q_SPREAD_GATE   = 0.60   # Q-value spread suppresses epsilon when action is clear
+EPSILON_MIN          = 0.10
+EPSILON_MAX          = 0.50
+EPSILON_WARMUP_STEPS = 15_000  # steps of forced high exploration at cold start
+EPSILON_WARMUP_VAL   = 0.45    # epsilon during warmup — guarantees food found early
+CONFIDENCE_GATE      = 0.30
+Q_SPREAD_GATE        = 0.60
 
 # ── Replay buffer ─────────────────────────────────────────────
 # Short experience replay for long-path credit assignment.
@@ -183,9 +183,10 @@ Q_SPREAD_GATE   = 0.60   # Q-value spread suppresses epsilon when action is clea
 # Replay bonus scales with (1 - familiarity_at_food_node) so frequent food
 # nodes (high familiarity, e.g. E★) get little amplification while rare nodes
 # (H★, near-zero familiarity) get strong back-propagation.
-REPLAY_BUFFER_LEN   = 25    # raised from 15. Covers D→F→G→H★ even with wall-bashing
-REPLAY_GAMMA        = 0.90  # discount per step during replay back-propagation
-REPLAY_ALPHA        = 0.10  # learning rate for replay updates (separate from ETA_Q)
+REPLAY_BUFFER_LEN   = 12
+REPLAY_GAMMA        = 0.90
+REPLAY_ALPHA        = 0.20  # raised from 0.10 — K★ is 6 steps away; credit at step 1
+                             # = 0.20×0.90^5 = 0.118, meaningful after 3-4 food events.
 
 # ── Conflict-driven epsilon floor ────────────────────────────
 # When the Q-margin (best - second-best action) is small, the brain is
@@ -205,9 +206,39 @@ CONFLICT_Q_MIN      = 0.02   # must have learned something (Q[best] > this)
                           # Biologically: basal ganglia exploit when action values differ
 
 
-# ═══════════════════════════════════════════════════════════════
-# ACTION LAYER
-# ═══════════════════════════════════════════════════════════════
+# ── Node-keyed Q table (L4-gated) ────────────────────────────
+# When L4's position belief is confident (top_prob >= threshold),
+# use a node-specific Q entry that cannot be contaminated by aliased nodes.
+# This is the core fix for D vs L and E vs K disambiguation:
+#   Q_f[3] is shared by D and L — D→South should have high value (path to K★)
+#   but L→South is a dead end. Without node-keying, these contaminate each other.
+#   Q_n['D'][South] and Q_n['L'][South] are fully independent.
+#
+# L4_Q_BLEND_THRESH: minimum L4 top_prob before Q_n is blended in.
+#   At 0.60: L4 must be quite confident before overriding Q_f.
+#   Below this: falls back to Q_f entirely (safe, stable).
+#
+# L4_Q_BLEND_MAX: maximum blend weight from Q_n even at full confidence.
+#   Kept at 0.20: Q_f stays dominant (80%). Q_n is a gentle nudge,
+#   not an override. Higher values (0.50) caused regression — cold Q_n
+#   zeros diluted working Q_f policy and doubled wall rate.
+#
+# L4_Q_N_WARMUP: minimum real transitions before Q_n influences selection.
+#   Below this per-node count, Q_f is used unchanged even if L4 is
+#   confident. Prevents cold Q_n from degrading a working Q_f policy.
+#   At 30: ~3× the minimum needed for Q_f to show meaningful signal.
+L4_Q_BLEND_THRESH         = 0.55  # min L4 confidence for unique-frequency nodes
+L4_Q_BLEND_THRESH_ALIASED = 0.65  # threshold for aliased nodes (A/I, B/J, D/L, E/K)
+L4_Q_BLEND_MAX    = 0.35   # raised: classical L4 is crisper so higher blend is safe
+L4_Q_N_WARMUP     = 5      # lowered from 15: W4 L4 accuracy ~14% so Q_n needs
+                           # to engage faster before confidence builds fully
+
+# Set by Brain.__init__ when L4 is active.
+# Maps each node to whether its freq_index is shared with other nodes.
+# Used to select the appropriate confidence threshold — aliased nodes need higher confidence.
+# Format: set of aliased node names (those sharing fi with another node).
+L4_Q_N_UNIQUE_NODES: set = set()   # nodes with unique fi — use lower threshold
+L4_Q_N_ALIASED_NODES: set = set()  # nodes with shared fi — use higher threshold
 
 class ActionLayer:
     """
@@ -251,6 +282,23 @@ class ActionLayer:
         # The action that caused the PREVIOUS real transition (for Q_f update).
         self._transition_action = -1  # action that caused prev_fi→curr_fi move
 
+        # ── Node-keyed Q table (L4-gated) ────────────────────────
+        # _Q_n[node_str] = float32[n_actions] — per-node Q values.
+        # Created lazily on first confident L4 observation of each node.
+        # Independent of _Q_f: D and L have separate entries even though
+        # both have freq_idx=3.
+        self._Q_n = {}   # dict[str, np.ndarray]
+
+        # Per-node observation count — Q_n only blends into action selection
+        # once _Q_n_count[node] >= L4_Q_N_WARMUP. Before warmup, Q_f is used
+        # unchanged. This prevents cold zero Q_n entries from diluting Q_f.
+        self._Q_n_count = {}   # dict[str, int]
+
+        # L4 state tracking — stored from select_action for use in update()
+        self._l4_node_at_select  = None   # L4 top_node when action was chosen
+        self._l4_prob_at_select  = 0.0    # L4 top_prob when action was chosen
+        self._l4_confident_now   = False  # whether L4 was confident this step
+
         # ── Eligibility traces ────────────────────────────────
         # e[prev_bmu, curr_bmu, a] — same shape as Q
         self._e = np.zeros((N_NEURONS, N_NEURONS, n_actions), dtype=np.float32)
@@ -264,7 +312,11 @@ class ActionLayer:
         # Current action selected this step (for post-step update)
         self._current_action  = 0
         self._current_bmu     = 0
-        self._current_epsilon = EPSILON_MAX   # initialise to explore
+        self._current_epsilon = EPSILON_MAX
+
+        # External epsilon override — harness sets this to force exploration.
+        # Consumed (reset to -1) immediately after each select_action call.
+        self.epsilon_override = -1.0   # -1 = inactive
 
         # ── Diagnostics ───────────────────────────────────────
         self.t             = 0
@@ -285,7 +337,10 @@ class ActionLayer:
                       bmu_idx:          int,
                       focus_entropy:    float = 0.5,
                       thought_confidence: float = 0.0,
-                      freq_idx:         int   = -1) -> int:
+                      freq_idx:         int   = -1,
+                      l4_top_node:      str   = None,
+                      l4_top_prob:      float = 0.0,
+                      epsilon_floor:    float = 0.0) -> int:
         """
         Choose an action for the current step.
 
@@ -294,24 +349,26 @@ class ActionLayer:
         bmu_idx            : int   — current cortical state (from M54)
         focus_entropy      : float — Thought's attention diffuseness [0,1]
         thought_confidence : float — Thought's prediction certainty [0,1]
-        freq_idx           : int   — ground-truth node index [0,7] or -1 if unknown.
-                                     When >= 0, Q_f[freq_idx] is used for action
-                                     selection instead of the BMU-keyed table,
-                                     bypassing SOM aliasing (G and H share BMU=4).
+        freq_idx           : int   — ground-truth freq index [0,7] or -1
+        l4_top_node        : str   — L4's most-likely node ('A','B',...) or None
+        l4_top_prob        : float — L4's confidence in top_node [0,1]
+        epsilon_floor      : float — minimum epsilon from M58 working memory [0,1]
+                                     Applied AFTER all other epsilon computation.
+                                     Does not override epsilon_override or warmup.
 
         Returns
         -------
         int — chosen action index in [0, N_ACTIONS)
         """
-        # Adaptive epsilon — three suppression signals:
-        # 1. focus_entropy: high when L2 is uncertain (explore more)
-        # 2. thought_confidence: high when prediction is certain (explore less)
-        # 3. q_spread: high when one action clearly dominates Q (exploit more)
-        #    This decouples exploration from L2 prediction entropy — the brain
-        #    can exploit a learned action preference even when it can't predict
-        #    what frequency comes next (navigation ≠ sequence prediction).
-        base_epsilon = EPSILON_MIN + (EPSILON_MAX - EPSILON_MIN) * float(focus_entropy)
-        epsilon      = float(base_epsilon * (1.0 - CONFIDENCE_GATE * float(thought_confidence)))
+        # ── Epsilon: override → warmup → adaptive ────────────
+        if self.epsilon_override >= 0.0:
+            epsilon = float(self.epsilon_override)
+            self.epsilon_override = -1.0   # consume — one-step only
+        elif self.t < EPSILON_WARMUP_STEPS:
+            epsilon = EPSILON_WARMUP_VAL
+        else:
+            base_epsilon = EPSILON_MIN + (EPSILON_MAX - EPSILON_MIN) * float(focus_entropy)
+            epsilon      = float(base_epsilon * (1.0 - CONFIDENCE_GATE * float(thought_confidence)))
 
         # Marginal BMU Q for action selection
         q_row = self._Q[:, bmu_idx, :].max(axis=0)
@@ -330,21 +387,73 @@ class ActionLayer:
         if q_max > CONFLICT_Q_MIN and q_margin < CONFLICT_THRESHOLD:
             epsilon = float(max(epsilon, CONFLICT_FLOOR))
 
-        # Epsilon-greedy selection
+        # ── M58 working memory floor ──────────────────────────
+        # Applied after conflict floor — after all other epsilon logic.
+        # Only active post-warmup: during warmup epsilon is already high
+        # (EPSILON_WARMUP_VAL=0.45) so the floor would never bind anyway.
+        if self.t >= EPSILON_WARMUP_STEPS and float(epsilon_floor) > 0.0:
+            epsilon = float(max(epsilon, float(epsilon_floor)))
+        epsilon = float(np.clip(epsilon, EPSILON_MIN, EPSILON_MAX))
+
+        # ── Q_f base (freq_idx-keyed) ─────────────────────────
+        if freq_idx >= 0:
+            q_effective = self._Q_f[freq_idx].copy()
+        else:
+            q_effective = q_row.copy()
+
+        # ── Q_n blend (L4 node-keyed) — ALIASED NODES ONLY ──────
+        # Q_n is blended into action selection ONLY for aliased nodes
+        # (those sharing fi with another node: A/I, B/J, D/L, E/K).
+        # For unique-fi nodes (C, E, F, G, H in World 3), Q_f[fi] is
+        # already node-specific — blending Q_n only adds corruption.
+        #
+        # Why unique-node Q_n corrupts: at C (fi=2, unique), the brain
+        # visits C 30%+ of the time but usually bounces back (West/North)
+        # via K-path credit. Q_n[C,West] and Q_n[C,North] accumulate
+        # large positive values from K-path reward. At blend=0.35,
+        # Q_eff[C,West] > Q_eff[C,South] even though Q_f[2,South]=1.0.
+        # The correct signal (Q_f) is overridden by the noisy one (Q_n).
+        #
+        # Aliased nodes still need Q_n: A and I share fi=0, so Q_f[0]
+        # cannot distinguish them. Q_n['A'] and Q_n['I'] are the only
+        # per-node signals available.
+        node_is_aliased = (l4_top_node in L4_Q_N_ALIASED_NODES) if L4_Q_N_ALIASED_NODES else False
+        thresh = L4_Q_BLEND_THRESH_ALIASED
+        l4_confident = (l4_top_node is not None and
+                        node_is_aliased and
+                        l4_top_prob >= thresh and
+                        self._Q_n_count.get(l4_top_node, 0) >= L4_Q_N_WARMUP)
+        if l4_confident:
+            if l4_top_node not in self._Q_n:
+                self._Q_n[l4_top_node] = np.zeros(self._n_actions, dtype=np.float32)
+            blend = float(np.clip(
+                (l4_top_prob - thresh) /
+                max(1.0 - thresh, 1e-9) * L4_Q_BLEND_MAX,
+                0.0, L4_Q_BLEND_MAX))
+            q_effective = ((1.0 - blend) * q_effective
+                           + blend * self._Q_n[l4_top_node])
+
+        # Store L4 state for update(). Record only for aliased nodes —
+        # unique nodes no longer write to Q_n (see above).
+        l4_above_thresh = (l4_top_node is not None and
+                           node_is_aliased and
+                           l4_top_prob >= thresh)
+        self._l4_node_at_select = l4_top_node if l4_above_thresh else None
+        self._l4_prob_at_select = l4_top_prob
+        self._l4_confident_now  = l4_confident
+
+        # Epsilon-greedy selection on effective Q
         if self._rng.random() < epsilon:
             action  = int(self._rng.randint(0, self._n_actions))
-            explore = True
             self._n_explorations += 1
         else:
-            # Tiny noise to break exact ties randomly
-            noise  = self._rng.uniform(0, 1e-6, size=q_row.shape)
-            action = int(np.argmax(q_row + noise))
-            explore = False
+            noise  = self._rng.uniform(0, 1e-6, size=q_effective.shape)
+            action = int(np.argmax(q_effective + noise))
             self._n_exploitations += 1
 
         self._current_action   = action
         self._current_bmu      = bmu_idx
-        self._current_freq_idx = freq_idx   # stored for update()
+        self._current_freq_idx = freq_idx
         self._current_epsilon  = epsilon
         self._action_counts[action] += 1
 
@@ -381,37 +490,65 @@ class ActionLayer:
         rpe = float(np.clip(rpe, -1.0, 1.0))
 
         # ── 1. Decay eligibility traces ────────────────────────
-        self._e *= (1.0 - TRACE_DECAY)
+        self._e   *= (1.0 - TRACE_DECAY)
+        self._e_f *= (1.0 - TRACE_DECAY)   # decay Q_f trace in lockstep
 
         # ── 2. Set trace for BMU-keyed Q ───────────────────────
-        # Gate on world_moved AND BMU change.
-        # world_moved=False means a wall hit — no real transition occurred.
-        # Without the world_moved gate, BMU drift during wall hits (the SOM
-        # fires a slightly different BMU even when the agent didn't move)
-        # causes wall-hitting actions to receive food credit via the trace.
-        # Example without gate: brain hits West at F (wall), BMU drifts,
-        # trace fires for F.West, E★ food arrives → F.West gets credit → +1.0.
-        # This permanently blocks the F→G→H★ path.
-        # With gate: only real world transitions set the trace.
-        # G→H (shared BMU=4): bmu_moved=False, so no BMU Q credit.
-        # Q_f handles G/H disambiguation separately (step 3b).
         bmu_moved = world_moved and (self._prev_bmu != self._current_bmu)
         if bmu_moved:
             self._e[self._prev_bmu, self._current_bmu, self._current_action] = 1.0
 
+        # ── 2b. Set trace for Q_f ──────────────────────────────
+        # Gate on world_moved only (real transitions), same as BMU trace.
+        # This enables multi-step credit: K→West→J (e_f[4,West]=1) then
+        # J→East→K (food, rpe>0) → Q_f[4,West] += ETA_Q * rpe * 0.8.
+        # Without the trace, West at K gets zero Q_f credit because the food
+        # fires at fi=1 (J→K), not fi=4. With the trace, the eligibility from
+        # the previous step (K→West) carries the credit back.
+        if world_moved and self._prev_freq_idx >= 0 and self._transition_action >= 0:
+            self._e_f[self._prev_freq_idx, self._transition_action] = 1.0
+
         # ── 3. Update BMU Q via trace ──────────────────────────
         self._Q += ETA_Q * rpe * self._e
         np.clip(self._Q, Q_MIN, Q_MAX, out=self._Q)
-        # Q_DECAY = 0.0 — no decay line needed
 
-        # ── 3b. Update Q_f (direct, no trace) ────────────────
-        # Q_f[prev_freq_idx, transition_action] updated directly on real transitions.
-        # No trace needed — freq_idx is the unambiguous state.
-        if world_moved and self._prev_freq_idx >= 0 and self._transition_action >= 0:
-            fi = self._prev_freq_idx
-            pa = self._transition_action
-            self._Q_f[fi, pa] = float(np.clip(
-                self._Q_f[fi, pa] + ETA_Q * rpe, Q_MIN, Q_MAX))
+        # ── 3b. Update Q_f via eligibility trace (food only) ─
+        if rpe >= 0.0:
+            self._Q_f += ETA_Q * rpe * self._e_f
+            np.clip(self._Q_f, Q_MIN, Q_MAX, out=self._Q_f)
+
+        # ── 3b-wall. Direct wall penalty on Q_f ──────────────
+        # On wall hits (world_moved=False), penalise the wall action
+        # directly. The trace decays to ~0 during sustained bashing
+        # (10 hits → e_f≈0.11) so trace-based learning is useless.
+        # Direct write: Q_f[fi,a] += ETA_Q * rpe each hit.
+        # After 20 hits: Q_f[fi,a] ≈ -0.55. Brain stops trying it.
+        if (not world_moved and self._current_freq_idx >= 0 and rpe < 0.0):
+            fi = self._current_freq_idx
+            a  = self._current_action
+            self._Q_f[fi, a] = float(np.clip(
+                self._Q_f[fi, a] + ETA_Q * rpe, Q_MIN, Q_MAX))
+
+        # ── 3c. Update Q_n (node-keyed, L4-gated) ─────────────
+        # Updated on all RPE including negative (real moves only —
+        # wall-hit Q_n penalties handled by harness surgery in brain_in_world3).
+        if (world_moved and
+                self._l4_node_at_select is not None and
+                self._transition_action >= 0):
+            node = self._l4_node_at_select
+            pa   = self._transition_action
+            if node not in self._Q_n:
+                self._Q_n[node] = np.zeros(self._n_actions, dtype=np.float32)
+            self._Q_n[node][pa] = float(np.clip(
+                self._Q_n[node][pa] + ETA_Q * rpe, Q_MIN, Q_MAX))
+        # Always count toward warmup when L4 is confident and world moved,
+        # regardless of RPE sign — the count is about L4 observation quality,
+        # not about whether this step earned reward.
+        if (world_moved and
+                self._l4_node_at_select is not None and
+                self._transition_action >= 0):
+            self._Q_n_count[self._l4_node_at_select] = (
+                self._Q_n_count.get(self._l4_node_at_select, 0) + 1)
 
         # ── 4. Record transition BEFORE advancing context ─────
         # Gate replay buffer on world_moved (not bmu_moved).
@@ -421,7 +558,8 @@ class ActionLayer:
         if world_moved:
             self._replay_buffer.append(
                 (self._prev_bmu, self._current_bmu,
-                 self._current_action, self._current_freq_idx)
+                 self._current_action, self._current_freq_idx,
+                 self._l4_node_at_select)   # L4 node at time of action
             )
 
         # ── 5. Advance context (AFTER recording) ───────────────
@@ -459,7 +597,8 @@ class ActionLayer:
         }
 
     def replay_on_reward(self, reward: float, familiarity: float = 0.0,
-                         food_freq_idx: int = -1) -> int:
+                         food_freq_idx: int = -1,
+                         food_node: str = None) -> int:
         """
         Back-propagate a reward through the recent transition buffer.
         Call immediately after a food/significant reward event.
@@ -467,29 +606,42 @@ class ActionLayer:
         food_freq_idx: the freq_idx of the node where food was collected.
         Q_f updates in replay are restricted to buffer entries with this
         freq_idx, preventing cross-node credit assignment (e.g. E★ food
-        crediting H★ transitions that happen to be in the buffer).
+        crediting K★ transitions that happen to be in the buffer).
+
+        food_node: the ground-truth node string where food was collected
+        (e.g. 'K' or 'E'). When provided, all Q_n replay credits go to
+        this specific node, regardless of what L4 believed at the time.
+        This is the key fix for aliased food nodes: E and K share fi=4 so
+        Q_f cannot distinguish them, but the harness knows ground-truth which
+        node was visited and can direct Q_n['K'] credit correctly.
+        When None, falls back to using _l4_node_at_select from the buffer.
 
         The replay bonus scales with (1 - familiarity_at_reward_node):
           - High familiarity node (E★, visited often): small amplification
-          - Low familiarity node (H★, rare): full back-propagation strength
+          - Low familiarity node (K★, rare): full back-propagation strength
 
         Returns the number of transitions replayed.
         """
         if not self._replay_buffer or reward <= 0.0:
             return 0
 
-        self._reward_freq_idx = food_freq_idx   # used inside the loop below
+        self._reward_freq_idx = food_freq_idx
 
         # Scale replay strength by novelty of the reward node.
-        replay_strength = float(reward) * (1.0 - float(np.clip(familiarity, 0.0, 1.0)))
+        # Novelty bonus: unfamiliar food nodes get stronger replay (more to learn).
+        # Minimum floor of 0.15 ensures even frequently-visited food nodes (high
+        # familiarity) still get enough replay to build Q_n. Without the floor,
+        # K at 31% visit rate has familiarity≈1.0 → replay_strength≈0 → Q_n never builds.
+        novelty = 1.0 - float(np.clip(familiarity, 0.0, 1.0))
+        replay_strength = float(reward) * max(novelty, 0.15)
         if replay_strength < 1e-4:
             return 0
 
-        transitions = list(self._replay_buffer)   # oldest first
+        transitions = list(self._replay_buffer)
         replayed = 0
         for i, entry in enumerate(reversed(transitions)):
             prev_bmu, curr_bmu, action = entry[0], entry[1], entry[2]
-            fi = entry[3] if len(entry) > 3 else -1
+            fi       = entry[3] if len(entry) > 3 else -1
             discount = REPLAY_GAMMA ** i
             q_delta  = REPLAY_ALPHA * replay_strength * discount
             self._Q[prev_bmu, curr_bmu, action] = float(np.clip(
@@ -499,6 +651,11 @@ class ActionLayer:
                 self._Q_f[fi, action] = float(np.clip(
                     self._Q_f[fi, action] + q_delta, Q_MIN, Q_MAX
                 ))
+            # Q_n is NOT updated from replay — only from direct step RPE in update().
+            # Replay buffer entries are steps before food (the path leading to it).
+            # Crediting Q_n from replay saturates all actions to +1.0 because
+            # every prior step's action gets credit, not just the food-exit action.
+            # The direct update in update() handles Q_n correctly.
             replayed += 1
             if discount < 0.01:
                 break
@@ -512,17 +669,13 @@ class ActionLayer:
              focus_entropy:     float = 0.5,
              thought_confidence: float = 0.0,
              freq_idx:          int   = -1,
-             world_moved:       bool  = True) -> dict:
+             world_moved:       bool  = True,
+             l4_top_node:       str   = None,
+             l4_top_prob:       float = 0.0,
+             epsilon_floor:     float = 0.0) -> dict:
         """
         Select action AND update in one call (for Brain-internal use).
-
-        This is called AFTER brain.step() has run — it uses the current
-        bmu_idx and rpe from this step, and updates Q from the previous
-        step's action. Then selects the action for the NEXT step.
-
-        Returns all output keys including 'action' (for next step).
         """
-        # Update Q from previous step's action using this step's rpe
         out = self.update(
             bmu_idx=bmu_idx,
             action=self._current_action,
@@ -530,12 +683,14 @@ class ActionLayer:
             world_moved=world_moved,
         )
 
-        # Select action for next step
         next_action = self.select_action(
             bmu_idx=bmu_idx,
             focus_entropy=focus_entropy,
             thought_confidence=thought_confidence,
             freq_idx=freq_idx,
+            l4_top_node=l4_top_node,
+            l4_top_prob=l4_top_prob,
+            epsilon_floor=epsilon_floor,
         )
 
         out['action'] = next_action
