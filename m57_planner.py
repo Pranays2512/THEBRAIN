@@ -199,6 +199,10 @@ class Planner:
              l4_confident:       bool  = False,
              gws_curiosity_pull: float = 0.0,
              gws_tension:        float = 0.0,
+             self_state_label:   str   = 'drifting',
+             q60_zone_pull:      dict  = None,
+             m63_action_prior              = None,   # (n_actions,) float — episodic prior
+             m63_recognition:    float = 0.0,        # [0,1] match strength from M63
              ) -> dict:
 
         # ── 1. Planning weight ────────────────────────────────
@@ -242,6 +246,19 @@ class Planner:
             * tc_coverage,   # TC gate — silences M57 when zone is aliased and TC is cold
             0.0, 1.0
         ))
+
+        # ── Self-model gate ───────────────────────────────────
+        # M59's state label modulates planning weight:
+        #   'confused' — brain doesn't know where it is → halve planning weight
+        #                (planning from confusion just amplifies wrong priors)
+        #   'focused'  — brain has high clarity + confidence → full planning weight
+        #   'stuck'    — brain is frustrated → boost planning slightly
+        #                (this is when deliberation helps most)
+        #   all others → no change
+        if self_state_label == 'confused':
+            planning_weight *= 0.5
+        elif self_state_label == 'stuck':
+            planning_weight = float(np.clip(planning_weight * 1.3, 0.0, 1.0))
 
         # ── 2. Simulate ───────────────────────────────────────
         if planning_weight > (PLANNING_GATE_THRESH * 0.5) and pred is not None:
@@ -291,6 +308,60 @@ class Planner:
                 # tension: penalty for staying PUT (dist == 0 = self-transition)
                 tension_penalty = float(gws_tension) * 0.08 * float(1.0 - np.clip(dist, 0.0, 1.0))
                 sim_values[action] = float(sim_values[action]) + curiosity_bonus - tension_penalty
+
+        # ── 2c. Q60 zone_pull bias — directed toward open questions ──
+        # Questions are specific zones where L2 was wrong + L4 was uncertain.
+        # Unlike GWS curiosity_pull (which biases away from familiarity),
+        # Q60 zone_pull biases toward SPECIFIC zones the brain didn't understand.
+        # This is directed curiosity, not general exploration.
+        #
+        # For each action, if the predicted landing zone has an open question,
+        # add a pull_strength-scaled bonus. The brain is drawn back to what
+        # confused it, not just toward novelty.
+        # Scale: max 0.12 — slightly stronger than GWS curiosity (0.10)
+        # because questions are more specific and higher-value targets.
+        if sim_depth > 0 and q60_zone_pull:
+            cur_row, cur_col = divmod(bmu_idx, GRID_W)
+            for action in range(self.n_actions):
+                dr, dc = self._action_offsets[action] if action < len(self._action_offsets) else (0, 0)
+                pr = int(np.clip(cur_row + dr, 0, GRID_W - 1))
+                pc = int(np.clip(cur_col + dc, 0, GRID_W - 1))
+                pred_bmu  = pr * GRID_W + pc
+                # Estimate which zone this predicted BMU falls in
+                # Use the L3 zone for the predicted bmu if available,
+                # otherwise fall back to a rough modulo mapping
+                pred_zone = pred_bmu % 8   # rough zone estimate
+                pull = float(q60_zone_pull.get(pred_zone, 0.0))
+                if pull > 0.0:
+                    q60_bonus = pull * 0.12
+                    sim_values[action] = float(sim_values[action]) + q60_bonus
+
+        # ── 2d. M63 episodic prior — bias from past resolution ────
+        # When M63 recognises this situation (match_strength ≥ 0.60), it
+        # returns an action_prior built from the actions that worked last
+        # time the brain was confused here. This is the hippocampal→PFC
+        # projection: "you've been here before and action X helped."
+        #
+        # The prior is injected as a soft additive bias on sim_values,
+        # scaled by recognition strength (stronger match → stronger bias).
+        # Max contribution: M63_PRIOR_WEIGHT (0.15) × recognition.
+        # This keeps M56 Q-values dominant while episodic memory tilts the
+        # planner toward what worked before — without overriding it.
+        #
+        # Gating: only active when sim_depth > 0 (planner has a real opinion)
+        # and recognition ≥ M63_RECOGNITION_GATE (avoids weak/noisy matches).
+        M63_PRIOR_WEIGHT    = 0.15
+        M63_RECOGNITION_GATE = 0.40   # minimum match strength to apply prior
+        if (sim_depth > 0
+                and m63_recognition >= M63_RECOGNITION_GATE
+                and m63_action_prior is not None):
+            prior = np.asarray(m63_action_prior, dtype=np.float32)
+            if prior.shape[0] == self.n_actions and prior.sum() > 1e-9:
+                # Normalise prior to [0,1] range so it's on the same scale
+                # as sim_values before adding the weighted bias.
+                prior_norm = prior / (prior.sum() + 1e-9)
+                prior_scale = M63_PRIOR_WEIGHT * float(m63_recognition)
+                sim_values = sim_values + prior_scale * prior_norm.astype(np.float32)
 
         # ── 3. Choose planned action ──────────────────────────
         planned_action = int(np.argmax(sim_values)) if sim_depth > 0 else m56_action
@@ -406,6 +477,18 @@ class Planner:
         self._n_steps += 1
         self.t += 1
 
+        # ── 7. Best simulated next BMU — for thought loop ────────
+        # The thought loop (M61) needs to know where M57's best action
+        # predicts the brain will land next step.
+        # This lets Thought form a prediction about the simulated future,
+        # which feeds back into the next simulation cycle.
+        # "I think I'll go East → I imagine being at BMU 20 → what comes after?"
+        if sim_depth > 0 and pred is not None:
+            best_sim_bmu, _ = self._predict_next_bmu_for_action(
+                bmu_idx, final_action, pred)
+        else:
+            best_sim_bmu = bmu_idx   # no simulation — stay put
+
         return {
             'action':              final_action,
             'planned_action':      planned_action,
@@ -415,6 +498,10 @@ class Planner:
             'sim_depth':           sim_depth,
             'plan_vs_habit_delta': plan_vs_habit,
             'tpe_accuracy':        float(tpe_accuracy),
+            'best_sim_bmu':        int(best_sim_bmu),
+            'm63_prior_applied':   (sim_depth > 0
+                                    and float(m63_recognition) >= M63_RECOGNITION_GATE
+                                    and m63_action_prior is not None),
             't':                   self.t,
         }
 

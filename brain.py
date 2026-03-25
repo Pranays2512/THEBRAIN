@@ -160,6 +160,11 @@ from l3_concepts import ConceptLayer
 from l4_position import PositionBelief
 from m58_workingmemory import WorkingMemory
 from global_workspace import GlobalWorkspace
+from m59_selfmodel import SelfModel
+from m60_questions import QuestionMemory
+from m62_consistency import ConsistencyChecker
+from m63_episodic import EpisodicTrace
+from m64_language import LanguageSeed
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -210,6 +215,11 @@ class Brain:
         self.l3        = ConceptLayer(n_zones=8)
         self.wm        = WorkingMemory(n_zones=8, seed=seed)
         self.gws       = GlobalWorkspace(n_zones=8)
+        self.selfmodel  = SelfModel(seed=seed)
+        self.questions  = QuestionMemory(seed=seed)
+        self.consistency = ConsistencyChecker(n_actions=self.action._n_actions, seed=seed)
+        self.episodic    = EpisodicTrace(n_actions=self.action._n_actions, seed=seed)
+        self.language    = LanguageSeed(n_actions=self.action._n_actions, seed=seed)
 
         # L4: position belief module.
         if node_fi is not None:
@@ -253,6 +263,14 @@ class Brain:
         self._prev_zone_for_T      = -1
         self._prev_action_for_T    = -1
         self._prev_prev_zone_for_T = -1   # two steps back — for TC context disambiguation
+
+        # M63 prior cache — previous step's episodic output fed into next M57 call.
+        # Causal order: M63 runs after M57 (records what happened), so its action_prior
+        # feeds into the NEXT step's M57 (biases planning with remembered episode).
+        # Initialised to uniform prior (no episode influence at step 0).
+        _n_act = self.action._n_actions
+        self._last_m63_recognition = 0.0
+        self._last_m63_action_prior = np.ones(_n_act, dtype=np.float64) / _n_act
 
     # ── Main step ─────────────────────────────────────────────
 
@@ -488,6 +506,39 @@ class Brain:
             l4_top_prob        = l4_out['top_prob'],
         )
 
+        # ── 8d. Self-Model (M59) — the brain's mirror ──────────
+        # Runs after GWS so it can read the unified internal state.
+        # Builds a characterisation of what kind of thing the brain
+        # is right now — not what the world looks like, but what the
+        # brain itself looks like from the inside.
+        sm_out = self.selfmodel.step(
+            arousal           = gws_out['arousal'],
+            coherence         = gws_out['coherence'],
+            valence_tone      = gws_out['valence_tone'],
+            curiosity_pull    = gws_out['curiosity_pull'],
+            tension           = gws_out['tension'],
+            surprise_debt     = gws_out['surprise_debt'],
+            thought_confidence= thought_out['thought_confidence'],
+            familiarity       = familiarity,
+            salience          = attn_out['salience'],
+            l4_top_prob       = l4_out['top_prob'],
+            reward            = float(reward),
+        )
+
+        # ── 8e. Question Memory (M60) — store and track confusion ──
+        # Runs after M59. Creates questions when L2 wrong + L4 uncertain
+        # + self-model says confused/curious. Returns zone_pull for M57.
+        q60_out = self.questions.step(
+            prediction_error = raw_error,
+            freq_idx         = freq_idx if freq_idx >= 0 else -1,
+            bmu_idx          = bmu_idx,
+            predicted_bmu    = thought_out['expected_bmu'],
+            l4_top_prob      = l4_out['top_prob'],
+            sm_state_vec     = sm_out['self_state_vec'],
+            sm_state_label   = sm_out['state_label'],
+            reward           = float(reward),
+        )
+
         # ── 9. Action layer (M56) ─────────────────────────────
         # Runs last: reads rpe from V1 and focus signals from Thought.
         # Selects the action for the NEXT step AND updates Q from this
@@ -539,14 +590,167 @@ class Brain:
             l4_top_node        = l4_out['top_node'],
             l4_top_prob        = l4_out['top_prob'],
             l4_confident       = l4_out['confident'],
-            gws_curiosity_pull = gws_out['curiosity_pull'],
-            gws_tension        = gws_out['tension'],
+            gws_curiosity_pull  = gws_out['curiosity_pull'],
+            gws_tension         = gws_out['tension'],
+            self_state_label    = sm_out['state_label'],
+            q60_zone_pull       = q60_out['zone_pull'],
+            m63_action_prior    = self._last_m63_action_prior,
+            m63_recognition     = self._last_m63_recognition,
         )
+
+        # ── M61: THOUGHT LOOP — internal dialogue ────────────────
+        # When M60 has open questions AND the brain is in a state that
+        # benefits from deliberation (confused, curious, stuck, hunting),
+        # run up to M61_MAX_LOOPS additional M57→Thought cycles.
+        #
+        # Each cycle:
+        #   1. M57's best_sim_bmu feeds into Thought as simulated_bmu
+        #   2. Thought updates its prediction_bias toward the simulated future
+        #   3. M57 re-simulates with the updated Thought bias
+        #
+        # This lets the brain dwell on a question — running the simulation
+        # forward in imagination before committing to action.
+        # The final m57_out (last loop iteration) is used for the action.
+        #
+        # Gate conditions:
+        #   - M60 has at least one open question (something to think about)
+        #   - Self-model is in a deliberative state (not 'satisfied'/'drifting')
+        #   - M57 actually simulated this step (sim_depth > 0)
+        #   - Brain is past M57 warmup (planner is active)
+        #
+        # Biological basis: hippocampal-prefrontal theta coupling during
+        # deliberation. When an animal pauses at a choice point, place cells
+        # sweep forward along candidate paths ("vicarious trial and error").
+        # Each sweep is a thought loop cycle — the brain simulates the path
+        # before committing to it. Observed in rats at T-maze decision points.
+        #
+        # M61 parameters
+        M61_MAX_LOOPS        = 2      # max extra simulation cycles per step
+        M61_SIM_WEIGHT_BASE  = 0.40   # how strongly simulated BMU blends into Thought
+        M61_DELIBERATE_LABELS = {'confused', 'curious', 'stuck', 'hunting', 'alert'}
+
+        m61_loops_run     = 0
+        m61_thought_iters = []   # record of each loop's thought_confidence
+        m61_sim_history   = []   # record of each loop's sim_values (for M62)
+
+        if (q60_out['open_count'] > 0
+                and sm_out['state_label'] in M61_DELIBERATE_LABELS
+                and m57_out['sim_depth'] > 0
+                and self.planner.t > 1):   # planner has run at least once
+
+            for _loop in range(M61_MAX_LOOPS):
+                # Step 1: feed M57's simulated next BMU into Thought
+                # sim_weight scales with open question urgency — more questions
+                # = brain is more focused on simulation vs real perception
+                urgency_scale = float(np.clip(q60_out['open_count'] / 4.0, 0.0, 1.0))
+                sim_w = M61_SIM_WEIGHT_BASE * (0.5 + 0.5 * urgency_scale)
+
+                loop_thought_out = self.thought.step(
+                    attended_bmu  = attn_out['attended_bmu'],
+                    bmu_idx       = bmu_idx,
+                    pred          = self.pred,
+                    salience      = attn_out['salience'],
+                    memory        = self.memory,
+                    simulated_bmu = m57_out['best_sim_bmu'],
+                    sim_weight    = sim_w,
+                )
+                m61_thought_iters.append(loop_thought_out['thought_confidence'])
+
+                # Step 2: re-simulate with updated thought bias
+                # The updated prediction_bias from loop_thought_out is now
+                # stored in self.thought._last_prediction_bias and will be
+                # used by pred.step() on the NEXT real step.
+                # For the loop itself, we re-run M57 with updated confidence.
+                loop_m57_out = self.planner.step(
+                    bmu_idx            = bmu_idx,
+                    pred               = self.pred,
+                    valence            = self.valence,
+                    memory             = self.memory,
+                    m56_action         = m56_out['action'],
+                    m56_q_values       = m56_out['q_values'],
+                    thought_confidence = loop_thought_out['thought_confidence'],
+                    focus_entropy      = loop_thought_out['focus_entropy'],
+                    salience           = attn_out['salience'],
+                    l3                 = self.l3,
+                    tpe_accuracy       = _tpe_acc,
+                    prev_zone          = self._prev_zone_for_T,
+                    l4_top_node        = l4_out['top_node'],
+                    l4_top_prob        = l4_out['top_prob'],
+                    l4_confident       = l4_out['confident'],
+                    gws_curiosity_pull  = gws_out['curiosity_pull'],
+                    gws_tension         = gws_out['tension'],
+                    self_state_label    = sm_out['state_label'],
+                    q60_zone_pull       = q60_out['zone_pull'],
+                    m63_action_prior    = self._last_m63_action_prior,
+                    m63_recognition     = self._last_m63_recognition,
+                )
+                m61_loops_run += 1
+                m61_sim_history.append(loop_m57_out['sim_values'].copy())
+
+                # Step 3: if the loop converged (action unchanged, confidence
+                # improved), stop early — no point continuing
+                if (loop_m57_out['action'] == m57_out['action']
+                        and loop_thought_out['thought_confidence']
+                            >= thought_out['thought_confidence']):
+                    m57_out      = loop_m57_out
+                    thought_out  = loop_thought_out
+                    break
+
+                m57_out     = loop_m57_out
+                thought_out = loop_thought_out
 
         self.t += 1
         self._prev_prev_zone_for_T = self._prev_zone_for_T
         self._prev_zone_for_T      = freq_idx
         self._prev_action_for_T    = int(m57_out['action'])
+
+        # ── M62: CONSISTENCY CHECKER — internal critic ─────────────
+        # Runs after M61. Checks whether thought loop iterations agreed.
+        # Produces: consistency score, contradiction zones, plan_modifier.
+        # plan_modifier adjusts planning_weight retroactively for logging.
+        m62_out = self.consistency.step(
+            sim_history      = m61_sim_history,
+            thought_iters    = m61_thought_iters,
+            q60_open_count   = q60_out['open_count'],
+            q60_zone_pull    = q60_out['zone_pull'],
+            sm_state_label   = sm_out['state_label'],
+            planning_active  = m57_out['planning_active'],
+        )
+
+        # ── M63: EPISODIC TRACE — before/after memory ──────────────
+        # Runs after M62. Opens an episode when M60 creates a question,
+        # records actions taken, closes and stores when M60 resolves.
+        # Provides recognition signal + action prior for familiar confusion.
+        m63_out = self.episodic.step(
+            q60_just_created  = q60_out['just_created'],
+            q60_just_resolved = q60_out['just_resolved'],
+            q60_zone_pull     = q60_out['zone_pull'],
+            current_action    = int(m57_out['action']),
+            freq_idx          = freq_idx if freq_idx >= 0 else -1,
+            sm_state_vec      = sm_out['self_state_vec'],
+            sm_state_label    = sm_out['state_label'],
+            prediction_error  = raw_error,
+        )
+
+        # Update M63 cache — fed into next step's M57 as action_prior.
+        self._last_m63_recognition  = float(m63_out['recognition'])
+        self._last_m63_action_prior = m63_out['action_prior'].copy()
+
+        # ── M64: LANGUAGE SEED — situation naming ───────────────────
+        # Runs after M63. Matches current (state_label × zone) to a named
+        # situation tag. Accumulates per-tag action outcome statistics from
+        # M63 episodes. Returns tag_action_prior for M57 and a narrative
+        # string for M61 thought loops.
+        m64_out = self.language.step(
+            sm_state_label    = sm_out['state_label'],
+            sm_state_vec      = sm_out['self_state_vec'],
+            freq_idx          = freq_idx if freq_idx >= 0 else -1,
+            current_action    = int(m57_out['action']),
+            prediction_error  = raw_error,
+            m63_just_closed   = len(m63_out['just_closed']) > 0,
+            m63_episode       = m63_out['just_closed'][0] if m63_out['just_closed'] else None,
+            q60_just_resolved = q60_out['just_resolved'],
+        )
 
         # ── 9. Return unified output ──────────────────────────
         return {
@@ -645,6 +849,55 @@ class Brain:
             'gws_readiness':         gws_out['readiness'],
             'gws_ignited':           gws_out['ignited'],
             'gws_ignition_rate':     gws_out['ignition_rate'],
+            # Self-Model (M59) — the brain's mirror
+            'sm_state_label':        sm_out['state_label'],
+            'sm_state_vec':          sm_out['self_state_vec'],
+            'sm_state_changed':      sm_out['state_changed'],
+            'sm_steps_in_state':     sm_out['steps_in_state'],
+            'sm_past_similarity':    sm_out['past_similarity'],
+            'sm_been_here_before':   sm_out['been_here_before'],
+            'sm_steps_since_similar':sm_out['steps_since_similar'],
+            'sm_urgency':            sm_out['self_state_dict']['urgency'],
+            'sm_clarity':            sm_out['self_state_dict']['clarity'],
+            'sm_drive':              sm_out['self_state_dict']['drive'],
+            'sm_novelty':            sm_out['self_state_dict']['novelty'],
+            'sm_stability':          sm_out['self_state_dict']['stability'],
+            'sm_confidence':         sm_out['self_state_dict']['confidence'],
+            'sm_frustration':        sm_out['self_state_dict']['frustration'],
+            'sm_engagement':         sm_out['self_state_dict']['engagement'],
+            # Question Memory (M60) — directed curiosity
+            'q60_open_count':        q60_out['open_count'],
+            'q60_zone_pull':         q60_out['zone_pull'],
+            'q60_active_question':   q60_out['active_question'],
+            'q60_just_resolved':     q60_out['just_resolved'],
+            'q60_total_resolved':    q60_out['total_resolved'],
+            'q60_just_created':      q60_out['just_created'],
+            # Planner — best simulated next BMU (for diagnostics)
+            'best_sim_bmu':          m57_out['best_sim_bmu'],
+            # Thought loop (M61) — internal dialogue
+            'm61_loops_run':         m61_loops_run,
+            'm61_thought_iters':     m61_thought_iters,
+            # Consistency Checker (M62) — internal critic
+            'm62_consistency':       m62_out['consistency'],
+            'm62_consistency_ema':   m62_out['consistency_ema'],
+            'm62_contradiction_zones': m62_out['contradiction_zones'],
+            'm62_plan_modifier':     m62_out['plan_modifier'],
+            'm62_active':            m62_out['active'],
+            # Episodic Trace (M63) — before/after memory
+            'm63_recognition':       m63_out['recognition'],
+            'm63_action_prior':      m63_out['action_prior'],
+            'm63_episode_open':      m63_out['episode_open'],
+            'm63_episodes_total':    m63_out['episodes_total'],
+            'm63_best_zone':         m63_out['best_zone'],
+            'm63_just_closed':       m63_out['just_closed'],
+            # M63 → M57 prior feedback (did episodic memory bias planning this step?)
+            'm63_prior_applied':     m57_out['m63_prior_applied'],
+            # Language Seed (M64) — situation naming and composed narrative
+            'm64_situation_tag':     m64_out['situation_tag'],
+            'm64_tag_action_prior':  m64_out['tag_action_prior'],
+            'm64_tag_confidence':    m64_out['tag_confidence'],
+            'm64_narrative':         m64_out['narrative'],
+            'm64_tags_total':        m64_out['tags_total'],
         }
 
     # ── Convenience accessors ─────────────────────────────────

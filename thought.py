@@ -274,11 +274,13 @@ class Thought:
     # ── Main step ─────────────────────────────────────────────
 
     def step(self,
-             attended_bmu: int,
-             bmu_idx:      int,
-             pred,                       # SequencePredictor instance or None
-             salience:     float = 0.0,
-             memory        = None,       # AssociativeMemory instance or None
+             attended_bmu:  int,
+             bmu_idx:       int,
+             pred,                        # SequencePredictor instance or None
+             salience:      float = 0.0,
+             memory         = None,       # AssociativeMemory instance or None
+             simulated_bmu: int   = -1,   # M61: simulated next BMU from M57
+             sim_weight:    float = 0.0,  # M61: how much to blend simulated into attended
              ) -> dict:
         """
         One Thought step.
@@ -330,6 +332,25 @@ class Thought:
 
         self._expectation_error_history.append(expectation_error)
         self._last_expectation_error = expectation_error
+
+        # ── M61: blend simulated BMU into attended_bmu ───────────
+        # When the thought loop is active (sim_weight > 0), Thought
+        # partially shifts its attention from the real attended_bmu
+        # to the simulated next BMU from M57.
+        # This is the internal perception — the brain "sees" where
+        # it thinks it's going before it goes there.
+        # sim_weight=0.0 → pure real perception (default, unchanged)
+        # sim_weight=1.0 → pure simulation (full internal focus)
+        # Intermediate values blend both sources.
+        # Biologically: PFC active maintenance of anticipated state
+        # alongside current sensory input — prospective coding.
+        if simulated_bmu >= 0 and sim_weight > 0.0:
+            sw = float(np.clip(sim_weight, 0.0, 1.0))
+            # Weighted blend: pick simulated if random draw < sim_weight
+            # This is a soft probabilistic blend, not a hard switch.
+            # It preserves attended_bmu's influence at low sim_weight.
+            if np.random.random() < sw:
+                attended_bmu = int(simulated_bmu)
 
         # ── 2. Build prediction_bias: blend L2 + M55 ────────────
         # L2  source: top_predictions(attended_bmu) — temporal sequence memory
