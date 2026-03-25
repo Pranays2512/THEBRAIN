@@ -57,6 +57,14 @@ L4_TM_WARMUP         = 25     # min transitions before TM trusted
 L4_CTM_WARMUP        = 12     # lower — context pairs visited less often
 L4_CONFIDENCE_THRESH = 0.60   # min top_prob for confident output
 L4_ENTROPY_SMOOTH    = 0.05   # EMA smoothing for entropy
+
+# ── World 5 scaling overrides ──────────────────────────────────
+# 16-node worlds need slower decay (0.02 leaks belief to uniform too
+# fast — after 50 steps belief is nearly flat) and lower CTM warmup
+# (64 context pairs vs 32 in World 3, each visited less often).
+# These are set by Brain.__init__ when node_fi has > 12 nodes.
+L4_BELIEF_DECAY_LARGE_WORLD = 0.005
+L4_CTM_WARMUP_LARGE_WORLD   = 6
 """
 
 import numpy as np
@@ -70,6 +78,10 @@ L4_TM_WARMUP         = 25
 L4_CTM_WARMUP        = 12
 L4_CONFIDENCE_THRESH = 0.60
 L4_ENTROPY_SMOOTH    = 0.05
+
+# World-5 scaling overrides (applied by Brain for n_nodes > 12)
+L4_BELIEF_DECAY_LARGE_WORLD = 0.005
+L4_CTM_WARMUP_LARGE_WORLD   = 6
 
 
 # ═══════════════════════════════════════════════════════════════

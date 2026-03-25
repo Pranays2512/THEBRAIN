@@ -50,12 +50,11 @@ from collections import deque
 
 # ── Imports ──────────────────────────────────────────────────
 try:
-    from attention import (
+    from evaluators import (
         Attention,
-        N_NEURONS, GRID_H, GRID_W,
         W_SURPRISE, W_QE, W_CURIOSITY, W_FAMILIARITY,
         SALIENCE_EMA_ALPHA, SALIENCE_EMA_INIT,
-        GATE_SIGMA, GATE_BASELINE, GATE_BOOST,
+        GATE_SIGMA, GATE_BASELINE, GATE_BOOST
     )
 except Exception as e:
     print(f"  [SKIP] attention.py import failed: {type(e).__name__}: {e}")

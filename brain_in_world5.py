@@ -15,8 +15,8 @@ import sys, time
 import numpy as np
 from collections import deque, Counter
 
-sys.path.insert(0, '/home/claude')
-sys.path.insert(1, '/mnt/user-data/uploads')
+# sys.path.insert(0, '/mnt/user-data/uploads')   # cloud-only, not needed locally
+# sys.path.insert(0, '/home/claude')              # cloud-only, not needed locally
 
 from m50_neuron import (
     run_sim, build_reverse_lookup, make_blocks,
@@ -135,6 +135,11 @@ def run_open_loop(brain, library):
     print(f"\n  L3 zones assigned: {n}/64 BMUs mapped.")
     brain.action._e[:] = brain.action._e_f[:] = 0.0
     brain.action._transition_action = -1
+    brain.action.t = 0   # reset step counter so EPSILON_WARMUP_STEPS applies
+                         # to closed-loop steps, not open-loop steps.
+                         # Without this: open loop consumes 12k of the 15k warmup
+                         # budget, leaving only 3k steps of exploration before
+                         # epsilon drops to EPSILON_MIN on a cold Q table.
     brain.valence._reward_ema = 0.0
     brain.l3._zone_visit_ema[:] = 0.0
     brain.l3._recompute_zone_values()
@@ -195,7 +200,29 @@ def run_closed_loop(brain, world, library):
                 reward=reward, familiarity=out['familiarity'],
                 food_freq_idx=next_freq_idx, food_node=info['node'],
             )
+            # ── FIX 3: L4 anchor reset on food collection ──────
+            if brain.l4 is not None:
+                brain.l4.reset_to_node(info['node'])
+            # Set the Q_f override hint for the food node step itself.
+            brain._node_fi_override_hint = info['node']
             wfood += 1
+        else:
+            # ── FIX 4: Proactive override hint via L4 confidence ──
+            # Previously the override hint was ONLY set at food collection,
+            # meaning all approach steps to H/P still wrote to shared Q_f[7]
+            # and corrupted each other. Now: when L4 is confident (>0.55)
+            # that the brain is AT a registered food node (H or P), set the
+            # hint proactively so those steps read/write the dedicated override
+            # row — not the shared fi=7 row. This stops H-approach and
+            # P-approach steps from cancelling each other in Q_f[7].
+            l4_node = out.get('l4_top_node')
+            l4_prob = out.get('l4_top_prob', 0.0)
+            if (l4_node is not None
+                    and l4_prob >= 0.55
+                    and l4_node in brain.action._node_fi_override_row):
+                brain._node_fi_override_hint = l4_node
+            else:
+                brain._node_fi_override_hint = None
 
         if info['wall_hit']: wwalls += 1
         prev_wall_hit = info['wall_hit']
@@ -257,6 +284,22 @@ def run_closed_loop(brain, world, library):
                     star = '★' if node in FOOD_NODES else ' '
                     parts.append(f"{node}{star}:{act[0]}{chk}")
                 print(f"    {'  '.join(parts)}")
+
+            # Q_f diagnostics — show best action and value per frequency
+            qf = brain.action._Q_f
+            qf_diag = []
+            for fi in range(8):
+                ba = int(np.argmax(qf[fi]))
+                bv = float(qf[fi, ba])
+                qf_diag.append(f"fi{fi}:{ACTION_NAMES[ba][0]}({bv:+.3f})")
+            print(f"    Q_f: {' '.join(qf_diag)}")
+            # Show Q_f[7] in detail (food frequency — both H★ and P★)
+            print(f"    Q_f[7] N={qf[7,0]:+.3f} E={qf[7,1]:+.3f} "
+                  f"S={qf[7,2]:+.3f} W={qf[7,3]:+.3f}")
+            # M57 stats
+            print(f"    M57: active={out['planning_active']} "
+                  f"weight={out['planning_weight']:.3f} "
+                  f"rate={brain.planner.planning_rate()*100:.1f}%")
             print()
 
             food_per_win.append(wfood); wall_per_win.append(wwalls)
@@ -348,6 +391,20 @@ if __name__ == '__main__':
     brain   = Brain(seed=SEED, node_fi=node_fi)
     world   = World5(seed=SEED)
     brain.action._Q_f[:] = 0.0
+
+    # ── FIX 1: Register dedicated Q_f rows for aliased food nodes ──
+    # H and P share fi=7. Without this, every H visit and every P visit
+    # both write to Q_f[7], causing the row to average across both nodes
+    # and lose all directional signal. After this call, replay_on_reward
+    # and wall penalties for H write to Q_f[8], for P to Q_f[9].
+    brain.action.set_node_fi_override(list(FOOD_NODES))
+
+    # ── FIX 2: initialise node override hint to None ──
+    # brain.step() reads this each step via getattr.
+    # The closed-loop runner sets it to the current food node when the
+    # brain is at a food node (so Q_f reads the right row), and clears
+    # it when the brain moves away.
+    brain._node_fi_override_hint = None
 
     run_open_loop(brain, library)
     results = run_closed_loop(brain, world, library)

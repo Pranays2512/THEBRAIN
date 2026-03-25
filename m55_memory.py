@@ -289,8 +289,8 @@ class AssociativeMemory:
             # L2 → M55 feedback: curiosity scales write strength
             # Novel sequences (high curiosity) → stronger memory consolidation
             # V1 → M55 feedback: positive RPE also boosts write strength
-            # Better-than-expected outcomes → stronger hippocampal LTP
-            from valence import RPE_M55_BOOST
+            # Better-than-expected outcomes → stronger
+            from evaluators import RPE_M55_BOOST
             eta_effective = ETA_HEBB * (
                 1.0
                 + CURIOSITY_HEBB_BOOST * float(curiosity)

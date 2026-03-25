@@ -73,16 +73,14 @@ HISTORY_LEN           = 200
 # Q-learning lets it solidify the A→B→C→E★ path before M57 can interfere.
 # The W7 spike to 19.38 food/100 happened when M56 was strong — then M57
 # turned on at 30k and thrashed the policy down to 3.14 by W10.
-M57_WARMUP_STEPS  = 80_000  # raised: M57's L3 zone signal can't distinguish E★ from K★
-                             # (both zone 4) until Q_f has directional signal from wall
-                             # penalty learning. At 50k M57 activates and steers the brain
-                             # back toward "zone 4" which reinforces K corridor exploitation.
+M57_WARMUP_STEPS  = 80_000  # M57 drives the food spike at steps 80-100k.
+                             # Zone-level planning helps when Q_f has built signal.
 
 # M57 only overrides M56 when its planned sim_value exceeds M56's
 # current Q-value by at least this margin.
 # At 0.02: M57 needs to be meaningfully better, not just randomly higher.
 # This prevents M57 from suppressing a correct M56 habit with noisy sims.
-PLAN_MERIT_THRESH = 0.50   # raised from 0.25: M57 must have a much stronger opinion
+PLAN_MERIT_THRESH = 0.50   # M57 must have meaningfully stronger opinion
                            # (best simulated action beats 2nd-best by 50% of sim range)
                            # before it is allowed to influence action selection.
                            # At 0.25, noisy uniform-ish sim_values with tiny diffs still

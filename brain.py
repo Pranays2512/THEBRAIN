@@ -151,9 +151,7 @@ import numpy as np
 from m56_cortex import CortexM56
 from m55_memory import AssociativeMemory
 from l2_predictor import SequencePredictor
-from attention import Attention
-from thought import Thought
-from valence import Valence
+from evaluators import Attention, Thought, Valence
 from m56_action import ActionLayer
 from m57_planner import Planner
 from l3_concepts import ConceptLayer
@@ -237,6 +235,12 @@ class Brain:
             _m56.L4_Q_N_ALIASED_NODES = {
                 n for n, fi in node_fi.items() if fi_counts[fi] > 1
             }
+            # Large-world scaling: slower L4 belief decay and lower CTM warmup
+            # for worlds with >12 nodes (e.g. World 5's 16-node grid).
+            if len(node_fi) > 12:
+                import l4_position as _l4
+                _l4.L4_BELIEF_DECAY = _l4.L4_BELIEF_DECAY_LARGE_WORLD
+                _l4.L4_CTM_WARMUP   = _l4.L4_CTM_WARMUP_LARGE_WORLD
         else:
             self.l4 = None   # L4 inactive — backward compatible
 
@@ -558,6 +562,7 @@ class Brain:
             l4_top_prob        = l4_out['top_prob'],
             epsilon_floor      = max(wm_out['epsilon_floor'],
                                      gws_out['epsilon_boost']),  # best of M58 + GWS
+            node_fi_override   = getattr(self, '_node_fi_override_hint', None),
         )
 
         # ── 10. Planner (M57) — mental simulation / look-ahead ──

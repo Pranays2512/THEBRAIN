@@ -108,12 +108,17 @@ from collections import deque
 # PARAMETERS
 # ═══════════════════════════════════════════════════════════════
 
-WM_BUFFER_LEN         = 16
+WM_BUFFER_LEN         = 24   # raised from 16: 4×4 grid has longer paths (6+ steps)
 WM_ZONE_EMA_ALPHA     = 0.15
 WM_MAX_HUNGER         = 40
-BOREDOM_EPSILON_SCALE = 0.20
+BOREDOM_EPSILON_SCALE = 0.10  # restored slightly: W04-W07 dead-zone needs a real kick
+                              # when boredom fires, epsilon should move meaningfully
 HUNGER_EPSILON_SCALE  = 0.10
-BOREDOM_GATE_THRESH   = 0.50
+BOREDOM_GATE_THRESH   = 0.52  # FIXED: was 0.80, never fired (boredom sits at 0.56-0.77).
+                              # 0.52 activates during dead-zone episodes (boredom>0.56)
+                              # but stays silent at 0.38 (healthy broad exploration W08).
+                              # Calibrated from the run trace: W04-W07 boredom was 0.72-0.76
+                              # — exactly the regime where the brain needed a push out.
 N_ZONES               = 8     # must match ConceptLayer / M56 N_ZONES
 
 
