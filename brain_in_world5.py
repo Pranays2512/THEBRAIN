@@ -152,6 +152,8 @@ def run_closed_loop(brain, world, library):
 
     _m56_warmup = _m56.L4_Q_N_WARMUP
     world.reset()
+    if brain.l4 is not None:
+        brain.l4.reset_to_node('A')
     counters   = {}
     food_per_win = []; wall_per_win = []
     wfood = wwalls = 0
@@ -164,6 +166,7 @@ def run_closed_loop(brain, world, library):
 
     freq_hz        = world.current_freq
     pending_reward = 0.0
+    pending_l4_reset = None
     prev_wall_hit  = False
     h_found = p_found = False
 
@@ -177,8 +180,16 @@ def run_closed_loop(brain, world, library):
             plv_vector=plv, reward=pending_reward,
             freq_idx=bucketed_fi, world_moved=actual_moved,
         )
+        if pending_l4_reset is not None and brain.l4 is not None:
+            brain.l4.replay_from_anchor(pending_l4_reset)
+            brain.l4.reset_to_node(pending_l4_reset)
+        pending_l4_reset = None
+
         pending_reward = 0.0
         action = int(out['action'])
+
+        # L4 evaluates its belief of where the brain is CURRENTLY, before the action.
+        true_node_at_t = world.current_node
 
         if bucketed_fi >= 0:
             win_action_counts[bucketed_fi][action] += 1
@@ -201,8 +212,8 @@ def run_closed_loop(brain, world, library):
                 food_freq_idx=next_freq_idx, food_node=info['node'],
             )
             # ── FIX 3: L4 anchor reset on food collection ──────
-            if brain.l4 is not None:
-                brain.l4.reset_to_node(info['node'])
+            # Deferred until after brain.step() so we don't corrupt the incoming transition
+            pending_l4_reset = info['node']
             # Set the Q_f override hint for the food node step itself.
             brain._node_fi_override_hint = info['node']
             wfood += 1
@@ -228,11 +239,10 @@ def run_closed_loop(brain, world, library):
         prev_wall_hit = info['wall_hit']
 
         if brain.l4 is not None:
-            true_node = world.current_node
             l4_top    = out.get('l4_top_node')
             if l4_top is not None:
                 l4_total_win += 1; l4_total_total += 1
-                if l4_top == true_node:
+                if l4_top == true_node_at_t:
                     l4_correct_win += 1; l4_correct_total += 1
 
         freq_hz = next_freq_hz

@@ -111,7 +111,7 @@ from collections import deque
 WM_BUFFER_LEN         = 24   # raised from 16: 4×4 grid has longer paths (6+ steps)
 WM_ZONE_EMA_ALPHA     = 0.15
 WM_MAX_HUNGER         = 40
-BOREDOM_EPSILON_SCALE = 0.10  # restored slightly: W04-W07 dead-zone needs a real kick
+BOREDOM_EPSILON_SCALE = 0.20  # raised to push epsilon meaningfully out of dead-zones
                               # when boredom fires, epsilon should move meaningfully
 HUNGER_EPSILON_SCALE  = 0.10
 BOREDOM_GATE_THRESH   = 0.52  # FIXED: was 0.80, never fired (boredom sits at 0.56-0.77).

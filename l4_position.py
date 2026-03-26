@@ -109,6 +109,7 @@ class PositionBelief:
 
         # ── Belief ────────────────────────────────────────────
         self._belief = np.ones(self.n_nodes, dtype=np.float64) / self.n_nodes
+        self._prev_belief_for_nntm = np.ones(self.n_nodes, dtype=np.float64) / self.n_nodes
 
         # P(fi | node): exact — 1.0 if node sounds like fi, else 0
         self._sound_likelihood = np.zeros((self.n_nodes, n_freqs), dtype=np.float64)
@@ -131,18 +132,43 @@ class PositionBelief:
                                   dtype=np.float64) / n_freqs
         self._CTM_n    = np.zeros((N_CTX, n_actions), dtype=np.int32)
 
-        # ── NTM: node-level belief-weighted transition model ──
-        self._NTM      = np.zeros((self.n_nodes, n_actions, n_freqs),
-                                   dtype=np.float64)
-        self._NTM_norm = np.ones((self.n_nodes, n_actions, n_freqs),
-                                  dtype=np.float64) / n_freqs
-        self._NTM_n    = np.zeros((self.n_nodes, n_actions), dtype=np.int32)
+        # ── NNTM: Node-to-Node topological transition model ──
+        self._NNTM      = np.zeros((self.n_nodes, n_actions, self.n_nodes), dtype=np.float64)
+        self._NNTM_norm = np.ones((self.n_nodes, n_actions, self.n_nodes), dtype=np.float64) / self.n_nodes
+        self._NNTM_n    = np.zeros((self.n_nodes, n_actions), dtype=np.float64)
+
+        # EXPERIMENTAL PROOF: Provide actual topology to NNTM instead of learning it via noisy forward aliased signals.
+        # This proves that if L4 knew the topological edges (which it mathematically cannot learn in a purely forward online pass with fully aliased observations), tracking would be perfect.
+        # if self.n_nodes == 16:
+        #     try:
+        #         import world5
+        #         action_names = ['North', 'East', 'South', 'West']
+        #         for src, edges in world5.ADJACENCY.items():
+        #             ni = self._node_to_idx.get(src, -1)
+        #             if ni >= 0:
+        #                 for act_str, dest in edges.items():
+        #                     a = action_names.index(act_str)
+        #                     nj = self._node_to_idx.get(dest, -1)
+        #                     if nj >= 0:
+        #                         self._NNTM_n[ni, a] = 10.0  # warmed up
+        #                         self._NNTM_norm[ni, a, :] = 0.0
+        #                         self._NNTM_norm[ni, a, nj] = 1.0
+        #     except ImportError:
+        #         pass
+
+        # ── WM: Wall model ────────────────────────────────────
+        self._WM_hits  = np.zeros((self.n_nodes, n_actions), dtype=np.float64)
+        self._WM_tries = np.zeros((self.n_nodes, n_actions), dtype=np.float64)
 
         # ── State ─────────────────────────────────────────────
         self._prev_fi      = -1
         self._prev_prev_fi = -1   # TWO steps back — for CTM context
         self._prev_action  = -1
         self.t             = 0
+
+        # Hippocampal replay buffer for backward NNTM learning
+        from collections import deque
+        self._history = deque(maxlen=16)
 
         # ── Output cache ──────────────────────────────────────
         self._top_node       = self.nodes[0]
@@ -172,11 +198,23 @@ class PositionBelief:
             self.t += 1
             return self._make_output()
 
-        # ── 1. Learn from the just-completed transition ───────
-        # prev_fi --[prev_action]--> curr_fi (we just arrived at curr_fi)
-        if world_moved and self._prev_fi >= 0 and self._prev_action >= 0:
+        # ── 1. Update Wall Model ──────────────────────────────
+        if action >= 0:
+            for ni in range(self.n_nodes):
+                w = float(self._belief[ni])
+                if w < 1e-4: continue
+                self._WM_tries[ni, action] += w
+                if not world_moved:
+                    self._WM_hits[ni, action] += w
+
+        # ── 1b. Learn from the just-completed transition ───────
+        # prev_fi --[action]--> curr_fi (we just arrived at curr_fi)
+        if world_moved and self._prev_fi >= 0 and action >= 0:
             fi_p = self._prev_fi
-            a    = self._prev_action
+            a    = action
+            
+            # Cache the previous belief vector for NNTM update at the end of the step
+            self._prev_belief_for_nntm = self._belief.copy()
 
             # TM update
             self._TM[fi_p, a, curr_fi] += 1.0
@@ -192,19 +230,22 @@ class PositionBelief:
                 if s > 0: self._CTM_norm[ctx, a] = row / s
                 self._CTM_n[ctx, a] += 1
 
-            # NTM update — belief-weighted over nodes that match fi_p
+        # ── 2a. Wall Prior update ─────────────────────────────
+        if action >= 0:
+            wall_likelihood = np.ones(self.n_nodes, dtype=np.float64)
             for ni in range(self.n_nodes):
-                if self.node_fi[self.nodes[ni]] != fi_p: continue
-                w = float(self._belief[ni])
-                if w < 1e-6: continue
-                self._NTM[ni, a, curr_fi] += w
-                row = self._NTM[ni, a]; s = row.sum()
-                if s > 0: self._NTM_norm[ni, a] = row / s
-                self._NTM_n[ni, a] += 1
+                t_w = self._WM_tries[ni, action]
+                if t_w >= 1.0:
+                    p_wall = self._WM_hits[ni, action] / t_w
+                    p_obs  = p_wall if not world_moved else (1.0 - p_wall)
+                    wall_likelihood[ni] = max(0.01, p_obs)
+            self._belief *= wall_likelihood
+            if self._belief.sum() > 1e-12:
+                self._belief /= self._belief.sum()
 
-        # ── 2. Transition prior: propagate belief forward ─────
-        if world_moved and self._prev_action >= 0 and self._prev_fi >= 0:
-            a      = self._prev_action
+        # ── 2b. Transition prior: propagate belief forward ─────
+        if world_moved and action >= 0 and self._prev_fi >= 0:
+            a      = action
             fi_prv = self._prev_fi
 
             new_prior = np.zeros(self.n_nodes, dtype=np.float64)
@@ -214,27 +255,27 @@ class PositionBelief:
                 if b_i < 1e-8: continue
                 fi_i = self.node_fi[self.nodes[ni]]
 
-                # Pick deepest available model for this node
+                # Top priority: Topological Node-to-Node Model (NNTM)
+                # Requires sufficient specific observations of this origin node + action
+                if self._NNTM_n[ni, a] >= 3.0:
+                    for nj in range(self.n_nodes):
+                        new_prior[nj] += b_i * self._NNTM_norm[ni, a, nj]
+                    continue
+
+                # Fallbacks: frequency-based prediction models
                 tm_row = None
 
-                # CTM: use when (prev_prev_fi, fi_i) context has data
-                # Only applicable when current node sounds like fi_prv
-                # (because CTM context is prev_prev → prev → curr, and
-                # we're computing the prior for nodes at the prev position)
+                # CTM: Context-Transition Model
                 if self._prev_prev_fi >= 0 and fi_i == fi_prv:
                     ctx = self._prev_prev_fi * self.n_freqs + fi_i
                     if self._CTM_n[ctx, a] >= L4_CTM_WARMUP:
                         tm_row = self._CTM_norm[ctx, a]
 
-                # NTM fallback
-                if tm_row is None and self._NTM_n[ni, a] >= L4_TM_WARMUP:
-                    tm_row = self._NTM_norm[ni, a]
-
-                # TM fallback
+                # TM: Global zone-level fallback
                 if tm_row is None:
                     tm_row = self._TM_norm[fi_i, a]
 
-                # Distribute mass over candidate next-nodes
+                # Distribute frequency-prediction mass over all nodes sharing that frequency
                 for fi_j in range(self.n_freqs):
                     p = float(tm_row[fi_j])
                     if p < 1e-8: continue
@@ -259,11 +300,35 @@ class PositionBelief:
                         + L4_BELIEF_DECAY / self.n_nodes)
         self._belief /= self._belief.sum()
 
+        # ── 4b. Update NNTM using posterior over destination ─────
+        if world_moved and self._prev_fi >= 0 and action >= 0:
+            a = action
+            for ni in range(self.n_nodes):
+                w_i = float(self._prev_belief_for_nntm[ni])
+                if w_i < 1e-4: continue
+                # Update transition to where we actually arrived
+                for nj in range(self.n_nodes):
+                    w_j = float(self._belief[nj])
+                    if w_j < 1e-4: continue
+                    self._NNTM[ni, a, nj] += w_i * w_j
+                
+                self._NNTM_n[ni, a] += w_i
+                row = self._NNTM[ni, a]; s = row.sum()
+                if s > 0: self._NNTM_norm[ni, a] = row / s
+
         # ── 5. Advance state ──────────────────────────────────
         self._prev_prev_fi = self._prev_fi
         self._prev_fi      = curr_fi
         self._prev_action  = action
         self.t            += 1
+        
+        # Store transition in replay buffer for backward smoothing
+        if world_moved and action >= 0:
+            self._history.append({
+                'prev_belief': self._prev_belief_for_nntm.copy(),
+                'action': action,
+                'curr_fi': curr_fi,
+            })
 
         return self._make_output()
 
@@ -307,12 +372,47 @@ class PositionBelief:
         if node in self._node_to_idx:
             self._belief[:] = 0.0
             self._belief[self._node_to_idx[node]] = 1.0
+            self._prev_belief_for_nntm = self._belief.copy()
+            self._history.clear()
 
+    def replay_from_anchor(self, anchor_node: str) -> None:
+        if anchor_node not in self._node_to_idx: return
+        
+        # Certainty at anchor = 1.0. Walk backward, decaying certainty.
+        certainty = 1.0
+        curr_dist = np.zeros(self.n_nodes)
+        curr_dist[self._node_to_idx[anchor_node]] = 1.0
+        
+        for entry in reversed(list(self._history)):
+            prev_b = entry['prev_belief']
+            a      = entry['action']
+            
+            # Update NNTM: for each possible origin, we know destination = curr_dist
+            for ni in range(self.n_nodes):
+                w_i = float(prev_b[ni])
+                if w_i < 1e-4: continue
+                for nj in range(self.n_nodes):
+                    if curr_dist[nj] < 1e-4: continue
+                    self._NNTM[ni, a, nj] += certainty * w_i * curr_dist[nj]
+                self._NNTM_n[ni, a] += certainty * w_i
+                
+                row = self._NNTM[ni, a]; s = row.sum()
+                if s > 0: self._NNTM_norm[ni, a] = row / s
+            
+            # Propagate backward: new curr_dist = prev_b weighted by certainty
+            certainty *= 0.85  # decay — steps far from anchor are less reliable
+            curr_dist = prev_b * certainty
+            s = curr_dist.sum()
+            if s > 1e-9: curr_dist /= s
+            else: break
+                
     def reset_uniform(self) -> None:
         self._belief[:] = 1.0 / self.n_nodes
         self._prev_fi      = -1
         self._prev_prev_fi = -1
         self._prev_action  = -1
+        self._prev_belief_for_nntm = self._belief.copy()
+        self._history.clear()
 
     # ── Diagnostics ───────────────────────────────────────────
 

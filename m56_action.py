@@ -239,11 +239,11 @@ CONFLICT_Q_MIN      = 0.02   # must have learned something (Q[best] > this)
 #   Below this per-node count, Q_f is used unchanged even if L4 is
 #   confident. Prevents cold Q_n from degrading a working Q_f policy.
 #   At 30: ~3× the minimum needed for Q_f to show meaningful signal.
-L4_Q_BLEND_THRESH         = 0.45  # lowered: need Q_n to activate in World 5
-L4_Q_BLEND_THRESH_ALIASED = 0.45  # same lower threshold — World 5 is fully aliased
-L4_Q_BLEND_MAX    = 0.50   # raised: let Q_n fully override Q_f when L4 is confident
+L4_Q_BLEND_THRESH         = 0.35  # lowered: need Q_n to activate in World 5
+L4_Q_BLEND_THRESH_ALIASED = 0.35  # same lower threshold — World 5 is fully aliased
+L4_Q_BLEND_MAX    = 0.70   # raised: let Q_n fully override Q_f when L4 is confident
                            # (Q_f[7] is useless at food nodes — both H and P write to it)
-L4_Q_N_WARMUP     = 10     # FIXED: lowered from 15. With anchor resets giving clean L4
+L4_Q_N_WARMUP     = 5      # FIXED: lowered from 15. With anchor resets giving clean L4
                            # beliefs at food nodes, Q_n accumulates reliable samples fast.
                            # 10 anchored observations is enough to trust Q_n['H'/'P'].
 
@@ -251,7 +251,7 @@ L4_Q_N_WARMUP     = 10     # FIXED: lowered from 15. With anchor resets giving c
 # When L4 is confident the brain is at a registered food node, Q_n update gets this
 # multiplier. Rationale: Q_f[7] averages H and P signals and is structurally noisy;
 # Q_n[H] and Q_n[P] are clean — they just need to learn faster to compensate.
-L4_Q_N_FOOD_AMP   = 4.0   # 4× normal ETA_Q at food nodes. After 10 visits: Q_n[H,N]≈+0.8
+L4_Q_N_FOOD_AMP   = 6.0   # 4× normal ETA_Q at food nodes. After 10 visits: Q_n[H,N]≈+0.8
                            # ~15 confident hits per food node in 200k steps.
                            # 50 was effectively disabling Q_n for the entire run.
 
@@ -470,8 +470,25 @@ class ActionLayer:
                 q_effective = q_row.copy()
                 self._current_node_override = None
         elif freq_idx >= 0:
-            q_effective = self._Q_f[freq_idx].copy()
-            self._current_node_override = None
+            # Special case: shared food frequency — use override rows directly
+            if freq_idx == 7 and self._node_fi_override_row:
+                # Blend override rows by L4 belief when available, else use equal weight
+                q_effective = np.zeros(self._n_actions, dtype=np.float32)
+                total_weight = 0.0
+                for node, ov_row in self._node_fi_override_row.items():
+                    # Weight by L4 belief for this node if available
+                    if l4_top_node == node and l4_top_prob > 0.2:
+                        w = float(l4_top_prob)
+                    else:
+                        w = 0.5  # equal fallback
+                    q_effective += w * self._Q_f[ov_row]
+                    total_weight += w
+                if total_weight > 1e-6:
+                    q_effective /= total_weight
+                self._current_node_override = None
+            else:
+                q_effective = self._Q_f[freq_idx].copy()
+                self._current_node_override = None
         else:
             q_effective = q_row.copy()
             self._current_node_override = None
@@ -588,6 +605,18 @@ class ActionLayer:
                 ov_row = self._node_override_row(self._prev_node_override)
             if ov_row >= 0:
                 self._e_f[ov_row, self._current_action] = 1.0
+            elif self._prev_freq_idx == 7 and self._node_fi_override_row:
+                # Distribute trace to override rows instead of shared fi=7
+                l4_top_node = getattr(self, '_l4_node_at_select', None)
+                l4_top_prob = getattr(self, '_l4_prob_at_select', 0.0)
+                for node, orow in self._node_fi_override_row.items():
+                    if l4_top_node == node and l4_top_prob > 0.2:
+                        w = l4_top_prob
+                    else:
+                        w = 0.5
+                    self._e_f[orow, self._current_action] = max(
+                        self._e_f[orow, self._current_action], float(w)
+                    )
             else:
                 self._e_f[self._prev_freq_idx, self._current_action] = 1.0
 
@@ -595,9 +624,16 @@ class ActionLayer:
         self._Q += ETA_Q * rpe * self._e
         np.clip(self._Q, Q_MIN, Q_MAX, out=self._Q)
 
-        # ── 3b. Update Q_f via eligibility trace (food only) ─
+        # ── 3b. Update Q_f via eligibility trace ─────────────
         if rpe >= 0.0:
-            self._Q_f += ETA_Q * rpe * self._e_f
+            # Row 7 is permanently silenced for positive credit.
+            # Override rows 8/9 (H, P) receive credit normally via _e_f.
+            for row in range(len(self._Q_f)):
+                if row == 7:
+                    continue  # shared fi=7 — never gets positive credit
+                if self._e_f[row].max() < 1e-6:
+                    continue  # skip unvisited rows
+                self._Q_f[row] += ETA_Q * rpe * self._e_f[row]
             np.clip(self._Q_f, Q_MIN, Q_MAX, out=self._Q_f)
 
         # ── 3b-wall. Direct wall penalty on Q_f ──────────────
@@ -611,14 +647,26 @@ class ActionLayer:
         if (not world_moved and self._current_freq_idx >= 0 and rpe < 0.0):
             fi = self._current_freq_idx
             a  = self._current_action
-            self._Q_f[fi, a] = float(np.clip(
-                self._Q_f[fi, a] + 2.0 * ETA_Q * rpe, Q_MIN, Q_MAX))
-            # Also penalise the node-specific override row if registered
             if self._current_node_override is not None:
                 ov_row = self._node_override_row(self._current_node_override)
                 if ov_row >= 0:
                     self._Q_f[ov_row, a] = float(np.clip(
                         self._Q_f[ov_row, a] + 2.0 * ETA_Q * rpe, Q_MIN, Q_MAX))
+            elif fi == 7 and self._node_fi_override_row:
+                # Distribute direct wall penalty to override rows based on belief
+                l4_top_node = getattr(self, '_l4_node_at_select', None)
+                l4_top_prob = getattr(self, '_l4_prob_at_select', 0.0)
+                for node, orow in self._node_fi_override_row.items():
+                    if l4_top_node == node and l4_top_prob > 0.2:
+                        w = float(l4_top_prob)
+                    else:
+                        w = 0.5
+                    self._Q_f[orow, a] = float(np.clip(
+                        self._Q_f[orow, a] + 2.0 * ETA_Q * rpe * w, Q_MIN, Q_MAX))
+            else:
+                if fi != 7: # extra safety just to be sure we never write to 7
+                    self._Q_f[fi, a] = float(np.clip(
+                        self._Q_f[fi, a] + 2.0 * ETA_Q * rpe, Q_MIN, Q_MAX))
 
         # ── 3b-wall-n. Direct wall penalty on Q_n (L4-gated) ─
         # Without this, Q_n learns food-approach actions but never learns
