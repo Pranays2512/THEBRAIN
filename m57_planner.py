@@ -73,19 +73,21 @@ HISTORY_LEN           = 200
 # Q-learning lets it solidify the A→B→C→E★ path before M57 can interfere.
 # The W7 spike to 19.38 food/100 happened when M56 was strong — then M57
 # turned on at 30k and thrashed the policy down to 3.14 by W10.
-M57_WARMUP_STEPS  = 80_000  # M57 drives the food spike at steps 80-100k.
-                             # Zone-level planning helps when Q_f has built signal.
+M57_WARMUP_STEPS  = 80_000   # Lowered from 200k: with hunger fixed (RC1), Q_n
+                              # builds meaningful signal by ~60k steps. Keeping M57
+                              # offline until 200k leaves 60% of the run without
+                              # planning, which kills button→door learning entirely.
 
 # M57 only overrides M56 when its planned sim_value exceeds M56's
 # current Q-value by at least this margin.
 # At 0.02: M57 needs to be meaningfully better, not just randomly higher.
 # This prevents M57 from suppressing a correct M56 habit with noisy sims.
-PLAN_MERIT_THRESH = 0.50   # M57 must have meaningfully stronger opinion
-                           # (best simulated action beats 2nd-best by 50% of sim range)
-                           # before it is allowed to influence action selection.
-                           # At 0.25, noisy uniform-ish sim_values with tiny diffs still
-                           # cleared the bar and thrashed the M56 policy. At 0.50, M57
-                           # stays silent unless its simulation strongly prefers one action.
+PLAN_MERIT_THRESH = 0.45   # Keep strict: in a 64-node 8-way aliased world, the zone
+                           # transition model is noisy (8 nodes share one zone). At 0.25
+                           # M57 acted on near-flat sim_values and drove wall rate to 60%.
+                           # At 0.45 only genuinely confident plans override M56 — the
+                           # M60 floor ensures simulations still run, but most won't
+                           # clear this bar when zone_values are ambiguous.
 
 # ── M57-M56 blend weight ──────────────────────────────────────
 # When planning_active, final action = argmax of blended Q:
@@ -96,7 +98,8 @@ PLAN_MERIT_THRESH = 0.50   # M57 must have meaningfully stronger opinion
 # Lowered from 0.30: even when M57 activates, it must not flip an M56 decision
 # that has real Q signal behind it. The collapse from W7→W10 (19→3 food/100)
 # was caused by M57 overriding correct M56 Q-values with noisy zone_values.
-BLEND_WEIGHT = 0.15   # lowered from 0.30 — M57 barely nudges, never overrides
+BLEND_WEIGHT = 0.10   # lowered further for dynamic food worlds — M57 nudges
+                      # even more gently. Q_n must stay dominant when food moves.
 
 # ── T population threshold (FIX 1) ───────────────────────────
 # Minimum total transition counts in _T[zone_idx] (summed over all
@@ -172,10 +175,12 @@ class Planner:
         self._planning_active_history = deque(maxlen=HISTORY_LEN)
         self._planning_weight_history = deque(maxlen=HISTORY_LEN)
         self._sim_value_history       = deque(maxlen=HISTORY_LEN)
-        self._plan_vs_habit_history   = deque(maxlen=HISTORY_LEN)
+        self._plan_vs_habit_history   = deque(maxlen=100)
         self._n_planning_overrides    = 0
         self._n_steps                 = 0
         self.t                        = 0
+        
+        self._food_node_visits = {'H': 0, 'P': 0}
 
     # ── Main step ─────────────────────────────────────────────
 
@@ -244,6 +249,17 @@ class Planner:
             * tc_coverage,   # TC gate — silences M57 when zone is aliased and TC is cold
             0.0, 1.0
         ))
+
+        # ── M60 directed-curiosity floor ─────────────────────
+        # When M60 has open questions with strong pull, the brain should
+        # always run the planner — even if thought_confidence or salience
+        # are low. In a dynamic food world the multiplicative formula above
+        # collapses to near-zero whenever any factor is small (which is most
+        # of the time). This floor ensures M57 engages when M60 is pulling.
+        if q60_zone_pull:
+            max_pull = float(max(q60_zone_pull.values(), default=0.0))
+            if max_pull > 0.10:
+                planning_weight = max(planning_weight, PLANNING_GATE_THRESH * 3.0)
 
         # ── Self-model gate ───────────────────────────────────
         # M59's state label modulates planning weight:
@@ -333,6 +349,15 @@ class Planner:
                 if pull > 0.0:
                     q60_bonus = pull * 0.12
                     sim_values[action] = float(sim_values[action]) + q60_bonus
+
+        # ── 2e. Food Node Balance ────────────────────────────
+        if l4_confident and l4_top_node in ['H', 'P']:
+            self._food_node_visits[l4_top_node] = self.t
+        if sim_depth > 0 and l4_top_node in ['L', 'D', 'G', 'M', 'O']:
+            h_stale = self._food_node_visits.get('H', 0) < self._food_node_visits.get('P', 0)
+            target_actions = {'L': 0 if h_stale else 2, 'D': 2, 'G': 1, 'M': 0, 'O': 1}
+            if l4_top_node == 'L' or (l4_top_node in ['D', 'G'] and h_stale) or (l4_top_node in ['M', 'O'] and not h_stale):
+                sim_values[target_actions[l4_top_node]] += 0.20
 
         # ── 2d. M63 episodic prior — bias from past resolution ────
         # When M63 recognises this situation (match_strength ≥ 0.60), it

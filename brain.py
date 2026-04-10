@@ -1,149 +1,75 @@
 """
-BRAIN — Integrated Cognitive Stack with Global Workspace  (v11)
+BRAIN — Integrated Cognitive Stack with Global Workspace  (v12)
 =============================================================
 
-v11: Global Workspace (GWS) integration layer added.
+v12: MULTIMODAL SENSING — second sensory modality (texture) added.
 
-All module signals now converge into a single unified internal state
-before action selection. This is the integration that turns a pipeline
-of modules into something with a coherent "moment" — arousal, valence
-tone, and curiosity pull all exist simultaneously and shape behavior
-together, not sequentially.
+New modules:
+  M51  (m51_texture.py)         — TextureSense: converts raw texture value
+                                   to a 16-dim input vector for M54b.
+  M54b (m54b_texture_cortex.py) — TextureCortex: 4×4 SOM that maps texture
+                                   inputs to 16 BMU indices (bmu_texture).
+  M65  (m65_fusion.py)          — MultimodalFusion: combines sound + texture
+                                   observations into a fused likelihood vector
+                                   for L4's Bayesian belief update.
 
-New module: gws.py — GlobalWorkspace
-  Reads: qe_norm, familiarity, prediction_error, thought_confidence,
-         rpe, intrinsic_rwd, corridor_boredom, steps_since_reward,
-         salience, l4_top_prob
-  Broadcasts:
-    arousal        — global activation (noradrenaline tone)
-    valence_tone   — motivational direction (dopamine baseline)
-    curiosity_pull — directed pull toward unresolved zones
-    epsilon_boost  — additive exploration from global state
+HOW IT PLUGS IN
+---------------
+Two new parameters on Brain.step():
+  texture_val   : float  — raw texture value from world (world.current_texture
+                           or info['texture'] from world.step()). Default 0.5
+                           so old harnesses work unchanged (no texture signal).
+  texture_active: bool   — whether to use texture this step. Default True
+                           when texture_val is provided, False otherwise.
+                           Allows graceful degradation if sensor missing.
 
-New behavior: curiosity is now a PULL not just epsilon noise.
-  When L2's prediction error is high at a zone, GWS accumulates
-  surprise_debt for that zone. The debt vector becomes curiosity_pull
-  — a directed bias toward zones the brain doesn't understand yet.
-  The brain is drawn back toward what confused it, not just toward
-  random novelty.
-
-Call order (per step):
-  1-8b. All existing modules unchanged.
-  8c.   gws.step() — integrates all signals simultaneously.
-  9.    action.step(epsilon_floor=max(wm_floor, gws_boost)) — combined floor.
-
-This file owns the cognitive modules, wires their feedback loops,
-and hosts Attention, Thought, Valence, M56 (ActionLayer), and
-M57 (Planner — mental simulation / look-ahead).
-
-M50 (the ear) stays separate — it feeds INTO Brain.step(), not inside it.
-
-ARCHITECTURE
-------------
-                    ┌──────────────────────────────────────┐
-  M50 (ear)  ──────▶│              Brain                   │
-                    │                                      │
-                    │  CortexM54  (M54)                    │
-                    │      │ bmu_idx, qe_norm               │
-                    │      ▼                                │
-                    │  AssociativeMemory (M55)              │
-                    │      │ familiarity                    │
-                    │      ▼                                │
-                    │  SequencePredictor (L2)               │
-                    │      │                                │
-                    │   surprise_signal ────────────────────┼──▶ M54 (next step)
-                    │   curiosity_delta ────────────────────┼──▶ M55 (next step)
-                    │      │                                │
-                    │      ▼                                │
-                    │  Attention                            │
-                    │      │ salience, salience_delta,      │
-                    │      │ attention_gate, attended_bmu   │
-                    └──────────────────────────────────────┘
-
-FEEDBACK LOOPS
---------------
-Loop 1 — L2 → M54 (sequence surprise → cortical plasticity)
-  Signal: surprise_signal = max(0, prediction_error − error_ema)
-  Delta of prediction_error above its own running baseline.
-  ~0 when stable, spikes when error suddenly increases above normal.
-
-Loop 2 — L2 → M55 (curiosity → memory consolidation)
-  Signal: curiosity_delta = max(0, curiosity − curiosity_ema)
-  Same delta principle applied to L2's curiosity EMA.
-
-ATTENTION
----------
-Attention sits above all three modules. It reads Brain's outputs each
-step and produces:
-  salience        — how much to attend this moment [0,1]
-  salience_delta  — spike above EMA (delta rule, safe for downstream)
-  attention_gate  — spatial soft mask over the 64-neuron BMU space (64,)
-  attended_bmu    — which BMU has the highest gate weight
-  gate_entropy    — how focused the gate is (0=focused, 1=diffuse)
-
-Attention does NOT feed back into M54/M55/L2 in this version.
-It is informational — available for Thought or other higher modules.
-
-CALL ORDER (per step)
----------------------
-1. pred.predict()                                    ← prediction BEFORE cortex fires
-2. cortex.step(..., prediction_error=surprise_sig)   ← M54 learns (delta-boosted)
-3. memory.step(..., curiosity=curiosity_delta)        ← M55 writes (delta-boosted)
-4. memory.recall(bmu_idx)                            ← get familiarity for L2
-5. pred.step(bmu_idx, ..., prediction_bias)          ← L2 learns + Thought bias applied
-6. update EMAs, compute deltas for NEXT step         ← store feedback state
-7. attention.step(..., thought_confidence_delta)     ← Attention reads all + Thought suppression
-8. thought.step(attended_bmu, bmu_idx, pred, ...)    ← Thought reads Attention, stores for next step
-9. action.step(bmu_idx, rpe, focus_entropy, ...)     ← M56 updates Q + selects next action
+New output keys (all prefixed m51_, m54b_, m65_):
+  m51_texture_val       — raw texture value received
+  m51_texture_noisy     — noisy version M54b saw
+  m54b_bmu_texture      — which texture neuron fired (0-15)
+  m54b_qe_norm          — texture cortex perceptual surprise
+  m65_fused_likelihood  — per-node fused observation (n_nodes,)
+  m65_sound_weight      — effective sound weight in fusion
+  m65_texture_weight    — effective texture weight in fusion
+  m65_texture_conf      — how discriminating the texture signal was
+  m65_fusion_active     — whether fusion has passed warmup
 
 BACKWARD COMPATIBILITY
 ----------------------
-All module files work identically standalone. Attention is instantiated
-inside Brain — callers do not need to manage it separately.
+All existing output keys are unchanged.
+Brain.step() signature extended with optional texture_val=0.5 and
+texture_active=True — existing harnesses need no changes.
 
-Old code reading any existing Brain key continues to work unchanged.
-New Attention keys are additive.
+If Brain is constructed without multimodal=True (default), M51/M54b/M65
+are not instantiated and the new output keys are filled with zero stubs.
+This keeps the module set identical to v11 for non-texture worlds.
 
-USAGE
------
-  from brain import Brain
+Call this with multimodal=True for World5:
+  brain = Brain(seed=42, node_fi=node_fi_dict, multimodal=True,
+                node_tex=node_tex_dict)
 
-  brain = Brain(seed=42)
-
-  result = brain.step(
-      decoded_freq = fused,
-      stability_w  = w,
-      novelty_flag = float(nov),
-      plv_vector   = plv_slow,
-  )
-
-  # Existing keys (unchanged)
-  result['bmu_idx']          # M54 — which neuron fired
-  result['qe_norm']          # M54 — perceptual surprise
-  result['familiarity']      # M55 — recognition signal
-  result['prediction_error'] # L2  — raw sequence error (informational)
-  result['curiosity']        # L2  — raw curiosity EMA (informational)
-  result['surprise_signal']  # Brain — delta fed into M54
-  result['curiosity_delta']  # Brain — delta fed into M55
-  result['error_ema']        # Brain — prediction error baseline
-  result['curiosity_ema']    # Brain — curiosity baseline
-
-  # Attention keys (unchanged)
-  result['salience']         # Attention — how much to attend this step
-  result['salience_ema']     # Attention — smoothed salience
-  result['salience_delta']   # Attention — spike above EMA
-  result['attention_gate']   # Attention — (64,) spatial soft mask
-  result['attended_bmu']     # Attention — most attended neuron
-  result['gate_entropy']     # Attention — gate focus (0=focused, 1=diffuse)
-
-  # Thought keys (new)
-  result['expected_bmu']        # Thought — BMU Thought expects to fire next
-  result['prediction_bias']     # Thought — (64,) soft distribution for L2 next step
-  result['thought_confidence']  # Thought — how concentrated the prediction is
-  result['confidence_ema']      # Thought — smoothed confidence
-  result['confidence_delta']    # Thought — spike above EMA (fed to Attention next step)
-  result['expectation_error']   # Thought — was last prediction close to actual?
-  result['focus_entropy']       # Thought — prediction spread (0=certain, 1=uniform)
+CALL ORDER (per step, new steps shown with ★)
+---------------------------------------------
+1. pred.predict()
+2. cortex.step()                      ← M54 (sound)
+★2b. texture_sense.step()             ← M51 (texture input prep)
+★2c. texture_cortex.step()            ← M54b (texture SOM)
+★2d. fusion.step()                    ← M65 (sound × texture → L4)
+3. memory.step()
+4. memory.recall()
+5. pred.step()
+5b. L3 concept layer
+5c. L4.step() with fused_likelihood   ← L4 now uses both signals ★
+6. feedback deltas
+6b. Valence
+7. Attention
+8. Thought
+8b. WorkingMemory
+8c. GlobalWorkspace
+8d. SelfModel
+8e. QuestionMemory
+9. M56 action
+10. M57 planner + M61 + M62 + M63 + M64
 """
 
 import numpy as np
@@ -164,18 +90,18 @@ from m62_consistency import ConsistencyChecker
 from m63_episodic import EpisodicTrace
 from m64_language import LanguageSeed
 
+# ── NEW v12 imports ──────────────────────────────────────────
+from m51_texture import TextureSense
+from m54b_texture_cortex import TextureCortex
+from m65_fusion import MultimodalFusion
+
 
 # ═══════════════════════════════════════════════════════════════
-# FEEDBACK PARAMETERS
+# FEEDBACK PARAMETERS (unchanged from v11)
 # ═══════════════════════════════════════════════════════════════
 
-# EMA alpha for the running baseline of prediction_error and curiosity.
-# tau = 1/alpha steps. At 0.10: tau ~10 steps (~0.5s at dt=0.05).
-# Fast enough to track transitions, slow enough not to chase step noise.
 FEEDBACK_EMA_ALPHA = 0.10
-
-# Initial EMA value. Set to 1.0 (ceiling) so cold-start deltas are ~0.
-FEEDBACK_EMA_INIT = 1.0
+FEEDBACK_EMA_INIT  = 1.0
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -186,22 +112,18 @@ class Brain:
     """
     Integrated M54 + M55 + L2 + Attention cognitive stack.
 
-    Feedback signals fed into M54 and M55 are the DELTA of L2's outputs
-    above their running EMA baseline — not the raw values. This prevents
-    the SOM from being permanently destabilised by L2's structurally-high
-    baseline error in a many-BMU environment.
-
-    Attention is instantiated and run inside Brain every step.
-    It reads Brain outputs and produces salience + gate signals.
-    It does NOT modify M54, M55, or L2.
+    v12: Multimodal sensing added (M51 + M54b + M65).
 
     Parameters
     ----------
-    seed : int
-        Random seed passed to all modules that accept one.
+    seed       : int  — random seed
+    node_fi    : dict — node name → freq_index (for L4)
+    multimodal : bool — enable M51/M54b/M65 (default False for backward compat)
+    node_tex   : dict — node name → texture value (required if multimodal=True)
     """
 
-    def __init__(self, seed: int = 42, node_fi: dict = None):
+    def __init__(self, seed: int = 42, node_fi: dict = None,
+                 multimodal: bool = False, node_tex: dict = None):
         self.cortex    = CortexM56(seed=seed)
         self.memory    = AssociativeMemory(seed=seed)
         self.pred      = SequencePredictor()
@@ -219,13 +141,9 @@ class Brain:
         self.episodic    = EpisodicTrace(n_actions=self.action._n_actions, seed=seed)
         self.language    = LanguageSeed(n_actions=self.action._n_actions, seed=seed)
 
-        # L4: position belief module.
+        # ── L4: position belief ───────────────────────────────
         if node_fi is not None:
             self.l4 = PositionBelief(node_fi=node_fi)
-            # Tell ActionLayer about node frequency uniqueness for Q_n gating.
-            # Unique nodes (fi shared by no other node) use standard threshold.
-            # Aliased nodes (fi shared with another node) use higher threshold —
-            # L4 must be more certain before Q_n is trusted for these nodes.
             from collections import Counter as _Counter
             fi_counts = _Counter(node_fi.values())
             import m56_action as _m56
@@ -235,84 +153,94 @@ class Brain:
             _m56.L4_Q_N_ALIASED_NODES = {
                 n for n, fi in node_fi.items() if fi_counts[fi] > 1
             }
-            # Large-world scaling: slower L4 belief decay and lower CTM warmup
-            # for worlds with >12 nodes (e.g. World 5's 16-node grid).
             if len(node_fi) > 12:
                 import l4_position as _l4
                 _l4.L4_BELIEF_DECAY = _l4.L4_BELIEF_DECAY_LARGE_WORLD
                 _l4.L4_CTM_WARMUP   = _l4.L4_CTM_WARMUP_LARGE_WORLD
         else:
-            self.l4 = None   # L4 inactive — backward compatible
+            self.l4 = None
 
-        # freq_bmu_counters[fi][bmu] = visit count — fed to L3.assign_zones periodically
+        # ── NEW v12: Multimodal modules ───────────────────────
+        self._multimodal = multimodal
+        if multimodal:
+            if node_tex is None:
+                raise ValueError(
+                    "Brain(multimodal=True) requires node_tex dict. "
+                    "Pass node_tex=world5.NODE_TEXTURES."
+                )
+            if node_fi is None:
+                raise ValueError(
+                    "Brain(multimodal=True) requires node_fi dict."
+                )
+            self.texture_sense  = TextureSense(seed=seed)
+            self.texture_cortex = TextureCortex(seed=seed)
+            self.fusion         = MultimodalFusion(
+                node_fi   = node_fi,
+                node_tex  = node_tex,
+                n_tex_bins = 8,
+                seed       = seed,
+            )
+        else:
+            self.texture_sense  = None
+            self.texture_cortex = None
+            self.fusion         = None
+
+        # ── freq_bmu_counters ─────────────────────────────────
         from collections import Counter
         self._freq_bmu_counters = [Counter() for _ in range(8)]
-        self._l3_zone_interval  = 2000   # reassign zones every N steps
+        self._l3_zone_interval  = 2000
 
-        # Running EMAs for computing delta signals.
+        # ── Feedback state ────────────────────────────────────
         self._error_ema     = float(FEEDBACK_EMA_INIT)
         self._curiosity_ema = float(FEEDBACK_EMA_INIT)
-
-        # One-step-delayed delta signals fed into modules (start at 0).
         self._last_surprise_signal  = 0.0
         self._last_curiosity_delta  = 0.0
-        self._last_rpe_positive     = 0.0   # V1 → M55 next step
-        self._last_familiarity      = 0.0   # M55 → M54 next step (LTD suppression)
-
-        # Raw L2 outputs from last step (diagnostics).
+        self._last_rpe_positive     = 0.0
+        self._last_familiarity      = 0.0
         self._last_prediction_error = 0.0
         self._last_curiosity        = 0.0
 
         self.t = 0
         self._prev_zone_for_T      = -1
         self._prev_action_for_T    = -1
-        self._prev_prev_zone_for_T = -1   # two steps back — for TC context disambiguation
+        self._prev_prev_zone_for_T = -1
 
-        # M63 prior cache — previous step's episodic output fed into next M57 call.
-        # Causal order: M63 runs after M57 (records what happened), so its action_prior
-        # feeds into the NEXT step's M57 (biases planning with remembered episode).
-        # Initialised to uniform prior (no episode influence at step 0).
         _n_act = self.action._n_actions
-        self._last_m63_recognition = 0.0
+        self._last_m63_recognition  = 0.0
         self._last_m63_action_prior = np.ones(_n_act, dtype=np.float64) / _n_act
+
+        # ── Food trajectory store (for hippocampal replay) ────
+        # Snapshots of M56's replay buffer at each food event.
+        # Each entry: {'trajectory': [(prev_bmu, curr_bmu, action, fi, l4_node, explore),...],
+        #              'food_node': str, 'reward': float}
+        from collections import deque as _dq
+        self._food_trajectories = _dq(maxlen=10)
 
     # ── Main step ─────────────────────────────────────────────
 
     def step(self,
-             decoded_freq: float,
-             stability_w:  float,
-             novelty_flag: float,
-             plv_vector:   np.ndarray,
-             reward:       float = 0.0,
-             freq_idx:     int   = -1,
-             world_moved:  bool  = True) -> dict:
+             decoded_freq:   float,
+             stability_w:    float,
+             novelty_flag:   float,
+             plv_vector:     np.ndarray,
+             reward:         float = 0.0,
+             freq_idx:       int   = -1,
+             world_moved:    bool  = True,
+             texture_val:    float = 0.5,    # NEW v12 — texture from world
+             texture_active: bool  = False,  # NEW v12 — False = no texture signal
+             ) -> dict:
         """
-        One full cognitive step: perception → memory → prediction →
-        feedback → attention.
+        One full cognitive step. All v11 parameters unchanged.
 
-        Parameters
-        ----------
-        decoded_freq : float    — fused frequency from M50 (Hz)
-        stability_w  : float    — signal stability weight [0,1]
-        novelty_flag : float    — CUSUM regime-change flag from M50
-        plv_vector   : ndarray  — raw PLV components from M50
-
-        Returns
-        -------
-        dict with all signals from all modules.
-
-        M54 keys:      bmu_idx, bmu_pos, qe, qe_norm, sigma, eta, is_novel
-        M55 keys:      familiarity, top_associations, wrote
-        L2 raw keys:   prediction_error, correct, predicted_bmu,
-                       confidence, curiosity
-        Feedback keys: surprise_signal, curiosity_delta, error_ema, curiosity_ema
-        Attention keys: salience, salience_ema, salience_delta,
-                        attention_gate, attended_bmu, gate_entropy
+        New parameters
+        --------------
+        texture_val    : float — raw texture value from world.current_texture
+                                 or info['texture'] from world.step().
+                                 Ignored if texture_active=False.
+        texture_active : bool  — True when a real texture reading is available.
+                                 Set to False in open-loop or non-texture steps.
         """
-        # ── 0. Update action-conditioned zone transition model ─
-        # Also record whether the transition was correctly predicted (TPE).
-        # Both calls are gated on world_moved — wall hits don't update the
-        # transition model and don't count as prediction opportunities.
+        # ── 0. Zone transition update ─────────────────────────
         if world_moved and self._prev_zone_for_T >= 0 and self._prev_action_for_T >= 0 and freq_idx >= 0:
             self.l3.update_action_transition(
                 prev_zone      = self._prev_zone_for_T,
@@ -330,58 +258,73 @@ class Brain:
         # ── 1. Predict BEFORE cortex fires ────────────────────
         pred_out = self.pred.predict()
 
-        # ── 2. Cortex fires (M54) — with delta feedback ───────
+        # ── 2. Cortex fires (M54 — sound) ────────────────────
         cortex_out = self.cortex.step(
             decoded_freq     = decoded_freq,
             stability_w      = stability_w,
             novelty_flag     = novelty_flag,
             plv_vector       = plv_vector,
-            prediction_error = self._last_surprise_signal,   # delta, not raw
-            familiarity      = self._last_familiarity,       # M55 → M54 LTD
+            prediction_error = self._last_surprise_signal,
+            familiarity      = self._last_familiarity,
         )
-
         bmu_idx = cortex_out['bmu_idx']
         qe_norm = cortex_out['qe_norm']
 
-        # ── 3. Memory update (M55) — with delta feedback ──────
+        # ── 2b-d. Texture pipeline (M51 → M54b → M65) — NEW v12 ──
+        if self._multimodal and texture_active:
+            m51_out  = self.texture_sense.step(texture_val)
+            m54b_out = self.texture_cortex.step(
+                texture_vec = m51_out['texture_vec'],
+                texture_val = float(texture_val),
+            )
+            m65_out = self.fusion.step(
+                curr_fi            = freq_idx if freq_idx >= 0 else -1,
+                texture_likelihood = m54b_out['texture_likelihood'],
+                tex_bin            = m54b_out['tex_bin'],
+                sound_qe_norm      = qe_norm,
+                tex_qe_norm        = m54b_out['qe_norm'],
+            )
+        else:
+            # Stubs — no texture signal
+            m51_out  = {'texture_val': texture_val, 'texture_noisy': texture_val}
+            m54b_out = {'bmu_texture': 0, 'qe_norm': 0.0}
+            m65_out  = {
+                'fused_likelihood':  None,
+                'sound_weight':      1.0,
+                'texture_weight':    0.0,
+                'texture_confidence': 0.0,
+                'fusion_active':     False,
+                'n_tex_matching':    self.fusion.n_nodes if self.fusion else 0,
+            }
+
+        # ── 3. Memory update (M55) ────────────────────────────
         mem_out = self.memory.step(
             bmu_idx      = bmu_idx,
             qe_norm      = qe_norm,
-            curiosity    = self._last_curiosity_delta,          # delta, not raw
-            rpe_positive = self._last_rpe_positive,             # V1 → M55
+            curiosity    = self._last_curiosity_delta,
+            rpe_positive = self._last_rpe_positive,
         )
 
-        # ── 4. Recall — get familiarity for L2 ────────────────
+        # ── 4. Recall — familiarity ───────────────────────────
         recall_out  = self.memory.recall(bmu_idx)
         familiarity = recall_out['familiarity']
-
-        # Store familiarity for M54 on the NEXT step (LTD suppression).
-        # Fed next-step so M54's suppression is based on how well-known
-        # this BMU region WAS before it fired, not during firing.
         self._last_familiarity = familiarity
 
-        # ── 5. L2 learns and outputs raw signals ──────────────
-        # Pass last_action and world_moved so L2's PA matrix learns
-        # action-conditioned transitions (v2 feature).
-        # _prev_action_for_T is the action taken before this step.
-        # world_moved is whether that action caused a real transition.
+        # ── 5. L2 learns ──────────────────────────────────────
         l2_out = self.pred.step(
-            bmu_idx          = bmu_idx,
-            qe_norm          = qe_norm,
-            familiarity      = familiarity,
-            prediction_bias  = self.thought._last_prediction_bias,
-            last_action      = self._prev_action_for_T,
-            world_moved      = world_moved,
+            bmu_idx         = bmu_idx,
+            qe_norm         = qe_norm,
+            familiarity     = familiarity,
+            prediction_bias = self.thought._last_prediction_bias,
+            last_action     = self._prev_action_for_T,
+            world_moved     = world_moved,
         )
-
         raw_error     = l2_out['prediction_error']
         raw_curiosity = l2_out['curiosity']
 
-        # ── 5b. L3 Concept Layer — zone tracking ──────────────
-        # Update freq_bmu_counters if ground-truth freq_idx supplied.
+        # ── 5b. L3 concept layer ──────────────────────────────
         if freq_idx >= 0:
             self._freq_bmu_counters[freq_idx][bmu_idx] += 1
-            # Periodic zone reassignment after warmup
             if (self.t >= 5000 and self.t % self._l3_zone_interval == 0):
                 self.l3.assign_zones_from_counters(self._freq_bmu_counters)
 
@@ -391,33 +334,54 @@ class Brain:
             l2_scores = l3_scores,
             freq_idx  = freq_idx,
         )
-        # Update zone visit EMA every step — drives curiosity bonus in zone_value.
-        # Uses bucketed freq_idx (sound-derived) so the brain tracks which zones
-        # it has been spending time in, without needing ground-truth labels.
         visit_zone = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
         if visit_zone >= 0:
             self.l3.update_zone_visit(visit_zone)
 
         if reward != 0.0:
-            # Credit the zone where food IS (current freq_idx) — this tells
-            # L3/M57 "zone 4 contains food", which is correct for planning.
-            # TD credit (Q learning) correctly uses the previous action via
-            # M56's eligibility trace — that's separate from zone valuation.
             zone_for_reward = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
             self.l3.update_zone_reward(zone_for_reward, reward)
 
-        # ── 5c. L4 Position Belief — Bayesian location tracking ──
-        # L4 updates its belief distribution over all nodes using the
-        # observed frequency and the action taken last step.
-        # It learns the transition model from experience — no map given.
-        # When confident (top_prob > L4_CONFIDENCE_THRESH), its top_node
-        # estimate grounds M57's planning in a specific location.
+        # ── 5c. L4 Position Belief — with optional fusion ─────
+        # v12: if fusion is active, apply fused_likelihood as an
+        # additional observation update BEFORE L4's own sound update.
+        # L4's internal sound_likelihood handles the sound part;
+        # we apply the texture component here as a belief multiplier.
         if self.l4 is not None:
             l4_out = self.l4.step(
                 curr_fi     = freq_idx if freq_idx >= 0 else -1,
                 action      = self._prev_action_for_T,
                 world_moved = world_moved,
             )
+            # ── NEW v12: Apply texture likelihood to L4 belief ──
+            # After L4's standard sound update, multiply belief by
+            # the texture component from M65. This is "late fusion":
+            # L4 does its sound update first, then texture refines it.
+            # We access L4's internal belief and update it directly.
+            if (self._multimodal and texture_active
+                    and m65_out['fusion_active']
+                    and m65_out['fused_likelihood'] is not None):
+                fused = m65_out['fused_likelihood']
+                # Texture-only component = fused / sound component
+                # (to avoid double-counting sound which L4 already applied)
+                # Instead: multiply belief by tex_obs (node tex bin match)
+                tex_w = m65_out['texture_weight']
+                if tex_w > 0.01:
+                    # Build texture-only likelihood per node
+                    tex_bin = m54b_out['tex_bin']
+                    tex_like = np.array([
+                        1.0 if self.fusion._node_tex_bin[i] == tex_bin
+                        else 0.10
+                        for i in range(self.fusion.n_nodes)
+                    ], dtype=np.float64)
+                    # Apply with texture weight as exponent (soft update)
+                    tex_update = tex_like ** tex_w
+                    self.l4._belief *= tex_update
+                    s = self.l4._belief.sum()
+                    if s > 1e-12:
+                        self.l4._belief /= s
+                    # Refresh L4 output with updated belief
+                    l4_out = self.l4._make_output()
         else:
             l4_out = {
                 'top_node':       None,
@@ -427,30 +391,19 @@ class Brain:
                 'belief_vector':  None,
             }
 
-        # ── 6. Compute delta signals, update EMAs ─────────────
-        # Delta = how much the signal ROSE above its own running average.
-        # Clipped to [0, 1]: only upward spikes propagate.
-        # EMA updated AFTER delta so we compare against pre-existing baseline.
+        # ── 6. Feedback deltas ────────────────────────────────
         surprise_signal = float(np.clip(raw_error     - self._error_ema,     0.0, 1.0))
         curiosity_delta = float(np.clip(raw_curiosity  - self._curiosity_ema, 0.0, 1.0))
-
         self._error_ema     = ((1.0 - FEEDBACK_EMA_ALPHA) * self._error_ema
                                + FEEDBACK_EMA_ALPHA * raw_error)
         self._curiosity_ema = ((1.0 - FEEDBACK_EMA_ALPHA) * self._curiosity_ema
                                + FEEDBACK_EMA_ALPHA * raw_curiosity)
-
-        # Store for NEXT step
         self._last_surprise_signal  = surprise_signal
         self._last_curiosity_delta  = curiosity_delta
         self._last_prediction_error = raw_error
         self._last_curiosity        = raw_curiosity
 
-        # ── 6b. Valence (V1) — reward prediction error ────────
-        # Runs after L2 (needs prediction_error) and before Attention.
-        # Computes RPE from intrinsic reward (1 - prediction_error) and
-        # optional external reward. Produces pos_rpe for M55 next step.
-        # Call order: V1 at t → pos_rpe stored → fed to M55 at t+1.
-        # Same next-step pattern as surprise_signal and curiosity_delta.
+        # ── 6b. Valence ───────────────────────────────────────
         v1_out = self.valence.step(
             prediction_error = raw_error,
             reward           = float(reward),
@@ -458,7 +411,7 @@ class Brain:
         )
         self._last_rpe_positive = v1_out['pos_rpe']
 
-        # ── 7. Attention reads all outputs ────────────────────
+        # ── 7. Attention ──────────────────────────────────────
         attn_out = self.attention.step(
             bmu_idx                  = bmu_idx,
             qe_norm                  = qe_norm,
@@ -468,11 +421,7 @@ class Brain:
             thought_confidence_delta = self.thought._last_confidence_delta,
         )
 
-        # ── 8. Thought reads Attention output ─────────────────
-        # Thought queries L2's sequence memory from attended_bmu and
-        # builds a prediction_bias for the NEXT step's L2 context,
-        # and a confidence_delta for the NEXT step's Attention salience.
-        # v6: also passes memory so Thought can blend M55 associations.
+        # ── 8. Thought ────────────────────────────────────────
         thought_out = self.thought.step(
             attended_bmu = attn_out['attended_bmu'],
             bmu_idx      = bmu_idx,
@@ -481,21 +430,14 @@ class Brain:
             memory       = self.memory,
         )
 
-        # ── 8b. Working Memory (M58) — trajectory buffer ──────
-        # Runs before M56 so epsilon_floor is available for action selection.
-        # Records (freq_idx, action, reward) for this step.
-        # _prev_action_for_T is the action taken to reach the current state.
+        # ── 8b. Working Memory ────────────────────────────────
         wm_out = self.wm.step(
             freq_idx = freq_idx if freq_idx >= 0 else -1,
             action   = self._prev_action_for_T,
             reward   = float(reward),
         )
 
-        # ── 8c. Global Workspace — unified integration ─────────
-        # All signals from all modules exist here simultaneously.
-        # Broadcasts: arousal (global activation), valence_tone (motivational
-        # direction), curiosity_pull (directed pull toward uncertain zones),
-        # epsilon_boost (additive exploration from global state).
+        # ── 8c. Global Workspace ─────────────────────────────
         gws_out = self.gws.step(
             qe_norm            = qe_norm,
             familiarity        = familiarity,
@@ -510,11 +452,7 @@ class Brain:
             l4_top_prob        = l4_out['top_prob'],
         )
 
-        # ── 8d. Self-Model (M59) — the brain's mirror ──────────
-        # Runs after GWS so it can read the unified internal state.
-        # Builds a characterisation of what kind of thing the brain
-        # is right now — not what the world looks like, but what the
-        # brain itself looks like from the inside.
+        # ── 8d. Self-Model ────────────────────────────────────
         sm_out = self.selfmodel.step(
             arousal           = gws_out['arousal'],
             coherence         = gws_out['coherence'],
@@ -529,9 +467,7 @@ class Brain:
             reward            = float(reward),
         )
 
-        # ── 8e. Question Memory (M60) — store and track confusion ──
-        # Runs after M59. Creates questions when L2 wrong + L4 uncertain
-        # + self-model says confused/curious. Returns zone_pull for M57.
+        # ── 8e. Question Memory ───────────────────────────────
         q60_out = self.questions.step(
             prediction_error = raw_error,
             freq_idx         = freq_idx if freq_idx >= 0 else -1,
@@ -543,37 +479,23 @@ class Brain:
             reward           = float(reward),
         )
 
-        # ── 9. Action layer (M56) ─────────────────────────────
-        # Runs last: reads rpe from V1 and focus signals from Thought.
-        # Selects the action for the NEXT step AND updates Q from this
-        # step's outcome. Call order:
-        #   action.step(bmu_idx, rpe, focus_entropy, thought_confidence)
-        #     ├─ update()   : Q[prev_bmu, prev_action] += ETA_Q * rpe * e
-        #     └─ select()   : epsilon-greedy → action for next step
-        # The 'action' key in the output is what to take NEXT step.
+        # ── 9. Action (M56) ───────────────────────────────────
         m56_out = self.action.step(
             bmu_idx            = bmu_idx,
             rpe                = v1_out['rpe'],
             focus_entropy      = thought_out['focus_entropy'],
             thought_confidence = thought_out['thought_confidence'],
-            freq_idx           = freq_idx,     # ground-truth node index
-            world_moved        = world_moved,  # False on wall hits — gates replay/trace
+            freq_idx           = freq_idx,
+            world_moved        = world_moved,
             l4_top_node        = l4_out['top_node'],
             l4_top_prob        = l4_out['top_prob'],
             epsilon_floor      = max(wm_out['epsilon_floor'],
-                                     gws_out['epsilon_boost']),  # best of M58 + GWS
+                                     gws_out['epsilon_boost']),
             node_fi_override   = getattr(self, '_node_fi_override_hint', None),
+            raw_reward         = float(reward),
         )
 
-        # ── 10. Planner (M57) — mental simulation / look-ahead ──
-        # Runs last. Reads L2, Valence, M55 READ-ONLY to simulate
-        # PLANNING_DEPTH steps forward for each candidate action.
-        # Overrides M56's habit action when planning_weight >
-        # PLANNING_GATE_THRESH (confidence × focus × salience).
-        # When planning is inactive it returns M56's action unchanged.
-        # Get TPE accuracy for current zone — passed to M57 to gate planning.
-        # Use context-aware TC table when available (disambiguates aliased nodes).
-        # Falls back to freq_idx-only T table when TC has insufficient data.
+        # ── 10. Planner (M57) ─────────────────────────────────
         _curr_zone = freq_idx if freq_idx >= 0 else self.l3._last_zone_idx
         _tpe_acc   = self.l3.get_tpe_accuracy_ctx(self._prev_zone_for_T, _curr_zone)
         if _tpe_acc == 0.0:
@@ -603,50 +525,21 @@ class Brain:
             m63_recognition     = self._last_m63_recognition,
         )
 
-        # ── M61: THOUGHT LOOP — internal dialogue ────────────────
-        # When M60 has open questions AND the brain is in a state that
-        # benefits from deliberation (confused, curious, stuck, hunting),
-        # run up to M61_MAX_LOOPS additional M57→Thought cycles.
-        #
-        # Each cycle:
-        #   1. M57's best_sim_bmu feeds into Thought as simulated_bmu
-        #   2. Thought updates its prediction_bias toward the simulated future
-        #   3. M57 re-simulates with the updated Thought bias
-        #
-        # This lets the brain dwell on a question — running the simulation
-        # forward in imagination before committing to action.
-        # The final m57_out (last loop iteration) is used for the action.
-        #
-        # Gate conditions:
-        #   - M60 has at least one open question (something to think about)
-        #   - Self-model is in a deliberative state (not 'satisfied'/'drifting')
-        #   - M57 actually simulated this step (sim_depth > 0)
-        #   - Brain is past M57 warmup (planner is active)
-        #
-        # Biological basis: hippocampal-prefrontal theta coupling during
-        # deliberation. When an animal pauses at a choice point, place cells
-        # sweep forward along candidate paths ("vicarious trial and error").
-        # Each sweep is a thought loop cycle — the brain simulates the path
-        # before committing to it. Observed in rats at T-maze decision points.
-        #
-        # M61 parameters
-        M61_MAX_LOOPS        = 2      # max extra simulation cycles per step
-        M61_SIM_WEIGHT_BASE  = 0.40   # how strongly simulated BMU blends into Thought
+        # ── M61: Thought loop ─────────────────────────────────
+        M61_MAX_LOOPS         = 2
+        M61_SIM_WEIGHT_BASE   = 0.40
         M61_DELIBERATE_LABELS = {'confused', 'curious', 'stuck', 'hunting', 'alert'}
 
         m61_loops_run     = 0
-        m61_thought_iters = []   # record of each loop's thought_confidence
-        m61_sim_history   = []   # record of each loop's sim_values (for M62)
+        m61_thought_iters = []
+        m61_sim_history   = []
 
         if (q60_out['open_count'] > 0
                 and sm_out['state_label'] in M61_DELIBERATE_LABELS
                 and m57_out['sim_depth'] > 0
-                and self.planner.t > 1):   # planner has run at least once
+                and self.planner.t > 1):
 
             for _loop in range(M61_MAX_LOOPS):
-                # Step 1: feed M57's simulated next BMU into Thought
-                # sim_weight scales with open question urgency — more questions
-                # = brain is more focused on simulation vs real perception
                 urgency_scale = float(np.clip(q60_out['open_count'] / 4.0, 0.0, 1.0))
                 sim_w = M61_SIM_WEIGHT_BASE * (0.5 + 0.5 * urgency_scale)
 
@@ -661,11 +554,6 @@ class Brain:
                 )
                 m61_thought_iters.append(loop_thought_out['thought_confidence'])
 
-                # Step 2: re-simulate with updated thought bias
-                # The updated prediction_bias from loop_thought_out is now
-                # stored in self.thought._last_prediction_bias and will be
-                # used by pred.step() on the NEXT real step.
-                # For the loop itself, we re-run M57 with updated confidence.
                 loop_m57_out = self.planner.step(
                     bmu_idx            = bmu_idx,
                     pred               = self.pred,
@@ -692,13 +580,11 @@ class Brain:
                 m61_loops_run += 1
                 m61_sim_history.append(loop_m57_out['sim_values'].copy())
 
-                # Step 3: if the loop converged (action unchanged, confidence
-                # improved), stop early — no point continuing
                 if (loop_m57_out['action'] == m57_out['action']
                         and loop_thought_out['thought_confidence']
                             >= thought_out['thought_confidence']):
-                    m57_out      = loop_m57_out
-                    thought_out  = loop_thought_out
+                    m57_out     = loop_m57_out
+                    thought_out = loop_thought_out
                     break
 
                 m57_out     = loop_m57_out
@@ -709,10 +595,7 @@ class Brain:
         self._prev_zone_for_T      = freq_idx
         self._prev_action_for_T    = int(m57_out['action'])
 
-        # ── M62: CONSISTENCY CHECKER — internal critic ─────────────
-        # Runs after M61. Checks whether thought loop iterations agreed.
-        # Produces: consistency score, contradiction zones, plan_modifier.
-        # plan_modifier adjusts planning_weight retroactively for logging.
+        # ── M62: Consistency Checker ──────────────────────────
         m62_out = self.consistency.step(
             sim_history      = m61_sim_history,
             thought_iters    = m61_thought_iters,
@@ -722,10 +605,7 @@ class Brain:
             planning_active  = m57_out['planning_active'],
         )
 
-        # ── M63: EPISODIC TRACE — before/after memory ──────────────
-        # Runs after M62. Opens an episode when M60 creates a question,
-        # records actions taken, closes and stores when M60 resolves.
-        # Provides recognition signal + action prior for familiar confusion.
+        # ── M63: Episodic Trace ───────────────────────────────
         m63_out = self.episodic.step(
             q60_just_created  = q60_out['just_created'],
             q60_just_resolved = q60_out['just_resolved'],
@@ -736,16 +616,10 @@ class Brain:
             sm_state_label    = sm_out['state_label'],
             prediction_error  = raw_error,
         )
-
-        # Update M63 cache — fed into next step's M57 as action_prior.
         self._last_m63_recognition  = float(m63_out['recognition'])
         self._last_m63_action_prior = m63_out['action_prior'].copy()
 
-        # ── M64: LANGUAGE SEED — situation naming ───────────────────
-        # Runs after M63. Matches current (state_label × zone) to a named
-        # situation tag. Accumulates per-tag action outcome statistics from
-        # M63 episodes. Returns tag_action_prior for M57 and a narrative
-        # string for M61 thought loops.
+        # ── M64: Language Seed ────────────────────────────────
         m64_out = self.language.step(
             sm_state_label    = sm_out['state_label'],
             sm_state_vec      = sm_out['self_state_vec'],
@@ -757,9 +631,9 @@ class Brain:
             q60_just_resolved = q60_out['just_resolved'],
         )
 
-        # ── 9. Return unified output ──────────────────────────
+        # ── Return unified output ─────────────────────────────
         return {
-            # M54
+            # M54 (sound cortex)
             'bmu_idx':          bmu_idx,
             'bmu_pos':          cortex_out['bmu_pos'],
             'qe':               cortex_out['qe'],
@@ -771,13 +645,13 @@ class Brain:
             'familiarity':      familiarity,
             'top_associations': recall_out['top_associations'],
             'wrote':            mem_out['wrote'],
-            # L2 raw (informational — do not feed these directly back)
+            # L2
             'prediction_error': raw_error,
             'correct':          l2_out['correct'],
             'predicted_bmu':    pred_out['predicted_bmu'],
             'confidence':       pred_out['confidence'],
             'curiosity':        raw_curiosity,
-            # Feedback signals fed into modules this step
+            # Feedback
             'surprise_signal':  surprise_signal,
             'curiosity_delta':  curiosity_delta,
             'error_ema':        self._error_ema,
@@ -798,7 +672,7 @@ class Brain:
             'expectation_error':     thought_out['expectation_error'],
             'focus_entropy':         thought_out['focus_entropy'],
             'assoc_weight':          thought_out['assoc_weight'],
-            # Valence (V1)
+            # Valence
             'rpe':                   v1_out['rpe'],
             'pos_rpe':               v1_out['pos_rpe'],
             'neg_rpe':               v1_out['neg_rpe'],
@@ -806,23 +680,23 @@ class Brain:
             'total_reward':          v1_out['total_reward'],
             'intrinsic_reward':      v1_out['intrinsic_reward'],
             'novelty_bonus':         v1_out['novelty_bonus'],
-            # Action (M56 — habit)
-            'action':                m57_out['action'],      # M57 final (= M56 when planning inactive)
+            # Action (M56/M57)
+            'action':                m57_out['action'],
             'q_values':              m56_out['q_values'],
             'q_max':                 m56_out['q_max'],
             'action_epsilon':        m56_out['epsilon'],
             'action_explore':        m56_out['explore'],
             'q_mean':                m56_out['q_mean'],
             'q_nonzero_frac':        m56_out['q_nonzero_frac'],
-            'habit_action':          m56_out['action'],      # M56 raw habit (for diagnostics)
-            # Planner (M57 — deliberation)
+            'habit_action':          m56_out['action'],
+            # Planner (M57)
             'planned_action':        m57_out['planned_action'],
             'planning_weight':       m57_out['planning_weight'],
             'planning_active':       m57_out['planning_active'],
             'sim_values':            m57_out['sim_values'],
             'sim_depth':             m57_out['sim_depth'],
             'plan_vs_habit_delta':   m57_out['plan_vs_habit_delta'],
-            # L3 Concept Layer
+            # L3
             'tpe_accuracy':          _tpe_acc,
             'zone_idx':              l3_out['zone_idx'],
             'zone_confidence':       l3_out['zone_confidence'],
@@ -830,7 +704,7 @@ class Brain:
             'top_zone_pred':         l3_out['top_zone_pred'],
             'zone_pred_conf':        l3_out['zone_pred_conf'],
             'zones_stable':          l3_out['zones_stable'],
-            # L4 Position Belief
+            # L4
             'l4_top_node':           l4_out['top_node'],
             'l4_top_prob':           l4_out['top_prob'],
             'l4_belief_entropy':     l4_out['belief_entropy'],
@@ -841,7 +715,7 @@ class Brain:
             'wm_steps_since_reward': wm_out['steps_since_reward'],
             'wm_hunger_norm':        wm_out['steps_since_reward_norm'],
             'wm_epsilon_floor':      wm_out['epsilon_floor'],
-            # Global Workspace (GWS) — unified integration
+            # Global Workspace (GWS)
             'gws_arousal':           gws_out['arousal'],
             'gws_arousal_raw':       gws_out['arousal_raw'],
             'gws_valence_tone':      gws_out['valence_tone'],
@@ -854,7 +728,7 @@ class Brain:
             'gws_readiness':         gws_out['readiness'],
             'gws_ignited':           gws_out['ignited'],
             'gws_ignition_rate':     gws_out['ignition_rate'],
-            # Self-Model (M59) — the brain's mirror
+            # Self-Model (M59)
             'sm_state_label':        sm_out['state_label'],
             'sm_state_vec':          sm_out['self_state_vec'],
             'sm_state_changed':      sm_out['state_changed'],
@@ -870,45 +744,53 @@ class Brain:
             'sm_confidence':         sm_out['self_state_dict']['confidence'],
             'sm_frustration':        sm_out['self_state_dict']['frustration'],
             'sm_engagement':         sm_out['self_state_dict']['engagement'],
-            # Question Memory (M60) — directed curiosity
+            # Question Memory (M60)
             'q60_open_count':        q60_out['open_count'],
             'q60_zone_pull':         q60_out['zone_pull'],
             'q60_active_question':   q60_out['active_question'],
             'q60_just_resolved':     q60_out['just_resolved'],
             'q60_total_resolved':    q60_out['total_resolved'],
             'q60_just_created':      q60_out['just_created'],
-            # Planner — best simulated next BMU (for diagnostics)
+            # M57 best sim
             'best_sim_bmu':          m57_out['best_sim_bmu'],
-            # Thought loop (M61) — internal dialogue
+            # M61 thought loop
             'm61_loops_run':         m61_loops_run,
             'm61_thought_iters':     m61_thought_iters,
-            # Consistency Checker (M62) — internal critic
+            # M62 consistency
             'm62_consistency':       m62_out['consistency'],
             'm62_consistency_ema':   m62_out['consistency_ema'],
             'm62_contradiction_zones': m62_out['contradiction_zones'],
             'm62_plan_modifier':     m62_out['plan_modifier'],
             'm62_active':            m62_out['active'],
-            # Episodic Trace (M63) — before/after memory
+            # M63 episodic
             'm63_recognition':       m63_out['recognition'],
             'm63_action_prior':      m63_out['action_prior'],
             'm63_episode_open':      m63_out['episode_open'],
             'm63_episodes_total':    m63_out['episodes_total'],
             'm63_best_zone':         m63_out['best_zone'],
             'm63_just_closed':       m63_out['just_closed'],
-            # M63 → M57 prior feedback (did episodic memory bias planning this step?)
             'm63_prior_applied':     m57_out['m63_prior_applied'],
-            # Language Seed (M64) — situation naming and composed narrative
+            # M64 language
             'm64_situation_tag':     m64_out['situation_tag'],
             'm64_tag_action_prior':  m64_out['tag_action_prior'],
             'm64_tag_confidence':    m64_out['tag_confidence'],
             'm64_narrative':         m64_out['narrative'],
             'm64_tags_total':        m64_out['tags_total'],
+            # ── NEW v12: Multimodal keys ──────────────────────
+            'm51_texture_val':       m51_out['texture_val'],
+            'm51_texture_noisy':     m51_out['texture_noisy'],
+            'm54b_bmu_texture':      m54b_out['bmu_texture'],
+            'm54b_qe_norm':          m54b_out['qe_norm'],
+            'm65_fused_likelihood':  m65_out['fused_likelihood'],
+            'm65_sound_weight':      m65_out['sound_weight'],
+            'm65_texture_weight':    m65_out['texture_weight'],
+            'm65_texture_conf':      m65_out['texture_confidence'],
+            'm65_fusion_active':     m65_out['fusion_active'],
         }
 
-    # ── Convenience accessors ─────────────────────────────────
+    # ── Convenience accessors (unchanged from v11) ───────────
 
     def reset_feedback(self):
-        """Reset feedback state — use between test conditions."""
         self._error_ema             = float(FEEDBACK_EMA_INIT)
         self._curiosity_ema         = float(FEEDBACK_EMA_INIT)
         self._last_surprise_signal  = 0.0
@@ -919,7 +801,6 @@ class Brain:
         self._last_curiosity        = 0.0
 
     def get_feedback_state(self) -> dict:
-        """Current feedback state — raw signals and their EMA baselines."""
         return {
             'prediction_error': self._last_prediction_error,
             'curiosity':        self._last_curiosity,
@@ -930,19 +811,125 @@ class Brain:
         }
 
     def summary(self):
-        """Human-readable state summary."""
-        print(f"\n  Brain — step {self.t}")
-        print(f"  Feedback (delta-based):")
-        print(f"    error_ema:       {self._error_ema:.4f}  "
-              f"(last raw: {self._last_prediction_error:.4f})")
-        print(f"    curiosity_ema:   {self._curiosity_ema:.4f}  "
-              f"(last raw: {self._last_curiosity:.4f})")
-        print(f"    → surprise_signal → M54: {self._last_surprise_signal:.4f}")
-        print(f"    → curiosity_delta → M55: {self._last_curiosity_delta:.4f}")
-        print()
+        print(f"\n  Brain v12 — step {self.t}  multimodal={self._multimodal}")
+        print(f"  Feedback:")
+        print(f"    error_ema:     {self._error_ema:.4f}")
+        print(f"    curiosity_ema: {self._curiosity_ema:.4f}")
+        if self._multimodal and self.texture_sense:
+            self.texture_sense.summary()
+            self.texture_cortex.summary()
+            self.fusion.summary()
         self.cortex.get_surprise_stats()
         self.memory.summary()
         self.pred.summary()
         self.attention.summary()
         self.thought.summary()
         self.action.summary()
+
+    # ══════════════════════════════════════════════════════════════
+    # HIPPOCAMPAL REPLAY — food trajectory replay
+    # ══════════════════════════════════════════════════════════════
+
+    def record_food_trajectory(self, food_node: str, reward: float):
+        """
+        Snapshot the M56 replay buffer when food/door reward is collected.
+
+        Call from the harness immediately after a food event. The replay
+        buffer contains the actual (prev_bmu, curr_bmu, action, freq_idx,
+        l4_node, was_explore) tuples from real navigation — this is the
+        ground-truth path that led to food.
+        """
+        trajectory = list(self.action._replay_buffer)
+        if trajectory:
+            self._food_trajectories.append({
+                'trajectory': trajectory,
+                'food_node':  food_node,
+                'reward':     float(reward),
+            })
+
+    def idle_step(self) -> int:
+        """
+        Replay stored food trajectories forward through Q_n.
+
+        This is the hippocampal replay that solves temporal credit
+        assignment for button→door sequences. It replays the actual
+        navigation path (from M56's replay buffer snapshot) that led
+        to food, applying geometric-decay credit to Q_n for every
+        node visited along the way.
+
+        Unlike M63 episode replay which:
+          - Contained confusion arcs (not food paths)
+          - Credited Q/Q_f at a single zone (too coarse for 64 nodes)
+          - Used self-transitions (replay_e[bmu,bmu,...] — never queried)
+
+        This version:
+          - Replays actual food trajectories with real (node, action) pairs
+          - Credits Q_n directly (the table that drives aliased navigation)
+          - Uses forward replay so eligibility trace accumulates correctly
+
+        Returns
+        -------
+        int — total replay steps executed across all trajectories
+        """
+        if not self._food_trajectories:
+            return 0
+
+        from m56_action import REPLAY_GAMMA, REPLAY_ALPHA, Q_MIN, Q_MAX
+
+        total_replayed = 0
+
+        # Replay last 3 food trajectories
+        recent = list(self._food_trajectories)[-3:]
+        for ft in recent:
+            trajectory = ft['trajectory']
+            reward     = ft['reward']
+            if not trajectory or reward <= 0.0:
+                continue
+
+            # Forward replay with geometric discount from LAST entry.
+            # Entry[-1] is the step that arrived at food. Entry[-2] is
+            # one step before, etc. Discount increases as we go back.
+            n = len(trajectory)
+            for i, entry in enumerate(trajectory):
+                # Distance from food: last entry = 0, first = n-1
+                dist_from_food = n - 1 - i
+                discount = REPLAY_GAMMA ** dist_from_food
+                q_delta  = REPLAY_ALPHA * reward * discount
+
+                prev_bmu = entry[0]
+                curr_bmu = entry[1]
+                action   = entry[2]
+                fi       = entry[3] if len(entry) > 3 else -1
+                l4_node  = entry[4] if len(entry) > 4 else None
+                was_expl = entry[5] if len(entry) > 5 else False
+                explore_discount = 0.30 if was_expl else 1.0
+
+                # Credit Q_n (node-keyed — the table that matters)
+                # Gate on L4 confidence: only credit Q_n when L4 was
+                # confident about WHERE the brain was at that step.
+                # Without this gate, ~24% of steps credit the wrong node
+                # (L4 accuracy = 76%), creating contradictory Q_n entries.
+                l4_conf_in_buf = entry[6] if len(entry) > 6 else 1.0
+                if l4_node is not None and l4_conf_in_buf >= 0.70:
+                    if l4_node not in self.action._Q_n:
+                        self.action._Q_n[l4_node] = np.zeros(
+                            self.action._n_actions, dtype=np.float32)
+                    self.action._Q_n[l4_node][action] = float(np.clip(
+                        self.action._Q_n[l4_node][action]
+                        + q_delta * 0.50 * explore_discount,
+                        Q_MIN, Q_MAX
+                    ))
+                    self.action._Q_n_count[l4_node] = (
+                        self.action._Q_n_count.get(l4_node, 0) + 1)
+
+                # Credit Q_f (zone-keyed — secondary)
+                if 0 <= fi < self.action._Q_f.shape[0]:
+                    self.action._Q_f[fi, action] = float(np.clip(
+                        self.action._Q_f[fi, action]
+                        + q_delta * 0.25 * explore_discount,
+                        Q_MIN, Q_MAX
+                    ))
+
+                total_replayed += 1
+
+        return total_replayed

@@ -76,7 +76,7 @@ import numpy as np
 L4_BELIEF_DECAY      = 0.02
 L4_TM_WARMUP         = 25
 L4_CTM_WARMUP        = 12
-L4_CONFIDENCE_THRESH = 0.60
+L4_CONFIDENCE_THRESH = 0.80
 L4_ENTROPY_SMOOTH    = 0.05
 
 # World-5 scaling overrides (applied by Brain for n_nodes > 12)
@@ -136,6 +136,8 @@ class PositionBelief:
         self._NNTM      = np.zeros((self.n_nodes, n_actions, self.n_nodes), dtype=np.float64)
         self._NNTM_norm = np.ones((self.n_nodes, n_actions, self.n_nodes), dtype=np.float64) / self.n_nodes
         self._NNTM_n    = np.zeros((self.n_nodes, n_actions), dtype=np.float64)
+
+        self._locked_transitions = {}  # (node_idx, action) -> node_idx: confirmed deterministic edges
 
         # EXPERIMENTAL PROOF: Provide actual topology to NNTM instead of learning it via noisy forward aliased signals.
         # This proves that if L4 knew the topological edges (which it mathematically cannot learn in a purely forward online pass with fully aliased observations), tracking would be perfect.
@@ -212,9 +214,6 @@ class PositionBelief:
         if world_moved and self._prev_fi >= 0 and action >= 0:
             fi_p = self._prev_fi
             a    = action
-            
-            # Cache the previous belief vector for NNTM update at the end of the step
-            self._prev_belief_for_nntm = self._belief.copy()
 
             # TM update
             self._TM[fi_p, a, curr_fi] += 1.0
@@ -257,7 +256,14 @@ class PositionBelief:
 
                 # Top priority: Topological Node-to-Node Model (NNTM)
                 # Requires sufficient specific observations of this origin node + action
-                if self._NNTM_n[ni, a] >= 3.0:
+                # Check for locked deterministic edges first
+                key = (ni, a)
+                if key in self._locked_transitions:
+                    new_prior[self._locked_transitions[key]] += b_i
+                    continue
+
+                # Using 1.0 to allow fast warmup from one single clean anchor update
+                if self._NNTM_n[ni, a] >= 1.0:
                     for nj in range(self.n_nodes):
                         new_prior[nj] += b_i * self._NNTM_norm[ni, a, nj]
                     continue
@@ -295,16 +301,20 @@ class PositionBelief:
         else:
             self._belief /= s
 
-        # ── 4. Decay toward uniform ───────────────────────────
-        self._belief = ((1.0 - L4_BELIEF_DECAY) * self._belief
-                        + L4_BELIEF_DECAY / self.n_nodes)
-        self._belief /= self._belief.sum()
+        # Save PREVIOUS step's post-observation belief before overwriting.
+        # origin_belief = "where I was last step" (sharp, post-observation).
+        # self._belief  = "where I am now" (sharp, post-observation).
+        # NNTM needs origin→destination; lock needs both to be confident.
+        origin_belief = self._prev_belief_for_nntm.copy()
+
+        # Store THIS step's post-observation belief for next step.
+        self._prev_belief_for_nntm = self._belief.copy()
 
         # ── 4b. Update NNTM using posterior over destination ─────
         if world_moved and self._prev_fi >= 0 and action >= 0:
             a = action
             for ni in range(self.n_nodes):
-                w_i = float(self._prev_belief_for_nntm[ni])
+                w_i = float(origin_belief[ni])
                 if w_i < 1e-4: continue
                 # Update transition to where we actually arrived
                 for nj in range(self.n_nodes):
@@ -316,7 +326,27 @@ class PositionBelief:
                 row = self._NNTM[ni, a]; s = row.sum()
                 if s > 0: self._NNTM_norm[ni, a] = row / s
 
-        # ── 5. Advance state ──────────────────────────────────
+        # ── 4c. Lock high-confidence transitions ──────────────
+        # NOTE: In a 2-alias-per-frequency world, observation caps top_prob
+        # at 0.50 between aliased nodes. Locking from 0.50 causes a 
+        # self-reinforcing wrong-confidence spiral. Only lock when genuine
+        # disambiguation (wall model, multi-step context) pushes top_prob
+        # above 0.65 — which requires the transition prior to break the tie.
+        if world_moved and action >= 0 and self._prev_fi >= 0:
+            top_idx = int(np.argmax(self._belief))
+            top_prob = float(self._belief[top_idx])
+            prev_top = int(np.argmax(origin_belief))
+            prev_prob = float(origin_belief[prev_top])
+            if top_prob > 0.65 and prev_prob > 0.65:
+                key = (prev_top, action)
+                self._locked_transitions[key] = top_idx
+
+        # ── 4d. Decay toward uniform ──────────────────────────
+        # Applied after NNTM update so top-down decay doesn't dilute
+        # ground-truth observations before they get learned.
+        self._belief = ((1.0 - L4_BELIEF_DECAY) * self._belief
+                        + L4_BELIEF_DECAY / self.n_nodes)
+        self._belief /= self._belief.sum()
         self._prev_prev_fi = self._prev_fi
         self._prev_fi      = curr_fi
         self._prev_action  = action
@@ -358,6 +388,32 @@ class PositionBelief:
             'confident':      self._confident,
             'belief_vector':  self._belief.copy(),
         }
+
+    def get_top_k(self, k: int = 3) -> list:
+        indices = np.argsort(self._belief)[::-1][:k]
+        return [(self.nodes[idx], float(self._belief[idx])) for idx in indices]
+
+    def anchor_at_node(self, node: str) -> None:
+        """
+        Called when the harness has ground-truth confirmation of location
+        (e.g. food found at node X). Collapses belief to certainty,
+        runs backward replay from the now-certain anchor, and resets
+        context history so the next step starts from a clean state.
+        """
+        if node not in self._node_to_idx:
+            return
+        # Collapse belief to certainty
+        self._belief[:] = 0.0
+        self._belief[self._node_to_idx[node]] = 1.0
+        # Snapshot the sharp anchor belief so the NEXT step's origin_belief
+        # sees certainty — this is the key line that enables locked transitions.
+        self._prev_belief_for_nntm = self._belief.copy()
+        # Backward replay: re-weight NNTM from this certain anchor
+        self.replay_from_anchor(node)
+        # Clear history so stale entries don't contaminate future replays
+        self._history.clear()
+        # Reset context so next step doesn't carry stale fi context
+        self._prev_prev_fi = self._prev_fi   # keep one step back, drop older
 
     # ── Accessors ─────────────────────────────────────────────
 

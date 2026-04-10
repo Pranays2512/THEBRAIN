@@ -1,123 +1,63 @@
 """
-M56: ACTION LAYER — CORTICO-STRIATAL Q-LEARNING
-================================================
+M56: ACTION LAYER — ACTOR-CRITIC
+=================================
 
-WHAT THIS IS
-------------
-M56 is the output layer of the stack. It learns action-values and
-selects actions. Every layer below it perceives, predicts, attends, and
-evaluates — M56 is the first layer that DOES something.
+Replaces Q-learning (3 Q-tables, threshold zoo, override rows) with
+Actor-Critic: a policy (actor) updated by V1's dopamine signal (critic).
 
-It answers one question each step: given where I am (bmu_idx) and what
-I expect (Thought), what should I do next?
+BIOLOGY
+-------
+Basal ganglia = actor  (direct/indirect pathway competition selects action)
+Dopamine (V1/Valence) = critic  (TD error δ modulates synaptic plasticity)
+Hippocampus (idle replay) = consolidates food-path credit during rest
 
-HOW IT WORKS
-------------
-Two data structures. That's the entire system.
+The actor learns a preference π(state, action) for each action at each
+cortical state. V1 already computes the TD error (rpe). M56 uses it directly
+to update π via dopamine-gated eligibility traces — biologically, this is
+LTP/LTD in the striatum modulated by dopamine burst/dip.
 
-Q TABLE  (shape: 64 × 64 × N_ACTIONS, float32)
-  State = (prev_bmu, curr_bmu) — the PAIR of where the brain came from
-  and where it is now. This resolves the partial-observability aliasing:
-  the same current frequency/BMU can be reached from different prior nodes
-  requiring different optimal actions (e.g. C reached from A vs from E★).
-  Learned via TD with eligibility traces:
-    Q[s_prev, s_curr, a_prev] += ETA_Q * rpe * e[s_prev, s_curr, a_prev]
-  rpe = V1's signed reward prediction error — already the TD signal.
-  No separate reward bookkeeping needed; V1 computes it.
-  Biologically: context-dependent cortico-striatal synaptic weights
-  (dorsal striatum with hippocampal context input)
+WHY ACTOR-CRITIC OVER Q-LEARNING
+---------------------------------
+Old Q-learning required three separate tables (Q_bmu, Q_f, Q_n) because
+aliased nodes contaminated each other through the shared frequency row.
+The fix was a hard L4 confidence gate (0.55), creating a threshold zoo
+that broke whenever the gate was inconsistently applied.
 
-ELIGIBILITY TRACE  (shape: 64 × 64 × N_ACTIONS, float32)
-  e[s_prev, s_curr, a] = recency-weighted responsibility for outcome
-  Updated each step: e *= TRACE_DECAY, then e[prev, curr, action] += 1.0
-  Q update: ΔQ = ETA_Q * rpe * e
-  Biologically: dopamine-gated eligibility traces with context gating
+Actor-Critic fixes this structurally:
 
-ACTION SELECTION
-  epsilon-greedy with adaptive epsilon:
-    base_epsilon = EPSILON_MIN + (EPSILON_MAX - EPSILON_MIN) * focus_entropy
-    epsilon      = base_epsilon * (1 - CONFIDENCE_GATE * thought_confidence)
+  Soft L4 integration: instead of "if L4 > 0.55 use Q_n else Q_f",
+    π_eff = (1 - blend) × π_bmu + blend × π_node[top_node]
+    blend = clip(l4_prob × trust_factor, 0, 0.8)
+  At l4_prob=0.25: blend=0.15  (small influence, correct direction)
+  At l4_prob=0.70: blend=0.50  (node dominates, confident)
+  No hard cutoff. Wrong nodes receive near-zero weight automatically.
 
-  High focus_entropy (diffuse attention)  → high epsilon → explore
-  Low focus_entropy  (focused attention)  → low epsilon  → exploit
-  High thought_confidence                 → further suppresses epsilon
-    (Thought is confident about context → less reason to explore)
+  Per-node update weighted by L4 probability:
+    π_node[top_node][a] += l4_prob × ALPHA_NODE × rpe
+  At l4_prob=0.25: update × 0.25  (weak, uncertain — doesn't corrupt)
+  At l4_prob=0.70: update × 0.70  (strong, confident — dominates)
 
-  At each step:
-    if random() < epsilon: action = random choice (explore)
-    else:                  action = argmax Q[bmu_idx, :] (exploit)
+  Temperature replaces epsilon-greedy:
+    action = sample(softmax(π_eff / temperature))
+  High temperature = near-uniform = exploration
+  Low temperature = peaked = exploitation
+  Driven by focus_entropy — diffuse attention → explore naturally.
 
-  Biologically:
-    epsilon  = noradrenaline locus coeruleus arousal signal
-    argmax Q = basal ganglia direct pathway disinhibition of motor cortex
+WHAT WAS REMOVED
+-----------------
+  Q_f  — frequency-indexed table. Contamination source; gone entirely.
+  Q_n  — node-indexed table with hard gates. Replaced by π_node (soft).
+  Override rows — ad-hoc aliasing fix. Replaced by soft L4 weighting.
+  Threshold zoo — 0.2 / 0.55 / 0.65 / 0.40. One parameter: NODE_L4_MIN.
+  Epsilon-greedy — replaced by softmax temperature.
+  boost_exploration — temperature naturally rises with curiosity/entropy.
 
-SIGNALS CONSUMED (from Brain.step() output)
-  bmu_idx           (M54) — current cortical state
-  rpe               (V1)  — TD error: better/worse than expected
-  focus_entropy     (Thought) — attention diffuseness → exploration rate
-  thought_confidence (Thought) — prediction certainty → exploitation rate
-
-SIGNALS OUTPUT each step
-  'action'          int   — chosen action index [0, N_ACTIONS)
-  'q_values'        array — (N_ACTIONS,) current Q estimates for bmu_idx
-  'q_max'           float — max Q value in current state
-  'epsilon'         float — effective exploration probability this step
-  'explore'         bool  — True if this step was exploratory
-  'td_error'        float — rpe used to update Q (= V1's rpe)
-  'q_mean'          float — mean of entire Q table (learning progress)
-  'q_nonzero_frac'  float — fraction of Q entries with |Q| > 1e-4
-
-CALL ORDER
-----------
-Each step in Brain:
-
-  # BEFORE brain.step() — choose action for this step
-  action = m56.select_action(bmu_idx=r_prev['bmu_idx'],
-                             focus_entropy=r_prev['focus_entropy'],
-                             thought_confidence=r_prev['thought_confidence'])
-
-  # Execute action (external environment)
-  reward = environment.step(action)
-
-  # brain.step() with the reward
-  r = brain.step(..., reward=reward)
-
-  # AFTER brain.step() — learn from outcome
-  m56_out = m56.update(bmu_idx=r['bmu_idx'],
-                       action=action,
-                       rpe=r['rpe'])
-
-Alternatively, Brain can own M56 internally and call it automatically.
-The standalone interface above is for environments that control the loop.
-
-SPACE COST
-----------
-Q table:            64 × 64 × N_ACTIONS × float32
-Eligibility traces: 64 × 64 × N_ACTIONS × float32
-At N_ACTIONS=4:     2 × 64 × 64 × 4 × 4 = 128 KB RAM  (trivial)
-
-BIOLOGICAL GROUNDING
---------------------
-1. TD(λ) learning
-   ΔQ[s,a] = ETA_Q × rpe × e[s,a]
-   Biologically: dopamine burst/dip modulates synaptic LTP/LTD in
-   striatum proportionally to the eligibility trace (recent activity).
-
-2. Decay of unused action values
-   Q *= (1 - Q_DECAY) each step
-   Unused action-state associations fade — prevents stale values from
-   dominating exploration in rarely-visited states.
-
-3. Exploration via noradrenergic signal
-   epsilon scales with attentional diffuseness (focus_entropy).
-   High arousal / uncertain attention → explore.
-   Biologically: locus coeruleus NE modulates basal ganglia gate threshold.
-
-4. Confidence-gated exploitation
-   Thought's confidence_delta suppresses exploration.
-   When the system knows what's coming next (high Thought confidence),
-   there is less benefit to trying random actions.
-   Biologically: PFC top-down control over striatal action gating.
+WHAT WAS KEPT
+--------------
+  Eligibility traces  — dopamine-gated LTP/LTD, biologically grounded.
+  Hippocampal replay  — back-propagate food credit through recent path.
+  Harness interface   — step(), replay_on_reward(), set_node_fi_map(),
+                        decay_node_qn(), boost_exploration() all present.
 """
 
 import numpy as np
@@ -127,810 +67,423 @@ from collections import deque
 # PARAMETERS
 # ═══════════════════════════════════════════════════════════════
 
-# Grid (must match M54, M55, L2, Thought)
-N_NEURONS  = 64
+N_NEURONS = 64
+N_ACTIONS = 4
 
-# Action space
-N_ACTIONS  = 4   # number of discrete output actions (configurable)
+# ── Actor learning ────────────────────────────────────────────
+ALPHA_ACTOR = 0.04    # policy gradient step size
+                      # Critic is V1 (Valence) — M56 is actor only.
+                      # Smaller than old ETA_Q (0.05) to compensate for
+                      # more frequent updates (every step, not just food/wall).
 
-# Zone count — must match ConceptLayer n_zones (one per map node)
-# Used for the freq_idx-keyed Q table that bypasses BMU aliasing.
-N_ZONES    = 8
+ALPHA_NODE  = 0.06    # per-node policy update rate (L4-weighted)
+                      # Slightly higher — sparse visits need faster learning.
 
-# ── Q learning ───────────────────────────────────────────────
-# Learning rate for TD update
-# Matches L2's ETA_BASE — same timescale as sequence learning
-ETA_Q      = 0.05   # conservative learning rate. High values (0.15) cause
-                    # Q oscillation — food and wall-penalty RPE overwrite each
-                    # other on successive visits rather than accumulating.
+# ── Eligibility trace ─────────────────────────────────────────
+TRACE_DECAY = 0.20    # e *= (1 - TRACE_DECAY) each step → τ ≈ 5 steps
+                      # Identical to old Q-learning trace — same credit window.
 
-# Synaptic decay on Q.
-# Set to 0 — the map is static, rewards don't change, Q should accumulate
-# permanently. Diagnostic confirmed: at 0.0002, Q halves in 3500 steps and
-# reaches zero by ~15k steps. The brain was relearning the same policy from
-# scratch every 15k cycle (food rate oscillated but never improved). With
-# no decay, Q values compound across the full 200k run.
-Q_DECAY    = 0.0
+# ── Policy bounds ─────────────────────────────────────────────
+# Actor preferences are logits. Kept tight (1.5) so softmax stays
+# discriminative. At PI_MAX=3.0, saturation ([3,3,3,3]) → all actions
+# 25% each — completely random despite "learning". At 1.5, the brain
+# must earn directional preference rather than flooding everything.
+PI_MAX =  1.5
+PI_MIN = -1.5
+# Backward-compat aliases — brain.py idle_step() imports these
+Q_MAX = PI_MAX
+Q_MIN = PI_MIN
 
-# Eligibility trace decay
-# τ ≈ 1/TRACE_DECAY = 5 steps — recent actions get most credit
-TRACE_DECAY = 0.20
+# ── Softmax temperature ───────────────────────────────────────
+# Replaces epsilon-greedy. High = uniform (explore). Low = greedy (exploit).
+TEMP_INIT  = 2.5      # start: lots of exploration
+TEMP_MIN   = 0.40     # floor: always some stochasticity (biological noise)
+TEMP_DECAY = 1.0 - 2e-5   # decay → halves in ~35k steps, reaches floor ~130k steps.
+                           # At 8e-6 (prev): floor hit at ~300k — 300k steps of random
+                           # exploration means every direction gets replayed, saturating
+                           # policy to ±1.5 in all directions. At 2e-5: floor by 130k,
+                           # so the brain commits to a policy while it can still be refined.
+TEMP_WARMUP_STEPS = 25_000 # keep TEMP_INIT during warmup (equivalent to old warmup)
 
-# Q value bounds — rpe is in [-1, +1] so Q represents expected rpe
-# and should stay in the same range
-Q_MAX  =  1.0
-Q_MIN  = -1.0
+# How much focus_entropy scales temperature:
+#   temp_eff = base_temp × (TEMP_ENTROPY_MIN + (1-TEMP_ENTROPY_MIN) × entropy)
+# At entropy=1.0 (diffuse, confused): temp_eff = base_temp      (full exploration)
+# At entropy=0.0 (focused, confident): temp_eff = 0.4 × base_temp (exploit)
+TEMP_ENTROPY_MIN = 0.40
 
-# ── Exploration ──────────────────────────────────────────────
-# epsilon-greedy with adaptive epsilon:
-#   base_epsilon = EPSILON_MIN + (EPSILON_MAX - EPSILON_MIN) * focus_entropy
-#   epsilon      = base_epsilon * (1 - CONFIDENCE_GATE * thought_confidence)
-#
-# At focus_entropy=1.0 (uniform gate, no attention): epsilon=EPSILON_MAX=0.50
-# At focus_entropy=0.0 (perfectly focused): epsilon=EPSILON_MIN=0.05
-# thought_confidence further suppresses by up to CONFIDENCE_GATE fraction
-EPSILON_MIN          = 0.15   # raised from 0.10: 16-node world needs a higher
-                               # exploration floor — at 0.10 the brain commits too
-                               # early to unstable Q_f patterns post-warmup.
-EPSILON_MAX          = 0.35   # lowered from 0.50: at 0.50 the brain permanently
-                               # thrashes (50% random) even after Q_f is well-formed.
-                               # At 0.35: 65% exploitation post-warmup — enough to
-                               # build a stable policy while still exploring.
-EPSILON_WARMUP_STEPS = 25_000  # shortened from 40k: Q_f forms good signal by step 20k
-                                # in a 16-node world. Warmup past that point just delays
-                                # exploitation. 25k gives ~13k closed-loop warmup steps
-                                # (open loop consumed 0 after the action.t reset).
-EPSILON_WARMUP_VAL   = 0.45    # epsilon during warmup — guarantees food found early
-CONFIDENCE_GATE      = 0.30
-Q_SPREAD_GATE        = 0.30   # lowered from 0.60: in a fully-aliased 16-node world,
-                               # BMU Q spread is unreliable — aliased nodes share BMUs
-                               # so a "confident" BMU Q spread doesn't mean the brain
-                               # knows where it is. High Q_SPREAD_GATE was crushing
-                               # epsilon to 0.10 and locking the brain into bad policies.
+# ── Per-node policy ───────────────────────────────────────────
+NODE_L4_MIN   = 0.30  # minimum L4 probability to accumulate per-node stats
+                      # Low — we accumulate softly, weighted by probability.
+                      # No hard gate. Wrong nodes get tiny updates and don't corrupt.
 
-# ── Replay buffer ─────────────────────────────────────────────
-# Short experience replay for long-path credit assignment.
-# Biologically: hippocampal sharp-wave ripple replay during reward events.
-# On food arrival, back-propagate discounted reward through recent transitions.
-# Replay bonus scales with (1 - familiarity_at_food_node) so frequent food
-# nodes (high familiarity, e.g. E★) get little amplification while rare nodes
-# (H★, near-zero familiarity) get strong back-propagation.
-REPLAY_BUFFER_LEN   = 12
-REPLAY_GAMMA        = 0.90
-REPLAY_ALPHA        = 0.20  # raised from 0.10 — K★ is 6 steps away; credit at step 1
-                             # = 0.20×0.90^5 = 0.118, meaningful after 3-4 food events.
+NODE_MIN_VISITS = 10  # visits before per-node policy blends into action selection.
+                      # Below this, BMU policy is used unchanged — cold π_node is zeros.
 
-# ── Conflict-driven epsilon floor ────────────────────────────
-# When the Q-margin (best - second-best action) is small, the brain is
-# genuinely undecided between actions. In this case, lock epsilon to a
-# minimum floor so the brain keeps exploring rather than committing to
-# whichever signal happens to be slightly ahead.
-#
-# Only fires when Q[best] > CONFLICT_Q_MIN — i.e. the brain has actually
-# learned something here. Prevents the floor from being a no-op on cold
-# Q entries (where all values are near zero and margin≈0 trivially).
-# Biologically: anterior cingulate cortex conflict monitoring — uncertainty
-# about the best action keeps the system from premature commitment.
-CONFLICT_THRESHOLD  = 0.10   # margin below which state is "conflicted"
-CONFLICT_FLOOR      = 0.18   # minimum epsilon when conflicted
-CONFLICT_Q_MIN      = 0.02   # must have learned something (Q[best] > this)
-                          # spread = (max_Q - min_Q) / (|mean_Q| + 0.1); clipped [0,1]
-                          # Biologically: basal ganglia exploit when action values differ
+# ── Replay ────────────────────────────────────────────────────
+REPLAY_BUFFER_LEN = 50     # recent transitions for hippocampal replay
+REPLAY_GAMMA      = 0.90   # credit discount per step backward
+REPLAY_ALPHA      = 0.20   # base replay amplitude
+                           # 0.30 saturated at PI_MAX=1.5 (all directions +1.5).
+                           # 0.12 was too weak — policy values near zero (+0.05 best).
+                           # 0.20 is the middle: enough signal without flooding.
+
+# ── Module-level globals (harness compat) ─────────────────────
+# Used by test harnesses for policy audits. Set by set_node_fi_map().
+L4_Q_N_ALIASED_NODES: set = set()
+L4_Q_N_UNIQUE_NODES:  set = set()
+L4_Q_N_WARMUP: int = NODE_MIN_VISITS   # alias for old harness code
 
 
-# ── Node-keyed Q table (L4-gated) ────────────────────────────
-# When L4's position belief is confident (top_prob >= threshold),
-# use a node-specific Q entry that cannot be contaminated by aliased nodes.
-# This is the core fix for D vs L and E vs K disambiguation:
-#   Q_f[3] is shared by D and L — D→South should have high value (path to K★)
-#   but L→South is a dead end. Without node-keying, these contaminate each other.
-#   Q_n['D'][South] and Q_n['L'][South] are fully independent.
-#
-# L4_Q_BLEND_THRESH: minimum L4 top_prob before Q_n is blended in.
-#   At 0.60: L4 must be quite confident before overriding Q_f.
-#   Below this: falls back to Q_f entirely (safe, stable).
-#
-# L4_Q_BLEND_MAX: maximum blend weight from Q_n even at full confidence.
-#   Kept at 0.20: Q_f stays dominant (80%). Q_n is a gentle nudge,
-#   not an override. Higher values (0.50) caused regression — cold Q_n
-#   zeros diluted working Q_f policy and doubled wall rate.
-#
-# L4_Q_N_WARMUP: minimum real transitions before Q_n influences selection.
-#   Below this per-node count, Q_f is used unchanged even if L4 is
-#   confident. Prevents cold Q_n from degrading a working Q_f policy.
-#   At 30: ~3× the minimum needed for Q_f to show meaningful signal.
-L4_Q_BLEND_THRESH         = 0.35  # lowered: need Q_n to activate in World 5
-L4_Q_BLEND_THRESH_ALIASED = 0.35  # same lower threshold — World 5 is fully aliased
-L4_Q_BLEND_MAX    = 0.70   # raised: let Q_n fully override Q_f when L4 is confident
-                           # (Q_f[7] is useless at food nodes — both H and P write to it)
-L4_Q_N_WARMUP     = 5      # FIXED: lowered from 15. With anchor resets giving clean L4
-                           # beliefs at food nodes, Q_n accumulates reliable samples fast.
-                           # 10 anchored observations is enough to trust Q_n['H'/'P'].
-
-# Q_n amplification at food nodes (for fully-aliased food nodes where Q_f is useless)
-# When L4 is confident the brain is at a registered food node, Q_n update gets this
-# multiplier. Rationale: Q_f[7] averages H and P signals and is structurally noisy;
-# Q_n[H] and Q_n[P] are clean — they just need to learn faster to compensate.
-L4_Q_N_FOOD_AMP   = 6.0   # 4× normal ETA_Q at food nodes. After 10 visits: Q_n[H,N]≈+0.8
-                           # ~15 confident hits per food node in 200k steps.
-                           # 50 was effectively disabling Q_n for the entire run.
-
-# Set by Brain.__init__ when L4 is active.
-# Maps each node to whether its freq_index is shared with other nodes.
-# Used to select the appropriate confidence threshold — aliased nodes need higher confidence.
-# Format: set of aliased node names (those sharing fi with another node).
-L4_Q_N_UNIQUE_NODES: set = set()   # nodes with unique fi — use lower threshold
-L4_Q_N_ALIASED_NODES: set = set()  # nodes with shared fi — use higher threshold
+# ═══════════════════════════════════════════════════════════════
+# ACTOR-CRITIC LAYER
+# ═══════════════════════════════════════════════════════════════
 
 class ActionLayer:
     """
-    Cortico-striatal Q-learning action selection module.
+    Actor-Critic action selection for the Brain stack.
 
-    State: BMU index from M54 (which cortical pattern is active)
-    Action: discrete index in [0, N_ACTIONS)
-    Learning signal: V1's rpe (signed TD error, already computed)
-
-    Standalone or wired into Brain — see module docstring.
+    One policy table (actor) + V1's rpe (critic).
+    Soft L4 integration — no hard confidence gates.
+    Softmax temperature — no epsilon-greedy.
     """
 
     def __init__(self, n_actions: int = N_ACTIONS, seed: int = 0):
         self._n_actions = n_actions
         self._rng = np.random.RandomState(seed)
 
-        # ── Q table (BMU-keyed, context-dependent) ────────────
-        # Q[prev_bmu, curr_bmu, a] = value of action a given context (prev→curr)
-        self._Q = np.zeros((N_NEURONS, N_NEURONS, n_actions), dtype=np.float32)
+        # ── Actor: BMU-level policy ───────────────────────────
+        # π_bmu[bmu_idx, action]: preference for each action at each cortical state.
+        # Updated by: π_bmu += ALPHA_ACTOR × rpe × e_trace
+        # Biologically: synaptic weights in striatum (direct pathway).
+        self._pi_bmu = np.zeros((N_NEURONS, n_actions), dtype=np.float32)
 
-        # ── Q table (freq_idx-keyed) ───────────────────────────
-        # Q_f[freq_idx, a] — flat 8×4 table keyed by ground-truth node index.
-        # Diagnostic confirmed: G (1.7Hz) and H (2.0Hz) share modal BMU=4.
-        # The BMU-keyed table cannot store different policies for G vs H.
-        # This table uses freq_idx directly (passed through from world.step),
-        # bypassing the SOM entirely. When freq_idx >= 0 it is authoritative.
-        # The BMU table is retained for open-loop / unfamiliar-signal steps
-        # where freq_idx = -1.
-        #
-        # EXTENDED to 10 rows: rows 0-7 are standard fi-keyed Q values.
-        # Rows 8+ are GROUND-TRUTH NODE overrides for fully aliased food nodes
-        # where fi-sharing causes write-collisions (H and P both write to fi=7).
-        # The harness passes node_fi_override to replay_on_reward() and
-        # the wall-penalty path to direct credit to the correct row.
-        # _node_fi_override_map: node_str -> Q_f row index (8, 9, 10, ...)
-        self._Q_f = np.zeros((N_ZONES + 4, N_ACTIONS), dtype=np.float32)
-        self._node_fi_override_map: dict = {}   # set by harness via set_node_fi_override()
-        self._node_fi_override_row: dict = {}   # node -> Q_f row (8, 9, ...)
-        self._next_override_row = N_ZONES       # allocate from row 8 upward
+        # ── Actor: per-node policy (L4-gated, soft) ───────────
+        # π_node[node_name] = float32[n_actions]
+        # Updated weighted by L4 probability — uncertain updates contribute less.
+        # Blended into action selection proportionally to L4 confidence and trust.
+        self._pi_node   = {}   # dict[str, np.ndarray(n_actions)]
+        self._node_visits = {} # dict[str, int] — visit count for trust scaling
 
-        # Eligibility trace for Q_f — separate from BMU Q trace.
-        # Shape: (N_ZONES, N_ACTIONS). Gated by world_moved (real transitions only).
-        # This prevents wall-hit actions from receiving food credit via trace,
-        # which was causing all Q_f entries to saturate equally.
-        self._e_f = np.zeros((N_ZONES + 4, n_actions), dtype=np.float32)
-
-        # prev freq_idx for the freq-keyed update (mirrors _prev_bmu)
-        self._prev_freq_idx    = -1
-        self._current_freq_idx = -1   # set by select_action each step
-        self._reward_freq_idx  = -1   # set by replay_on_reward each call
-        # The action that caused the PREVIOUS real transition (for Q_f update).
-        self._transition_action = -1  # action that caused prev_fi→curr_fi move
-
-        # ── Node-keyed Q table (L4-gated) ────────────────────────
-        # _Q_n[node_str] = float32[n_actions] — per-node Q values.
-        # Created lazily on first confident L4 observation of each node.
-        # Independent of _Q_f: D and L have separate entries even though
-        # both have freq_idx=3.
-        self._Q_n = {}   # dict[str, np.ndarray]
-
-        # Per-node observation count — Q_n only blends into action selection
-        # once _Q_n_count[node] >= L4_Q_N_WARMUP. Before warmup, Q_f is used
-        # unchanged. This prevents cold zero Q_n entries from diluting Q_f.
-        self._Q_n_count = {}   # dict[str, int]
-
-        # L4 state tracking — stored from select_action for use in update()
-        self._l4_node_at_select  = None   # L4 top_node when action was chosen
-        self._l4_prob_at_select  = 0.0    # L4 top_prob when action was chosen
-        self._l4_confident_now   = False  # whether L4 was confident this step
-        self._current_node_override = None  # ground-truth node override from harness
-        self._prev_node_override    = None  # previous step's node override (for e_f trace)
-
-        # ── Eligibility traces ────────────────────────────────
-        # e[prev_bmu, curr_bmu, a] — same shape as Q
-        self._e = np.zeros((N_NEURONS, N_NEURONS, n_actions), dtype=np.float32)
+        # ── Eligibility trace ─────────────────────────────────
+        # e[bmu_idx, action]: recency-weighted responsibility.
+        # Decays each step; stamped at 1.0 on real transitions.
+        self._e = np.zeros((N_NEURONS, n_actions), dtype=np.float32)
 
         # ── State tracking ────────────────────────────────────
-        # Previous BMU — needed to form the (prev, curr) state key
         self._prev_bmu    = 0
         self._prev_action = 0
-        self._prev_valid  = False   # False on first step (no prev context yet)
+        self._prev_l4_node = None   # L4 top node from PREVIOUS step (for update)
+        self._prev_l4_prob = 0.0    # L4 probability from previous step
+        self._prev_valid  = False   # False on first step
 
-        # Current action selected this step (for post-step update)
-        self._current_action  = 0
-        self._current_bmu     = 0
-        self._current_epsilon = EPSILON_MAX
-
-        # External epsilon override — harness sets this to force exploration.
-        # Consumed (reset to -1) immediately after each select_action call.
-        self.epsilon_override = -1.0   # -1 = inactive
-
-        # ── Diagnostics ───────────────────────────────────────
-        self.t             = 0
-        self._n_explorations = 0
-        self._n_exploitations = 0
-        self._td_history   = deque(maxlen=200)
-        self._reward_history = deque(maxlen=200)
-        self._action_counts  = np.zeros(n_actions, dtype=np.int32)
+        # ── Temperature (replaces epsilon) ────────────────────
+        self._base_temp = float(TEMP_INIT)
+        self._current_temp = float(TEMP_INIT)
+        self._boost_steps  = 0    # countdown for post-food-move exploration boost
 
         # ── Replay buffer ─────────────────────────────────────
-        # Stores (prev_bmu, curr_bmu, action) tuples for recent transitions.
-        # On food arrival, iterates backward applying discounted Q updates.
+        # Format: (prev_bmu, curr_bmu, action, fi, l4_node, was_explore, l4_prob)
+        # Matches brain.py idle_step() expectations (7-element tuples).
         self._replay_buffer = deque(maxlen=REPLAY_BUFFER_LEN)
+        self._current_was_explore = False
 
-    # ── Node-fi override registration ────────────────────────
+        # ── Node info (stored by harness) ─────────────────────
+        self._node_fi = {}     # node → freq_idx (set by set_node_fi_map)
+        self._current_freq_idx = -1   # freq_idx at current step (for replay)
+
+        # ── Backward-compat aliases for brain.py idle_step() ──
+        # idle_step() writes to _Q_n[node][action] which is exactly
+        # what we want — it updates the per-node actor policy.
+        self._Q_n       = self._pi_node    # same object: dict[str, np.array]
+        self._Q_n_count = self._node_visits # same object: dict[str, int]
+        # _Q_f is written by idle_step() but unused in Actor-Critic — dummy array
+        self._Q_f = np.zeros((12, n_actions), dtype=np.float32)
+
+        # ── Diagnostics ───────────────────────────────────────
+        self.t = 0
+        self._n_explorations   = 0
+        self._n_exploitations  = 0
+
+    # ── Harness setup ─────────────────────────────────────────
+
+    def set_node_fi_map(self, node_fi: dict) -> None:
+        """Store node→freq_idx mapping. Sets module-level aliasing globals."""
+        self._node_fi = dict(node_fi)
+        from collections import Counter
+        fi_counts = Counter(node_fi.values())
+        global L4_Q_N_ALIASED_NODES, L4_Q_N_UNIQUE_NODES
+        L4_Q_N_ALIASED_NODES = {n for n, fi in node_fi.items() if fi_counts[fi] > 1}
+        L4_Q_N_UNIQUE_NODES  = {n for n, fi in node_fi.items() if fi_counts[fi] == 1}
 
     def set_node_fi_override(self, nodes: list) -> None:
+        """Compatibility stub — override rows not needed in Actor-Critic."""
+        pass
+
+    def boost_exploration(self, steps: int = 500) -> None:
         """
-        Register ground-truth node strings that need their own Q_f rows
-        because they share fi with another node (fi write-collision).
-
-        Call once from the harness before closed-loop training:
-            brain.action.set_node_fi_override(['H', 'P'])
-
-        After this, replay_on_reward(..., food_node='H') and the direct
-        wall-penalty path will write to Q_f[8] (H) and Q_f[9] (P)
-        instead of the shared Q_f[7].  select_action() reads these
-        override rows when the harness passes node_fi_override=node_str.
+        Add a temporary exploration bump after a food move.
+        Uses a separate additive boost that decays independently from _base_temp,
+        so repeated calls (every 2000 steps) don't fight the long-term decay.
+        The bump adds +0.8 to effective temperature and halves every 200 steps.
         """
-        for node in nodes:
-            if node not in self._node_fi_override_row:
-                self._node_fi_override_row[node] = self._next_override_row
-                self._next_override_row += 1
+        self._boost_temp  = getattr(self, '_boost_temp', 0.0)
+        self._boost_temp  = max(self._boost_temp, 0.8)   # additive, not multiplicative
+        self._boost_steps = max(getattr(self, '_boost_steps', 0), int(steps))
 
-    def _node_override_row(self, node: str) -> int:
-        """Return the dedicated Q_f row for node, or -1 if not registered."""
-        return self._node_fi_override_row.get(node, -1)
-
-    # ── Action selection ──────────────────────────────────────
-
-    def select_action(self,
-                      bmu_idx:          int,
-                      focus_entropy:    float = 0.5,
-                      thought_confidence: float = 0.0,
-                      freq_idx:         int   = -1,
-                      l4_top_node:      str   = None,
-                      l4_top_prob:      float = 0.0,
-                      epsilon_floor:    float = 0.0,
-                      node_fi_override: str   = None) -> int:
+    def decay_node_qn(self, node: str, factor: float = 0.0) -> None:
         """
-        Choose an action for the current step.
-
-        Parameters
-        ----------
-        bmu_idx            : int   — current cortical state (from M54)
-        focus_entropy      : float — Thought's attention diffuseness [0,1]
-        thought_confidence : float — Thought's prediction certainty [0,1]
-        freq_idx           : int   — ground-truth freq index [0,7] or -1
-        l4_top_node        : str   — L4's most-likely node ('A','B',...) or None
-        l4_top_prob        : float — L4's confidence in top_node [0,1]
-        epsilon_floor      : float — minimum epsilon from M58 working memory [0,1]
-                                     Applied AFTER all other epsilon computation.
-                                     Does not override epsilon_override or warmup.
-
-        Returns
-        -------
-        int — chosen action index in [0, N_ACTIONS)
+        Decay per-node policy when food moves away from that node.
+        factor=0.0: fully clear. factor=0.3: retain 30% of credit.
         """
-        # ── Epsilon: override → warmup → adaptive ────────────
-        if self.epsilon_override >= 0.0:
-            epsilon = float(self.epsilon_override)
-            self.epsilon_override = -1.0   # consume — one-step only
-        elif self.t < EPSILON_WARMUP_STEPS:
-            epsilon = EPSILON_WARMUP_VAL
-        else:
-            base_epsilon = EPSILON_MIN + (EPSILON_MAX - EPSILON_MIN) * float(focus_entropy)
-            epsilon      = float(base_epsilon * (1.0 - CONFIDENCE_GATE * float(thought_confidence)))
+        if node in self._pi_node:
+            self._pi_node[node] = self._pi_node[node] * factor
+        if node in self._node_visits and factor < 0.5:
+            self._node_visits[node] = 0
 
-        # Marginal BMU Q for action selection
-        q_row = self._Q[:, bmu_idx, :].max(axis=0)
+    # ── Main step ─────────────────────────────────────────────
 
-        q_range  = float(q_row.max() - q_row.min())
-        q_denom  = float(abs(q_row.mean()) + 0.1)
-        q_spread = float(np.clip(q_range / q_denom, 0.0, 1.0))
-        q_max    = float(q_row.max())
-        pos_gate = float(np.clip((q_max - 0.15) / 0.15, 0.0, 1.0))
-        epsilon  = float(epsilon * (1.0 - Q_SPREAD_GATE * q_spread * pos_gate))
-        epsilon  = float(np.clip(epsilon, EPSILON_MIN, EPSILON_MAX))
-
-        # Conflict floor
-        sorted_q = np.sort(q_row)[::-1]
-        q_margin = float(sorted_q[0] - sorted_q[1]) if len(sorted_q) > 1 else 1.0
-        if q_max > CONFLICT_Q_MIN and q_margin < CONFLICT_THRESHOLD:
-            epsilon = float(max(epsilon, CONFLICT_FLOOR))
-
-        # ── M58 working memory floor ──────────────────────────
-        # Applied after conflict floor — after all other epsilon logic.
-        # Only active post-warmup: during warmup epsilon is already high
-        # (EPSILON_WARMUP_VAL=0.45) so the floor would never bind anyway.
-        if self.t >= EPSILON_WARMUP_STEPS and float(epsilon_floor) > 0.0:
-            epsilon = float(max(epsilon, float(epsilon_floor)))
-        epsilon = float(np.clip(epsilon, EPSILON_MIN, EPSILON_MAX))
-
-        # ── Q_f base (freq_idx-keyed) ─────────────────────────
-        # If the harness has identified the exact node (e.g. at a food node
-        # after reset_to_node), use the dedicated override row instead of
-        # the shared fi row — prevents H/P write-collision contamination.
-        if node_fi_override is not None:
-            ov_row = self._node_override_row(node_fi_override)
-            if ov_row >= 0:
-                q_effective = self._Q_f[ov_row].copy()
-                self._current_node_override = node_fi_override
-            elif freq_idx >= 0:
-                q_effective = self._Q_f[freq_idx].copy()
-                self._current_node_override = None
-            else:
-                q_effective = q_row.copy()
-                self._current_node_override = None
-        elif freq_idx >= 0:
-            # Special case: shared food frequency — use override rows directly
-            if freq_idx == 7 and self._node_fi_override_row:
-                # Blend override rows by L4 belief when available, else use equal weight
-                q_effective = np.zeros(self._n_actions, dtype=np.float32)
-                total_weight = 0.0
-                for node, ov_row in self._node_fi_override_row.items():
-                    # Weight by L4 belief for this node if available
-                    if l4_top_node == node and l4_top_prob > 0.2:
-                        w = float(l4_top_prob)
-                    else:
-                        w = 0.5  # equal fallback
-                    q_effective += w * self._Q_f[ov_row]
-                    total_weight += w
-                if total_weight > 1e-6:
-                    q_effective /= total_weight
-                self._current_node_override = None
-            else:
-                q_effective = self._Q_f[freq_idx].copy()
-                self._current_node_override = None
-        else:
-            q_effective = q_row.copy()
-            self._current_node_override = None
-
-        # ── Q_n blend (L4 node-keyed) — ALIASED NODES ONLY ──────
-        # Q_n is blended into action selection ONLY for aliased nodes
-        # (those sharing fi with another node: A/I, B/J, D/L, E/K).
-        # For unique-fi nodes (C, E, F, G, H in World 3), Q_f[fi] is
-        # already node-specific — blending Q_n only adds corruption.
-        #
-        # Why unique-node Q_n corrupts: at C (fi=2, unique), the brain
-        # visits C 30%+ of the time but usually bounces back (West/North)
-        # via K-path credit. Q_n[C,West] and Q_n[C,North] accumulate
-        # large positive values from K-path reward. At blend=0.35,
-        # Q_eff[C,West] > Q_eff[C,South] even though Q_f[2,South]=1.0.
-        # The correct signal (Q_f) is overridden by the noisy one (Q_n).
-        #
-        # Aliased nodes still need Q_n: A and I share fi=0, so Q_f[0]
-        # cannot distinguish them. Q_n['A'] and Q_n['I'] are the only
-        # per-node signals available.
-        node_is_aliased = (l4_top_node in L4_Q_N_ALIASED_NODES) if L4_Q_N_ALIASED_NODES else False
-        thresh = L4_Q_BLEND_THRESH_ALIASED
-        l4_confident = (l4_top_node is not None and
-                        node_is_aliased and
-                        l4_top_prob >= thresh and
-                        self._Q_n_count.get(l4_top_node, 0) >= L4_Q_N_WARMUP)
-        if l4_confident:
-            if l4_top_node not in self._Q_n:
-                self._Q_n[l4_top_node] = np.zeros(self._n_actions, dtype=np.float32)
-            blend = float(np.clip(
-                (l4_top_prob - thresh) /
-                max(1.0 - thresh, 1e-9) * L4_Q_BLEND_MAX,
-                0.0, L4_Q_BLEND_MAX))
-            q_effective = ((1.0 - blend) * q_effective
-                           + blend * self._Q_n[l4_top_node])
-
-        # Store L4 state for update(). Record only for aliased nodes —
-        # unique nodes no longer write to Q_n (see above).
-        l4_above_thresh = (l4_top_node is not None and
-                           node_is_aliased and
-                           l4_top_prob >= thresh)
-        self._l4_node_at_select = l4_top_node if l4_above_thresh else None
-        self._l4_prob_at_select = l4_top_prob
-        self._l4_confident_now  = l4_confident
-
-        # Epsilon-greedy selection on effective Q
-        if self._rng.random() < epsilon:
-            action  = int(self._rng.randint(0, self._n_actions))
-            self._n_explorations += 1
-        else:
-            noise  = self._rng.uniform(0, 1e-6, size=q_effective.shape)
-            action = int(np.argmax(q_effective + noise))
-            self._n_exploitations += 1
-
-        self._current_action   = action
-        self._current_bmu      = bmu_idx
-        self._current_freq_idx = freq_idx
-        self._current_epsilon  = epsilon
-        self._action_counts[action] += 1
-
-        return action
-
-    # ── Update ────────────────────────────────────────────────
-
-    def update(self,
-               bmu_idx:     int,
-               action:      int,
-               rpe:         float,
-               world_moved: bool = True) -> dict:
+    def step(self,
+             bmu_idx:            int,
+             rpe:                float,
+             focus_entropy:      float = 0.5,
+             thought_confidence: float = 0.0,
+             freq_idx:           int   = -1,     # kept for harness compat, not used
+             world_moved:        bool  = True,
+             l4_top_node:        str   = None,
+             l4_top_prob:        float = 0.0,
+             epsilon_floor:      float = 0.0,
+             node_fi_override:   str   = None,   # kept for harness compat, not used
+             raw_reward:         float = 0.0,
+             **kwargs) -> dict:
         """
-        Update Q table from outcome. Call AFTER brain.step().
+        One Actor-Critic step: update policy from outcome, then select action.
 
-        Parameters
-        ----------
-        bmu_idx     : int  — state that resulted from action (current bmu_idx)
-        action      : int  — action that was taken (from select_action)
-        rpe         : float — signed reward prediction error from V1 [-1, +1]
-        world_moved : bool — True if the world actually transitioned to a new node.
-                             False on wall hits. Used to gate replay buffer writes
-                             and eligibility trace sets. Without this, BMU drift
-                             within a single node's SOM cluster (different BMU fired
-                             even though the agent didn't move) looks like a real
-                             transition, causing wall-hit actions to enter the replay
-                             buffer and receive food credit via replay.
-
-        Returns
-        -------
-        dict with 'action', 'q_values', 'q_max', 'epsilon', 'explore',
-                  'td_error', 'q_mean', 'q_nonzero_frac'
+        rpe (V1's dopamine signal) acts as the TD error δ.
+        Actor updates: π += ALPHA_ACTOR × δ × eligibility_trace
+        Action selection: softmax(π_eff / temperature)
         """
         rpe = float(np.clip(rpe, -1.0, 1.0))
 
-        # ── 1. Decay eligibility traces ────────────────────────
-        self._e   *= (1.0 - TRACE_DECAY)
-        self._e_f *= (1.0 - TRACE_DECAY)   # decay Q_f trace in lockstep
+        # ── 1. Decay eligibility trace ────────────────────────
+        self._e *= (1.0 - TRACE_DECAY)
 
-        # ── 2. Set trace for BMU-keyed Q ───────────────────────
-        bmu_moved = world_moved and (self._prev_bmu != self._current_bmu)
-        if bmu_moved:
-            self._e[self._prev_bmu, self._current_bmu, self._current_action] = 1.0
+        # ── 2. Actor update (if prev step was a real transition) ──
+        # Update the BMU-level policy using V1's rpe as TD signal.
+        # Gate on world_moved: wall hits don't count as real transitions for trace.
+        if self._prev_valid and world_moved:
+            # BMU-level actor update via trace
+            self._pi_bmu += ALPHA_ACTOR * rpe * self._e
+            np.clip(self._pi_bmu, PI_MIN, PI_MAX, out=self._pi_bmu)
 
-        # ── 2b. Set trace for Q_f ──────────────────────────────
-        # Gate on world_moved only (real transitions), same as BMU trace.
-        # If the PREVIOUS node's fi has a registered override row (i.e. it's a
-        # food node like H or P), credit the override row directly and leave
-        # the shared fi row untouched — prevents e_f trace from leaking food
-        # credit into the shared fi=7 row via decay residuals.
-        if world_moved and self._prev_freq_idx >= 0 and self._current_action >= 0:
-            ov_row = -1
-            # Check if prev fi maps to an override node (via current_node_override set
-            # when we were AT that node last step)
-            if (hasattr(self, '_prev_node_override') and
-                    self._prev_node_override is not None):
-                ov_row = self._node_override_row(self._prev_node_override)
-            if ov_row >= 0:
-                self._e_f[ov_row, self._current_action] = 1.0
-            elif self._prev_freq_idx == 7 and self._node_fi_override_row:
-                # Distribute trace to override rows instead of shared fi=7
-                l4_top_node = getattr(self, '_l4_node_at_select', None)
-                l4_top_prob = getattr(self, '_l4_prob_at_select', 0.0)
-                for node, orow in self._node_fi_override_row.items():
-                    if l4_top_node == node and l4_top_prob > 0.2:
-                        w = l4_top_prob
-                    else:
-                        w = 0.5
-                    self._e_f[orow, self._current_action] = max(
-                        self._e_f[orow, self._current_action], float(w)
-                    )
-            else:
-                self._e_f[self._prev_freq_idx, self._current_action] = 1.0
+            # Per-node actor update (weighted by L4 probability at the PREVIOUS step)
+            # We update the node we were AT when we took the action, not where we landed.
+            if (self._prev_l4_node is not None
+                    and self._prev_l4_prob >= NODE_L4_MIN):
+                node = self._prev_l4_node
+                prob = float(self._prev_l4_prob)
+                if node not in self._pi_node:
+                    self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
+                # Weight update by L4 probability — low confidence → tiny update → no corruption
+                self._pi_node[node][self._prev_action] = float(np.clip(
+                    self._pi_node[node][self._prev_action] + prob * ALPHA_NODE * rpe,
+                    PI_MIN, PI_MAX))
+                self._node_visits[node] = self._node_visits.get(node, 0) + 1
 
-        # ── 3. Update BMU Q via trace ──────────────────────────
-        self._Q += ETA_Q * rpe * self._e
-        np.clip(self._Q, Q_MIN, Q_MAX, out=self._Q)
+        # ── 3. Wall penalty: direct write to per-node policy ──
+        # On wall hits, immediately penalise the attempted action at this node.
+        # Trace-based updates are too slow on walls (trace decays during repeated hitting).
+        if (not world_moved and rpe < 0.0
+                and l4_top_node is not None
+                and l4_top_prob >= 0.55):
+            node = l4_top_node
+            if node not in self._pi_node:
+                self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
+            # Direct penalise — weight by L4 probability
+            curr_action = getattr(self, '_current_action', 0)
+            self._pi_node[node][curr_action] = float(np.clip(
+                self._pi_node[node][curr_action] + l4_top_prob * ALPHA_NODE * rpe,
+                PI_MIN, PI_MAX))
+            self._node_visits[node] = self._node_visits.get(node, 0) + 1
 
-        # ── 3b. Update Q_f via eligibility trace ─────────────
-        if rpe >= 0.0:
-            # Row 7 is permanently silenced for positive credit.
-            # Override rows 8/9 (H, P) receive credit normally via _e_f.
-            for row in range(len(self._Q_f)):
-                if row == 7:
-                    continue  # shared fi=7 — never gets positive credit
-                if self._e_f[row].max() < 1e-6:
-                    continue  # skip unvisited rows
-                self._Q_f[row] += ETA_Q * rpe * self._e_f[row]
-            np.clip(self._Q_f, Q_MIN, Q_MAX, out=self._Q_f)
-
-        # ── 3b-wall. Direct wall penalty on Q_f ──────────────
-        # On wall hits (world_moved=False), penalise the wall action
-        # directly. The trace decays to ~0 during sustained bashing
-        # (10 hits → e_f≈0.11) so trace-based learning is useless.
-        # Direct write: Q_f[fi,a] += ETA_Q * rpe each hit.
-        # After 20 hits: Q_f[fi,a] ≈ -0.55. Brain stops trying it.
-        # Also write to the node override row if the harness registered one —
-        # this is critical for H and P which share fi=7.
-        if (not world_moved and self._current_freq_idx >= 0 and rpe < 0.0):
-            fi = self._current_freq_idx
-            a  = self._current_action
-            if self._current_node_override is not None:
-                ov_row = self._node_override_row(self._current_node_override)
-                if ov_row >= 0:
-                    self._Q_f[ov_row, a] = float(np.clip(
-                        self._Q_f[ov_row, a] + 2.0 * ETA_Q * rpe, Q_MIN, Q_MAX))
-            elif fi == 7 and self._node_fi_override_row:
-                # Distribute direct wall penalty to override rows based on belief
-                l4_top_node = getattr(self, '_l4_node_at_select', None)
-                l4_top_prob = getattr(self, '_l4_prob_at_select', 0.0)
-                for node, orow in self._node_fi_override_row.items():
-                    if l4_top_node == node and l4_top_prob > 0.2:
-                        w = float(l4_top_prob)
-                    else:
-                        w = 0.5
-                    self._Q_f[orow, a] = float(np.clip(
-                        self._Q_f[orow, a] + 2.0 * ETA_Q * rpe * w, Q_MIN, Q_MAX))
-            else:
-                if fi != 7: # extra safety just to be sure we never write to 7
-                    self._Q_f[fi, a] = float(np.clip(
-                        self._Q_f[fi, a] + 2.0 * ETA_Q * rpe, Q_MIN, Q_MAX))
-
-        # ── 3b-wall-n. Direct wall penalty on Q_n (L4-gated) ─
-        # Without this, Q_n learns food-approach actions but never learns
-        # "action X hits a wall from node Y". In World 5 there is no harness
-        # surgery for wall penalties (unlike World 3), so Q_n must learn
-        # walls directly. Only writes when L4 is confident about the node.
-        if (not world_moved and rpe < 0.0 and
-                self._l4_node_at_select is not None):
-            node = self._l4_node_at_select
-            a    = self._current_action
-            if node not in self._Q_n:
-                self._Q_n[node] = np.zeros(self._n_actions, dtype=np.float32)
-            self._Q_n[node][a] = float(np.clip(
-                self._Q_n[node][a] + ETA_Q * rpe, Q_MIN, Q_MAX))
-
-        # ── 3c. Update Q_n (node-keyed, L4-gated) ─────────────
-        # Updated on all RPE including negative (real moves only —
-        # wall-hit Q_n penalties handled by harness surgery in brain_in_world3).
-        # For aliased food nodes (H, P in World 5): Q_f[7] averages both nodes
-        # and is structurally noisy. Q_n['H'] and Q_n['P'] are clean per-node
-        # signals but need to learn faster to compensate. Apply L4_Q_N_FOOD_AMP
-        # when the brain is confirmed at a food-override node.
-        if (world_moved and
-                self._l4_node_at_select is not None and
-                self._transition_action >= 0):
-            node = self._l4_node_at_select
-            pa   = self._transition_action
-            if node not in self._Q_n:
-                self._Q_n[node] = np.zeros(self._n_actions, dtype=np.float32)
-            # Amplify Q_n learning rate when brain is at a registered food-override
-            # node — those are the nodes where Q_f is structurally contaminated.
-            amp = (L4_Q_N_FOOD_AMP
-                   if node in self._node_fi_override_row
-                   else 1.0)
-            self._Q_n[node][pa] = float(np.clip(
-                self._Q_n[node][pa] + amp * ETA_Q * rpe, Q_MIN, Q_MAX))
-        # Always count toward warmup when L4 is confident and world moved,
-        # regardless of RPE sign — the count is about L4 observation quality,
-        # not about whether this step earned reward.
-        if (world_moved and
-                self._l4_node_at_select is not None and
-                self._transition_action >= 0):
-            self._Q_n_count[self._l4_node_at_select] = (
-                self._Q_n_count.get(self._l4_node_at_select, 0) + 1)
-
-        # ── 4. Record transition BEFORE advancing context ─────
-        # Gate replay buffer on world_moved (not bmu_moved).
-        # BMU drift within a node's cluster makes bmu_moved=True even on wall
-        # hits — that was the original replay corruption bug.
-        # world_moved is ground truth from the environment.
+        # ── 4. Set trace for this step (real transitions only) ──
         if world_moved:
-            self._replay_buffer.append(
-                (self._prev_bmu, self._current_bmu,
-                 self._current_action, self._current_freq_idx,
-                 self._l4_node_at_select)   # L4 node at time of action
-            )
+            self._e[self._prev_bmu, self._prev_action] = min(
+                1.0,
+                self._e[self._prev_bmu, self._prev_action] + 1.0)
 
-        # ── 5. Advance context (AFTER recording) ───────────────
-        self._prev_bmu      = self._current_bmu
-        self._prev_freq_idx = self._current_freq_idx
-        self._prev_node_override = getattr(self, '_current_node_override', None)
+        # ── 5. Direct food credit on per-node policy ─────────
+        # When food reward arrives (raw_reward > 0), immediately credit the
+        # action that led to food at the current L4 node — no trace needed.
+        if (raw_reward > 0.1 and world_moved
+                and l4_top_node is not None
+                and l4_top_prob >= 0.55):
+            node = l4_top_node
+            if node not in self._pi_node:
+                self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
+            # Credit the action taken this step (prev_action led here)
+            credit_rpe = max(float(rpe), 0.20)
+            self._pi_node[node][self._prev_action] = float(np.clip(
+                self._pi_node[node][self._prev_action] + l4_top_prob * ALPHA_NODE * credit_rpe,
+                PI_MIN, PI_MAX))
+            self._node_visits[node] = self._node_visits.get(node, 0) + 1
 
-        # ── 5b. Record the action that caused this transition ──
-        # Only update _transition_action when a real world move happened.
-        # This is the action we want to credit in Q_f next step.
-        # On wall hits: keep the previous _transition_action intact so
-        # Q_f still gets updated with the correct action if this wall hit
-        # occurs between two real moves.
+        # ── 6. Temperature ────────────────────────────────────
+        # _base_temp decays continuously after warmup — this is the long-term
+        # exploitation drive. Never reset by boost_exploration.
+        if self.t >= TEMP_WARMUP_STEPS:
+            self._base_temp = max(TEMP_MIN, self._base_temp * TEMP_DECAY)
+
+        # _boost_temp is a separate additive bump set by boost_exploration.
+        # Decays fast (halves every 200 steps) so it clears between food moves.
+        self._boost_temp = getattr(self, '_boost_temp', 0.0)
+        if self._boost_temp > 0.01:
+            self._boost_temp *= 0.9966   # halves in ~200 steps
+        else:
+            self._boost_temp = 0.0
+
+        # Scale base by focus_entropy + thought_confidence, then add boost.
+        entropy_scale = TEMP_ENTROPY_MIN + (1.0 - TEMP_ENTROPY_MIN) * float(focus_entropy)
+        confidence_suppression = 1.0 - 0.25 * float(thought_confidence)
+        temp_eff = self._base_temp * entropy_scale * confidence_suppression + self._boost_temp
+
+        # M58 epsilon_floor → temperature floor (rescaled)
+        if epsilon_floor > 0.0:
+            temp_floor = TEMP_MIN + float(epsilon_floor) * (TEMP_INIT - TEMP_MIN)
+            temp_eff = max(temp_eff, temp_floor)
+
+        temp_eff = float(np.clip(temp_eff, TEMP_MIN, TEMP_INIT))
+        self._current_temp = temp_eff
+
+        # ── 6. Effective policy (soft L4 blend) ───────────────
+        pi_eff = self._pi_bmu[bmu_idx].copy()
+
+        if l4_top_node is not None and l4_top_node in self._pi_node:
+            visits = self._node_visits.get(l4_top_node, 0)
+            if visits >= NODE_MIN_VISITS:
+                # Trust factor: ramps from 0 → 1 between NODE_MIN_VISITS and 3×
+                trust = float(np.clip(
+                    (visits - NODE_MIN_VISITS) / (2.0 * NODE_MIN_VISITS + 1e-9),
+                    0.0, 1.0))
+                # Blend weight: proportional to L4 probability × trust
+                blend = float(np.clip(l4_top_prob * trust * 0.85, 0.0, 0.85))
+                pi_eff = (1.0 - blend) * pi_eff + blend * self._pi_node[l4_top_node]
+
+        # ── 7. Softmax action selection ───────────────────────
+        logits = pi_eff / max(temp_eff, 1e-6)
+        logits -= logits.max()   # numerical stability
+        probs  = np.exp(logits)
+        probs  = probs / probs.sum()
+        # Clamp to valid probability simplex — floating point can drift slightly
+        probs  = np.clip(probs, 0.0, 1.0)
+        probs  = probs / probs.sum()
+
+        action = int(self._rng.choice(self._n_actions, p=probs))
+
+        # Greedy action for diagnostics
+        greedy_action = int(np.argmax(pi_eff))
+        is_explore = (action != greedy_action)
+        if is_explore:
+            self._n_explorations += 1
+        else:
+            self._n_exploitations += 1
+
+        # ── 8. Replay buffer ──────────────────────────────────
+        # Format matches brain.py idle_step(): 7-element tuple
+        # (prev_bmu, curr_bmu, action, fi, l4_node, was_explore, l4_prob)
         if world_moved:
-            self._transition_action = self._current_action
+            self._replay_buffer.append((
+                self._prev_bmu, bmu_idx, action,
+                self._current_freq_idx,   # fi
+                l4_top_node,              # L4 node (or None)
+                is_explore,               # was this step exploratory
+                l4_top_prob,             # L4 confidence at this step
+            ))
 
-        # ── 6. Diagnostics ─────────────────────────────────────
-        td_error = float(rpe)
-        self._td_history.append(abs(td_error))
-        self._reward_history.append(float(max(0, rpe)))
+        # ── 9. Advance state ──────────────────────────────────
+        self._prev_bmu         = bmu_idx
+        self._prev_action      = action
+        self._prev_l4_node     = l4_top_node if l4_top_prob >= NODE_L4_MIN else None
+        self._prev_l4_prob     = l4_top_prob
+        self._prev_valid       = True
+        self._current_action   = action
+        self._current_freq_idx = freq_idx
+        self._current_was_explore = is_explore
         self.t += 1
 
+        # Pseudo-epsilon for backward compatibility reporting
+        # (temperature normalized to [0,1] range)
+        pseudo_eps = float(np.clip(
+            (temp_eff - TEMP_MIN) / (TEMP_INIT - TEMP_MIN), 0.0, 1.0))
+
         return {
-            'action':          action,
-            'q_values':        self._Q_f[self._current_freq_idx].copy()
-                               if self._current_freq_idx >= 0
-                               else self._Q[self._prev_bmu, bmu_idx].copy(),
-            'q_max':           float(self._Q_f[self._current_freq_idx].max())
-                               if self._current_freq_idx >= 0
-                               else float(self._Q[self._prev_bmu, bmu_idx].max()),
-            'epsilon':         self._current_epsilon,
-            'explore':         self._n_explorations > 0,
-            'td_error':        td_error,
-            'q_mean':          float(np.abs(self._Q_f).mean()),
-            'q_nonzero_frac':  float((np.abs(self._Q_f) > 1e-4).mean()),
+            'action':         action,
+            'q_values':       pi_eff,          # actor preferences (for M57 compat)
+            'q_max':          float(pi_eff.max()),
+            'epsilon':        pseudo_eps,       # brain.py maps this to 'action_epsilon'
+            'explore':        is_explore,
+            'td_error':       rpe,
+            'q_mean':         float(self._pi_bmu.mean()),
+            'q_nonzero_frac': float((np.abs(self._pi_bmu) > 1e-4).mean()),
+            'temperature':    temp_eff,
         }
 
-    def replay_on_reward(self, reward: float, familiarity: float = 0.0,
-                         food_freq_idx: int = -1,
-                         food_node: str = None) -> int:
+    # ── Hippocampal replay ────────────────────────────────────
+
+    def replay_on_reward(self,
+                         reward:        float,
+                         familiarity:   float,
+                         food_freq_idx: int   = -1,   # kept for harness compat
+                         food_node:     str   = None) -> int:
         """
-        Back-propagate a reward through the recent transition buffer.
-        Call immediately after a food/significant reward event.
+        Back-propagate food reward through recent transitions (hippocampal replay).
+        Called immediately after a food event from the harness.
 
-        food_freq_idx: the freq_idx of the node where food was collected.
-        Q_f updates in replay are restricted to buffer entries with this
-        freq_idx, preventing cross-node credit assignment (e.g. E★ food
-        crediting K★ transitions that happen to be in the buffer).
-
-        food_node: the ground-truth node string where food was collected
-        (e.g. 'K' or 'E'). When provided, all Q_n replay credits go to
-        this specific node, regardless of what L4 believed at the time.
-        This is the key fix for aliased food nodes: E and K share fi=4 so
-        Q_f cannot distinguish them, but the harness knows ground-truth which
-        node was visited and can direct Q_n['K'] credit correctly.
-        When None, falls back to using _l4_node_at_select from the buffer.
-
-        The replay bonus scales with (1 - familiarity_at_reward_node):
-          - High familiarity node (E★, visited often): small amplification
-          - Low familiarity node (K★, rare): full back-propagation strength
-
-        Returns the number of transitions replayed.
+        Credit starts at reward × REPLAY_ALPHA × (1 - familiarity×0.5)
+        and decays by REPLAY_GAMMA per step backward.
+        Familiar food nodes get less amplification (already well-learned).
+        food_node receives extra direct credit at full strength (no decay).
         """
-        if not self._replay_buffer or reward <= 0.0:
+        if not self._replay_buffer:
             return 0
 
-        self._reward_freq_idx = food_freq_idx
+        credit = float(reward) * REPLAY_ALPHA * (1.0 - float(familiarity) * 0.5)
+        n_replayed = 0
 
-        # Scale replay strength by novelty of the reward node.
-        # Novelty bonus: unfamiliar food nodes get stronger replay (more to learn).
-        # Minimum floor of 0.15 ensures even frequently-visited food nodes (high
-        # familiarity) still get enough replay to build Q_n. Without the floor,
-        # K at 31% visit rate has familiarity≈1.0 → replay_strength≈0 → Q_n never builds.
-        novelty = 1.0 - float(np.clip(familiarity, 0.0, 1.0))
-        replay_strength = float(reward) * max(novelty, 0.15)
-        if replay_strength < 1e-4:
-            return 0
-
-        transitions = list(self._replay_buffer)
-        replayed = 0
-        for i, entry in enumerate(reversed(transitions)):
-            prev_bmu, curr_bmu, action = entry[0], entry[1], entry[2]
-            fi       = entry[3] if len(entry) > 3 else -1
-            discount = REPLAY_GAMMA ** i
-            q_delta  = REPLAY_ALPHA * replay_strength * discount
-            self._Q[prev_bmu, curr_bmu, action] = float(np.clip(
-                self._Q[prev_bmu, curr_bmu, action] + q_delta, Q_MIN, Q_MAX
-            ))
-            if fi >= 0:
-                # If the food node has a dedicated override row, use that
-                # instead of the shared fi row — prevents H/P write-collision.
-                ov_row = self._node_override_row(food_node) if food_node else -1
-                target_row = ov_row if ov_row >= 0 else fi
-                self._Q_f[target_row, action] = float(np.clip(
-                    self._Q_f[target_row, action] + q_delta, Q_MIN, Q_MAX
-                ))
-            # Q_n is NOT updated from replay — only from direct step RPE in update().
-            # Replay buffer entries are steps before food (the path leading to it).
-            # Crediting Q_n from replay saturates all actions to +1.0 because
-            # every prior step's action gets credit, not just the food-exit action.
-            # The direct update in update() handles Q_n correctly.
-            replayed += 1
-            if discount < 0.01:
+        for pb, cb, act, fi, l4_node, was_explore, l4_prob in reversed(self._replay_buffer):
+            if credit < 0.005:
                 break
+            # Exploratory steps get 70% credit — some discount since they happened
+            # by chance, but early training is almost entirely exploratory so 30%
+            # was removing most of the learning signal.
+            explore_scale = 0.70 if was_explore else 1.0
+            self._pi_bmu[pb, act] = float(np.clip(
+                self._pi_bmu[pb, act] + credit * explore_scale, PI_MIN, PI_MAX))
+            # Per-node update when L4 was somewhat confident at that step.
+            # 0.45 gate was too strict — most early steps have l4_prob 0.30-0.45.
+            if l4_prob >= 0.30 and l4_node is not None:
+                node_to_credit = food_node if (l4_node == food_node and food_node) else l4_node
+                if node_to_credit in self._pi_node:
+                    scale = (0.8 if node_to_credit == food_node else 0.5) * explore_scale
+                    self._pi_node[node_to_credit][act] = float(np.clip(
+                        self._pi_node[node_to_credit][act] + credit * scale,
+                        PI_MIN, PI_MAX))
+            credit *= REPLAY_GAMMA
+            n_replayed += 1
 
-        return replayed
+        return n_replayed
 
-    # ── Combined step (convenience) ───────────────────────────
-    def step(self,
-             bmu_idx:           int,
-             rpe:               float,
-             focus_entropy:     float = 0.5,
-             thought_confidence: float = 0.0,
-             freq_idx:          int   = -1,
-             world_moved:       bool  = True,
-             l4_top_node:       str   = None,
-             l4_top_prob:       float = 0.0,
-             epsilon_floor:     float = 0.0,
-             node_fi_override:  str   = None) -> dict:
-        """
-        Select action AND update in one call (for Brain-internal use).
-        """
-        out = self.update(
-            bmu_idx=bmu_idx,
-            action=self._current_action,
-            rpe=rpe,
-            world_moved=world_moved,
-        )
+    # ── Policy audit helpers ──────────────────────────────────
 
-        next_action = self.select_action(
-            bmu_idx=bmu_idx,
-            focus_entropy=focus_entropy,
-            thought_confidence=thought_confidence,
-            freq_idx=freq_idx,
-            l4_top_node=l4_top_node,
-            l4_top_prob=l4_top_prob,
-            epsilon_floor=epsilon_floor,
-            node_fi_override=node_fi_override,
-        )
+    def get_node_policy(self, node: str):
+        """Return per-node policy preferences and visit count. None if no data."""
+        pi = self._pi_node.get(node)
+        v  = self._node_visits.get(node, 0)
+        return pi, v
 
-        out['action'] = next_action
-        return out
+    def get_bmu_policy(self, bmu_idx: int):
+        """Return BMU-level policy preferences."""
+        return self._pi_bmu[bmu_idx].copy()
 
-    # ── Diagnostics ───────────────────────────────────────────
-
-    def best_action(self, bmu_idx: int, prev_bmu: int = None) -> tuple:
-        """
-        Returns (best_action, q_value) for state (prev_bmu, bmu_idx).
-        If prev_bmu is None, uses the marginal Q (max over all prev contexts).
-        Use for policy inspection — does not advance t or select.
-        """
-        if prev_bmu is not None:
-            q = self._Q[prev_bmu, bmu_idx]
-        else:
-            # Marginal: take the max Q across all previous contexts
-            q = self._Q[:, bmu_idx, :].max(axis=0)
-        a = int(np.argmax(q))
-        return a, float(q[a])
-
-    def policy_table(self, prev_bmu: int = None) -> np.ndarray:
-        """
-        (64,) array — greedy action for each current BMU state.
-        If prev_bmu given, uses that context. Otherwise uses marginal max.
-        """
-        if prev_bmu is not None:
-            return np.argmax(self._Q[prev_bmu], axis=1).astype(np.int32)
-        return np.argmax(self._Q.max(axis=0), axis=1).astype(np.int32)
-
-    def q_map(self, prev_bmu: int = None) -> np.ndarray:
-        """
-        (8, 8) array — max Q value per current BMU, reshaped to cortical grid.
-        """
-        if prev_bmu is not None:
-            return self._Q[prev_bmu].max(axis=1).reshape(8, 8)
-        return self._Q.max(axis=0).max(axis=1).reshape(8, 8)
-
-    def exploration_rate(self) -> float:
-        """Fraction of steps that were exploratory."""
-        total = self._n_explorations + self._n_exploitations
-        if total == 0:
-            return 1.0
-        return float(self._n_explorations / total)
-
-    def get_state(self) -> dict:
-        """Full diagnostic snapshot."""
-        return {
-            't':                 self.t,
-            'n_explorations':    self._n_explorations,
-            'n_exploitations':   self._n_exploitations,
-            'exploration_rate':  self.exploration_rate(),
-            'mean_td_error':     float(np.mean(self._td_history)) if self._td_history else 0.0,
-            'q_mean':            float(np.abs(self._Q).mean()),
-            'q_max':             float(self._Q.max()),
-            'q_nonzero_frac':    float((np.abs(self._Q) > 1e-4).mean()),
-            'action_counts':     self._action_counts.copy(),
-            'Q_snapshot':        self._Q.copy(),
-            'e_snapshot':        self._e.copy(),
-        }
-
-    def summary(self):
-        """Human-readable state summary."""
-        s = self.get_state()
-        print(f"  ActionLayer (M56) — step {s['t']}")
-        print(f"  Explorations:   {s['n_explorations']}  exploitations={s['n_exploitations']}  "
-              f"rate={s['exploration_rate']*100:.1f}%")
-        print(f"  Mean |TD error|: {s['mean_td_error']:.4f}")
-        print(f"  Q mean/max:     {s['q_mean']:.5f} / {s['q_max']:.4f}")
-        print(f"  Q nonzero:      {s['q_nonzero_frac']*100:.1f}%")
-        print(f"  Action counts:  {dict(enumerate(s['action_counts']))}")
-        top3 = np.argsort(self._Q.max(axis=1))[::-1][:3]
-        print(f"  Highest-value states: " +
-              "  ".join(f"BMU{i}(Q={self._Q[i].max():.3f})" for i in top3))
+    def planning_rate(self) -> float:
+        """Compatibility stub — planning rate is tracked by the Planner."""
+        return 0.0

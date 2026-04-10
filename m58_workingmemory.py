@@ -111,8 +111,9 @@ from collections import deque
 WM_BUFFER_LEN         = 24   # raised from 16: 4×4 grid has longer paths (6+ steps)
 WM_ZONE_EMA_ALPHA     = 0.15
 WM_MAX_HUNGER         = 40
-BOREDOM_EPSILON_SCALE = 0.20  # raised to push epsilon meaningfully out of dead-zones
-                              # when boredom fires, epsilon should move meaningfully
+BOREDOM_EPSILON_SCALE = 0.10  # lowered from 0.20: with L4 at 99.5% (texture),
+                              # Q_n converges fast and doesn't need aggressive
+                              # epsilon pushes that disrupt the forming policy
 HUNGER_EPSILON_SCALE  = 0.10
 BOREDOM_GATE_THRESH   = 0.52  # FIXED: was 0.80, never fired (boredom sits at 0.56-0.77).
                               # 0.52 activates during dead-zone episodes (boredom>0.56)
@@ -231,7 +232,7 @@ class WorkingMemory:
         boredom_contribution = 0.0
         hunger_contribution  = 0.0
 
-        if corridor_boredom > BOREDOM_GATE_THRESH:
+        if corridor_boredom > BOREDOM_GATE_THRESH and self.t >= 50000:
             # Scale linearly from 0 at threshold to max at 1.0
             scaled = ((corridor_boredom - BOREDOM_GATE_THRESH)
                       / (1.0 - BOREDOM_GATE_THRESH))
