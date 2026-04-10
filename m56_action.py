@@ -62,6 +62,7 @@ WHAT WAS KEPT
 
 import numpy as np
 from collections import deque
+import m56_fast as _fast
 
 # ═══════════════════════════════════════════════════════════════
 # PARAMETERS
@@ -120,12 +121,40 @@ NODE_MIN_VISITS = 10  # visits before per-node policy blends into action selecti
                       # Below this, BMU policy is used unchanged — cold π_node is zeros.
 
 # ── Replay ────────────────────────────────────────────────────
-REPLAY_BUFFER_LEN = 50     # recent transitions for hippocampal replay
-REPLAY_GAMMA      = 0.90   # credit discount per step backward
+REPLAY_BUFFER_LEN = 100    # recent transitions for hippocampal replay
+                           # Doubled from 50: button→door paths require pressing a button
+                           # then reaching a door (can be 15-40 steps). Credit must reach
+                           # the decision point that started the path — 50 was too short.
+REPLAY_GAMMA      = 0.92   # credit discount per step backward (raised from 0.90)
+                           # At len=100, 0.90^100=2.7e-5 (essentially zero). 0.92^100=2.5e-3
+                           # gives meaningful credit at 100 steps back.
 REPLAY_ALPHA      = 0.20   # base replay amplitude
                            # 0.30 saturated at PI_MAX=1.5 (all directions +1.5).
                            # 0.12 was too weak — policy values near zero (+0.05 best).
                            # 0.20 is the middle: enough signal without flooding.
+
+# ── RPE dead zone (FIX: asymmetric drain) ─────────────────────
+# Skip actor updates when |rpe| < RPE_DEAD_ZONE.
+# Rationale: when V1 perfectly predicts reward, RPE → 0. Positive
+# reinforcement stops. But forced exploration (TEMP_MIN=0.40) generates
+# many tiny negative RPE events that erode all logits toward PI_MIN
+# over 500k steps. Filtering out this noise prevents the death spiral.
+RPE_DEAD_ZONE = 0.015
+
+# ── Positive RPE amplification (FIX: asymmetric drain) ────────
+# Dopamine burst (reward surprise) has stronger synaptic effect than
+# dopamine dip (disappointment) in biology. Scale positive RPE by this
+# factor to counteract the natural negative bias from exploration noise.
+POS_RPE_SCALE = 1.5
+
+# ── L2 weight decay (FIX: dead logit recovery) ───────────────
+# Slowly pull all logits toward 0.0 so ancient punishments fade.
+# Biologically: homeostatic synaptic scaling — inactive synapses
+# decay toward baseline. At 0.002 per 500 steps, logits at -1.5
+# recover to -1.0 in ~100k steps. Active reinforcement far outpaces
+# this decay, so well-learned policies are barely affected.
+WEIGHT_DECAY          = 0.002   # fraction pulled toward 0 per interval
+WEIGHT_DECAY_INTERVAL = 500     # steps between decay applications
 
 # ── Module-level globals (harness compat) ─────────────────────
 # Used by test harnesses for policy audits. Set by set_node_fi_map().
@@ -175,6 +204,7 @@ class ActionLayer:
         self._prev_l4_node = None   # L4 top node from PREVIOUS step (for update)
         self._prev_l4_prob = 0.0    # L4 probability from previous step
         self._prev_valid  = False   # False on first step
+        self._prev_probs  = np.full(n_actions, 1.0/n_actions, dtype=np.float32)
 
         # ── Temperature (replaces epsilon) ────────────────────
         self._base_temp = float(TEMP_INIT)
@@ -264,52 +294,71 @@ class ActionLayer:
         """
         rpe = float(np.clip(rpe, -1.0, 1.0))
 
-        # ── 1. Decay eligibility trace ────────────────────────
-        self._e *= (1.0 - TRACE_DECAY)
+        # ── 1+2. Trace decay + policy gradient + actor update ───
+        # Proper score function: ∇ log π(a|s) = one_hot(a) - π(a|s)
+        # Self-normalizing: update → 0 as π(a) → 1 → no saturation.
+        # Other actions pushed DOWN: eliminates all-direction accumulation.
+        #
+        # FIX: RPE dead zone — skip update when |rpe| < RPE_DEAD_ZONE.
+        # This filters the tiny negative RPE noise from forced exploration
+        # that accumulates over 500k steps into policy destruction.
+        #
+        # FIX: Positive RPE amplification — scale positive RPE by POS_RPE_SCALE.
+        # Dopamine burst > dip in biology. Counteracts negative exploration bias.
+        rpe_for_update = rpe
+        if rpe > 0.0:
+            rpe_for_update = rpe * POS_RPE_SCALE  # amplify positive signal
 
-        # ── 2. Actor update (if prev step was a real transition) ──
-        # Update the BMU-level policy using V1's rpe as TD signal.
-        # Gate on world_moved: wall hits don't count as real transitions for trace.
         if self._prev_valid and world_moved:
-            # BMU-level actor update via trace
-            self._pi_bmu += ALPHA_ACTOR * rpe * self._e
-            np.clip(self._pi_bmu, PI_MIN, PI_MAX, out=self._pi_bmu)
+            _fast.decay_and_pg_trace(
+                self._e, self._prev_bmu, self._prev_action,
+                self._prev_probs, TRACE_DECAY)
 
-            # Per-node actor update (weighted by L4 probability at the PREVIOUS step)
-            # We update the node we were AT when we took the action, not where we landed.
-            if (self._prev_l4_node is not None
-                    and self._prev_l4_prob >= NODE_L4_MIN):
-                node = self._prev_l4_node
-                prob = float(self._prev_l4_prob)
-                if node not in self._pi_node:
-                    self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
-                # Weight update by L4 probability — low confidence → tiny update → no corruption
-                self._pi_node[node][self._prev_action] = float(np.clip(
-                    self._pi_node[node][self._prev_action] + prob * ALPHA_NODE * rpe,
-                    PI_MIN, PI_MAX))
-                self._node_visits[node] = self._node_visits.get(node, 0) + 1
+            # RPE dead zone: only update actor when signal is meaningful
+            if abs(rpe_for_update) >= RPE_DEAD_ZONE:
+                _fast.update_all_pi_bmu(
+                    self._pi_bmu, self._e, rpe_for_update, ALPHA_ACTOR, PI_MIN, PI_MAX)
 
-        # ── 3. Wall penalty: direct write to per-node policy ──
-        # On wall hits, immediately penalise the attempted action at this node.
-        # Trace-based updates are too slow on walls (trace decays during repeated hitting).
+                # Per-node: same PG gradient, weighted by L4 confidence
+                if (self._prev_l4_node is not None
+                        and self._prev_l4_prob >= NODE_L4_MIN):
+                    node = self._prev_l4_node
+                    prob = float(self._prev_l4_prob)
+                    if node not in self._pi_node:
+                        self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
+                    pg = -self._prev_probs.copy()
+                    pg[self._prev_action] += 1.0
+                    self._pi_node[node] = np.clip(
+                        self._pi_node[node] + prob * ALPHA_NODE * rpe_for_update * pg,
+                        PI_MIN, PI_MAX)
+                    self._node_visits[node] = self._node_visits.get(node, 0) + 1
+        else:
+            # Wall hit or first step — just decay, no gradient stamp
+            self._e *= (1.0 - TRACE_DECAY)
+
+        # ── 3. Wall penalty: PG-based per-node policy update ─────
+        # FIX: Old code used raw additive subtraction which drained logits
+        # one-way toward PI_MIN without lifting alternatives. Now uses
+        # pg_replay_update which applies proper PG gradient: pushes the
+        # wall action DOWN and proportionally lifts other actions UP,
+        # maintaining the probability simplex.
         if (not world_moved and rpe < 0.0
                 and l4_top_node is not None
                 and l4_top_prob >= 0.55):
             node = l4_top_node
             if node not in self._pi_node:
                 self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
-            # Direct penalise — weight by L4 probability
             curr_action = getattr(self, '_current_action', 0)
-            self._pi_node[node][curr_action] = float(np.clip(
-                self._pi_node[node][curr_action] + l4_top_prob * ALPHA_NODE * rpe,
-                PI_MIN, PI_MAX))
+            # Use PG-based update: penalty pushes wall action down,
+            # lifts alternatives proportionally via softmax gradient.
+            wall_credit = float(l4_top_prob * ALPHA_NODE * abs(rpe))
+            _fast.pg_replay_update(
+                self._pi_node[node], curr_action,
+                -wall_credit,   # negative credit = penalise this action
+                float(max(self._current_temp, TEMP_MIN)), PI_MIN, PI_MAX)
             self._node_visits[node] = self._node_visits.get(node, 0) + 1
 
-        # ── 4. Set trace for this step (real transitions only) ──
-        if world_moved:
-            self._e[self._prev_bmu, self._prev_action] = min(
-                1.0,
-                self._e[self._prev_bmu, self._prev_action] + 1.0)
+        # ── 4. Trace stamp replaced by PG gradient in step 1+2 ──
 
         # ── 5. Direct food credit on per-node policy ─────────
         # When food reward arrives (raw_reward > 0), immediately credit the
@@ -320,11 +369,11 @@ class ActionLayer:
             node = l4_top_node
             if node not in self._pi_node:
                 self._pi_node[node] = np.zeros(self._n_actions, dtype=np.float32)
-            # Credit the action taken this step (prev_action led here)
             credit_rpe = max(float(rpe), 0.20)
-            self._pi_node[node][self._prev_action] = float(np.clip(
-                self._pi_node[node][self._prev_action] + l4_top_prob * ALPHA_NODE * credit_rpe,
-                PI_MIN, PI_MAX))
+            _fast.pg_replay_update(
+                self._pi_node[node], self._prev_action,
+                float(l4_top_prob * ALPHA_NODE * credit_rpe),
+                float(max(self._current_temp, TEMP_MIN)), PI_MIN, PI_MAX)
             self._node_visits[node] = self._node_visits.get(node, 0) + 1
 
         # ── 6. Temperature ────────────────────────────────────
@@ -354,6 +403,17 @@ class ActionLayer:
         temp_eff = float(np.clip(temp_eff, TEMP_MIN, TEMP_INIT))
         self._current_temp = temp_eff
 
+        # ── 6b. L2 weight decay (homeostatic plasticity) ──────
+        # FIX: pull all logits slowly toward 0.0 so ancient punishments
+        # fade. Without this, logits trapped at PI_MIN (-1.5) never
+        # recover — the brain permanently "forgets" that an action
+        # exists. Biologically: inactive synapses decay toward baseline.
+        # Applied every WEIGHT_DECAY_INTERVAL steps to amortise cost.
+        if self.t > 0 and self.t % WEIGHT_DECAY_INTERVAL == 0:
+            self._pi_bmu *= (1.0 - WEIGHT_DECAY)
+            for _node_key in self._pi_node:
+                self._pi_node[_node_key] *= (1.0 - WEIGHT_DECAY)
+
         # ── 6. Effective policy (soft L4 blend) ───────────────
         pi_eff = self._pi_bmu[bmu_idx].copy()
 
@@ -368,16 +428,9 @@ class ActionLayer:
                 blend = float(np.clip(l4_top_prob * trust * 0.85, 0.0, 0.85))
                 pi_eff = (1.0 - blend) * pi_eff + blend * self._pi_node[l4_top_node]
 
-        # ── 7. Softmax action selection ───────────────────────
-        logits = pi_eff / max(temp_eff, 1e-6)
-        logits -= logits.max()   # numerical stability
-        probs  = np.exp(logits)
-        probs  = probs / probs.sum()
-        # Clamp to valid probability simplex — floating point can drift slightly
-        probs  = np.clip(probs, 0.0, 1.0)
-        probs  = probs / probs.sum()
-
-        action = int(self._rng.choice(self._n_actions, p=probs))
+        # ── 7. Softmax action selection (numba-compiled) ──────
+        probs  = _fast.compute_softmax(pi_eff.astype(np.float32), float(temp_eff))
+        action = int(_fast.sample_action(probs, float(self._rng.random_sample())))
 
         # Greedy action for diagnostics
         greedy_action = int(np.argmax(pi_eff))
@@ -390,13 +443,19 @@ class ActionLayer:
         # ── 8. Replay buffer ──────────────────────────────────
         # Format matches brain.py idle_step(): 7-element tuple
         # (prev_bmu, curr_bmu, action, fi, l4_node, was_explore, l4_prob)
-        if world_moved:
+        #
+        # IMPORTANT: store the PREVIOUS step's action/L4 fields, not current.
+        # This tuple represents the transition prev_bmu → bmu_idx, so we need
+        # the action that CAUSED that move (self._prev_action), the L4 node
+        # at prev_bmu (self._prev_l4_node), and the explore flag from the
+        # previous selection (self._current_was_explore, not yet overwritten).
+        if world_moved and self._prev_valid:
             self._replay_buffer.append((
-                self._prev_bmu, bmu_idx, action,
-                self._current_freq_idx,   # fi
-                l4_top_node,              # L4 node (or None)
-                is_explore,               # was this step exploratory
-                l4_top_prob,             # L4 confidence at this step
+                self._prev_bmu, bmu_idx, self._prev_action,
+                self._current_freq_idx,        # fi (unused in replay, kept for compat)
+                self._prev_l4_node,            # L4 node at prev_bmu
+                self._current_was_explore,     # explore flag from previous step
+                self._prev_l4_prob,            # L4 confidence at prev_bmu
             ))
 
         # ── 9. Advance state ──────────────────────────────────
@@ -405,6 +464,7 @@ class ActionLayer:
         self._prev_l4_node     = l4_top_node if l4_top_prob >= NODE_L4_MIN else None
         self._prev_l4_prob     = l4_top_prob
         self._prev_valid       = True
+        self._prev_probs       = probs.copy()   # store for next step's PG gradient
         self._current_action   = action
         self._current_freq_idx = freq_idx
         self._current_was_explore = is_explore
@@ -449,24 +509,24 @@ class ActionLayer:
         credit = float(reward) * REPLAY_ALPHA * (1.0 - float(familiarity) * 0.5)
         n_replayed = 0
 
+        temp = float(max(self._current_temp, TEMP_MIN))
         for pb, cb, act, fi, l4_node, was_explore, l4_prob in reversed(self._replay_buffer):
             if credit < 0.005:
                 break
-            # Exploratory steps get 70% credit — some discount since they happened
-            # by chance, but early training is almost entirely exploratory so 30%
-            # was removing most of the learning signal.
             explore_scale = 0.70 if was_explore else 1.0
-            self._pi_bmu[pb, act] = float(np.clip(
-                self._pi_bmu[pb, act] + credit * explore_scale, PI_MIN, PI_MAX))
-            # Per-node update when L4 was somewhat confident at that step.
-            # 0.45 gate was too strict — most early steps have l4_prob 0.30-0.45.
+            # PG-based replay: scales by actual current softmax probs.
+            # Self-normalizing: when π[act] already dominant, update → 0.
+            # Prevents PI_MIN saturation of non-chosen directions.
+            _fast.pg_replay_update(
+                self._pi_bmu[pb], act,
+                float(credit * explore_scale), temp, PI_MIN, PI_MAX)
             if l4_prob >= 0.30 and l4_node is not None:
                 node_to_credit = food_node if (l4_node == food_node and food_node) else l4_node
                 if node_to_credit in self._pi_node:
                     scale = (0.8 if node_to_credit == food_node else 0.5) * explore_scale
-                    self._pi_node[node_to_credit][act] = float(np.clip(
-                        self._pi_node[node_to_credit][act] + credit * scale,
-                        PI_MIN, PI_MAX))
+                    _fast.pg_replay_update(
+                        self._pi_node[node_to_credit], act,
+                        float(credit * scale), temp, PI_MIN, PI_MAX)
             credit *= REPLAY_GAMMA
             n_replayed += 1
 

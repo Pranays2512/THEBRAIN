@@ -265,7 +265,7 @@ def bfs_optimal_actions(food_nodes: List[str],
     Used for policy quality measurement in the harness.
     """
     from collections import deque
-    targets = set(door_nodes)   # doors give reward; food nodes also
+    targets = set(door_nodes) | set(food_nodes)  # both doors AND direct food nodes give reward
 
     dist = {n: float('inf') for n in ALL_NODES}
     parent_action = {}

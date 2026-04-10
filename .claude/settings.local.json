@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python -c \"from brain import Brain; b = Brain\\(seed=42\\); from m56_action import Q_MIN, Q_MAX; print\\('all OK'\\)\")",
-      "Bash(python -c \"from m56_action import ActionLayer, PI_MAX, PI_MIN, REPLAY_ALPHA, TEMP_DECAY; print\\(f'PI_MAX={PI_MAX}, REPLAY_ALPHA={REPLAY_ALPHA}, TEMP_DECAY={TEMP_DECAY:.8f}'\\); a = ActionLayer\\(\\); a.boost_exploration\\(500\\); print\\(f'boost_temp={a._boost_temp:.2f}, base_temp={a._base_temp:.2f}'\\); print\\('OK'\\)\")"
+      "Bash(python -c \"from m56_action import ActionLayer, PI_MAX, PI_MIN, REPLAY_ALPHA, TEMP_DECAY; print\\(f'PI_MAX={PI_MAX}, REPLAY_ALPHA={REPLAY_ALPHA}, TEMP_DECAY={TEMP_DECAY:.8f}'\\); a = ActionLayer\\(\\); a.boost_exploration\\(500\\); print\\(f'boost_temp={a._boost_temp:.2f}, base_temp={a._base_temp:.2f}'\\); print\\('OK'\\)\")",
+      "Bash(python -c \"from numba import njit; print\\('numba OK'\\)\")",
+      "Bash(coderabbit --version)",
+      "Bash(coderabbit auth:*)",
+      "Bash(ls /Users/pranay./Documents/THEBRAIN/*.py)"
     ]
   }
 }

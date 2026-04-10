@@ -27,7 +27,7 @@ What "success" looks like
   • Wall rate: <15% average (brain learns walls exist, even without explicit tuning)
 """
 
-import sys, time, argparse
+import sys, time, argparse, pickle, os, hashlib
 import numpy as np
 from collections import deque
 
@@ -50,6 +50,8 @@ sys.dont_write_bytecode = True
 parser = argparse.ArgumentParser()
 parser.add_argument('--static-food', action='store_true',
                     help='Disable food movement — convergence validation test')
+parser.add_argument('--no-cache', action='store_true',
+                    help='Force rebuild of calibration and signal library')
 ARGS = parser.parse_args()
 
 mode = 'STATIC FOOD (convergence test)' if ARGS.static_food else 'DYNAMIC FOOD'
@@ -198,6 +200,13 @@ def run_closed_loop(brain, world, library):
         brain.l4.reset_to_node('A0')
     counters = {}
 
+    # Visit-count curiosity: track how often each node is visited.
+    # Adds a small intrinsic reward for visiting less-visited nodes,
+    # decaying as 1/(visit_count+1). This prevents the brain from
+    # getting stuck looping near one food node (the H3 trap).
+    _node_visit_count = {}
+    CURIOSITY_SCALE = 0.05   # max intrinsic bonus per step (decays quickly)
+
     # Per-window counters
     wfood = wwalls = wdoor_hit = 0
     hunger_sum_at_eat = 0.0
@@ -263,6 +272,15 @@ def run_closed_loop(brain, world, library):
         # World step
         hunger_before = world._hunger
         next_freq_hz, next_freq_idx, reward, info = world.step(action)
+
+        # Visit-count curiosity: small bonus for visiting less-visited nodes.
+        # Breaks high-visit traps (e.g. eating at H3 every 2 steps with near-zero hunger).
+        # Decays to near-zero after ~20 visits so it doesn't override learned policy.
+        visited_node = info['node']
+        _node_visit_count[visited_node] = _node_visit_count.get(visited_node, 0) + 1
+        if not info['wall_hit']:
+            reward += CURIOSITY_SCALE / (_node_visit_count[visited_node] + 1)
+
         pending_reward  = reward
         current_texture = info['texture']
 
@@ -472,11 +490,46 @@ def run_closed_loop(brain, world, library):
 # MAIN
 # ═══════════════════════════════════════════════════════════════
 
+_CACHE_KEY = hashlib.md5(
+    f"{CAL_BLOCK_DUR}_{SIGNAL_BLOCK_DUR_S}_{PLV_STAB_WINDOW}_{FREQUENCIES}".encode()
+).hexdigest()[:8]
+_CACHE_FILE = f".brain_test_cache_{_CACHE_KEY}.pkl"
+
+
+def _load_cache():
+    if os.path.exists(_CACHE_FILE):
+        try:
+            with open(_CACHE_FILE, 'rb') as f:
+                return pickle.load(f)
+        except Exception:
+            pass
+    return None
+
+
+def _save_cache(data):
+    try:
+        with open(_CACHE_FILE, 'wb') as f:
+            pickle.dump(data, f)
+    except Exception as e:
+        print(f"  [cache write failed: {e}]")
+
+
 def main():
     node_fi = {name: data[1] for name, data in NODES.items()}
 
-    rx_slow, ry_slow, rx_fast, ry_fast = calibrate()
-    library = build_signal_library(rx_slow, ry_slow, rx_fast, ry_fast)
+    if not ARGS.no_cache:
+        cached = _load_cache()
+    else:
+        cached = None
+
+    if cached is not None:
+        print("  [Using cached calibration + signal library — pass --no-cache to rebuild]")
+        rx_slow, ry_slow, rx_fast, ry_fast, library = cached
+    else:
+        rx_slow, ry_slow, rx_fast, ry_fast = calibrate()
+        library = build_signal_library(rx_slow, ry_slow, rx_fast, ry_fast)
+        _save_cache((rx_slow, ry_slow, rx_fast, ry_fast, library))
+        print(f"  [Signal cache saved → {_CACHE_FILE}]")
 
     brain = Brain(
         seed       = SEED,
