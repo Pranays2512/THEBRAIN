@@ -1,107 +1,86 @@
 """
-BRAIN — Integrated Cognitive Stack with Global Workspace  (v12)
-=============================================================
+BRAIN v13 — Language-First Cognitive Stack
+==========================================
 
-v12: MULTIMODAL SENSING — second sensory modality (texture) added.
+Navigation scaffold removed. The brain's only sensory interface is sound.
 
-New modules:
-  M51  (m51_texture.py)         — TextureSense: converts raw texture value
-                                   to a 16-dim input vector for M54b.
-  M54b (m54b_texture_cortex.py) — TextureCortex: 4×4 SOM that maps texture
-                                   inputs to 16 BMU indices (bmu_texture).
-  M65  (m65_fusion.py)          — MultimodalFusion: combines sound + texture
-                                   observations into a fused likelihood vector
-                                   for L4's Bayesian belief update.
+  brain.hear(mfcc_vec)    — inject a 13-dim MFCC audio frame (25ms)
+  brain.step(reward=0.0)  — run one cognitive cycle
+  brain.dream(n=8)        — run a REM dream cycle (offline, between steps)
 
-HOW IT PLUGS IN
----------------
-Two new parameters on Brain.step():
-  texture_val   : float  — raw texture value from world (world.current_texture
-                           or info['texture'] from world.step()). Default 0.5
-                           so old harnesses work unchanged (no texture signal).
-  texture_active: bool   — whether to use texture this step. Default True
-                           when texture_val is provided, False otherwise.
-                           Allows graceful degradation if sensor missing.
+PRIMARY SENSORY: M71 SpeechCortex
+  13-dim MFCC → 26-dim (MFCC + delta) → 10×10 acoustic SOM → phoneme_bmu.
+  phoneme_bmu drives the full cognitive stack:
+    M55 (associative memory of phoneme patterns)
+    L2  (sequence prediction of next phoneme)
+    Attention, Thought, Valence, SelfModel — all operating over phoneme space.
 
-New output keys (all prefixed m51_, m54b_, m65_):
-  m51_texture_val       — raw texture value received
-  m51_texture_noisy     — noisy version M54b saw
-  m54b_bmu_texture      — which texture neuron fired (0-15)
-  m54b_qe_norm          — texture cortex perceptual surprise
-  m65_fused_likelihood  — per-node fused observation (n_nodes,)
-  m65_sound_weight      — effective sound weight in fusion
-  m65_texture_weight    — effective texture weight in fusion
-  m65_texture_conf      — how discriminating the texture signal was
-  m65_fusion_active     — whether fusion has passed warmup
+COGNITIVE STACK (in step order)
+--------------------------------
+  M71  SpeechCortex       — acoustic SOM (primary sensory)
+  M72  PhonemeSequence    — transition statistics, word boundary detection
+  M55  AssociativeMemory  — Hebbian familiarity over phoneme patterns
+  L2   SequencePredictor  — predict next phoneme
+  Valence                 — reward/novelty/familiarity integration
+  M66  NeuromodState      — ACh / NE / 5-HT modulation
+  Attention               — salience gating
+  Thought                 — expectation, focus entropy
+  M58  WorkingMemory      — time-based recency, steps since reward
+  GWS  GlobalWorkspace    — global ignition / broadcast signal
+  M59  SelfModel          — internal state vector and label
+  M60  QuestionMemory     — curiosity / confusion tracking
+  M62  ConsistencyChecker — reasoning critic
+  M63  EpisodicTrace      — episodic memory
+  M64  LanguageSeed       — situation tagging from internal state
+  M67  TemporalContext     — circadian phase, overdue score
+  M73  SemanticBinding    — Hebbian word-to-state binding
+  M74  VocalOutput        — speech production
 
-BACKWARD COMPATIBILITY
-----------------------
-All existing output keys are unchanged.
-Brain.step() signature extended with optional texture_val=0.5 and
-texture_active=True — existing harnesses need no changes.
-
-If Brain is constructed without multimodal=True (default), M51/M54b/M65
-are not instantiated and the new output keys are filled with zero stubs.
-This keeps the module set identical to v11 for non-texture worlds.
-
-Call this with multimodal=True for World5:
-  brain = Brain(seed=42, node_fi=node_fi_dict, multimodal=True,
-                node_tex=node_tex_dict)
-
-CALL ORDER (per step, new steps shown with ★)
----------------------------------------------
-1. pred.predict()
-2. cortex.step()                      ← M54 (sound)
-★2b. texture_sense.step()             ← M51 (texture input prep)
-★2c. texture_cortex.step()            ← M54b (texture SOM)
-★2d. fusion.step()                    ← M65 (sound × texture → L4)
-3. memory.step()
-4. memory.recall()
-5. pred.step()
-5b. L3 concept layer
-5c. L4.step() with fused_likelihood   ← L4 now uses both signals ★
-6. feedback deltas
-6b. Valence
-7. Attention
-8. Thought
-8b. WorkingMemory
-8c. GlobalWorkspace
-8d. SelfModel
-8e. QuestionMemory
-9. M56 action
-10. M57 planner + M61 + M62 + M63 + M64
+REMOVED FROM v12
+----------------
+  M56  ActionLayer  — navigation Q-learning (was test scaffold)
+  M57  Planner      — tree-search planner (needs zone graph)
+  L3   ConceptLayer — zone clustering (navigation-specific)
+  L4   PositionBelief — Bayesian location (navigation-specific)
+  M51  TextureSense   — texture sensor (body-specific)
+  M54b TextureCortex  — texture SOM (body-specific)
+  M65  MultimodalFusion — sound×texture fusion (body-specific)
+  M68  InferenceEngine  — BFS over zone graph (needs L3, to be rearchitected)
+  M69  ImaginationEngine — stochastic zone walks (needs L3, to be rearchitected)
+  CortexM56 (M54) — frequency-domain cortex (replaced by M71 as primary sensory)
 """
 
 import numpy as np
 
-from m56_cortex import CortexM56
-from m55_memory import AssociativeMemory
-from l2_predictor import SequencePredictor
-from evaluators import Attention, Thought, Valence
-from m56_action import ActionLayer
-from m57_planner import Planner
-from l3_concepts import ConceptLayer
-from l4_position import PositionBelief
+from m55_memory     import AssociativeMemory
+from l2_predictor   import SequencePredictor
+from evaluators     import Attention, Thought, Valence
 from m58_workingmemory import WorkingMemory
-from global_workspace import GlobalWorkspace
-from m59_selfmodel import SelfModel
-from m60_questions import QuestionMemory
-from m62_consistency import ConsistencyChecker
-from m63_episodic import EpisodicTrace
-from m64_language import LanguageSeed
+from global_workspace  import GlobalWorkspace
+from m59_selfmodel     import SelfModel
+from m60_questions     import QuestionMemory
+from m62_consistency   import ConsistencyChecker
+from m63_episodic      import EpisodicTrace
+from m64_language      import LanguageSeed
+from m66_neuromod      import NeuromodState
+from m67_temporal      import TemporalContext
+from m70_dream         import DreamEngine
 
-# ── NEW v12 imports ──────────────────────────────────────────
-from m51_texture import TextureSense
-from m54b_texture_cortex import TextureCortex
-from m65_fusion import MultimodalFusion
+# Language stack
+from m71_speech_cortex import SpeechCortex
+from m72_phoneme_seq   import PhonemeSequencePredictor
+from m73_binding       import SemanticBinding
+from m74_vocal         import VocalOutput
 
 
 # ═══════════════════════════════════════════════════════════════
-# FEEDBACK PARAMETERS (unchanged from v11)
+# PARAMETERS
 # ═══════════════════════════════════════════════════════════════
 
 FEEDBACK_EMA_ALPHA = 0.10
 FEEDBACK_EMA_INIT  = 1.0
+
+_NO_ACTION = -1   # action index placeholder (navigation removed)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -110,687 +89,53 @@ FEEDBACK_EMA_INIT  = 1.0
 
 class Brain:
     """
-    Integrated M54 + M55 + L2 + Attention cognitive stack.
-
-    v12: Multimodal sensing added (M51 + M54b + M65).
+    Integrated cognitive stack — language-first, no navigation.
 
     Parameters
     ----------
-    seed       : int  — random seed
-    node_fi    : dict — node name → freq_index (for L4)
-    multimodal : bool — enable M51/M54b/M65 (default False for backward compat)
-    node_tex   : dict — node name → texture value (required if multimodal=True)
+    seed : int — random seed for all stochastic modules.
+
+    Primary interface
+    -----------------
+    brain.hear(mfcc_vec)   — inject 13-dim MFCC before step()
+    brain.step(reward)     — one cognitive cycle
+    brain.dream(n)         — offline REM dream cycle
     """
 
-    def __init__(self, seed: int = 42, node_fi: dict = None,
-                 multimodal: bool = False, node_tex: dict = None):
-        self.cortex    = CortexM56(seed=seed)
-        self.memory    = AssociativeMemory(seed=seed)
-        self.pred      = SequencePredictor()
-        self.attention = Attention()
-        self.thought   = Thought()
-        self.valence   = Valence()
-        self.action    = ActionLayer(seed=seed)
-        self.planner   = Planner(n_actions=self.action._n_actions)
-        self.l3        = ConceptLayer(n_zones=8)
-        self.wm        = WorkingMemory(n_zones=8, seed=seed)
-        self.gws       = GlobalWorkspace(n_zones=8)
-        self.selfmodel  = SelfModel(seed=seed)
-        self.questions  = QuestionMemory(seed=seed)
-        self.consistency = ConsistencyChecker(n_actions=self.action._n_actions, seed=seed)
-        self.episodic    = EpisodicTrace(n_actions=self.action._n_actions, seed=seed)
-        self.language    = LanguageSeed(n_actions=self.action._n_actions, seed=seed)
+    def __init__(self, seed: int = 42):
+        # ── Primary sensory: speech cortex (M71) ─────────────
+        self.speech_cortex = SpeechCortex(seed=seed)
 
-        # ── L4: position belief ───────────────────────────────
-        if node_fi is not None:
-            self.l4 = PositionBelief(node_fi=node_fi)
-            from collections import Counter as _Counter
-            fi_counts = _Counter(node_fi.values())
-            import m56_action as _m56
-            _m56.L4_Q_N_UNIQUE_NODES = {
-                n for n, fi in node_fi.items() if fi_counts[fi] == 1
-            }
-            _m56.L4_Q_N_ALIASED_NODES = {
-                n for n, fi in node_fi.items() if fi_counts[fi] > 1
-            }
-            if len(node_fi) > 12:
-                import l4_position as _l4
-                _l4.L4_BELIEF_DECAY = _l4.L4_BELIEF_DECAY_LARGE_WORLD
-                _l4.L4_CTM_WARMUP   = _l4.L4_CTM_WARMUP_LARGE_WORLD
-        else:
-            self.l4 = None
+        # ── Language modules ──────────────────────────────────
+        self.phoneme_seq   = PhonemeSequencePredictor()
+        self.binding       = SemanticBinding(seed=seed)
+        self.vocal         = VocalOutput(seed=seed)
 
-        # ── NEW v12: Multimodal modules ───────────────────────
-        self._multimodal = multimodal
-        if multimodal:
-            if node_tex is None:
-                raise ValueError(
-                    "Brain(multimodal=True) requires node_tex dict. "
-                    "Pass node_tex=world5.NODE_TEXTURES."
-                )
-            if node_fi is None:
-                raise ValueError(
-                    "Brain(multimodal=True) requires node_fi dict."
-                )
-            self.texture_sense  = TextureSense(seed=seed)
-            self.texture_cortex = TextureCortex(seed=seed)
-            self.fusion         = MultimodalFusion(
-                node_fi   = node_fi,
-                node_tex  = node_tex,
-                n_tex_bins = 8,
-                seed       = seed,
-            )
-        else:
-            self.texture_sense  = None
-            self.texture_cortex = None
-            self.fusion         = None
+        # ── Cognitive stack ───────────────────────────────────
+        # All these now operate over phoneme BMU space (0..99)
+        # instead of frequency/zone space.
+        # M55 sized to match M71's 100-neuron phoneme SOM
+        self.memory        = AssociativeMemory(seed=seed, n_neurons=400)
+        self.pred          = SequencePredictor(n_neurons=400)
+        self.attention     = Attention(n_neurons=400)
+        self.thought       = Thought(n_neurons=400)
+        self.valence       = Valence()
+        self.wm            = WorkingMemory(n_zones=8, seed=seed)
+        self.gws           = GlobalWorkspace(n_zones=8)
+        self.selfmodel     = SelfModel(seed=seed)
+        self.questions     = QuestionMemory(seed=seed)
+        self.consistency   = ConsistencyChecker(n_actions=4, seed=seed)
+        self.episodic      = EpisodicTrace(n_actions=4, seed=seed)
+        self.language      = LanguageSeed(n_actions=4, seed=seed)
 
-        # ── freq_bmu_counters ─────────────────────────────────
-        from collections import Counter
-        self._freq_bmu_counters = [Counter() for _ in range(8)]
-        self._l3_zone_interval  = 2000
+        # ── Neuromodulation and time ──────────────────────────
+        self.neuromod   = NeuromodState()
+        self.temporal   = TemporalContext()
+
+        # ── Dreams ───────────────────────────────────────────
+        self.dreamer    = DreamEngine(seed=seed)
 
         # ── Feedback state ────────────────────────────────────
-        self._error_ema     = float(FEEDBACK_EMA_INIT)
-        self._curiosity_ema = float(FEEDBACK_EMA_INIT)
-        self._last_surprise_signal  = 0.0
-        self._last_curiosity_delta  = 0.0
-        self._last_rpe_positive     = 0.0
-        self._last_familiarity      = 0.0
-        self._last_prediction_error = 0.0
-        self._last_curiosity        = 0.0
-
-        self.t = 0
-        self._prev_zone_for_T      = -1
-        self._prev_action_for_T    = -1
-        self._prev_prev_zone_for_T = -1
-
-        _n_act = self.action._n_actions
-        self._last_m63_recognition  = 0.0
-        self._last_m63_action_prior = np.ones(_n_act, dtype=np.float64) / _n_act
-
-        # ── Food trajectory store (for hippocampal replay) ────
-        # Snapshots of M56's replay buffer at each food event.
-        # Each entry: {'trajectory': [(prev_bmu, curr_bmu, action, fi, l4_node, explore),...],
-        #              'food_node': str, 'reward': float}
-        from collections import deque as _dq
-        self._food_trajectories = _dq(maxlen=10)
-
-    # ── Main step ─────────────────────────────────────────────
-
-    def step(self,
-             decoded_freq:   float,
-             stability_w:    float,
-             novelty_flag:   float,
-             plv_vector:     np.ndarray,
-             reward:         float = 0.0,
-             freq_idx:       int   = -1,
-             world_moved:    bool  = True,
-             texture_val:    float = 0.5,    # NEW v12 — texture from world
-             texture_active: bool  = False,  # NEW v12 — False = no texture signal
-             ) -> dict:
-        """
-        One full cognitive step. All v11 parameters unchanged.
-
-        New parameters
-        --------------
-        texture_val    : float — raw texture value from world.current_texture
-                                 or info['texture'] from world.step().
-                                 Ignored if texture_active=False.
-        texture_active : bool  — True when a real texture reading is available.
-                                 Set to False in open-loop or non-texture steps.
-        """
-        # ── 0. Zone transition update ─────────────────────────
-        if world_moved and self._prev_zone_for_T >= 0 and self._prev_action_for_T >= 0 and freq_idx >= 0:
-            self.l3.update_action_transition(
-                prev_zone      = self._prev_zone_for_T,
-                action         = self._prev_action_for_T,
-                curr_zone      = freq_idx,
-                prev_prev_zone = self._prev_prev_zone_for_T,
-            )
-            self.l3.record_transition_outcome(
-                prev_zone      = self._prev_zone_for_T,
-                action         = self._prev_action_for_T,
-                actual_zone    = freq_idx,
-                prev_prev_zone = self._prev_prev_zone_for_T,
-            )
-
-        # ── 1. Predict BEFORE cortex fires ────────────────────
-        pred_out = self.pred.predict()
-
-        # ── 2. Cortex fires (M54 — sound) ────────────────────
-        cortex_out = self.cortex.step(
-            decoded_freq     = decoded_freq,
-            stability_w      = stability_w,
-            novelty_flag     = novelty_flag,
-            plv_vector       = plv_vector,
-            prediction_error = self._last_surprise_signal,
-            familiarity      = self._last_familiarity,
-        )
-        bmu_idx = cortex_out['bmu_idx']
-        qe_norm = cortex_out['qe_norm']
-
-        # ── 2b-d. Texture pipeline (M51 → M54b → M65) — NEW v12 ──
-        if self._multimodal and texture_active:
-            m51_out  = self.texture_sense.step(texture_val)
-            m54b_out = self.texture_cortex.step(
-                texture_vec = m51_out['texture_vec'],
-                texture_val = float(texture_val),
-            )
-            m65_out = self.fusion.step(
-                curr_fi            = freq_idx if freq_idx >= 0 else -1,
-                texture_likelihood = m54b_out['texture_likelihood'],
-                tex_bin            = m54b_out['tex_bin'],
-                sound_qe_norm      = qe_norm,
-                tex_qe_norm        = m54b_out['qe_norm'],
-            )
-        else:
-            # Stubs — no texture signal
-            m51_out  = {'texture_val': texture_val, 'texture_noisy': texture_val}
-            m54b_out = {'bmu_texture': 0, 'qe_norm': 0.0}
-            m65_out  = {
-                'fused_likelihood':  None,
-                'sound_weight':      1.0,
-                'texture_weight':    0.0,
-                'texture_confidence': 0.0,
-                'fusion_active':     False,
-                'n_tex_matching':    self.fusion.n_nodes if self.fusion else 0,
-            }
-
-        # ── 3. Memory update (M55) ────────────────────────────
-        mem_out = self.memory.step(
-            bmu_idx      = bmu_idx,
-            qe_norm      = qe_norm,
-            curiosity    = self._last_curiosity_delta,
-            rpe_positive = self._last_rpe_positive,
-        )
-
-        # ── 4. Recall — familiarity ───────────────────────────
-        recall_out  = self.memory.recall(bmu_idx)
-        familiarity = recall_out['familiarity']
-        self._last_familiarity = familiarity
-
-        # ── 5. L2 learns ──────────────────────────────────────
-        l2_out = self.pred.step(
-            bmu_idx         = bmu_idx,
-            qe_norm         = qe_norm,
-            familiarity     = familiarity,
-            prediction_bias = self.thought._last_prediction_bias,
-            last_action     = self._prev_action_for_T,
-            world_moved     = world_moved,
-        )
-        raw_error     = l2_out['prediction_error']
-        raw_curiosity = l2_out['curiosity']
-
-        # ── 5b. L3 concept layer ──────────────────────────────
-        if freq_idx >= 0:
-            self._freq_bmu_counters[freq_idx][bmu_idx] += 1
-            if (self.t >= 5000 and self.t % self._l3_zone_interval == 0):
-                self.l3.assign_zones_from_counters(self._freq_bmu_counters)
-
-        l3_scores = self.pred._P[bmu_idx] if hasattr(self.pred, '_P') else None
-        l3_out = self.l3.step(
-            bmu_idx   = bmu_idx,
-            l2_scores = l3_scores,
-            freq_idx  = freq_idx,
-        )
-        visit_zone = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
-        if visit_zone >= 0:
-            self.l3.update_zone_visit(visit_zone)
-
-        if reward != 0.0:
-            zone_for_reward = freq_idx if freq_idx >= 0 else l3_out['zone_idx']
-            self.l3.update_zone_reward(zone_for_reward, reward)
-
-        # ── 5c. L4 Position Belief — with optional fusion ─────
-        # v12: if fusion is active, apply fused_likelihood as an
-        # additional observation update BEFORE L4's own sound update.
-        # L4's internal sound_likelihood handles the sound part;
-        # we apply the texture component here as a belief multiplier.
-        if self.l4 is not None:
-            l4_out = self.l4.step(
-                curr_fi     = freq_idx if freq_idx >= 0 else -1,
-                action      = self._prev_action_for_T,
-                world_moved = world_moved,
-            )
-            # ── NEW v12: Apply texture likelihood to L4 belief ──
-            # After L4's standard sound update, multiply belief by
-            # the texture component from M65. This is "late fusion":
-            # L4 does its sound update first, then texture refines it.
-            # We access L4's internal belief and update it directly.
-            if (self._multimodal and texture_active
-                    and m65_out['fusion_active']
-                    and m65_out['fused_likelihood'] is not None):
-                fused = m65_out['fused_likelihood']
-                # Texture-only component = fused / sound component
-                # (to avoid double-counting sound which L4 already applied)
-                # Instead: multiply belief by tex_obs (node tex bin match)
-                tex_w = m65_out['texture_weight']
-                if tex_w > 0.01:
-                    # Build texture-only likelihood per node
-                    tex_bin = m54b_out['tex_bin']
-                    tex_like = np.array([
-                        1.0 if self.fusion._node_tex_bin[i] == tex_bin
-                        else 0.10
-                        for i in range(self.fusion.n_nodes)
-                    ], dtype=np.float64)
-                    # Apply with texture weight as exponent (soft update)
-                    tex_update = tex_like ** tex_w
-                    self.l4._belief *= tex_update
-                    s = self.l4._belief.sum()
-                    if s > 1e-12:
-                        self.l4._belief /= s
-                    # Refresh L4 output with updated belief
-                    l4_out = self.l4._make_output()
-        else:
-            l4_out = {
-                'top_node':       None,
-                'top_prob':       0.0,
-                'belief_entropy': 1.0,
-                'confident':      False,
-                'belief_vector':  None,
-            }
-
-        # ── 6. Feedback deltas ────────────────────────────────
-        surprise_signal = float(np.clip(raw_error     - self._error_ema,     0.0, 1.0))
-        curiosity_delta = float(np.clip(raw_curiosity  - self._curiosity_ema, 0.0, 1.0))
-        self._error_ema     = ((1.0 - FEEDBACK_EMA_ALPHA) * self._error_ema
-                               + FEEDBACK_EMA_ALPHA * raw_error)
-        self._curiosity_ema = ((1.0 - FEEDBACK_EMA_ALPHA) * self._curiosity_ema
-                               + FEEDBACK_EMA_ALPHA * raw_curiosity)
-        self._last_surprise_signal  = surprise_signal
-        self._last_curiosity_delta  = curiosity_delta
-        self._last_prediction_error = raw_error
-        self._last_curiosity        = raw_curiosity
-
-        # ── 6b. Valence ───────────────────────────────────────
-        v1_out = self.valence.step(
-            prediction_error = raw_error,
-            reward           = float(reward),
-            familiarity      = familiarity,
-        )
-        self._last_rpe_positive = v1_out['pos_rpe']
-
-        # ── 7. Attention ──────────────────────────────────────
-        attn_out = self.attention.step(
-            bmu_idx                  = bmu_idx,
-            qe_norm                  = qe_norm,
-            familiarity              = familiarity,
-            surprise_signal          = surprise_signal,
-            curiosity_delta          = curiosity_delta,
-            thought_confidence_delta = self.thought._last_confidence_delta,
-        )
-
-        # ── 8. Thought ────────────────────────────────────────
-        thought_out = self.thought.step(
-            attended_bmu = attn_out['attended_bmu'],
-            bmu_idx      = bmu_idx,
-            pred         = self.pred,
-            salience     = attn_out['salience'],
-            memory       = self.memory,
-        )
-
-        # ── 8b. Working Memory ────────────────────────────────
-        wm_out = self.wm.step(
-            freq_idx = freq_idx if freq_idx >= 0 else -1,
-            action   = self._prev_action_for_T,
-            reward   = float(reward),
-        )
-
-        # ── 8c. Global Workspace ─────────────────────────────
-        gws_out = self.gws.step(
-            qe_norm            = qe_norm,
-            familiarity        = familiarity,
-            freq_idx           = freq_idx if freq_idx >= 0 else -1,
-            prediction_error   = raw_error,
-            thought_confidence = thought_out['thought_confidence'],
-            rpe                = v1_out['rpe'],
-            intrinsic_rwd      = v1_out['intrinsic_reward'],
-            corridor_boredom   = wm_out['corridor_boredom'],
-            steps_since_reward = wm_out['steps_since_reward'],
-            salience           = attn_out['salience'],
-            l4_top_prob        = l4_out['top_prob'],
-        )
-
-        # ── 8d. Self-Model ────────────────────────────────────
-        sm_out = self.selfmodel.step(
-            arousal           = gws_out['arousal'],
-            coherence         = gws_out['coherence'],
-            valence_tone      = gws_out['valence_tone'],
-            curiosity_pull    = gws_out['curiosity_pull'],
-            tension           = gws_out['tension'],
-            surprise_debt     = gws_out['surprise_debt'],
-            thought_confidence= thought_out['thought_confidence'],
-            familiarity       = familiarity,
-            salience          = attn_out['salience'],
-            l4_top_prob       = l4_out['top_prob'],
-            reward            = float(reward),
-        )
-
-        # ── 8e. Question Memory ───────────────────────────────
-        q60_out = self.questions.step(
-            prediction_error = raw_error,
-            freq_idx         = freq_idx if freq_idx >= 0 else -1,
-            bmu_idx          = bmu_idx,
-            predicted_bmu    = thought_out['expected_bmu'],
-            l4_top_prob      = l4_out['top_prob'],
-            sm_state_vec     = sm_out['self_state_vec'],
-            sm_state_label   = sm_out['state_label'],
-            reward           = float(reward),
-        )
-
-        # ── 9. Action (M56) ───────────────────────────────────
-        m56_out = self.action.step(
-            bmu_idx            = bmu_idx,
-            rpe                = v1_out['rpe'],
-            focus_entropy      = thought_out['focus_entropy'],
-            thought_confidence = thought_out['thought_confidence'],
-            freq_idx           = freq_idx,
-            world_moved        = world_moved,
-            l4_top_node        = l4_out['top_node'],
-            l4_top_prob        = l4_out['top_prob'],
-            epsilon_floor      = max(wm_out['epsilon_floor'],
-                                     gws_out['epsilon_boost']),
-            node_fi_override   = getattr(self, '_node_fi_override_hint', None),
-            raw_reward         = float(reward),
-        )
-
-        # ── 10. Planner (M57) ─────────────────────────────────
-        _curr_zone = freq_idx if freq_idx >= 0 else self.l3._last_zone_idx
-        _tpe_acc   = self.l3.get_tpe_accuracy_ctx(self._prev_zone_for_T, _curr_zone)
-        if _tpe_acc == 0.0:
-            _tpe_acc = self.l3.get_tpe_accuracy(_curr_zone)
-
-        m57_out = self.planner.step(
-            bmu_idx            = bmu_idx,
-            pred               = self.pred,
-            valence            = self.valence,
-            memory             = self.memory,
-            m56_action         = m56_out['action'],
-            m56_q_values       = m56_out['q_values'],
-            thought_confidence = thought_out['thought_confidence'],
-            focus_entropy      = thought_out['focus_entropy'],
-            salience           = attn_out['salience'],
-            l3                 = self.l3,
-            tpe_accuracy       = _tpe_acc,
-            prev_zone          = self._prev_zone_for_T,
-            l4_top_node        = l4_out['top_node'],
-            l4_top_prob        = l4_out['top_prob'],
-            l4_confident       = l4_out['confident'],
-            gws_curiosity_pull  = gws_out['curiosity_pull'],
-            gws_tension         = gws_out['tension'],
-            self_state_label    = sm_out['state_label'],
-            q60_zone_pull       = q60_out['zone_pull'],
-            m63_action_prior    = self._last_m63_action_prior,
-            m63_recognition     = self._last_m63_recognition,
-        )
-
-        # ── M61: Thought loop ─────────────────────────────────
-        M61_MAX_LOOPS         = 2
-        M61_SIM_WEIGHT_BASE   = 0.40
-        M61_DELIBERATE_LABELS = {'confused', 'curious', 'stuck', 'hunting', 'alert'}
-
-        m61_loops_run     = 0
-        m61_thought_iters = []
-        m61_sim_history   = []
-
-        if (q60_out['open_count'] > 0
-                and sm_out['state_label'] in M61_DELIBERATE_LABELS
-                and m57_out['sim_depth'] > 0
-                and self.planner.t > 1):
-
-            for _loop in range(M61_MAX_LOOPS):
-                urgency_scale = float(np.clip(q60_out['open_count'] / 4.0, 0.0, 1.0))
-                sim_w = M61_SIM_WEIGHT_BASE * (0.5 + 0.5 * urgency_scale)
-
-                loop_thought_out = self.thought.step(
-                    attended_bmu  = attn_out['attended_bmu'],
-                    bmu_idx       = bmu_idx,
-                    pred          = self.pred,
-                    salience      = attn_out['salience'],
-                    memory        = self.memory,
-                    simulated_bmu = m57_out['best_sim_bmu'],
-                    sim_weight    = sim_w,
-                )
-                m61_thought_iters.append(loop_thought_out['thought_confidence'])
-
-                loop_m57_out = self.planner.step(
-                    bmu_idx            = bmu_idx,
-                    pred               = self.pred,
-                    valence            = self.valence,
-                    memory             = self.memory,
-                    m56_action         = m56_out['action'],
-                    m56_q_values       = m56_out['q_values'],
-                    thought_confidence = loop_thought_out['thought_confidence'],
-                    focus_entropy      = loop_thought_out['focus_entropy'],
-                    salience           = attn_out['salience'],
-                    l3                 = self.l3,
-                    tpe_accuracy       = _tpe_acc,
-                    prev_zone          = self._prev_zone_for_T,
-                    l4_top_node        = l4_out['top_node'],
-                    l4_top_prob        = l4_out['top_prob'],
-                    l4_confident       = l4_out['confident'],
-                    gws_curiosity_pull  = gws_out['curiosity_pull'],
-                    gws_tension         = gws_out['tension'],
-                    self_state_label    = sm_out['state_label'],
-                    q60_zone_pull       = q60_out['zone_pull'],
-                    m63_action_prior    = self._last_m63_action_prior,
-                    m63_recognition     = self._last_m63_recognition,
-                )
-                m61_loops_run += 1
-                m61_sim_history.append(loop_m57_out['sim_values'].copy())
-
-                if (loop_m57_out['action'] == m57_out['action']
-                        and loop_thought_out['thought_confidence']
-                            >= thought_out['thought_confidence']):
-                    m57_out     = loop_m57_out
-                    thought_out = loop_thought_out
-                    break
-
-                m57_out     = loop_m57_out
-                thought_out = loop_thought_out
-
-        self.t += 1
-        self._prev_prev_zone_for_T = self._prev_zone_for_T
-        self._prev_zone_for_T      = freq_idx
-        self._prev_action_for_T    = int(m57_out['action'])
-
-        # ── M62: Consistency Checker ──────────────────────────
-        m62_out = self.consistency.step(
-            sim_history      = m61_sim_history,
-            thought_iters    = m61_thought_iters,
-            q60_open_count   = q60_out['open_count'],
-            q60_zone_pull    = q60_out['zone_pull'],
-            sm_state_label   = sm_out['state_label'],
-            planning_active  = m57_out['planning_active'],
-        )
-
-        # ── M63: Episodic Trace ───────────────────────────────
-        m63_out = self.episodic.step(
-            q60_just_created  = q60_out['just_created'],
-            q60_just_resolved = q60_out['just_resolved'],
-            q60_zone_pull     = q60_out['zone_pull'],
-            current_action    = int(m57_out['action']),
-            freq_idx          = freq_idx if freq_idx >= 0 else -1,
-            sm_state_vec      = sm_out['self_state_vec'],
-            sm_state_label    = sm_out['state_label'],
-            prediction_error  = raw_error,
-        )
-        self._last_m63_recognition  = float(m63_out['recognition'])
-        self._last_m63_action_prior = m63_out['action_prior'].copy()
-
-        # ── M64: Language Seed ────────────────────────────────
-        m64_out = self.language.step(
-            sm_state_label    = sm_out['state_label'],
-            sm_state_vec      = sm_out['self_state_vec'],
-            freq_idx          = freq_idx if freq_idx >= 0 else -1,
-            current_action    = int(m57_out['action']),
-            prediction_error  = raw_error,
-            m63_just_closed   = len(m63_out['just_closed']) > 0,
-            m63_episode       = m63_out['just_closed'][0] if m63_out['just_closed'] else None,
-            q60_just_resolved = q60_out['just_resolved'],
-        )
-
-        # ── Return unified output ─────────────────────────────
-        return {
-            # M54 (sound cortex)
-            'bmu_idx':          bmu_idx,
-            'bmu_pos':          cortex_out['bmu_pos'],
-            'qe':               cortex_out['qe'],
-            'qe_norm':          qe_norm,
-            'sigma':            cortex_out['sigma'],
-            'eta':              cortex_out['eta'],
-            'is_novel':         cortex_out['is_novel'],
-            # M55
-            'familiarity':      familiarity,
-            'top_associations': recall_out['top_associations'],
-            'wrote':            mem_out['wrote'],
-            # L2
-            'prediction_error': raw_error,
-            'correct':          l2_out['correct'],
-            'predicted_bmu':    pred_out['predicted_bmu'],
-            'confidence':       pred_out['confidence'],
-            'curiosity':        raw_curiosity,
-            # Feedback
-            'surprise_signal':  surprise_signal,
-            'curiosity_delta':  curiosity_delta,
-            'error_ema':        self._error_ema,
-            'curiosity_ema':    self._curiosity_ema,
-            # Attention
-            'salience':         attn_out['salience'],
-            'salience_ema':     attn_out['salience_ema'],
-            'salience_delta':   attn_out['salience_delta'],
-            'attention_gate':   attn_out['attention_gate'],
-            'attended_bmu':     attn_out['attended_bmu'],
-            'gate_entropy':     attn_out['gate_entropy'],
-            # Thought
-            'expected_bmu':          thought_out['expected_bmu'],
-            'prediction_bias':       thought_out['prediction_bias'],
-            'thought_confidence':    thought_out['thought_confidence'],
-            'confidence_ema':        thought_out['confidence_ema'],
-            'confidence_delta':      thought_out['confidence_delta'],
-            'expectation_error':     thought_out['expectation_error'],
-            'focus_entropy':         thought_out['focus_entropy'],
-            'assoc_weight':          thought_out['assoc_weight'],
-            # Valence
-            'rpe':                   v1_out['rpe'],
-            'pos_rpe':               v1_out['pos_rpe'],
-            'neg_rpe':               v1_out['neg_rpe'],
-            'reward_ema':            v1_out['reward_ema'],
-            'total_reward':          v1_out['total_reward'],
-            'intrinsic_reward':      v1_out['intrinsic_reward'],
-            'novelty_bonus':         v1_out['novelty_bonus'],
-            # Action (M56/M57)
-            'action':                m57_out['action'],
-            'q_values':              m56_out['q_values'],
-            'q_max':                 m56_out['q_max'],
-            'action_epsilon':        m56_out['epsilon'],
-            'action_explore':        m56_out['explore'],
-            'q_mean':                m56_out['q_mean'],
-            'q_nonzero_frac':        m56_out['q_nonzero_frac'],
-            'habit_action':          m56_out['action'],
-            # Planner (M57)
-            'planned_action':        m57_out['planned_action'],
-            'planning_weight':       m57_out['planning_weight'],
-            'planning_active':       m57_out['planning_active'],
-            'sim_values':            m57_out['sim_values'],
-            'sim_depth':             m57_out['sim_depth'],
-            'plan_vs_habit_delta':   m57_out['plan_vs_habit_delta'],
-            # L3
-            'tpe_accuracy':          _tpe_acc,
-            'zone_idx':              l3_out['zone_idx'],
-            'zone_confidence':       l3_out['zone_confidence'],
-            'zone_probs':            l3_out['zone_probs'],
-            'top_zone_pred':         l3_out['top_zone_pred'],
-            'zone_pred_conf':        l3_out['zone_pred_conf'],
-            'zones_stable':          l3_out['zones_stable'],
-            # L4
-            'l4_top_node':           l4_out['top_node'],
-            'l4_top_prob':           l4_out['top_prob'],
-            'l4_belief_entropy':     l4_out['belief_entropy'],
-            'l4_confident':          l4_out['confident'],
-            # Working Memory (M58)
-            'wm_zone_recency':       wm_out['zone_recency'],
-            'wm_corridor_boredom':   wm_out['corridor_boredom'],
-            'wm_steps_since_reward': wm_out['steps_since_reward'],
-            'wm_hunger_norm':        wm_out['steps_since_reward_norm'],
-            'wm_epsilon_floor':      wm_out['epsilon_floor'],
-            # Global Workspace (GWS)
-            'gws_arousal':           gws_out['arousal'],
-            'gws_arousal_raw':       gws_out['arousal_raw'],
-            'gws_valence_tone':      gws_out['valence_tone'],
-            'gws_valence_raw':       gws_out['valence_raw'],
-            'gws_curiosity_pull':    gws_out['curiosity_pull'],
-            'gws_surprise_debt':     gws_out['surprise_debt'],
-            'gws_epsilon_boost':     gws_out['epsilon_boost'],
-            'gws_coherence':         gws_out['coherence'],
-            'gws_tension':           gws_out['tension'],
-            'gws_readiness':         gws_out['readiness'],
-            'gws_ignited':           gws_out['ignited'],
-            'gws_ignition_rate':     gws_out['ignition_rate'],
-            # Self-Model (M59)
-            'sm_state_label':        sm_out['state_label'],
-            'sm_state_vec':          sm_out['self_state_vec'],
-            'sm_state_changed':      sm_out['state_changed'],
-            'sm_steps_in_state':     sm_out['steps_in_state'],
-            'sm_past_similarity':    sm_out['past_similarity'],
-            'sm_been_here_before':   sm_out['been_here_before'],
-            'sm_steps_since_similar':sm_out['steps_since_similar'],
-            'sm_urgency':            sm_out['self_state_dict']['urgency'],
-            'sm_clarity':            sm_out['self_state_dict']['clarity'],
-            'sm_drive':              sm_out['self_state_dict']['drive'],
-            'sm_novelty':            sm_out['self_state_dict']['novelty'],
-            'sm_stability':          sm_out['self_state_dict']['stability'],
-            'sm_confidence':         sm_out['self_state_dict']['confidence'],
-            'sm_frustration':        sm_out['self_state_dict']['frustration'],
-            'sm_engagement':         sm_out['self_state_dict']['engagement'],
-            # Question Memory (M60)
-            'q60_open_count':        q60_out['open_count'],
-            'q60_zone_pull':         q60_out['zone_pull'],
-            'q60_active_question':   q60_out['active_question'],
-            'q60_just_resolved':     q60_out['just_resolved'],
-            'q60_total_resolved':    q60_out['total_resolved'],
-            'q60_just_created':      q60_out['just_created'],
-            # M57 best sim
-            'best_sim_bmu':          m57_out['best_sim_bmu'],
-            # M61 thought loop
-            'm61_loops_run':         m61_loops_run,
-            'm61_thought_iters':     m61_thought_iters,
-            # M62 consistency
-            'm62_consistency':       m62_out['consistency'],
-            'm62_consistency_ema':   m62_out['consistency_ema'],
-            'm62_contradiction_zones': m62_out['contradiction_zones'],
-            'm62_plan_modifier':     m62_out['plan_modifier'],
-            'm62_active':            m62_out['active'],
-            # M63 episodic
-            'm63_recognition':       m63_out['recognition'],
-            'm63_action_prior':      m63_out['action_prior'],
-            'm63_episode_open':      m63_out['episode_open'],
-            'm63_episodes_total':    m63_out['episodes_total'],
-            'm63_best_zone':         m63_out['best_zone'],
-            'm63_just_closed':       m63_out['just_closed'],
-            'm63_prior_applied':     m57_out['m63_prior_applied'],
-            # M64 language
-            'm64_situation_tag':     m64_out['situation_tag'],
-            'm64_tag_action_prior':  m64_out['tag_action_prior'],
-            'm64_tag_confidence':    m64_out['tag_confidence'],
-            'm64_narrative':         m64_out['narrative'],
-            'm64_tags_total':        m64_out['tags_total'],
-            # ── NEW v12: Multimodal keys ──────────────────────
-            'm51_texture_val':       m51_out['texture_val'],
-            'm51_texture_noisy':     m51_out['texture_noisy'],
-            'm54b_bmu_texture':      m54b_out['bmu_texture'],
-            'm54b_qe_norm':          m54b_out['qe_norm'],
-            'm65_fused_likelihood':  m65_out['fused_likelihood'],
-            'm65_sound_weight':      m65_out['sound_weight'],
-            'm65_texture_weight':    m65_out['texture_weight'],
-            'm65_texture_conf':      m65_out['texture_confidence'],
-            'm65_fusion_active':     m65_out['fusion_active'],
-        }
-
-    # ── Convenience accessors (unchanged from v11) ───────────
-
-    def reset_feedback(self):
         self._error_ema             = float(FEEDBACK_EMA_INIT)
         self._curiosity_ema         = float(FEEDBACK_EMA_INIT)
         self._last_surprise_signal  = 0.0
@@ -800,136 +145,433 @@ class Brain:
         self._last_prediction_error = 0.0
         self._last_curiosity        = 0.0
 
-    def get_feedback_state(self) -> dict:
-        return {
-            'prediction_error': self._last_prediction_error,
-            'curiosity':        self._last_curiosity,
-            'surprise_signal':  self._last_surprise_signal,
-            'curiosity_delta':  self._last_curiosity_delta,
-            'error_ema':        self._error_ema,
-            'curiosity_ema':    self._curiosity_ema,
-        }
+        # ── MFCC buffer (set by hear()) ───────────────────────
+        self._mfcc_input = np.zeros(13, dtype=np.float32)
 
-    def summary(self):
-        print(f"\n  Brain v12 — step {self.t}  multimodal={self._multimodal}")
-        print(f"  Feedback:")
-        print(f"    error_ema:     {self._error_ema:.4f}")
-        print(f"    curiosity_ema: {self._curiosity_ema:.4f}")
-        if self._multimodal and self.texture_sense:
-            self.texture_sense.summary()
-            self.texture_cortex.summary()
-            self.fusion.summary()
-        self.cortex.get_surprise_stats()
-        self.memory.summary()
-        self.pred.summary()
-        self.attention.summary()
-        self.thought.summary()
-        self.action.summary()
+        self.t = 0
 
-    # ══════════════════════════════════════════════════════════════
-    # HIPPOCAMPAL REPLAY — food trajectory replay
-    # ══════════════════════════════════════════════════════════════
+    # ── Sensory input ─────────────────────────────────────────
 
-    def record_food_trajectory(self, food_node: str, reward: float):
+    def hear(self, mfcc_vec: np.ndarray):
         """
-        Snapshot the M56 replay buffer when food/door reward is collected.
+        Inject a 13-dim MFCC audio frame before the next step().
 
-        Call from the harness immediately after a food event. The replay
-        buffer contains the actual (prev_bmu, curr_bmu, action, freq_idx,
-        l4_node, was_explore) tuples from real navigation — this is the
-        ground-truth path that led to food.
+        Call once per audio frame (25ms) from your audio pipeline:
+
+            mfcc = compute_mfcc(audio_frame)
+            brain.hear(mfcc)
+            out  = brain.step()
+
+        The MFCC is stored as _mfcc_input and consumed by M71 inside step().
+        If hear() is never called, M71 sees zeros (silence) and stays quiet.
         """
-        trajectory = list(self.action._replay_buffer)
-        if trajectory:
-            self._food_trajectories.append({
-                'trajectory': trajectory,
-                'food_node':  food_node,
-                'reward':     float(reward),
-            })
+        self._mfcc_input = np.array(mfcc_vec, dtype=np.float32)
 
-    def idle_step(self) -> int:
+    # ── Main cognitive cycle ───────────────────────────────────
+
+    def step(self, reward: float = 0.0) -> dict:
         """
-        Replay stored food trajectories forward through Q_n.
+        One full cognitive step.
 
-        This is the hippocampal replay that solves temporal credit
-        assignment for button→door sequences. It replays the actual
-        navigation path (from M56's replay buffer snapshot) that led
-        to food, applying geometric-decay credit to Q_n for every
-        node visited along the way.
-
-        Unlike M63 episode replay which:
-          - Contained confusion arcs (not food paths)
-          - Credited Q/Q_f at a single zone (too coarse for 64 nodes)
-          - Used self-transitions (replay_e[bmu,bmu,...] — never queried)
-
-        This version:
-          - Replays actual food trajectories with real (node, action) pairs
-          - Credits Q_n directly (the table that drives aliased navigation)
-          - Uses forward replay so eligibility trace accumulates correctly
+        Parameters
+        ----------
+        reward : float — external reward this step (0 normally, >0 on food/praise)
 
         Returns
         -------
-        int — total replay steps executed across all trajectories
+        dict — full state snapshot from all modules
         """
-        if not self._food_trajectories:
-            return 0
+        reward = float(reward)
 
-        from m56_action import REPLAY_GAMMA, REPLAY_ALPHA, Q_MIN, Q_MAX
+        # ── 1. Speech cortex (M71) — primary sensory ─────────
+        # phoneme_bmu is the brain's primary sensory representation.
+        # It replaces freq-domain bmu_idx from the old CortexM56.
+        m71_out = self.speech_cortex.step(
+            mfcc_vec    = self._mfcc_input,
+            familiarity = float(self._last_familiarity),
+        )
+        bmu_idx = m71_out['phoneme_bmu']   # primary BMU for cognitive stack
+        qe_norm = m71_out['phoneme_qe_norm']
 
-        total_replayed = 0
+        # Clear MFCC buffer — consume once per step
+        self._mfcc_input = np.zeros(13, dtype=np.float32)
 
-        # Replay last 3 food trajectories
-        recent = list(self._food_trajectories)[-3:]
-        for ft in recent:
-            trajectory = ft['trajectory']
-            reward     = ft['reward']
-            if not trajectory or reward <= 0.0:
-                continue
+        # ── 2. Phoneme sequence / word boundary (M72) ─────────
+        m72_out = self.phoneme_seq.step(
+            phoneme_bmu = bmu_idx,
+            is_voiced   = m71_out['is_voiced'],
+        )
 
-            # Forward replay with geometric discount from LAST entry.
-            # Entry[-1] is the step that arrived at food. Entry[-2] is
-            # one step before, etc. Discount increases as we go back.
-            n = len(trajectory)
-            for i, entry in enumerate(trajectory):
-                # Distance from food: last entry = 0, first = n-1
-                dist_from_food = n - 1 - i
-                discount = REPLAY_GAMMA ** dist_from_food
-                q_delta  = REPLAY_ALPHA * reward * discount
+        # ── 3. Predict BEFORE memory writes ───────────────────
+        pred_out = self.pred.predict()
 
-                prev_bmu = entry[0]
-                curr_bmu = entry[1]
-                action   = entry[2]
-                fi       = entry[3] if len(entry) > 3 else -1
-                l4_node  = entry[4] if len(entry) > 4 else None
-                was_expl = entry[5] if len(entry) > 5 else False
-                explore_discount = 0.30 if was_expl else 1.0
+        # ── 4. Associative memory (M55) ───────────────────────
+        mem_out = self.memory.step(
+            bmu_idx      = bmu_idx,
+            qe_norm      = qe_norm,
+            curiosity    = self._last_curiosity_delta,
+            rpe_positive = self._last_rpe_positive,
+        )
 
-                # Credit Q_n (node-keyed — the table that matters)
-                # Gate on L4 confidence: only credit Q_n when L4 was
-                # confident about WHERE the brain was at that step.
-                # Without this gate, ~24% of steps credit the wrong node
-                # (L4 accuracy = 76%), creating contradictory Q_n entries.
-                l4_conf_in_buf = entry[6] if len(entry) > 6 else 1.0
-                if l4_node is not None and l4_conf_in_buf >= 0.70:
-                    if l4_node not in self.action._Q_n:
-                        self.action._Q_n[l4_node] = np.zeros(
-                            self.action._n_actions, dtype=np.float32)
-                    self.action._Q_n[l4_node][action] = float(np.clip(
-                        self.action._Q_n[l4_node][action]
-                        + q_delta * 0.50 * explore_discount,
-                        Q_MIN, Q_MAX
-                    ))
-                    self.action._Q_n_count[l4_node] = (
-                        self.action._Q_n_count.get(l4_node, 0) + 1)
+        # ── 5. Familiarity recall ─────────────────────────────
+        recall_out  = self.memory.recall(bmu_idx)
+        familiarity = recall_out['familiarity']
+        self._last_familiarity = familiarity
 
-                # Credit Q_f (zone-keyed — secondary)
-                if 0 <= fi < self.action._Q_f.shape[0]:
-                    self.action._Q_f[fi, action] = float(np.clip(
-                        self.action._Q_f[fi, action]
-                        + q_delta * 0.25 * explore_discount,
-                        Q_MIN, Q_MAX
-                    ))
+        # ── 6. L2 sequence predictor ──────────────────────────
+        l2_out = self.pred.step(
+            bmu_idx         = bmu_idx,
+            qe_norm         = qe_norm,
+            familiarity     = familiarity,
+            prediction_bias = self.thought._last_prediction_bias,
+            last_action     = _NO_ACTION,
+            world_moved     = True,   # always "moved" — speech is continuous
+        )
+        raw_error     = l2_out['prediction_error']
+        raw_curiosity = l2_out['curiosity']
 
-                total_replayed += 1
+        # ── 7. Feedback deltas ────────────────────────────────
+        surprise_signal = float(np.clip(raw_error    - self._error_ema,    0.0, 1.0))
+        curiosity_delta = float(np.clip(raw_curiosity - self._curiosity_ema, 0.0, 1.0))
+        self._error_ema     = ((1.0 - FEEDBACK_EMA_ALPHA) * self._error_ema
+                               + FEEDBACK_EMA_ALPHA * raw_error)
+        self._curiosity_ema = ((1.0 - FEEDBACK_EMA_ALPHA) * self._curiosity_ema
+                               + FEEDBACK_EMA_ALPHA * raw_curiosity)
+        self._last_surprise_signal  = surprise_signal
+        self._last_curiosity_delta  = curiosity_delta
+        self._last_prediction_error = raw_error
+        self._last_curiosity        = raw_curiosity
 
-        return total_replayed
+        # ── 8. Valence (RPE + intrinsic reward) ──────────────
+        v1_out = self.valence.step(
+            prediction_error = raw_error,
+            reward           = reward,
+            familiarity      = familiarity,
+        )
+        self._last_rpe_positive = v1_out['pos_rpe']
+
+        # ── 9. Neuromodulators (M66) ──────────────────────────
+        # Without L4, belief entropy defaults to 0.5 (max uncertainty).
+        m66_out = self.neuromod.step(
+            l4_belief_entropy = 0.5,
+            qe_norm           = float(qe_norm),
+            surprise_signal   = float(surprise_signal),
+            reward_ema        = float(v1_out['reward_ema']),
+            abs_rpe           = float(abs(v1_out['rpe'])),
+        )
+
+        # ── 10. Attention ─────────────────────────────────────
+        attn_out = self.attention.step(
+            bmu_idx                  = bmu_idx,
+            qe_norm                  = qe_norm,
+            familiarity              = familiarity,
+            surprise_signal          = surprise_signal,
+            curiosity_delta          = curiosity_delta,
+            thought_confidence_delta = self.thought._last_confidence_delta,
+        )
+
+        # ── 11. Thought ───────────────────────────────────────
+        thought_out = self.thought.step(
+            attended_bmu = attn_out['attended_bmu'],
+            bmu_idx      = bmu_idx,
+            pred         = self.pred,
+            salience     = attn_out['salience'],
+            memory       = self.memory,
+        )
+
+        # ── 12. Working Memory (M58) ──────────────────────────
+        # ── 12. Working Memory (M58) ──────────────────────────
+        # freq_idx replaced with phoneme familiarity bucket (0-7).
+        # High familiarity = well-known phoneme region = low "boredom".
+        wm_out = self.wm.step(
+            freq_idx = int(familiarity * 7),
+            action   = _NO_ACTION,
+            reward   = reward,
+        )
+
+        # ── 13. Global Workspace ──────────────────────────────
+        # freq_idx: phoneme familiarity bucket (0-7) replaces zone index.
+        gws_out = self.gws.step(
+            qe_norm            = qe_norm,
+            familiarity        = familiarity,
+            freq_idx           = int(familiarity * 7),
+            prediction_error   = raw_error,
+            thought_confidence = thought_out['thought_confidence'],
+            rpe                = v1_out['rpe'],
+            intrinsic_rwd      = v1_out['intrinsic_reward'],
+            corridor_boredom   = wm_out['corridor_boredom'],
+            steps_since_reward = wm_out['steps_since_reward'],
+            salience           = attn_out['salience'],
+            l4_top_prob        = 0.0,
+        )
+
+        # ── 14. Self-Model (M59) ──────────────────────────────
+        sm_out = self.selfmodel.step(
+            arousal            = gws_out['arousal'],
+            coherence          = gws_out['coherence'],
+            valence_tone       = gws_out['valence_tone'],
+            curiosity_pull     = gws_out['curiosity_pull'],
+            tension            = gws_out['tension'],
+            surprise_debt      = gws_out['surprise_debt'],
+            thought_confidence = thought_out['thought_confidence'],
+            familiarity        = familiarity,
+            salience           = attn_out['salience'],
+            l4_top_prob        = 0.0,
+            reward             = reward,
+        )
+
+        # ── 15. Question Memory (M60) ─────────────────────────
+        # freq_idx: phoneme familiarity bucket — tracks which phoneme
+        # regions are generating the most open questions.
+        q60_out = self.questions.step(
+            prediction_error = raw_error,
+            freq_idx         = int(familiarity * 7),
+            bmu_idx          = bmu_idx,
+            predicted_bmu    = thought_out['expected_bmu'],
+            l4_top_prob      = 0.0,
+            sm_state_vec     = sm_out['self_state_vec'],
+            sm_state_label   = sm_out['state_label'],
+            reward           = reward,
+        )
+
+        # ── 16. Consistency Checker (M62) ─────────────────────
+        m62_out = self.consistency.step(
+            sim_history      = [],
+            thought_iters    = [],
+            q60_open_count   = q60_out['open_count'],
+            q60_zone_pull    = q60_out['zone_pull'],
+            sm_state_label   = sm_out['state_label'],
+            planning_active  = False,
+        )
+
+        # ── 17. Episodic Trace (M63) ──────────────────────────
+        # freq_idx: phoneme familiarity bucket.
+        # current_action: unused without navigation — kept as stub.
+        m63_out = self.episodic.step(
+            q60_just_created  = q60_out['just_created'],
+            q60_just_resolved = q60_out['just_resolved'],
+            q60_zone_pull     = q60_out['zone_pull'],
+            current_action    = _NO_ACTION,
+            freq_idx          = int(familiarity * 7),
+            sm_state_vec      = sm_out['self_state_vec'],
+            sm_state_label    = sm_out['state_label'],
+            prediction_error  = raw_error,
+        )
+
+        # ── 18. Language Seed (M64) ───────────────────────────
+        # freq_idx: phoneme familiarity bucket.
+        m64_out = self.language.step(
+            sm_state_label    = sm_out['state_label'],
+            sm_state_vec      = sm_out['self_state_vec'],
+            freq_idx          = int(familiarity * 7),
+            current_action    = _NO_ACTION,
+            prediction_error  = raw_error,
+            m63_just_closed   = len(m63_out['just_closed']) > 0,
+            m63_episode       = m63_out['just_closed'][0] if m63_out['just_closed'] else None,
+            q60_just_resolved = q60_out['just_resolved'],
+        )
+
+        # ── 19. Temporal Context (M67) ────────────────────────
+        m67_out = self.temporal.step(
+            global_step        = self.t,
+            steps_since_reward = float(wm_out['steps_since_reward']),
+            reward_ema         = float(v1_out['reward_ema']),
+            got_reward         = (reward > 0.0),
+        )
+
+        # ── 20. Semantic Binding (M73) ────────────────────────
+        # zone_idx: phoneme familiarity bucket (0-7).
+        # High-familiarity phonemes bind to familiar "zones".
+        m73_out = self.binding.step(
+            phoneme_bmu  = bmu_idx,
+            is_voiced    = m71_out['is_voiced'],
+            state_vec    = sm_out['self_state_vec'],
+            zone_idx     = int(familiarity * 7),
+            reward       = reward,
+            sound_bmu    = 0,
+        )
+
+        # ── 21. Vocal Output (M74) ────────────────────────────
+        # zone_idx: familiarity bucket — vocal production biased toward
+        # familiar phoneme regions (the brain speaks what it knows).
+        m74_out = self.vocal.step(
+            state_vec   = sm_out['self_state_vec'],
+            state_label = sm_out['state_label'],
+            zone_idx    = int(familiarity * 7),
+            gws_arousal = float(gws_out['arousal']),
+            ne_level    = float(m66_out['ne_level']),
+            binding     = self.binding,
+            phoneme_seq = self.phoneme_seq,
+        )
+
+        self.t += 1
+
+        # ── Return unified state dict ─────────────────────────
+        return {
+            # M71: speech cortex (primary sensory)
+            'm71_phoneme_bmu':        bmu_idx,
+            'm71_qe_norm':            qe_norm,
+            'm71_is_voiced':          m71_out['is_voiced'],
+            'm71_phoneme_familiarity':m71_out['phoneme_familiarity'],
+            # M72: phoneme sequence / word boundary
+            'm72_tp':                 m72_out['tp_prev_curr'],
+            'm72_boundary_strength':  m72_out['boundary_strength'],
+            'm72_just_boundary':      m72_out['just_boundary'],
+            'm72_n_word_candidates':  m72_out['n_word_candidates'],
+            'm72_phoneme_pred_error': m72_out['phoneme_pred_error'],
+            # M55: associative memory
+            'familiarity':            familiarity,
+            'top_associations':       recall_out['top_associations'],
+            'wrote':                  mem_out['wrote'],
+            # L2: sequence predictor
+            'prediction_error':       raw_error,
+            'correct':                l2_out['correct'],
+            'predicted_bmu':          pred_out['predicted_bmu'],
+            'confidence':             pred_out['confidence'],
+            'curiosity':              raw_curiosity,
+            # Feedback deltas
+            'surprise_signal':        surprise_signal,
+            'curiosity_delta':        curiosity_delta,
+            'error_ema':              self._error_ema,
+            'curiosity_ema':          self._curiosity_ema,
+            # Attention
+            'salience':               attn_out['salience'],
+            'salience_ema':           attn_out['salience_ema'],
+            'salience_delta':         attn_out['salience_delta'],
+            'attention_gate':         attn_out['attention_gate'],
+            'attended_bmu':           attn_out['attended_bmu'],
+            # Thought
+            'expected_bmu':           thought_out['expected_bmu'],
+            'thought_confidence':     thought_out['thought_confidence'],
+            'focus_entropy':          thought_out['focus_entropy'],
+            'expectation_error':      thought_out['expectation_error'],
+            # Valence
+            'rpe':                    v1_out['rpe'],
+            'pos_rpe':                v1_out['pos_rpe'],
+            'neg_rpe':                v1_out['neg_rpe'],
+            'reward_ema':             v1_out['reward_ema'],
+            'total_reward':           v1_out['total_reward'],
+            'intrinsic_reward':       v1_out['intrinsic_reward'],
+            # Working Memory (M58)
+            'wm_corridor_boredom':    wm_out['corridor_boredom'],
+            'wm_steps_since_reward':  wm_out['steps_since_reward'],
+            # Global Workspace
+            'gws_arousal':            gws_out['arousal'],
+            'gws_valence_tone':       gws_out['valence_tone'],
+            'gws_curiosity_pull':     gws_out['curiosity_pull'],
+            'gws_surprise_debt':      gws_out['surprise_debt'],
+            'gws_coherence':          gws_out['coherence'],
+            'gws_tension':            gws_out['tension'],
+            'gws_ignited':            gws_out['ignited'],
+            # Self-Model (M59)
+            'sm_state_label':         sm_out['state_label'],
+            'sm_state_vec':           sm_out['self_state_vec'],
+            'sm_state_changed':       sm_out['state_changed'],
+            'sm_steps_in_state':      sm_out['steps_in_state'],
+            'sm_urgency':             sm_out['self_state_dict']['urgency'],
+            'sm_clarity':             sm_out['self_state_dict']['clarity'],
+            'sm_drive':               sm_out['self_state_dict']['drive'],
+            'sm_novelty':             sm_out['self_state_dict']['novelty'],
+            'sm_stability':           sm_out['self_state_dict']['stability'],
+            'sm_confidence':          sm_out['self_state_dict']['confidence'],
+            'sm_frustration':         sm_out['self_state_dict']['frustration'],
+            'sm_engagement':          sm_out['self_state_dict']['engagement'],
+            # Question Memory (M60)
+            'q60_open_count':         q60_out['open_count'],
+            'q60_zone_pull':          q60_out['zone_pull'],
+            'q60_just_resolved':      q60_out['just_resolved'],
+            'q60_just_created':       q60_out['just_created'],
+            # M62: consistency
+            'm62_consistency':        m62_out['consistency'],
+            'm62_active':             m62_out['active'],
+            # M63: episodic
+            'm63_recognition':        m63_out['recognition'],
+            'm63_episode_open':       m63_out['episode_open'],
+            'm63_episodes_total':     m63_out['episodes_total'],
+            'm63_just_closed':        m63_out['just_closed'],
+            # M64: language seed
+            'm64_situation_tag':      m64_out['situation_tag'],
+            'm64_narrative':          m64_out['narrative'],
+            'm64_tag_confidence':     m64_out['tag_confidence'],
+            # M66: neuromodulators
+            'm66_ach':                m66_out['ach_level'],
+            'm66_ne':                 m66_out['ne_level'],
+            'm66_sht':                m66_out['sht_level'],
+            # M67: temporal context
+            'm67_temporal_phase':     m67_out['m67_temporal_phase'],
+            'm67_overdue_score':      m67_out['m67_overdue_score'],
+            'm67_temporal_urgency':   m67_out['m67_temporal_urgency'],
+            'm67_reward_trend':       m67_out['m67_reward_trend'],
+            # M73: semantic binding
+            'm73_associated_zone':    m73_out['associated_zone'],
+            'm73_associated_reward':  m73_out['associated_reward'],
+            'm73_binding_strength':   m73_out['binding_strength'],
+            'm73_n_bound_phonemes':   m73_out['n_bound_phonemes'],
+            # M74: vocal output
+            'm74_speaking':           m74_out['speaking'],
+            'm74_utterance':          m74_out['utterance'],
+            'm74_utterance_len':      m74_out['utterance_len'],
+            'm74_total_utterances':   m74_out['total_utterances'],
+            # Step counter
+            'step':                   self.t,
+        }
+
+    # ── Dreams ────────────────────────────────────────────────
+
+    def dream(self, n_sequences: int = 8) -> dict:
+        """
+        Run one REM dream cycle (M70).
+
+        Generates internally-driven sequences from the L2 prediction matrix
+        (replay, counterfactual, novel). Weakly updates L2's weights.
+        Call between waking steps — not during step().
+
+        Returns dream report dict from DreamEngine.
+        """
+        return self.dreamer.dream(
+            l3                = None,
+            pred              = self.pred,
+            food_trajectories = [],
+            n_sequences       = n_sequences,
+        )
+
+    # ── Convenience ───────────────────────────────────────────
+
+    def reset_feedback(self):
+        """Reset feedback EMA state (use after a major context shift)."""
+        self._error_ema             = float(FEEDBACK_EMA_INIT)
+        self._curiosity_ema         = float(FEEDBACK_EMA_INIT)
+        self._last_surprise_signal  = 0.0
+        self._last_curiosity_delta  = 0.0
+        self._last_rpe_positive     = 0.0
+        self._last_familiarity      = 0.0
+        self._last_prediction_error = 0.0
+        self._last_curiosity        = 0.0
+
+    def summary(self):
+        """Print a brief status summary."""
+        print(f"\n  Brain v13 — step {self.t}")
+        print(f"  Primary sensory: M71 SpeechCortex (SOM step {self.speech_cortex.t})")
+        print(f"  Feedback EMA:  error={self._error_ema:.4f}  curiosity={self._curiosity_ema:.4f}")
+        print(f"  Language:")
+        print(f"    Proto-words discovered: {len(self.phoneme_seq._word_candidates)}")
+        n_bound = int(np.sum(self.binding._binding_strength > 0.05))
+        print(f"    Bound phonemes:         {n_bound}")
+        print(f"    Total utterances:       {self.vocal._total_utterances}")
+        print(f"  Self-state: {self.selfmodel._last_label}")
+
+    def save(self, path: str = 'brain_trained.pkl'):
+        """Pickle the entire brain state to disk."""
+        import pickle, pathlib
+        with open(path, 'wb') as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"  Brain saved → {pathlib.Path(path).resolve()}")
+
+    @staticmethod
+    def load(path: str = 'brain_trained.pkl') -> 'Brain':
+        """Load a pickled brain from disk."""
+        import pickle
+        with open(path, 'rb') as f:
+            brain = pickle.load(f)
+        print(f"  Brain loaded ← {path}  (step {brain.t})")
+        return brain

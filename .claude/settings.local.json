@@ -6,7 +6,11 @@
       "Bash(python -c \"from numba import njit; print\\('numba OK'\\)\")",
       "Bash(coderabbit --version)",
       "Bash(coderabbit auth:*)",
-      "Bash(ls /Users/pranay./Documents/THEBRAIN/*.py)"
+      "Bash(ls /Users/pranay./Documents/THEBRAIN/*.py)",
+      "Bash(python -c \"from m66_neuromod import NeuromodState; from brain import Brain; print\\('imports OK'\\)\")",
+      "Bash(python -c ':*)",
+      "Bash(python lang_test.py)",
+      "Bash(python speech_learn_test.py)"
     ]
   }
 }

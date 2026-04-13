@@ -284,6 +284,8 @@ class ActionLayer:
              epsilon_floor:      float = 0.0,
              node_fi_override:   str   = None,   # kept for harness compat, not used
              raw_reward:         float = 0.0,
+             alpha_scale:        float = 1.0,    # M66 ACh: scales learning rate
+             ne_temp_add:        float = 0.0,    # M66 NE:  additive temperature boost
              **kwargs) -> dict:
         """
         One Actor-Critic step: update policy from outcome, then select action.
@@ -316,8 +318,10 @@ class ActionLayer:
 
             # RPE dead zone: only update actor when signal is meaningful
             if abs(rpe_for_update) >= RPE_DEAD_ZONE:
+                # M66 ACh modulates both BMU-level and per-node learning rates.
                 _fast.update_all_pi_bmu(
-                    self._pi_bmu, self._e, rpe_for_update, ALPHA_ACTOR, PI_MIN, PI_MAX)
+                    self._pi_bmu, self._e, rpe_for_update,
+                    ALPHA_ACTOR * alpha_scale, PI_MIN, PI_MAX)
 
                 # Per-node: same PG gradient, weighted by L4 confidence
                 if (self._prev_l4_node is not None
@@ -329,7 +333,7 @@ class ActionLayer:
                     pg = -self._prev_probs.copy()
                     pg[self._prev_action] += 1.0
                     self._pi_node[node] = np.clip(
-                        self._pi_node[node] + prob * ALPHA_NODE * rpe_for_update * pg,
+                        self._pi_node[node] + prob * ALPHA_NODE * alpha_scale * rpe_for_update * pg,
                         PI_MIN, PI_MAX)
                     self._node_visits[node] = self._node_visits.get(node, 0) + 1
         else:
@@ -393,14 +397,16 @@ class ActionLayer:
         # Scale base by focus_entropy + thought_confidence, then add boost.
         entropy_scale = TEMP_ENTROPY_MIN + (1.0 - TEMP_ENTROPY_MIN) * float(focus_entropy)
         confidence_suppression = 1.0 - 0.25 * float(thought_confidence)
-        temp_eff = self._base_temp * entropy_scale * confidence_suppression + self._boost_temp
+        # M66 NE adds directly on top — arousal can push temp above base decay.
+        temp_eff = (self._base_temp * entropy_scale * confidence_suppression
+                    + self._boost_temp + ne_temp_add)
 
         # M58 epsilon_floor → temperature floor (rescaled)
         if epsilon_floor > 0.0:
             temp_floor = TEMP_MIN + float(epsilon_floor) * (TEMP_INIT - TEMP_MIN)
             temp_eff = max(temp_eff, temp_floor)
 
-        temp_eff = float(np.clip(temp_eff, TEMP_MIN, TEMP_INIT))
+        temp_eff = float(np.clip(temp_eff, TEMP_MIN, TEMP_INIT + 0.60))  # +0.60 = M66 NE_TEMP_MAX
         self._current_temp = temp_eff
 
         # ── 6b. L2 weight decay (homeostatic plasticity) ──────

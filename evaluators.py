@@ -141,10 +141,9 @@ baseline — exactly how you'd test standalone.
 # PARAMETERS
 # ═══════════════════════════════════════════════════════════════
 
-# Grid (must match M54 / M55 / L2)
-GRID_H    = 8
-GRID_W    = 8
-N_NEURONS = GRID_H * GRID_W   # 64
+# Default SOM size — overridden per-instance via n_neurons param
+SOM_SIDE  = 8          # side length of the default 8×8 SOM
+N_NEURONS = SOM_SIDE * SOM_SIDE   # 64 (default; Brain v13 uses 100)
 
 # ── Salience weights ─────────────────────────────────────────
 # How strongly each input drives raw salience.
@@ -197,17 +196,17 @@ GATE_BOOST = 1.0
 # PRECOMPUTED GRID DISTANCES
 # ═══════════════════════════════════════════════════════════════
 
-def _build_grid_dist_sq() -> np.ndarray:
-    """Precompute pairwise squared grid distances for the 8×8 map."""
-    dist_sq = np.zeros((N_NEURONS, N_NEURONS), dtype=np.float32)
-    for i in range(N_NEURONS):
-        ri, ci = divmod(i, GRID_W)
-        for j in range(N_NEURONS):
-            rj, cj = divmod(j, GRID_W)
+def _build_grid_dist_sq(n: int = N_NEURONS, w: int = SOM_SIDE) -> np.ndarray:
+    """Precompute pairwise squared distances for an n-neuron square SOM."""
+    dist_sq = np.zeros((n, n), dtype=np.float32)
+    for i in range(n):
+        ri, ci = divmod(i, w)
+        for j in range(n):
+            rj, cj = divmod(j, w)
             dist_sq[i, j] = (ri - rj)**2 + (ci - cj)**2
     return dist_sq
 
-_GRID_DIST_SQ = _build_grid_dist_sq()   # computed once at import
+_GRID_DIST_SQ = _build_grid_dist_sq()   # computed once at import (64 neurons, default)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -224,14 +223,20 @@ class Attention:
     All Brain-fed parameters default to 0.0 for standalone operation.
     """
 
-    def __init__(self):
+    def __init__(self, n_neurons: int = N_NEURONS):
+        self._n        = n_neurons
+        self._grid_w   = int(round(n_neurons ** 0.5))  # assume square SOM
+        self._gate_bl  = 1.0 / n_neurons
+        self._dist_sq  = _build_grid_dist_sq(n_neurons, self._grid_w)
+        self._log_n    = math.log(n_neurons)
+
         # Salience EMA state
         self._salience_ema = float(SALIENCE_EMA_INIT)
 
         # Last computed outputs (for diagnostics)
         self._last_salience       = 0.0
         self._last_salience_delta = 0.0
-        self._last_gate           = np.full(N_NEURONS, GATE_BASELINE,
+        self._last_gate           = np.full(n_neurons, self._gate_bl,
                                             dtype=np.float32)
         self._last_attended_bmu   = 0
 
@@ -305,15 +310,12 @@ class Attention:
 
         # ── 4. Build attention gate ───────────────────────────
         # Start: uniform baseline
-        gate = np.full(N_NEURONS, GATE_BASELINE, dtype=np.float32)
+        gate = np.full(self._n, self._gate_bl, dtype=np.float32)
 
         # Gaussian boost scaled by salience.
-        # At salience=0: boost=0, gate stays uniform (truly diffuse).
-        # At salience=1: full Gaussian peak at BMU neighbourhood.
-        # This ensures zero-salience → maximum entropy gate.
         if raw > 1e-6:
             sigma_sq_2 = 2.0 * GATE_SIGMA * GATE_SIGMA
-            gauss = np.exp(-_GRID_DIST_SQ[bmu_idx] / sigma_sq_2)  # (64,)
+            gauss = np.exp(-self._dist_sq[bmu_idx] / sigma_sq_2)
             gate  = gate + (GATE_BOOST * raw * gauss).astype(np.float32)
 
         # Normalize to sum=1 (probability simplex)
@@ -321,7 +323,7 @@ class Attention:
         if gate_sum > 1e-9:
             gate = gate / gate_sum
         else:
-            gate = np.full(N_NEURONS, GATE_BASELINE, dtype=np.float32)
+            gate = np.full(self._n, self._gate_bl, dtype=np.float32)
 
         gate = gate.astype(np.float32)
 
@@ -329,11 +331,9 @@ class Attention:
         attended_bmu = int(np.argmax(gate))
 
         # Entropy of gate distribution — 0=maximally focused, 1=uniform
-        # H(p) / H(uniform) = -sum(p log p) / log(N)
-        log_gate   = np.log(gate + 1e-9)
-        entropy    = float(-np.sum(gate * log_gate))
-        max_entropy = math.log(N_NEURONS)
-        gate_entropy = float(np.clip(entropy / max_entropy, 0.0, 1.0))
+        log_gate     = np.log(gate + 1e-9)
+        entropy      = float(-np.sum(gate * log_gate))
+        gate_entropy = float(np.clip(entropy / self._log_n, 0.0, 1.0))
 
         # ── 6. Store state ────────────────────────────────────
         self._last_salience       = raw
@@ -369,7 +369,7 @@ class Attention:
             'gate_entropy':    float(np.clip(
                                    -np.sum(self._last_gate *
                                            np.log(self._last_gate + 1e-9))
-                                   / math.log(N_NEURONS), 0.0, 1.0)),
+                                   / self._log_n, 0.0, 1.0)),
             'salience_mean':   float(np.mean(self._salience_history))
                                if self._salience_history else 0.0,
         }
@@ -379,7 +379,7 @@ class Attention:
         self._salience_ema        = float(SALIENCE_EMA_INIT)
         self._last_salience       = 0.0
         self._last_salience_delta = 0.0
-        self._last_gate           = np.full(N_NEURONS, GATE_BASELINE,
+        self._last_gate           = np.full(self._n, self._gate_bl,
                                             dtype=np.float32)
         self._last_attended_bmu   = 0
         self._salience_history.clear()
@@ -617,17 +617,7 @@ EXPECTATION_SIGMA = 2.0
 # where attention itself is uncertain.
 MIN_SALIENCE_FOR_BIAS = 0.05   # very low floor — Thought is almost always active
 
-# Precomputed grid distances (same pattern as attention.py)
-def _build_grid_dist_sq():
-    dist_sq = np.zeros((N_NEURONS, N_NEURONS), dtype=np.float32)
-    for i in range(N_NEURONS):
-        ri, ci = divmod(i, GRID_W)
-        for j in range(N_NEURONS):
-            rj, cj = divmod(j, GRID_W)
-            dist_sq[i, j] = (ri - rj)**2 + (ci - cj)**2
-    return dist_sq
-
-_GRID_DIST_SQ = _build_grid_dist_sq()
+# Thought section reuses the same _build_grid_dist_sq defined at top of file.
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -648,13 +638,16 @@ class Thought:
     All Brain-fed parameters default to safe values for standalone operation.
     """
 
-    def __init__(self):
+    def __init__(self, n_neurons: int = N_NEURONS):
+        self._n     = n_neurons
+        self._log_n = math.log(n_neurons)
+
         # ── Confidence EMA ────────────────────────────────────
         self._confidence_ema = float(CONFIDENCE_EMA_INIT)
 
         # ── One-step-delayed outputs for Brain to pass downward ──
         # Stored after each step, fed into L2 and Attention on the NEXT step.
-        self._last_prediction_bias      = np.full(N_NEURONS, 1.0 / N_NEURONS,
+        self._last_prediction_bias      = np.full(n_neurons, 1.0 / n_neurons,
                                                   dtype=np.float32)
         self._last_confidence_delta     = 0.0
         self._last_expected_bmu         = 0
@@ -771,15 +764,15 @@ class Thought:
         # recall() is already called inside Brain.step() for familiarity; we
         # don't call it again here to avoid double-settling cost.
 
-        bias       = np.full(N_NEURONS, 0.0, dtype=np.float32)
+        bias       = np.full(self._n, 0.0, dtype=np.float32)
         assoc_weight = 0.0   # fraction of final bias mass that came from M55
 
         if float(salience) < MIN_SALIENCE_FOR_BIAS:
             # Salience too low — uniform prior, no prediction
-            bias = np.full(N_NEURONS, 1.0 / N_NEURONS, dtype=np.float32)
+            bias = np.full(self._n, 1.0 / self._n, dtype=np.float32)
         else:
             # ── L2 bias ──────────────────────────────────────────
-            l2_bias = np.zeros(N_NEURONS, dtype=np.float32)
+            l2_bias = np.zeros(self._n, dtype=np.float32)
             if pred is not None:
                 top = pred.top_predictions(attended_bmu, k=TOP_K_PREDICTIONS)
                 for idx, score in top:
@@ -788,11 +781,11 @@ class Thought:
             if l2_sum > 1e-9:
                 l2_bias = l2_bias / l2_sum
             else:
-                l2_bias = np.full(N_NEURONS, 1.0 / N_NEURONS, dtype=np.float32)
+                l2_bias = np.full(self._n, 1.0 / self._n, dtype=np.float32)
                 l2_sum  = 0.0   # signal absent
 
             # ── M55 bias ─────────────────────────────────────────
-            m55_bias = np.zeros(N_NEURONS, dtype=np.float32)
+            m55_bias = np.zeros(self._n, dtype=np.float32)
             if memory is not None:
                 row = memory._W[attended_bmu].copy()
                 row[attended_bmu] = 0.0   # exclude self-association
@@ -802,7 +795,7 @@ class Thought:
                 if m55_sum > 1e-9:
                     m55_bias = (row / m55_sum).astype(np.float32)
                 else:
-                    m55_bias = np.full(N_NEURONS, 1.0 / N_NEURONS, dtype=np.float32)
+                    m55_bias = np.full(self._n, 1.0 / self._n, dtype=np.float32)
                     m55_sum  = 0.0   # signal absent
             else:
                 m55_sum = 0.0
@@ -823,7 +816,7 @@ class Thought:
                 w_m55 = 1.0
             else:
                 # Neither source has signal — fall back to uniform
-                bias = np.full(N_NEURONS, 1.0 / N_NEURONS, dtype=np.float32)
+                bias = np.full(self._n, 1.0 / self._n, dtype=np.float32)
                 w_l2 = w_m55 = 0.0
 
             if w_l2 > 0.0 or w_m55 > 0.0:
@@ -832,7 +825,7 @@ class Thought:
                 if b_sum > 1e-9:
                     bias = bias / b_sum
                 else:
-                    bias = np.full(N_NEURONS, 1.0 / N_NEURONS, dtype=np.float32)
+                    bias = np.full(self._n, 1.0 / self._n, dtype=np.float32)
 
             # Fraction of mass contributed by M55 (diagnostic)
             if has_m55 and (w_l2 > 0.0 or w_m55 > 0.0):
@@ -845,7 +838,7 @@ class Thought:
         # max(bias) - 1/N is the deviation above uniform baseline.
         # 0 = no idea (uniform). ~0.35+ = clear expectation.
         raw_confidence = float(np.clip(
-            bias.max() - (1.0 / N_NEURONS),
+            bias.max() - (1.0 / self._n),
             0.0, 1.0
         ))
 
@@ -871,8 +864,7 @@ class Thought:
         # 1 = uniform (no idea)
         log_bias   = np.log(bias + 1e-9)
         entropy    = float(-np.sum(bias * log_bias))
-        max_entropy = math.log(N_NEURONS)
-        focus_entropy = float(np.clip(entropy / max_entropy, 0.0, 1.0))
+        focus_entropy = float(np.clip(entropy / self._log_n, 0.0, 1.0))
 
         # ── 7. Store for NEXT step ────────────────────────────
         self._last_prediction_bias  = bias

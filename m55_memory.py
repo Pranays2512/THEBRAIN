@@ -189,20 +189,21 @@ class AssociativeMemory:
     ExperienceBuffer continues to work unchanged as your debugger.
     """
 
-    def __init__(self, seed=42):
+    def __init__(self, seed=42, n_neurons: int = N_NEURONS):
         self._rng = np.random.RandomState(seed)
+        self._n   = n_neurons  # actual neuron count (may differ from module default)
 
         # ── The memory itself ─────────────────────────────────
         # W[i, j] = associative strength between neuron i and neuron j
         # Initialized near zero — no memories at birth
         # Symmetric: W[i,j] == W[j,i] (mutual association)
-        self._W = np.zeros((N_NEURONS, N_NEURONS), dtype=np.float32)
+        self._W = np.zeros((n_neurons, n_neurons), dtype=np.float32)
 
         # ── Eligibility trace ─────────────────────────────────
         # trace[i] = how recently neuron i was active
         # Decays exponentially each step
         # Adaptive decay rate controlled by qe_norm from M54
-        self._trace = np.zeros(N_NEURONS, dtype=np.float32)
+        self._trace = np.zeros(n_neurons, dtype=np.float32)
 
         # Current adaptive decay rate (updated each step)
         self._trace_decay = TRACE_DECAY_BASE
@@ -215,13 +216,13 @@ class AssociativeMemory:
 
         # Per-neuron write count (how often each neuron participated
         # in a Hebbian update — shows which memories are strongest)
-        self._neuron_write_count = np.zeros(N_NEURONS, dtype=np.int32)
+        self._neuron_write_count = np.zeros(n_neurons, dtype=np.int32)
 
         # Per-BMU activation count — ground truth exposure counter.
         # Incremented every time that BMU fires in step().
         # This is the direct measure of familiarity: "I've seen this N times."
         # Breadth and depth are proxies; this is the fact.
-        self._bmu_exposure = np.zeros(N_NEURONS, dtype=np.int32)
+        self._bmu_exposure = np.zeros(n_neurons, dtype=np.int32)
 
     # ── Core step ─────────────────────────────────────────────
 
@@ -366,7 +367,7 @@ class AssociativeMemory:
             'top_associations': list of (neuron_idx, strength) — top 5
         """
         # Seed pattern: cue neuron active, rest zero
-        pattern = np.zeros(N_NEURONS, dtype=np.float32)
+        pattern = np.zeros(self._n, dtype=np.float32)
         pattern[bmu_idx] = 1.0
 
         # Initial energy
@@ -464,7 +465,7 @@ class AssociativeMemory:
 
         # Breadth score: fraction of neurons recalled above threshold
         BREADTH_THRESH = 0.02
-        breadth        = float((pattern > BREADTH_THRESH).sum()) / N_NEURONS
+        breadth        = float((pattern > BREADTH_THRESH).sum()) / self._n
         breadth_score  = min(breadth / 0.1, 1.0)
 
         # Depth score: energy drop during settling

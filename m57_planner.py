@@ -116,6 +116,24 @@ BLEND_WEIGHT = 0.10   # lowered further for dynamic food worlds — M57 nudges
 # nearly equal values for all actions → argmax → always action 0.
 T_MIN_TRANSITIONS = 40
 
+# ── Subgoal injection (button→door goal maintenance) ─────────
+# When a button is pressed, the harness sets brain.subgoal_zones
+# (list of freq indices for all door nodes). M57 adds this bonus
+# to actions predicted to lead toward those zones, using L3's T
+# table as the directional model.
+#
+# SUBGOAL_BOOST: additive sim_value bonus per unit of T-table
+# probability mass on the subgoal zone. At T_norm=0.4 (one action
+# clearly leads toward a subgoal zone): +0.40 × 0.4 = +0.16 boost.
+# Contrast with typical zone_value ≈ 0.05-0.15. The boost is
+# strong enough to differentiate actions once the T table has data.
+SUBGOAL_BOOST        = 0.40
+# Merit threshold relaxed when goal is active (goal is explicit,
+# not learned — less evidence needed to override M56 habit).
+SUBGOAL_MERIT_THRESH = 0.10   # vs PLAN_MERIT_THRESH=0.45 normally
+# Blend weight raised when goal is active — M57 earns more influence.
+SUBGOAL_BLEND_WEIGHT = 0.35   # vs BLEND_WEIGHT=0.10 normally
+
 
 # ═══════════════════════════════════════════════════════════════
 # GRID UTILITIES
@@ -206,7 +224,10 @@ class Planner:
              q60_zone_pull:      dict  = None,
              m63_action_prior              = None,   # (n_actions,) float — episodic prior
              m63_recognition:    float = 0.0,        # [0,1] match strength from M63
+             subgoal_zones:      list  = None,       # M66/harness: freq indices to head toward
              ) -> dict:
+
+        has_subgoal = bool(subgoal_zones)
 
         # ── 1. Planning weight ────────────────────────────────
         # TPE accuracy gates planning weight directly.
@@ -260,6 +281,14 @@ class Planner:
             max_pull = float(max(q60_zone_pull.values(), default=0.0))
             if max_pull > 0.10:
                 planning_weight = max(planning_weight, PLANNING_GATE_THRESH * 3.0)
+
+        # ── Subgoal floor ─────────────────────────────────────
+        # When an explicit goal is active (button pressed, door open),
+        # the multiplicative planning_weight would still collapse if
+        # thought_confidence or salience are near 0. Apply a floor so
+        # M57 always engages during goal pursuit regardless of cognitive state.
+        if has_subgoal:
+            planning_weight = max(planning_weight, PLANNING_GATE_THRESH * 4.0)
 
         # ── Self-model gate ───────────────────────────────────
         # M59's state label modulates planning weight:
@@ -386,6 +415,43 @@ class Planner:
                 prior_scale = M63_PRIOR_WEIGHT * float(m63_recognition)
                 sim_values = sim_values + prior_scale * prior_norm.astype(np.float32)
 
+        # ── 2f. Subgoal boost — goal-directed door-seeking ────
+        # When a button was pressed (harness sets brain.subgoal_zones),
+        # boost actions whose L3 T-table predicts landing in a door zone.
+        # This implements PFC goal maintenance: hold the door target in
+        # mind even though intermediate steps give zero reward signal.
+        #
+        # Mechanism: L3._T_norm[curr_zone, action, next_zone] = P(next_zone
+        # | from curr_zone, taking action). Sum P over subgoal zones →
+        # higher sum = more likely that action leads toward a door.
+        # Scale by SUBGOAL_BOOST and add to sim_values.
+        #
+        # Falls through silently when:
+        #   - T table has no data yet (all probs uniform → equal boost → no preference)
+        #   - sim_depth == 0 (planner not running)
+        #   - subgoal_zones is empty (no button pressed)
+        if (has_subgoal
+                and sim_depth > 0
+                and l3 is not None
+                and hasattr(l3, '_T_norm')
+                and hasattr(l3, '_last_zone_idx')):
+            curr_zone = int(getattr(l3, '_last_zone_idx', -1))
+            if 0 <= curr_zone < l3.n_zones:
+                T_row   = l3._T_norm[curr_zone]          # (n_actions, n_zones)
+                T_count = l3._T[curr_zone].sum(axis=1)   # (n_actions,) — observations
+                for action in range(self.n_actions):
+                    # Allow even sparse T data when goal is active — any
+                    # directional signal beats uniform. Normal mode still
+                    # requires at least 2 observations to avoid prior artifacts.
+                    if not has_subgoal and T_count[action] < 2.0:
+                        continue
+                    sg_prob = float(sum(
+                        T_row[action, sz]
+                        for sz in subgoal_zones
+                        if 0 <= sz < l3.n_zones
+                    ))
+                    sim_values[action] += SUBGOAL_BOOST * sg_prob
+
         # ── 3. Choose planned action ──────────────────────────
         planned_action = int(np.argmax(sim_values)) if sim_depth > 0 else m56_action
 
@@ -438,14 +504,18 @@ class Planner:
         # 3. MERIT: plan_vs_habit > PLAN_MERIT_THRESH
         #    M57 must believe its plan beats M56's current Q.
         #    Prevents overriding a learned correct habit with noise.
-        past_warmup     = self.t > M57_WARMUP_STEPS
+        # When a subgoal is active (explicit door target after button press):
+        #   - Skip warmup: the goal is externally specified, not learned from value.
+        #   - Lower merit threshold: goal signal is strong, less noise filter needed.
+        # This lets M57 guide the brain toward doors immediately after a button,
+        # without waiting 80k steps for zone_value to reflect the contingency.
+        past_warmup     = (self.t > M57_WARMUP_STEPS) or has_subgoal
         has_confidence  = planning_weight > PLANNING_GATE_THRESH
-        # Merit: M57 must be confident in its own sim_values (large margin
-        # between best and second-best action in simulation).
-        # When sim_values are nearly flat (low margin), M57 has no real opinion
-        # and should stay silent. When one action clearly dominates simulation,
-        # M57 earns the right to influence the blend.
-        has_merit       = plan_vs_habit > PLAN_MERIT_THRESH   # plan_vs_habit = sim_margin
+        # When subgoal is active, bypass the merit threshold entirely.
+        # The sim_values may be uniform early on (T table cold), but the
+        # blend at SUBGOAL_BLEND_WEIGHT is safe — M56 Q still dominates —
+        # and planning_active=True means M57 engages as soon as T fills in.
+        has_merit       = has_subgoal or (plan_vs_habit > PLAN_MERIT_THRESH)
         planning_active = past_warmup and has_confidence and has_merit and (sim_depth > 0)
 
         # ── Blend M57 sim_values with M56 Q-values ────────────
@@ -469,12 +539,12 @@ class Planner:
         #   PFC (M57) biases striatal competition, not overrides it.
         #   Strong habits persist under PFC pressure; weak ones yield.
         if planning_active and m56_q_values is not None:
-            # Blend: M56's Q (dominant) + M57's normalised sim_values (bias).
-            # sim_scaled is in [0,1]. q_arr is in [-1,+1] typically [0,0.5].
-            # BLEND_WEIGHT=0.30: M57 contributes 30% influence on final choice.
-            # A strong M56 habit (large Q gap) resists M57 pressure.
-            # A weak M56 state (near-uniform Q) yields to M57's planning bias.
-            blend_q      = (1.0 - BLEND_WEIGHT) * q_arr + BLEND_WEIGHT * sim_scaled
+            # When pursuing an explicit subgoal, M57 earns more influence.
+            # At SUBGOAL_BLEND_WEIGHT=0.35 vs normal 0.10: M57 contributes
+            # 35% when goal-directed — enough to steer a weak M56 Q toward
+            # the door, while a well-learned M56 habit still resists.
+            active_blend = SUBGOAL_BLEND_WEIGHT if has_subgoal else BLEND_WEIGHT
+            blend_q      = (1.0 - active_blend) * q_arr + active_blend * sim_scaled
             noise        = np.random.uniform(0, 1e-8, size=blend_q.shape)
             final_action = int(np.argmax(blend_q + noise))
         else:
@@ -525,6 +595,7 @@ class Planner:
             'm63_prior_applied':   (sim_depth > 0
                                     and float(m63_recognition) >= M63_RECOGNITION_GATE
                                     and m63_action_prior is not None),
+            'subgoal_active':      has_subgoal and planning_active,
             't':                   self.t,
         }
 

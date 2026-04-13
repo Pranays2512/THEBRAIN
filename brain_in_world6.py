@@ -65,6 +65,10 @@ ACTION_NAMES         = ['North', 'East', 'South', 'West']
 from world6 import DOOR_NODES, FOOD_CANDIDATES
 REWARD_NODES = list(DOOR_NODES) + list(FOOD_CANDIDATES)
 
+# Freq indices of all door nodes — used as M57 subgoal when door is open.
+# When any button is pressed, all doors open → all door fi's become subgoals.
+DOOR_FIS = list({NODES[d][1] for d in DOOR_NODES})
+
 # ═══════════════════════════════════════════════════════════════
 # HELPERS  (identical to brain_in_world5)
 # ═══════════════════════════════════════════════════════════════
@@ -197,6 +201,9 @@ def run_closed_loop(brain, world, library):
     # Per-window counters
     wfood = wwalls = wdoor_hit = wdoor_open = 0
     wreplay_steps = 0
+    wsleep_cycles = 0
+
+    SLEEP_INTERVAL = 5_000   # deep consolidation every 5k steps
     hunger_sum_at_eat = 0.0
     n_eats_win = 0
     food_move_events = 0
@@ -274,8 +281,11 @@ def run_closed_loop(brain, world, library):
             brain._node_fi_override_hint = info['node']
 
         elif info['is_button']:
-            # Button activated — no reward, but log it
+            # Button activated — inject M57 subgoal: head toward any door zone.
+            # M57 will boost actions leading to DOOR_FIS freq indices until the
+            # door timer expires (cleared below when door_open goes False).
             wdoor_open += 1
+            brain.subgoal_zones = DOOR_FIS
 
         else:
             # Standard L4-guided override hint
@@ -292,6 +302,11 @@ def run_closed_loop(brain, world, library):
             wwalls += 1
         if info['is_door']:
             wdoor_hit += 1
+
+        # Clear subgoal once door timer expires (door closed again).
+        # info['door_open'] = timer > 0 after this step.
+        if not info['door_open'] and brain.subgoal_zones:
+            brain.subgoal_zones = []
 
         prev_wall_hit = info['wall_hit']
 
@@ -326,12 +341,17 @@ def run_closed_loop(brain, world, library):
 
         freq_hz = next_freq_hz
 
-        # ── Sleep Cycle (Hippocampal Replay) ──────────────────
-        # Every 100 steps, replay recent food trajectories
-        # forward through M56's eligibility trace.
+        # ── Online hippocampal replay (every 100 steps) ───────
         if (step + 1) % 100 == 0:
             n = brain.idle_step()
             wreplay_steps += n
+
+        # ── Deep sleep consolidation (every SLEEP_INTERVAL steps)
+        # Replays ALL food trajectories + M63 episodes → pi_bmu.
+        # Distinct from idle_step: slower rate, broader scope.
+        if (step + 1) % SLEEP_INTERVAL == 0:
+            brain.sleep_consolidate()
+            wsleep_cycles += 1
 
         # ── Periodic report ───────────────────────────────────
         if (step + 1) % REPORT_EVERY == 0:
@@ -340,11 +360,8 @@ def run_closed_loop(brain, world, library):
             door_rate   = wdoor_hit / REPORT_EVERY * 100   # door-food hits per 100 steps
             avg_hunger  = hunger_sum_at_eat / max(1, n_eats_win)
             epsilon     = out['action_epsilon']
-            tex_w       = out.get('m65_texture_weight', 0.0)
-            fus_active  = out.get('m65_fusion_active', False)
             l4_acc      = l4_correct_win / max(1, l4_total_win)
             plan_active = out.get('planning_active', False)
-            plan_rate   = brain.planner.planning_rate()
 
             # Policy quality vs BFS
             known = correct = 0
@@ -369,7 +386,10 @@ def run_closed_loop(brain, world, library):
                 known  += 1
                 correct += int(modal_a == opt_a)
 
-            replay_rate = wreplay_steps / REPORT_EVERY * 100
+            m66_ach = out.get('m66_ach', 0.0)
+            m66_ne  = out.get('m66_ne',  0.0)
+            m66_sht = out.get('m66_sht', 0.0)
+            sg_act  = out.get('m57_subgoal_active', False)
             print(f"  Step {step+1:7d} | "
                   f"food={food_rate:5.2f}/100 | "
                   f"wall={wall_rate:.1%} | "
@@ -377,9 +397,10 @@ def run_closed_loop(brain, world, library):
                   f"hunger@eat={avg_hunger:.2f} | "
                   f"policy={correct}/{known} | "
                   f"L4={l4_acc:.0%} | "
-                  f"M57={'ON' if plan_active else '--'}({plan_rate:.0%}) | "                  f"tex_w={tex_w:.2f}{'★' if fus_active else '○'} | "
+                  f"M57={'ON' if plan_active else '--'}{'★' if sg_act else ''} | "
+                  f"M66=A{m66_ach:.2f}/N{m66_ne:.2f}/S{m66_sht:.2f} | "
+                  f"sleep={wsleep_cycles} | "
                   f"eps={epsilon:.3f} | "
-                  f"replay={replay_rate:.1f}/100 | "
                   f"food_moves={food_move_events}")
 
             # Reset window counters
@@ -388,6 +409,7 @@ def run_closed_loop(brain, world, library):
             n_eats_win = 0
             l4_correct_win = l4_total_win = 0
             wreplay_steps = 0
+            wsleep_cycles = 0
 
     # ── Final summary ─────────────────────────────────────────
     print(f"\n  Final L4 accuracy: "

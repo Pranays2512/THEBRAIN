@@ -106,23 +106,25 @@ class SequencePredictor:
       pred.top_predictions_for_action(bmu_idx, action, k)
     """
 
-    def __init__(self):
+    def __init__(self, n_neurons: int = N_NEURONS):
+        self._n = n_neurons  # actual neuron count
+
         # ── Prediction matrix (unconditional) ────────────────
-        self._P = np.zeros((N_NEURONS, N_NEURONS), dtype=np.float32)
+        self._P = np.zeros((n_neurons, n_neurons), dtype=np.float32)
 
         # ── Action-conditioned prediction matrix ──────────────
         # PA[a, i, j] — for each action, context i → outcome j
-        self._PA = np.zeros((N_ACTIONS, N_NEURONS, N_NEURONS), dtype=np.float32)
+        self._PA = np.zeros((N_ACTIONS, n_neurons, n_neurons), dtype=np.float32)
 
         # Track total writes per action slice (for PA_MIN_TRANSITIONS gate)
         self._PA_writes = np.zeros(N_ACTIONS, dtype=np.int32)
 
         # ── Context vector ────────────────────────────────────
-        self._c = np.zeros(N_NEURONS, dtype=np.float32)
+        self._c = np.zeros(n_neurons, dtype=np.float32)
         self._context_decay = CONTEXT_DECAY_BASE
 
         # ── Prediction state ──────────────────────────────────
-        self._last_scores      = np.zeros(N_NEURONS, dtype=np.float32)
+        self._last_scores      = np.zeros(n_neurons, dtype=np.float32)
         self._last_predicted   = 0
         self._last_confidence  = 0.0
         self._prediction_ready = False
@@ -140,8 +142,8 @@ class SequencePredictor:
         self._n_predictions  = 0
         self._error_history  = deque(maxlen=200)
         self._correct_history= deque(maxlen=200)
-        self._bmu_correct    = np.zeros(N_NEURONS, dtype=np.int32)
-        self._bmu_total      = np.zeros(N_NEURONS, dtype=np.int32)
+        self._bmu_correct    = np.zeros(n_neurons, dtype=np.int32)
+        self._bmu_total      = np.zeros(n_neurons, dtype=np.int32)
 
     # ── Predict ───────────────────────────────────────────────
 
@@ -157,7 +159,7 @@ class SequencePredictor:
         norm_scores = exp_scores / (exp_scores.sum() + 1e-9)
 
         top_score  = float(norm_scores.max())
-        uniform    = 1.0 / N_NEURONS
+        uniform    = 1.0 / self._n
         confidence = float(np.clip((top_score - uniform) / (1.0 - uniform + 1e-9),
                                    0.0, 1.0))
         predicted_bmu = int(np.argmax(norm_scores))
@@ -242,17 +244,12 @@ class SequencePredictor:
         self._P[bmu_idx, bmu_idx] = 0.0   # no self-prediction
 
         # ── 4b. Learn PA (action-conditioned) ─────────────────
-        # Update PA[action] when we know which action was just taken.
-        # This runs for BOTH real moves and wall hits:
-        #   - Real move (world_moved=True):
-        #       context was at prev_node BMU, action led to curr_node BMU.
-        #       PA[action, prev_bmu_region → curr_bmu_region] strengthened.
-        #   - Wall hit (world_moved=False):
-        #       context was at node BMU, action led to same BMU.
-        #       PA[wall_action, node_bmu → same_bmu] strengthened.
-        #       This teaches M57 that this action at this node goes nowhere.
-        #
-        # We do NOT update PA on the very first step (last_action=-1).
+        # Update PA[action] when the action that triggered this transition
+        # is known. Only runs when last_action >= 0 (not the first step
+        # or action-free environments like the language-only brain).
+        # PA[action, prev_bmu → curr_bmu] strengthened each time action
+        # taken at prev led to curr. Over many transitions this encodes
+        # the action-conditioned predictive structure of the environment.
         if last_action >= 0 and last_action < N_ACTIONS:
             if active_context.sum() > 0:
                 self._PA[last_action, :, bmu_idx] += delta   # same delta as P
@@ -317,7 +314,7 @@ class SequencePredictor:
         Unconditional predictions: what tends to follow bmu_idx?
         Unchanged from v1. Used by Thought and M55.
         """
-        c_seed = np.zeros(N_NEURONS, dtype=np.float32)
+        c_seed = np.zeros(self._n, dtype=np.float32)
         c_seed[bmu_idx] = 1.0
         scores = self._P.T @ c_seed
         s_sum  = scores.sum()
@@ -346,7 +343,7 @@ class SequencePredictor:
             # PA not ready for this action — fall back to unconditional
             return self.top_predictions(bmu_idx, k)
 
-        c_seed = np.zeros(N_NEURONS, dtype=np.float32)
+        c_seed = np.zeros(self._n, dtype=np.float32)
         c_seed[bmu_idx] = 1.0
         scores = self._PA[action].T @ c_seed
         s_sum  = scores.sum()
