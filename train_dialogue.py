@@ -31,12 +31,14 @@ from brain import Brain
 from vocab_extra import VOCABULARY, SILENCE, N_MFCC
 
 BRAIN_FILE   = 'brain_trained.pkl'
-N_EPOCHS     = 40       # how many times to loop through the full corpus
+N_EPOCHS     = 12       # reduced from 40 — eval overlap declines after ~5-8 epochs
 REWARD_SELF  = 0.8      # reward when brain hears its OWN correct response
 REWARD_INPUT = 0.1      # small reward just for hearing human input
 NOISE_INPUT  = 0.10     # noise for "you" words (external voice)
 NOISE_SELF   = 0.05     # noise for brain's own words (self-hearing is clearer)
-SAVE_EVERY   = 5        # save checkpoint every N epochs
+SAVE_EVERY   = 3        # save checkpoint every N epochs
+EVAL_EVERY   = 3        # evaluate every N epochs (was 10 — too infrequent)
+PATIENCE     = 2        # stop if eval declines for this many consecutive evals
 
 rng = np.random.default_rng(42)
 
@@ -93,6 +95,15 @@ def train_epoch(brain: Brain, dialogues: list, epoch: int) -> dict:
 
         if not you_words or not brain_words:
             continue
+
+        # ── Word-level TP: record the full exchange ──────────────
+        # Feed input words → separator → response words → end
+        for w in you_words:
+            brain.hear_word(w)
+        brain.hear_word_separator()
+        for w in brain_words:
+            brain.hear_word(w)
+        brain.hear_word_end()
 
         # ── Phase 1: Brain hears YOU speak ──────────────────────────
         # Small positive reward — this is just context, not the target
@@ -210,14 +221,21 @@ def main():
         print("No brain found. Run teach_english.py first.")
         sys.exit(1)
 
+    # Ensure word_tp exists (backwards compat with old pickles)
+    if not hasattr(brain, 'word_tp'):
+        from brain import WordTransitionPredictor
+        brain.word_tp = WordTransitionPredictor()
+
     print(f"  Vocabulary: {len(VOCABULARY)} words")
     print(f"  Corpus:     {len(DIALOGUES)} dialogues")
-    print(f"  Epochs:     {N_EPOCHS}")
+    print(f"  Epochs:     {N_EPOCHS}  (early stopping patience={PATIENCE})")
     print(f"  Reward:     input={REWARD_INPUT}, self={REWARD_SELF}")
     print()
 
-    # ── Training loop ─────────────────────────────────────────────────
+    # ── Training loop with early stopping ──────────────────────────────
     t_start = time.time()
+    best_score = -1.0
+    patience_counter = 0
 
     for epoch in range(1, N_EPOCHS + 1):
         stats = train_epoch(brain, DIALOGUES, epoch)
@@ -227,6 +245,7 @@ def main():
               f"exchanges={stats['exchanges']}  "
               f"learned={stats['words_learned']} words  "
               f"reward={stats['mean_reward']:.3f}  "
+              f"word_tp={brain.word_tp.n_transitions()} transitions  "
               f"[{elapsed:.0f}s]")
 
         # Checkpoint save
@@ -234,17 +253,62 @@ def main():
             brain.save(BRAIN_FILE)
             print(f"    → Saved checkpoint to {BRAIN_FILE}")
 
-        # Quick eval every 10 epochs
-        if epoch % 10 == 0:
+        # Evaluation with early stopping
+        if epoch % EVAL_EVERY == 0:
             score = evaluate(brain, DIALOGUES, n_sample=15)
             print(f"    → Eval word overlap: {score:.3f}")
+
+            # Also test word-level TP quality
+            tp_score = evaluate_word_tp(brain, DIALOGUES, n_sample=15)
+            print(f"    → Word TP accuracy: {tp_score:.3f}")
+
+            combined = 0.3 * score + 0.7 * tp_score  # word TP matters more
+            if combined > best_score:
+                best_score = combined
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= PATIENCE:
+                    print(f"    → Early stopping: score declined for {PATIENCE} evals")
+                    break
 
     # ── Final save ────────────────────────────────────────────────────
     brain.save(BRAIN_FILE)
     total = time.time() - t_start
     print(f"\n  Training complete in {total:.1f}s")
+    print(f"  Word TP: {brain.word_tp.n_words()} words, "
+          f"{brain.word_tp.n_transitions()} transitions")
     print(f"  Brain saved → {BRAIN_FILE}")
     print(f"  Run: python live.py")
+
+
+def evaluate_word_tp(brain: Brain, dialogues: list, n_sample: int = 10) -> float:
+    """
+    Evaluate word-level TP accuracy:
+    For each sample dialogue, generate a response from the input words
+    and measure word overlap with the expected response.
+    """
+    sample_idx = rng.choice(len(dialogues),
+                             size=min(n_sample, len(dialogues)),
+                             replace=False)
+    overlaps = []
+    for idx in sample_idx:
+        you_text, brain_text = dialogues[idx]
+        you_words   = tokenize(you_text)
+        brain_words = set(tokenize(brain_text))
+
+        if not you_words or not brain_words:
+            continue
+
+        # Generate using word TP
+        generated = brain.word_tp_generate(you_words, max_len=8)
+        generated_set = set(generated)
+
+        if brain_words:
+            overlap = len(generated_set & brain_words) / len(brain_words)
+            overlaps.append(overlap)
+
+    return float(np.mean(overlaps)) if overlaps else 0.0
 
 
 if __name__ == '__main__':

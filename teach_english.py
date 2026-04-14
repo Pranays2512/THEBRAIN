@@ -62,13 +62,12 @@ print()
 # ═══════════════════════════════════════════════════════════════
 # PHASE 1 — SOM WARMUP
 # ═══════════════════════════════════════════════════════════════
-# Cycle through all words 60 times so the SOM spreads out and
-# gives each word cluster a distinct region before semantic binding.
-print("Phase 1: SOM warmup — cycling through all words 60 times...")
+# Cycle through all words 15 times (was 60 — overkill for SOM warmup)
+print("Phase 1: SOM warmup — cycling through all words 15 times...")
 t0 = time.time()
 
 word_list = list(VOCABULARY.keys())
-for cycle in range(60):
+for cycle in range(15):
     rng.shuffle(word_list)
     for word in word_list:
         for frame in say(word, noise_std=0.30):
@@ -98,7 +97,10 @@ for idx, word in enumerate(teach_words):
     state_name, reward_val, n_exp = TEACHING[word]
     state_vec = STATES[state_name]
 
-    for _ in range(n_exp):
+    # Cap exposures at 50 (was 300-600 — took hours, word TP doesn't need it)
+    n_exp_capped = min(n_exp, 50)
+
+    for _ in range(n_exp_capped):
         frames = say(word, noise_std=0.20)
         for i, frame in enumerate(frames):
             brain.hear(frame)
@@ -264,7 +266,7 @@ def valid_sentence(s):
 SENTENCES = [s for s in SENTENCES if valid_sentence(s)]
 print(f"  {len(SENTENCES)} sentence patterns to learn")
 
-N_CYCLES = 400
+N_CYCLES = 60   # was 400 — massive overkill, word TP handles this now
 import sys
 for cycle in range(N_CYCLES):
     sys.stdout.write(f"\\r  [Phase 3] Cycle {cycle + 1}/{N_CYCLES} ...")

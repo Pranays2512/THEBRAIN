@@ -484,13 +484,12 @@ def _tp_generate(heard_bmus: list, sm_vec: np.ndarray, temperature: float = 1.5)
 
 
 def generate_response(heard_words: list, heard_bmus: list, raw_tokens: list = None) -> str:
-    """Generate a response grounded in intent detection + real internal state.
+    """Generate a response using word-level TP as primary mechanism.
 
     Priority:
-      1. Semantic memory — only for hard facts (name recall), not intent routing
-      2. TP generation — what the brain actually learned from experience
-      3. Retry at higher temperature
-    All hardcoded intent routing removed. Responses come from training.
+      1. Semantic memory — only for hard facts (name recall)
+      2. Word-level TP — learned word→word transitions from dialogue training
+      3. Phoneme-level TP fallback — for coverage gaps
     """
     if not heard_words and not heard_bmus:
         return ""
@@ -499,8 +498,6 @@ def generate_response(heard_words: list, heard_bmus: list, raw_tokens: list = No
     tokens = raw_tokens or heard_words
 
     # ── 1. Semantic memory — only hard facts, not intent routing ─────
-    # "what is my name" / "who is X" → look up stored facts.
-    # This is NOT hardcoded logic — it's recalling what was explicitly told.
     ws = set(tokens)
     if 'name' in ws:
         if 'my' in ws:
@@ -512,17 +509,27 @@ def generate_response(heard_words: list, heard_bmus: list, raw_tokens: list = No
             if not _is_too_repetitive(f'i am {brain_name}'):
                 return f'i am {brain_name}'
 
-    # ── 2. Pure TP generation — learned from dialogue training ───────
-    # This is the only response mechanism. Quality comes entirely from
-    # what the brain experienced during train_dialogue.py.
-    for attempt in range(4):
+    # ── 2. Word-level TP — primary response mechanism ────────────────
+    # This operates on word strings directly — no BMU collision possible.
+    # Trained by train_dialogue.py on the full dialogue corpus.
+    if hasattr(brain, 'word_tp') and brain.word_tp.n_words() > 0:
+        for attempt in range(3):
+            generated = brain.word_tp_generate(heard_words, max_len=8)
+            if generated:
+                candidate = ' '.join(generated)
+                if not _is_too_repetitive(candidate):
+                    _record_response(candidate)
+                    return candidate
+
+    # ── 3. Phoneme-level TP fallback ─────────────────────────────────
+    for attempt in range(3):
         temp = 1.2 + attempt * 0.4
         candidate = _tp_generate(heard_bmus, sm_vec, temperature=temp)
         if candidate and not _is_too_repetitive(candidate):
             _record_response(candidate)
             return candidate
 
-    # Final fallback — pick something based on last heard word
+    # Final fallback
     if heard_words:
         last = heard_words[-1]
         if last in _POSITIVE:
@@ -724,6 +731,11 @@ while True:
         if not is_pure_feedback:
             print("Brain: (no known words — try /help)\n")
         continue
+
+    # Feed heard words to word-level TP for continuous learning
+    if heard_words and hasattr(brain, 'word_tp'):
+        for w in heard_words:
+            brain.hear_word(w)
 
     # Learn facts from ALL tokens (including unknown words like proper names)
     semantic.learn_from_sentence(tokens)

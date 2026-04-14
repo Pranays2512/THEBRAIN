@@ -1,1 +1,20 @@
+# Environments
+venv/
+env/
+.env/
+.venv/
+
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Data / Save files
+*.pkl
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

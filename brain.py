@@ -74,6 +74,146 @@ from m74_vocal         import VocalOutput
 
 
 # ═══════════════════════════════════════════════════════════════
+# WORD-LEVEL TRANSITION PREDICTOR
+# ═══════════════════════════════════════════════════════════════
+
+class WordTransitionPredictor:
+    """
+    Sparse word-to-word transition probability matrix.
+
+    Operates on word strings directly — no SOM, no BMU collisions.
+    Learns: after word X, word Y follows with probability P(Y|X).
+
+    This is the fix for the 78-BMU bottleneck: 300 words crammed into
+    78 BMU slots meant the phoneme-level TP could not distinguish words.
+    The word-level TP has one slot per word — zero collisions.
+    """
+
+    _SEPARATOR = '<SEP>'   # marks input→response boundary
+    _END       = '<END>'   # marks end of response
+
+    def __init__(self):
+        self._P = {}           # {word: {next_word: count}}
+        self._totals = {}      # {word: total_count}
+        self._prev_word = None
+
+    def observe(self, word: str):
+        """Record a word transition: prev_word → word."""
+        if self._prev_word is not None:
+            if self._prev_word not in self._P:
+                self._P[self._prev_word] = {}
+            d = self._P[self._prev_word]
+            d[word] = d.get(word, 0) + 1
+            self._totals[self._prev_word] = self._totals.get(self._prev_word, 0) + 1
+        self._prev_word = word
+
+    def observe_separator(self):
+        """Mark the boundary between user input and brain response."""
+        self.observe(self._SEPARATOR)
+
+    def observe_end(self):
+        """Mark the end of a response."""
+        self.observe(self._END)
+        self._prev_word = None
+
+    def reset_context(self):
+        """Reset previous word (between exchanges)."""
+        self._prev_word = None
+
+    def get_transitions(self, word: str) -> dict:
+        """Get raw transition counts from a word."""
+        return dict(self._P.get(word, {}))
+
+    def generate(self, seed_words: list, max_len: int = 10,
+                 rng=None) -> list:
+        """
+        Generate a response by walking the word TP matrix.
+
+        1. Feed all seed_words to find the transition context
+        2. From the last seed word (or <SEP>), walk the matrix
+        3. Stop at <END>, max_len, or dead end
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        # Aggregate transition scores from seed words.
+        # Words later in the sequence get higher weight (recency bias).
+        agg = {}  # {next_word: weighted_score}
+        n = len(seed_words)
+        for i, word in enumerate(seed_words):
+            weight = 0.5 + 0.5 * (i / max(n - 1, 1))  # 0.5 → 1.0
+            transitions = self._P.get(word, {})
+            total = self._totals.get(word, 1)
+            for next_w, count in transitions.items():
+                agg[next_w] = agg.get(next_w, 0.0) + weight * count / total
+
+        # Also check transitions from <SEP> (what typically starts a response)
+        sep_trans = self._P.get(self._SEPARATOR, {})
+        sep_total = self._totals.get(self._SEPARATOR, 1)
+        for next_w, count in sep_trans.items():
+            agg[next_w] = agg.get(next_w, 0.0) + 1.5 * count / sep_total
+
+        # Remove special tokens from candidates
+        agg.pop(self._SEPARATOR, None)
+        agg.pop(self._END, None)
+
+        if not agg:
+            return []
+
+        # Pick first word by weighted sampling
+        words_list = list(agg.keys())
+        scores = np.array([agg[w] for w in words_list], dtype=np.float64)
+        scores = np.maximum(scores, 0.0)
+        total = scores.sum()
+        if total < 1e-9:
+            return []
+        probs = scores / total
+        first = words_list[int(rng.choice(len(words_list), p=probs))]
+
+        # Walk the TP matrix from first word
+        result = [first]
+        current = first
+        for _ in range(max_len - 1):
+            transitions = self._P.get(current, {})
+            total = self._totals.get(current, 0)
+            if not transitions or total == 0:
+                break
+
+            # Build probability distribution
+            candidates = []
+            counts = []
+            for w, c in transitions.items():
+                if w == self._SEPARATOR:
+                    continue
+                if w == self._END:
+                    # End token acts as a stop signal
+                    if rng.random() < c / total:
+                        break
+                    continue
+                if w not in result:  # avoid loops
+                    candidates.append(w)
+                    counts.append(c)
+
+            if not candidates:
+                break
+
+            counts_arr = np.array(counts, dtype=np.float64)
+            p = counts_arr / counts_arr.sum()
+            current = candidates[int(rng.choice(len(candidates), p=p))]
+            result.append(current)
+
+        return result
+
+    def n_words(self) -> int:
+        """Number of unique words seen."""
+        return len(self._P)
+
+    def n_transitions(self) -> int:
+        """Total number of unique bigram transitions."""
+        return sum(len(v) for v in self._P.values())
+
+
+# ═══════════════════════════════════════════════════════════════
 # PARAMETERS
 # ═══════════════════════════════════════════════════════════════
 
@@ -141,6 +281,11 @@ class Brain:
         # brain.dream_language() replays these during sleep cycles.
         from collections import deque as _deque
         self._word_trajectories: _deque = _deque(maxlen=200)
+
+        # ── Word-level transition predictor ────────────────────
+        # Operates on word strings directly — bypasses SOM BMU collisions.
+        # Trained by train_dialogue.py alongside the phoneme pipeline.
+        self.word_tp = WordTransitionPredictor()
 
         # ── Feedback state ────────────────────────────────────
         self._error_ema             = float(FEEDBACK_EMA_INIT)
@@ -543,6 +688,42 @@ class Brain:
         )
 
     # ── Language experience recording ─────────────────────────
+
+    # ── Word-level TP interface ─────────────────────────────────
+
+    def hear_word(self, word: str):
+        """
+        Feed a word identity to the word-level transition predictor.
+        Call once per word during training and live conversation.
+        """
+        if not hasattr(self, 'word_tp'):
+            self.word_tp = WordTransitionPredictor()
+        self.word_tp.observe(word)
+
+    def hear_word_separator(self):
+        """Mark input→response boundary in word TP."""
+        if not hasattr(self, 'word_tp'):
+            self.word_tp = WordTransitionPredictor()
+        self.word_tp.observe_separator()
+
+    def hear_word_end(self):
+        """Mark end of response in word TP."""
+        if not hasattr(self, 'word_tp'):
+            self.word_tp = WordTransitionPredictor()
+        self.word_tp.observe_end()
+
+    def word_tp_generate(self, seed_words: list, max_len: int = 10) -> list:
+        """
+        Generate a response using the word-level TP.
+        Returns a list of word strings.
+        """
+        if not hasattr(self, 'word_tp'):
+            self.word_tp = WordTransitionPredictor()
+        return self.word_tp.generate(
+            seed_words=seed_words,
+            max_len=max_len,
+            rng=self.dreamer._rng,
+        )
 
     def record_turn(self, bmus: list, reward: float, state_label: str = ''):
         """
