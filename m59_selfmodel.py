@@ -121,9 +121,9 @@ SM_FRUSTRATION_GATE = 0.40
 SM_VEC_DIM         = 8
 
 # State label thresholds
-_LABEL_CONF_THRESH  = 0.50   # clarity must exceed for 'focused'
+_LABEL_CONF_THRESH  = 0.45   # clarity must exceed for 'focused'
 _LABEL_FRUST_THRESH = 0.45   # frustration threshold for 'stuck'
-_LABEL_CUR_THRESH   = 0.40   # novelty threshold for 'curious'
+_LABEL_CUR_THRESH   = 0.55   # novelty threshold for 'curious' (raised so conversation doesn't always trigger confused)
 _LABEL_SAT_THRESH   = 0.55   # drive threshold for 'satisfied'
 _LABEL_HUNT_THRESH  = 0.45   # urgency + drive combined for 'hunting'
 _LABEL_ALERT_THRESH = 0.50   # engagement threshold for 'alert'

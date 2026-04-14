@@ -135,6 +135,13 @@ class Brain:
         # ── Dreams ───────────────────────────────────────────
         self.dreamer    = DreamEngine(seed=seed)
 
+        # ── Word trajectory memory (for language dreaming) ────
+        # Each entry: {'bmus': [int,...], 'reward': float, 'state_label': str}
+        # Filled by live.py after each conversation turn.
+        # brain.dream_language() replays these during sleep cycles.
+        from collections import deque as _deque
+        self._word_trajectories: _deque = _deque(maxlen=200)
+
         # ── Feedback state ────────────────────────────────────
         self._error_ema             = float(FEEDBACK_EMA_INIT)
         self._curiosity_ema         = float(FEEDBACK_EMA_INIT)
@@ -534,6 +541,149 @@ class Brain:
             food_trajectories = [],
             n_sequences       = n_sequences,
         )
+
+    # ── Language experience recording ─────────────────────────
+
+    def record_turn(self, bmus: list, reward: float, state_label: str = ''):
+        """
+        Record a conversation turn for later dreaming/replay.
+
+        Called by live.py after each exchange:
+            brain.record_turn(heard_bmus, turn_reward, sm_label)
+
+        Parameters
+        ----------
+        bmus        : list of int — phoneme BMUs heard this turn
+        reward      : float — total reward received this turn
+                      (positive if user said 'good', negative if 'bad',
+                       body-state reward otherwise)
+        state_label : str — M59 state label during this turn
+        """
+        # Backwards-compat: old pickles won't have this attribute
+        if not hasattr(self, '_word_trajectories'):
+            from collections import deque as _deque
+            self._word_trajectories = _deque(maxlen=200)
+        if bmus:
+            self._word_trajectories.append({
+                'bmus':        list(bmus),
+                'reward':      float(reward),
+                'state_label': state_label,
+            })
+
+    def dream_language(self, n_sequences: int = 6) -> dict:
+        """
+        Language-domain dream cycle — replays stored word trajectories.
+
+        Replaces the navigation-era brain.dream() for language mode.
+        Runs three types of replay over _word_trajectories:
+
+          REPLAY (40%)         — re-run a real turn's BMU sequence,
+                                  strengthen TP transitions that occurred.
+          COUNTERFACTUAL (40%) — swap one BMU in a turn with a random
+                                  BMU from another turn, see if the
+                                  blended sequence score is higher.
+          NOVEL (20%)          — generate a new BMU sequence by walking
+                                  the TP matrix from a random seed.
+
+        All sequences weakly update:
+          - phoneme_seq._P  (TP matrix) — strengthens transitions
+          - binding._W_reward            — strengthens word-reward bindings
+            for turns with positive reward
+
+        Returns a summary dict.
+        """
+        if not hasattr(self, '_word_trajectories'):
+            from collections import deque as _deque
+            self._word_trajectories = _deque(maxlen=200)
+        trajs = list(self._word_trajectories)
+        rng   = self.dreamer._rng
+        P     = self.phoneme_seq._P          # (N, N) TP matrix
+        N     = P.shape[0]
+        ETA   = 0.004   # gentle dream learning rate (<<waking rate)
+
+        n_replay = n_cf = n_novel = 0
+        total_value = 0.0
+        n_p_updates = 0
+
+        def _strengthen_sequence(bmu_seq, scale=1.0):
+            """Strengthen TP transitions for a BMU sequence."""
+            nonlocal n_p_updates
+            for i in range(len(bmu_seq) - 1):
+                a, b = bmu_seq[i], bmu_seq[i + 1]
+                if 0 <= a < N and 0 <= b < N:
+                    P[a, b] = float(np.clip(P[a, b] + ETA * scale, 0.0, 1.0))
+                    n_p_updates += 1
+
+        def _strengthen_reward_binding(bmu_seq, reward):
+            """Strengthen reward binding for BMUs in a rewarded sequence."""
+            if reward <= 0.0:
+                return
+            trace = np.zeros(N, dtype=np.float64)
+            for b in bmu_seq:
+                if 0 <= b < N:
+                    trace[b] += 1.0
+            s = trace.sum()
+            if s > 0:
+                trace /= s
+                self.binding._W_reward = np.clip(
+                    self.binding._W_reward + ETA * trace * reward,
+                    0.0, None
+                )
+
+        for _ in range(n_sequences):
+            r = rng.random()
+
+            if r < 0.40 and trajs:
+                # ── Replay dream ──────────────────────────────
+                t = trajs[int(rng.integers(len(trajs)))]
+                bmu_seq = t['bmus']
+                reward  = t['reward']
+                scale   = 1.0 + max(0.0, reward)   # reward scales reinforcement
+                _strengthen_sequence(bmu_seq, scale=scale)
+                _strengthen_reward_binding(bmu_seq, reward)
+                total_value += reward
+                n_replay += 1
+
+            elif r < 0.80 and len(trajs) >= 2:
+                # ── Counterfactual dream ──────────────────────
+                # Splice together two real turns at a random point
+                t1 = trajs[int(rng.integers(len(trajs)))]
+                t2 = trajs[int(rng.integers(len(trajs)))]
+                b1, b2 = t1['bmus'], t2['bmus']
+                if len(b1) >= 2 and len(b2) >= 1:
+                    cut = int(rng.integers(1, len(b1)))
+                    blended = b1[:cut] + b2[:max(1, len(b2) - cut)]
+                    # Blended value = average of both turns' rewards
+                    blend_reward = 0.5 * (t1['reward'] + t2['reward'])
+                    _strengthen_sequence(blended, scale=0.6)
+                    _strengthen_reward_binding(blended, blend_reward)
+                    total_value += blend_reward
+                n_cf += 1
+
+            else:
+                # ── Novel dream: TP-walk from random seed ─────
+                seed_bmu = int(rng.integers(N))
+                novel_seq = [seed_bmu]
+                for _ in range(8):
+                    row = P[novel_seq[-1]].copy()
+                    row = np.clip(row, 0.0, None)
+                    s = row.sum()
+                    if s < 1e-9:
+                        break
+                    row /= s
+                    next_b = int(rng.choice(N, p=row))
+                    novel_seq.append(next_bmu := next_b)
+                _strengthen_sequence(novel_seq, scale=0.3)
+                n_novel += 1
+
+        return {
+            'n_replay':       n_replay,
+            'n_counterfactual': n_cf,
+            'n_novel':        n_novel,
+            'n_p_updates':    n_p_updates,
+            'mean_value':     total_value / max(1, n_replay + n_cf),
+            'trajectories_stored': len(trajs),
+        }
 
     # ── Convenience ───────────────────────────────────────────
 

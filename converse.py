@@ -25,107 +25,10 @@ from collections import Counter
 sys.dont_write_bytecode = True
 from brain import Brain
 
-# ── Vocabulary (must match teach_english.py exactly) ─────────────────
-N_MFCC = 13
-SEED   = 42
+from vocab import VOCABULARY, SILENCE, N_MFCC
 
-# Use a time-based RNG for say() so each session sounds different.
-# The training RNG was seeded at 42; we deliberately diverge here.
+# Time-based RNG so each session sounds different (training used seed=42)
 rng = np.random.default_rng(int(time.time()) % (2**31))
-
-def _word(coeffs):
-    v = np.zeros(13, dtype=np.float32)
-    v[0] = 3.0
-    for i, c in enumerate(coeffs):
-        if i + 1 < 13:
-            v[i + 1] = c
-    return v
-
-VOCABULARY = {
-    'hello':    (_word([ 1.2,-0.8, 0.5,-0.3, 0.2,-0.1, 0.1, 0.0,-0.1, 0.1, 0.0,-0.1]), 4),
-    'hi':       (_word([ 1.5,-0.5, 0.3,-0.2, 0.1, 0.0, 0.0, 0.1,-0.1, 0.0, 0.1,-0.1]), 2),
-    'bye':      (_word([-0.8, 1.0,-0.5, 0.4,-0.2, 0.3,-0.1, 0.2,-0.1, 0.1, 0.0,-0.1]), 2),
-    'please':   (_word([ 0.5, 1.2,-0.3, 0.8,-0.4, 0.2,-0.2, 0.1, 0.0,-0.1, 0.1, 0.0]), 4),
-    'thank':    (_word([ 0.3,-1.0, 0.8,-0.6, 0.5,-0.3, 0.4,-0.2, 0.3,-0.1, 0.2, 0.0]), 3),
-    'sorry':    (_word([-0.5, 0.7,-0.9, 0.6,-0.4, 0.5,-0.2, 0.3,-0.1, 0.2,-0.1, 0.1]), 4),
-    'yes':      (_word([ 1.0,-0.3, 0.6,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2,-0.1, 0.1, 0.0]), 2),
-    'no':       (_word([-1.0, 0.4,-0.6, 0.3,-0.5, 0.2,-0.4, 0.1,-0.3, 0.0,-0.2, 0.1]), 2),
-    'okay':     (_word([ 0.8, 0.3,-0.4, 0.6,-0.1, 0.5, 0.0, 0.4,-0.1, 0.3, 0.0, 0.2]), 3),
-    'good':     (_word([ 0.9,-0.5, 0.7,-0.2, 0.5,-0.1, 0.4, 0.0, 0.3,-0.1, 0.2, 0.0]), 3),
-    'happy':    (_word([ 1.3, 0.2,-0.6, 0.4,-0.3, 0.1,-0.2, 0.0,-0.1, 0.1, 0.0,-0.1]), 3),
-    'sad':      (_word([-1.3, 0.3,-0.4, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2,-0.1, 0.1]), 2),
-    'confused': (_word([-1.2, 0.7,-0.9, 0.5,-0.4, 0.3,-0.2, 0.1,-0.1, 0.0,-0.1, 0.0]), 4),
-    'curious':  (_word([ 0.4, 1.1,-0.3, 0.9,-0.5, 0.2,-0.3, 0.1,-0.2, 0.0,-0.1, 0.0]), 4),
-    'scared':   (_word([-0.9,-0.6, 0.8,-0.7, 0.6,-0.5, 0.5,-0.4, 0.4,-0.3, 0.3,-0.2]), 3),
-    'calm':     (_word([ 0.2, 0.1,-0.1, 0.2,-0.1, 0.1, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0]), 3),
-    'angry':    (_word([-1.5,-0.8, 1.0,-0.9, 0.8,-0.7, 0.7,-0.6, 0.6,-0.5, 0.5,-0.4]), 3),
-    'tired':    (_word([-0.3,-0.9, 0.4,-0.8, 0.3,-0.7, 0.2,-0.6, 0.1,-0.5, 0.0,-0.4]), 3),
-    'hurt':     (_word([-1.0,-0.5, 0.9,-0.4, 0.8,-0.3, 0.7,-0.2, 0.6,-0.1, 0.5, 0.0]), 2),
-    'love':     (_word([ 1.4, 0.6,-0.2, 0.5,-0.1, 0.4, 0.0, 0.3, 0.1, 0.2, 0.1, 0.1]), 3),
-    'what':     (_word([ 0.6, 0.4,-1.0, 0.2,-0.6, 0.1,-0.5, 0.0,-0.4, 0.0,-0.3, 0.0]), 3),
-    'who':      (_word([ 0.7, 0.5,-0.8, 0.3,-0.7, 0.1,-0.6, 0.0,-0.5, 0.0,-0.4, 0.0]), 2),
-    'where':    (_word([ 0.5, 0.3,-0.9, 0.4,-0.5, 0.2,-0.4, 0.1,-0.3, 0.1,-0.2, 0.1]), 3),
-    'when':     (_word([ 0.4, 0.6,-0.7, 0.5,-0.4, 0.3,-0.3, 0.2,-0.2, 0.1,-0.1, 0.1]), 3),
-    'why':      (_word([ 0.8, 0.2,-1.1, 0.1,-0.8, 0.0,-0.7,-0.1,-0.6,-0.1,-0.5,-0.1]), 2),
-    'how':      (_word([ 0.3, 0.7,-0.6, 0.6,-0.3, 0.4,-0.2, 0.3,-0.1, 0.2, 0.0, 0.1]), 2),
-    'which':    (_word([ 0.2, 0.8,-0.4, 0.7,-0.2, 0.5,-0.1, 0.4, 0.0, 0.3, 0.0, 0.2]), 3),
-    'can':      (_word([ 0.9,-0.2, 0.5,-0.1, 0.3, 0.0, 0.2, 0.1, 0.1, 0.1, 0.0, 0.1]), 2),
-    'do':       (_word([ 1.1,-0.1, 0.4, 0.0, 0.2, 0.1, 0.1, 0.1, 0.0, 0.1, 0.0, 0.0]), 2),
-    'is':       (_word([ 1.0, 0.0, 0.3, 0.1, 0.1, 0.1, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0]), 2),
-    'water':    (_word([-0.2, 1.3,-0.4, 1.0,-0.3, 0.7,-0.2, 0.4,-0.1, 0.2, 0.0, 0.1]), 4),
-    'light':    (_word([ 0.7,-1.2, 0.6,-0.9, 0.4,-0.6, 0.3,-0.4, 0.2,-0.2, 0.1,-0.1]), 3),
-    'dark':     (_word([-0.7,-1.0, 0.5,-0.8, 0.4,-0.5, 0.3,-0.3, 0.2,-0.2, 0.1,-0.1]), 2),
-    'sound':    (_word([-0.3, 1.0,-0.2, 0.8,-0.1, 0.5, 0.0, 0.3, 0.1, 0.1, 0.1, 0.0]), 3),
-    'heat':     (_word([ 0.1,-0.8, 1.2,-0.5, 1.0,-0.3, 0.8,-0.2, 0.6,-0.1, 0.4, 0.0]), 3),
-    'cold':     (_word([-0.1,-1.0, 1.0,-0.7, 0.8,-0.5, 0.6,-0.3, 0.4,-0.2, 0.3,-0.1]), 3),
-    'body':     (_word([-0.4, 0.4,-0.3, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2, 0.0, 0.1]), 3),
-    'mind':     (_word([ 0.6,-0.4, 0.8,-0.3, 0.6,-0.2, 0.5,-0.1, 0.4, 0.0, 0.3, 0.0]), 3),
-    'world':    (_word([-0.5, 0.8,-0.5, 0.7,-0.3, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2]), 4),
-    'time':     (_word([ 0.5,-0.6, 0.9,-0.4, 0.7,-0.3, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0]), 3),
-    'come':     (_word([-0.2, 0.8, 0.4,-1.0, 0.2,-0.6, 0.1,-0.5, 0.0,-0.4, 0.0,-0.3]), 2),
-    'go':       (_word([ 0.2,-0.8, 0.6,-0.4, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2, 0.0]), 2),
-    'stop':     (_word([-0.6,-0.4, 0.7,-0.3, 0.6,-0.2, 0.5,-0.1, 0.4, 0.0, 0.3, 0.0]), 3),
-    'wait':     (_word([ 0.0, 0.2,-0.2, 0.3,-0.1, 0.2, 0.0, 0.2, 0.0, 0.1, 0.0, 0.1]), 3),
-    'listen':   (_word([-0.1, 0.9,-0.1, 0.8, 0.0, 0.6, 0.0, 0.4, 0.1, 0.2, 0.1, 0.1]), 4),
-    'speak':    (_word([ 0.8,-0.3, 1.0,-0.1, 0.8, 0.0, 0.6, 0.0, 0.4, 0.1, 0.2, 0.1]), 3),
-    'think':    (_word([ 0.5, 0.6,-0.2, 0.7,-0.1, 0.5, 0.0, 0.4, 0.0, 0.3, 0.0, 0.2]), 3),
-    'feel':     (_word([ 0.3,-0.7, 0.5,-0.6, 0.4,-0.5, 0.3,-0.4, 0.2,-0.3, 0.2,-0.2]), 3),
-    'know':     (_word([ 0.7, 0.5, 0.3, 0.4, 0.2, 0.3, 0.1, 0.2, 0.1, 0.1, 0.0, 0.1]), 3),
-    'want':     (_word([-0.3, 0.5,-0.8, 0.4,-0.7, 0.3,-0.6, 0.2,-0.5, 0.1,-0.4, 0.0]), 3),
-    'big':      (_word([-0.8, 1.5,-0.3, 1.2,-0.2, 0.9,-0.1, 0.6, 0.0, 0.3, 0.0, 0.1]), 2),
-    'small':    (_word([ 0.8,-1.5, 0.3,-1.2, 0.2,-0.9, 0.1,-0.6, 0.0,-0.3, 0.0,-0.1]), 3),
-    'fast':     (_word([ 1.2, 0.8,-0.7, 0.6,-0.6, 0.4,-0.5, 0.3,-0.4, 0.2,-0.3, 0.1]), 2),
-    'slow':     (_word([-1.2,-0.8, 0.7,-0.6, 0.6,-0.4, 0.5,-0.3, 0.4,-0.2, 0.3,-0.1]), 3),
-    'near':     (_word([ 0.4, 1.0, 0.2, 0.9, 0.1, 0.7, 0.0, 0.5, 0.0, 0.3, 0.0, 0.2]), 3),
-    'far':      (_word([-0.4,-1.0,-0.2,-0.9,-0.1,-0.7, 0.0,-0.5, 0.0,-0.3, 0.0,-0.2]), 2),
-    'new':      (_word([ 0.6, 0.9, 0.5, 0.7, 0.4, 0.5, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]), 2),
-    'old':      (_word([-0.6,-0.9,-0.5,-0.7,-0.4,-0.5,-0.3,-0.3,-0.2,-0.2,-0.1,-0.1]), 2),
-    'more':     (_word([ 0.3, 1.1,-0.1, 0.9, 0.0, 0.7, 0.0, 0.5, 0.0, 0.3, 0.0, 0.2]), 3),
-    'less':     (_word([-0.3,-1.1, 0.1,-0.9, 0.0,-0.7, 0.0,-0.5, 0.0,-0.3, 0.0,-0.2]), 3),
-    'i':        (_word([ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]), 1),
-    'you':      (_word([-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1]), 2),
-    'me':       (_word([ 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]), 2),
-    'we':       (_word([ 0.3, 0.1,-0.1, 0.2,-0.1, 0.1, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0]), 2),
-    'here':     (_word([-0.5,-1.0, 1.0, 0.5,-0.8, 0.4,-0.3, 0.3,-0.1, 0.2, 0.0, 0.1]), 3),
-    'there':    (_word([ 0.5, 1.0,-1.0,-0.5, 0.8,-0.4, 0.3,-0.3, 0.1,-0.2, 0.0,-0.1]), 3),
-    'this':     (_word([ 0.7,-0.3, 0.6,-0.2, 0.4,-0.1, 0.3, 0.0, 0.2, 0.0, 0.1, 0.0]), 2),
-    'that':     (_word([-0.7, 0.3,-0.6, 0.2,-0.4, 0.1,-0.3, 0.0,-0.2, 0.0,-0.1, 0.0]), 2),
-    'same':     (_word([ 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5]), 3),
-    'different':(_word([ 0.0,-0.5, 0.0,-0.5, 0.0,-0.5, 0.0,-0.5, 0.0,-0.5, 0.0,-0.5]), 4),
-    'not':      (_word([-1.4, 0.0,-0.9, 0.0,-0.6, 0.0,-0.4, 0.0,-0.2, 0.0,-0.1, 0.0]), 2),
-    'now':      (_word([ 1.4, 0.0, 0.9, 0.0, 0.6, 0.0, 0.4, 0.0, 0.2, 0.0, 0.1, 0.0]), 2),
-    'again':    (_word([ 0.4,-0.2, 0.8,-0.1, 0.6, 0.0, 0.4, 0.1, 0.3, 0.1, 0.2, 0.1]), 3),
-    'always':   (_word([ 0.6, 0.4, 0.5, 0.3, 0.4, 0.2, 0.3, 0.1, 0.2, 0.1, 0.1, 0.0]), 3),
-    'never':    (_word([-0.6,-0.4,-0.5,-0.3,-0.4,-0.2,-0.3,-0.1,-0.2,-0.1,-0.1, 0.0]), 3),
-    'maybe':    (_word([ 0.1, 0.3,-0.1, 0.4,-0.1, 0.3, 0.0, 0.2, 0.0, 0.1, 0.0, 0.1]), 3),
-    'help':     (_word([-0.8, 0.9,-0.4, 1.1,-0.2, 0.8,-0.1, 0.5, 0.0, 0.3, 0.0, 0.1]), 3),
-    'ready':    (_word([ 0.7, 0.7, 0.5, 0.6, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]), 4),
-    'done':     (_word([ 1.0,-0.6, 0.8,-0.4, 0.6,-0.3, 0.5,-0.2, 0.4,-0.1, 0.3, 0.0]), 3),
-    'together': (_word([ 0.2, 0.6, 0.3, 0.5, 0.2, 0.4, 0.1, 0.3, 0.1, 0.2, 0.0, 0.1]), 4),
-}
-
-SILENCE = np.zeros(N_MFCC, dtype=np.float32)
-SILENCE[0] = -4.0
 
 def say(word, noise_std=0.12):
     mean_vec, n_frames = VOCABULARY[word]
@@ -235,12 +138,13 @@ def bmus_to_words(bmu_sequence: list[int], exclude: set = None) -> list[str]:
 # ── Word valence for social reward ────────────────────────────────────
 _POSITIVE = {'yes', 'good', 'hello', 'hi', 'love', 'happy', 'thank',
              'okay', 'please', 'ready', 'done', 'together', 'know',
-             'speak', 'near', 'more', 'always', 'calm'}
+             'speak', 'near', 'more', 'always', 'calm',
+             'great', 'nice', 'fine', 'really'}
 _NEGATIVE  = {'no', 'sad', 'angry', 'hurt', 'never', 'cold', 'scared',
               'confused', 'dark', 'less', 'not'}
 _QUESTION  = {'what', 'who', 'where', 'when', 'why', 'how', 'which',
               'can', 'do', 'is'}
-_PUNCT = str.maketrans('', '', '.,?!;:\'"()-')
+_PUNCT = str.maketrans('', '', '.,?!;:\'"()-/\\')
 
 
 def hear_sentence(sentence: str) -> tuple[list[dict], list[int], list[str]]:
@@ -254,8 +158,8 @@ def hear_sentence(sentence: str) -> tuple[list[dict], list[int], list[str]]:
         if tok not in VOCABULARY:
             continue
         heard_words.append(tok)
-        reward = 0.5 if tok in _POSITIVE else (0.0 if tok in _NEGATIVE else 0.15)
-        frames = say(tok, noise_std=0.15)
+        reward = 0.6 if tok in _POSITIVE else (-0.1 if tok in _NEGATIVE else 0.2)
+        frames = say(tok, noise_std=0.10)   # less noise → more familiar → less confused
         for i, frame in enumerate(frames):
             brain.hear(frame)
             out = brain.step(reward=reward if i == len(frames) - 1 else 0.0)
@@ -335,6 +239,22 @@ _RESPONSE_TABLE = {
     frozenset(['you']):                [['yes', 'good'], ['i', 'know', 'you']],
     frozenset(['me']):                 [['i', 'here'], ['yes', 'i', 'know']],
     frozenset(['we']):                 [['yes', 'together'], ['we', 'good']],
+    # New words
+    frozenset(['great']):             [['yes', 'good'], ['yes', 'great'], ['good', 'always']],
+    frozenset(['nice']):              [['yes', 'good'], ['nice', 'good'], ['yes', 'nice']],
+    frozenset(['fine']):              [['yes', 'good'], ['i', 'feel', 'good'], ['okay', 'good']],
+    frozenset(['are']):               [['yes', 'good'], ['i', 'think'], ['i', 'know']],
+    frozenset(['tell']):              [['yes', 'i', 'know'], ['i', 'think', 'know'], ['okay']],
+    frozenset(['about']):             [['i', 'think'], ['i', 'know'], ['think', 'know']],
+    frozenset(['really']):            [['yes', 'really'], ['yes', 'i', 'know'], ['yes', 'always']],
+    frozenset(['tell', 'me']):        [['yes', 'i', 'know'], ['i', 'here', 'now']],
+    frozenset(['tell', 'you']):       [['yes', 'i', 'know'], ['i', 'think', 'know']],
+    frozenset(['are', 'you']):        [['yes', 'i', 'good'], ['i', 'here'], ['yes', 'good']],
+    frozenset(['you', 'are']):        [['yes', 'i', 'know'], ['i', 'know', 'you']],
+    frozenset(['are', 'you', 'good']): [['yes', 'i', 'feel', 'good'], ['yes', 'good']],
+    frozenset(['great', 'good']):     [['yes', 'always'], ['yes', 'great', 'good']],
+    frozenset(['really', 'good']):    [['yes', 'always'], ['yes', 'i', 'know']],
+    frozenset(['tell', 'me', 'about']): [['i', 'think', 'know'], ['i', 'here', 'now']],
 }
 
 
@@ -390,12 +310,12 @@ def generate_response(heard_bmus: list, heard_words: list) -> str:
     # Map the current internal state to response words directly.
     # This is the connection between the cognitive stack and speech.
     state_words = _state_to_words(sm_label, sm_vec, heard_words)
-    if state_words and rng.random() < 0.50:
+    if state_words and rng.random() < 0.40:
         return " ".join(state_words)
 
-    # ── 3. Table lookup ───────────────────────────────────────────────
+    # ── 3. Table lookup (40% chance — leave room for TP composition) ──
     table_words = _lookup_response(heard_words)
-    if table_words:
+    if table_words and rng.random() < 0.55:
         if rng.random() < 0.20:
             fillers = ['yes', 'okay', 'good', 'i', 'think', 'know']
             filler = fillers[int(rng.integers(len(fillers)))]
@@ -504,7 +424,7 @@ print()
 print("=" * 60)
 print("  BRAIN CONVERSATION")
 print("  Use words from /help. Punctuation is stripped automatically.")
-print("  /state  /words  /help  /quit")
+print("  /state  /words  /memory  /help  /quit")
 print("=" * 60)
 print()
 
@@ -513,6 +433,8 @@ while True:
         user_input = input("You: ").strip()
     except (EOFError, KeyboardInterrupt):
         print("\n  Goodbye.")
+        brain.save(BRAIN_FILE)
+        print(f"  Learning saved → {BRAIN_FILE}")
         break
 
     if not user_input:
@@ -523,6 +445,8 @@ while True:
         cmd = user_input.lower().strip()
         if cmd in ('/quit', '/exit', '/q'):
             print("  Goodbye.")
+            brain.save(BRAIN_FILE)
+            print(f"  Learning saved → {BRAIN_FILE}")
             break
         elif cmd == '/state':
             label = brain.selfmodel._last_label
@@ -548,6 +472,21 @@ while True:
             for i in range(0, len(words), 10):
                 print('  ' + '  '.join(words[i:i+10]))
             print()
+        elif cmd == '/memory':
+            eps = list(brain.episodic._episodes)
+            print(f"\n  Episodic memory: {len(eps)} resolved episodes")
+            label_dist = brain.selfmodel.label_distribution()
+            print("  State history distribution:")
+            for lbl, frac in sorted(label_dist.items(), key=lambda x: -x[1]):
+                bar = '█' * int(frac * 20)
+                print(f"    {lbl:12s} {frac:.2f}  {bar}")
+            rew_dist = brain.selfmodel.reward_label_summary()
+            if rew_dist:
+                best = list(rew_dist.items())[0]
+                print(f"  Rewarded most in state: {best[0]} ({best[1]:.0%} of rewards)")
+            tp_entries = int((brain.phoneme_seq._P > 0.01).sum())
+            print(f"  TP matrix: {tp_entries} learned transitions")
+            print()
         else:
             print(f"  Unknown command: {cmd}")
         continue
@@ -558,15 +497,18 @@ while True:
         print("Brain: (no known words — try /help)\n")
         continue
 
+    # "Think" — let the brain settle for ~20 silent steps so GWS, M59,
+    # and neuromod can integrate the input before we read the state.
+    # This is analogous to a brief pause between hearing and responding.
+    for _ in range(20):
+        brain.hear(SILENCE)
+        brain.step()
+
     # Use the most common state across all heard frames — single frames
     # can transiently spike to "confused" even when the brain is stable.
     from collections import Counter as _Counter
     state_counts = _Counter(o['sm_state_label'] for o in outputs)
     state = state_counts.most_common(1)[0][0]
-    # "confused" during conversation just means novelty spiked briefly;
-    # if nothing else is present, show "listening" instead.
-    if state == 'confused':
-        state = 'listening'
 
     response = generate_response(heard_bmus, heard_words)
 
