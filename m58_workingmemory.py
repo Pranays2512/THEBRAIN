@@ -104,6 +104,26 @@ BOREDOM_GATE_THRESH   = 0.50  — corridor_boredom must exceed this before
 import numpy as np
 from collections import deque
 
+# ── Phoneme-level Working Memory (sustained activation) ──────
+# Number of phoneme BMUs on the SOM — must match M71
+WM_N_PHONEMES       = 400
+WM_GRID_H           = 20
+WM_GRID_W           = 20
+
+# How fast the sustained activation decays each step.
+# 0.92 means ~12 steps half-life — words stay "lit" for roughly
+# 12–15 brain ticks after being heard, then fade. This matches
+# the ~2–4 second decay of PFC sustained firing in primates.
+WM_ACTIVATION_DECAY = 0.92
+
+# Gaussian spread radius on the SOM grid.
+# When BMU 42 is activated, its neighbors within this radius
+# also get partial activation (topological proximity = semantic proximity).
+WM_SPREAD_SIGMA     = 2.5
+
+# Strength of the initial activation spike when a phoneme is heard.
+WM_SPIKE_STRENGTH   = 1.0
+
 # ═══════════════════════════════════════════════════════════════
 # PARAMETERS
 # ═══════════════════════════════════════════════════════════════
@@ -160,6 +180,18 @@ class WorkingMemory:
         self._last_corridor_boredom  = 0.0
         self._last_steps_since_reward_norm = 0.0
         self._last_epsilon_floor     = 0.0
+
+        # ── Phoneme-level sustained activation ────────────────
+        # This is the core of "holding a thought."
+        # A float array across all 400 SOM neurons. When a BMU is
+        # heard, it spikes here. The activation decays naturally,
+        # simulating the ~2-4 second sustained firing of PFC neurons.
+        self._wm_activation = np.zeros(WM_N_PHONEMES, dtype=np.float64)
+
+        # Precompute SOM grid positions for Gaussian spread
+        rows = np.arange(WM_N_PHONEMES) // WM_GRID_W
+        cols = np.arange(WM_N_PHONEMES) % WM_GRID_W
+        self._som_pos = np.stack([rows, cols], axis=1).astype(np.float64)
 
     # ── Main step ─────────────────────────────────────────────
 
@@ -253,6 +285,60 @@ class WorkingMemory:
             'steps_since_reward_norm':   hunger_norm,
             'epsilon_floor':             epsilon_floor,
         }
+
+    # ── Phoneme WM: sustained activation ──────────────────────
+
+    def hold_phonemes(self, bmu_list: list):
+        """
+        Inject heard phoneme BMUs into the sustained activation buffer.
+
+        Each BMU spikes its own activation AND spreads a Gaussian
+        activation to its topological SOM neighbors. This is the
+        biological equivalent of a concept "lighting up" a region
+        of cortex, not just a single point.
+
+        Parameters
+        ----------
+        bmu_list : list[int] — BMU indices from M71 for heard words.
+        """
+        for bmu in bmu_list:
+            if not (0 <= bmu < WM_N_PHONEMES):
+                continue
+            # Compute Gaussian spread from this BMU to all others
+            d_sq = np.sum((self._som_pos - self._som_pos[bmu]) ** 2, axis=1)
+            spread = WM_SPIKE_STRENGTH * np.exp(-d_sq / (2.0 * WM_SPREAD_SIGMA ** 2))
+            self._wm_activation += spread
+
+        # Clip to prevent runaway if many words arrive at once
+        np.clip(self._wm_activation, 0.0, 3.0, out=self._wm_activation)
+
+    def decay_activation(self):
+        """
+        Called each brain step to let the sustained activation decay.
+        Simulates the natural fading of PFC sustained firing.
+        """
+        self._wm_activation *= WM_ACTIVATION_DECAY
+        # Zero out negligible activations to keep it clean
+        self._wm_activation[self._wm_activation < 0.01] = 0.0
+
+    def get_wm_bias(self) -> np.ndarray:
+        """
+        Return the current WM activation as a probability-like bias.
+
+        This is the "gravitational field" that pulls word generation
+        toward concepts that are currently active in working memory.
+
+        Returns a (400,) array normalized to sum=1, or uniform if
+        no activation is present.
+        """
+        total = self._wm_activation.sum()
+        if total < 1e-6:
+            return np.ones(WM_N_PHONEMES, dtype=np.float64) / WM_N_PHONEMES
+        return self._wm_activation / total
+
+    def wm_activation_strength(self) -> float:
+        """Total activation in WM — used to blend WM bias vs. free generation."""
+        return float(self._wm_activation.sum())
 
     # ── Diagnostics ───────────────────────────────────────────
 

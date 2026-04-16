@@ -87,6 +87,11 @@ class SemanticMemory:
         facts = self.recall(entity)
         if not facts:
             return f"i do not know {entity}"
+            
+        if 'meaning' in facts:
+            return f"{entity} means {facts['meaning']}"
+        if 'description' in facts:
+            return f"{entity} is {facts['description']}"
 
         typ = facts.get('type', '')
         role = facts.get('role', '')
@@ -100,7 +105,9 @@ class SemanticMemory:
             return f"{entity} is a person"
         if typ == 'object':
             if facts.get('edible'):
-                return f"{entity} is food"
+                return f"{entity} is edible"
+            if facts.get('drinkable'):
+                return f"{entity} is drinkable"
             return f"{entity} is a thing"
         if typ == 'emotion':
             return f"{entity} is a feeling"

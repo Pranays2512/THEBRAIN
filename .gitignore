@@ -9,12 +9,26 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Project Specific
+build_cpp/
+.claude/
+.remember/
 
 # Data / Save files
 *.pkl
+.*_cache*.pkl
 
 # Editor / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.swp
+*.swo

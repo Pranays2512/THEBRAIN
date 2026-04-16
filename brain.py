@@ -71,6 +71,7 @@ from m71_speech_cortex import SpeechCortex
 from m72_phoneme_seq   import PhonemeSequencePredictor
 from m73_binding       import SemanticBinding
 from m74_vocal         import VocalOutput
+from m75_semantic      import SemanticMemory
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -286,6 +287,12 @@ class Brain:
         # Operates on word strings directly — bypasses SOM BMU collisions.
         # Trained by train_dialogue.py alongside the phoneme pipeline.
         self.word_tp = WordTransitionPredictor()
+
+        # ── Semantic memory (M75) — declarative fact store ─────
+        # Stores entity-attribute facts independently of emotion.
+        # This IS part of the brain (cortical semantic memory),
+        # so it gets pickled with save() and survives restarts.
+        self.semantic = SemanticMemory()
 
         # ── Feedback state ────────────────────────────────────
         self._error_ema             = float(FEEDBACK_EMA_INIT)
@@ -904,5 +911,8 @@ class Brain:
         import pickle
         with open(path, 'rb') as f:
             brain = pickle.load(f)
+        # Backward compatibility: brains saved before M75 won't have semantic
+        if not hasattr(brain, 'semantic'):
+            brain.semantic = SemanticMemory()
         print(f"  Brain loaded ← {path}  (step {brain.t})")
         return brain

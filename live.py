@@ -38,8 +38,9 @@ sys.dont_write_bytecode = True
 from brain import Brain
 from body import SimBody, N_MFCC
 from vocab_extra import VOCABULARY, SILENCE, N_MFCC   # extended ~300-word vocab
-from m75_semantic import SemanticMemory
+from m75_semantic import SemanticMemory   # for type reference only
 from m76_broca import BrocaGrammar
+from m58_workingmemory import WorkingMemory
 
 # ── Load brain ────────────────────────────────────────────────────────
 BRAIN_FILE = 'brain_trained.pkl'
@@ -57,9 +58,18 @@ brain.vocal._rng = np.random.default_rng(int(time.time()) % (2**31))
 body = SimBody(seed=int(time.time()) % (2**31))
 print("  Body created (simulated).")
 
-# ── Semantic memory (M75) — fact store ───────────────────────────────
-semantic = SemanticMemory()
-print("  Semantic memory ready.")
+# ── Semantic memory — now lives inside the brain (brain.semantic) ─────
+semantic = brain.semantic   # alias for convenience
+print(f"  Semantic memory ready ({len(semantic._facts)} facts).")
+
+# ── Working Memory (M58) — sustained phoneme activation ─────────────
+wm = WorkingMemory()
+
+# How strongly the WM gravitational field biases word generation.
+# 0.0 = WM has no effect (pure TP walk, current behavior).
+# 0.40 = strong pull toward concepts related to what was just heard.
+# This is NOT keyword matching — it's topological SOM proximity.
+WM_BLEND_WEIGHT = 0.35
 
 # ── RNG for response generation ───────────────────────────────────────
 rng = np.random.default_rng(int(time.time()) % (2**31))
@@ -443,7 +453,14 @@ def _detect_intent(words: list) -> str:
     return 'observation'
 
 def _tp_generate(heard_bmus: list, sm_vec: np.ndarray, temperature: float = 1.5) -> str:
-    """Walk the TP matrix to generate a novel word sequence."""
+    """Walk the TP matrix to generate a novel word sequence.
+
+    Now biased by Working Memory sustained activation:
+    The WM holds a topological "glow" of recently heard BMUs.
+    This glow acts as a gravitational field pulling word generation
+    toward the SOM neighborhood of what was just heard — biologically
+    pure, not keyword matching.
+    """
     N = brain.phoneme_seq._P.shape[0]
     if not heard_bmus:
         return ""
@@ -460,9 +477,29 @@ def _tp_generate(heard_bmus: list, sm_vec: np.ndarray, temperature: float = 1.5)
         state_dist = state_sims / ss if ss > 1e-9 else np.ones(N) / N
     else:
         state_dist = np.ones(N) / N
-    blended = 0.60 * tp_resp + 0.40 * state_dist
+
+    # ── Working Memory gravitational bias ─────────────────────
+    # The WM activation field represents the "glowing" region of
+    # the SOM where recently heard concepts are still active.
+    # Instead of matching keywords, we let this continuous field
+    # pull the probability distribution toward related concepts.
+    wm_bias = wm.get_wm_bias()[:N]   # (N,) normalized activation
+    wm_strength = wm.wm_activation_strength()
+
+    # Adaptive blend: when WM is strongly activated (you just spoke),
+    # the pull is stronger. When WM has decayed (silence/thinking),
+    # generation is freer (more creative/divergent).
+    wm_weight = WM_BLEND_WEIGHT * min(wm_strength / 2.0, 1.0)
+
+    # Three-way blend: TP (grammar) + State (emotion) + WM (topic)
+    remaining = 1.0 - wm_weight
+    blended = (remaining * 0.60 * tp_resp
+             + remaining * 0.40 * state_dist
+             + wm_weight * wm_bias)
+    blended = np.maximum(blended, 1e-9)
     blended /= blended.sum()
-    log_p = np.log(np.maximum(blended, 1e-9)) / temperature
+
+    log_p = np.log(blended) / temperature
     log_p -= log_p.max()
     probs = np.exp(log_p)
     probs /= probs.sum()
@@ -484,52 +521,181 @@ def _tp_generate(heard_bmus: list, sm_vec: np.ndarray, temperature: float = 1.5)
 
 
 def generate_response(heard_words: list, heard_bmus: list, raw_tokens: list = None) -> str:
-    """Generate a response using word-level TP as primary mechanism.
+    """Generate a response through the full biological cognitive pipeline.
 
-    Priority:
-      1. Semantic memory — only for hard facts (name recall)
-      2. Word-level TP — learned word→word transitions from dialogue training
-      3. Phoneme-level TP fallback — for coverage gaps
+    The brain passes through 6 biological gates, in order:
+      1. SURVIVAL OVERRIDE — extreme body drives bypass all cognition
+      2. SEMANTIC RECALL — hard facts from M75 (name, identity, definitions)
+      3. INTENT ROUTING — classify input, route to specific introspection
+      4. BROCA GRAMMAR — generate structured candidate sentences
+      5. INTERNAL MONOLOGUE — silently evaluate, pick best candidate
+      6. TP FALLBACK — raw Markov walk only if everything else fails
     """
     if not heard_words and not heard_bmus:
         return ""
 
-    sm_vec = brain.selfmodel._state_vec.copy()
     tokens = raw_tokens or heard_words
+    sm_label = brain.selfmodel._last_label
+    sm_vec   = brain.selfmodel._state_vec.copy()
+    senses   = body.sense()
 
-    # ── 1. Semantic memory — only hard facts, not intent routing ─────
+    # ── GATE 1: Survival Override ─────────────────────────────────────
+    # Extreme body drives bypass all language cognition.
+    # A starving brain cannot think about philosophy.
+    if senses['hunger'] > 0.75:
+        for c in ['i want food', 'hungry now', 'food now', 'i need food']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    if senses['tiredness'] > 0.8:
+        for c in ['i need rest', 'tired now', 'so tired']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    # ── GATE 2: Semantic Memory — hard fact retrieval ─────────────────
+    # Check M75 for entity facts BEFORE intent routing.
+    # "what is my name" → M75 lookup, not TP generation.
     ws = set(tokens)
+
     if 'name' in ws:
-        if 'my' in ws:
+        if 'my' in ws or 'me' in ws:
             user_name = semantic.recall('you').get('name', '')
             if user_name and not _is_too_repetitive(f'your name is {user_name}'):
+                _record_response(f'your name is {user_name}')
                 return f'your name is {user_name}'
         if 'your' in ws:
             brain_name = semantic.recall('brain').get('name', 'brain')
             if not _is_too_repetitive(f'i am {brain_name}'):
+                _record_response(f'i am {brain_name}')
                 return f'i am {brain_name}'
 
-    # ── 2. Word-level TP — primary response mechanism ────────────────
-    # This operates on word strings directly — no BMU collision possible.
-    # Trained by train_dialogue.py on the full dialogue corpus.
+    # Try general semantic query for "what is X" / "who is X"
+    sem_answer = semantic_query(heard_words)
+    if sem_answer and not _is_too_repetitive(sem_answer):
+        _record_response(sem_answer)
+        return sem_answer
+
+    # ── GATE 3: Intent Detection → Introspection ─────────────────────
+    # Classify what kind of input this is, then route to the correct
+    # biological introspection function.
+    intent = _detect_intent(heard_words)
+
+    if intent == 'greeting':
+        feeling = _introspect_feeling()
+        candidates = [f'hello i feel {feeling}', f'hi {feeling}', 'hello']
+        for c in candidates:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'farewell':
+        for c in ['goodbye', 'bye']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'feeling_question':
+        feeling = _introspect_feeling()
+        candidates = [f'i feel {feeling}', feeling, f'i am {feeling}']
+        for c in candidates:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'want_question':
+        want = _introspect_want()
+        candidates = [f'i want {want}', want, f'yes {want}']
+        for c in candidates:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'identity_question':
+        answer = _introspect_who_am_i()
+        for c in [answer, 'i think i learn', 'i am here']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'affirmation':
+        feeling = _introspect_feeling()
+        for c in [f'yes {feeling}', 'yes good', 'good']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'negation':
+        for c in ['i understand', 'okay', 'i will try']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    elif intent == 'teaching':
+        learned_word = None
+        if tokens[:3] == ['my', 'name', 'is'] and len(tokens) >= 4:
+            learned_word = tokens[3]
+        elif len(tokens) >= 3 and tokens[1] in ('is', 'means', 'are'):
+            learned_word = tokens[0]
+        if learned_word:
+            for c in [f'i know {learned_word}', 'i know', 'yes i know']:
+                if not _is_too_repetitive(c):
+                    _record_response(c)
+                    return c
+        for c in ['i know', 'okay i know']:
+            if not _is_too_repetitive(c):
+                _record_response(c)
+                return c
+
+    # ── GATE 4 + 5: Broca Grammar + Internal Monologue ────────────────
+    # Generate several grammatical candidate sentences using Broca's
+    # template engine, then pass them through the internal monologue
+    # to pick the one that best settles the brain's internal state.
+    broca_candidates = []
+    for _ in range(5):
+        candidate = broca.generate(
+            heard_bmus  = heard_bmus,
+            heard_words = heard_words,
+            state_vec   = sm_vec,
+            sm_label    = sm_label,
+            phoneme_seq = brain.phoneme_seq,
+            binding     = brain.binding,
+            recent_words = set(_recent_responses[-2:]) if _recent_responses else set(),
+            temperature  = 1.2 + _ * 0.15,
+        )
+        if candidate and candidate not in broca_candidates:
+            broca_candidates.append(candidate)
+
+    # Also generate a Word TP candidate if available
     if hasattr(brain, 'word_tp') and brain.word_tp.n_words() > 0:
-        for attempt in range(3):
+        for attempt in range(2):
             generated = brain.word_tp_generate(heard_words, max_len=8)
             if generated:
-                candidate = ' '.join(generated)
-                if not _is_too_repetitive(candidate):
-                    _record_response(candidate)
-                    return candidate
+                tp_candidate = ' '.join(generated)
+                if tp_candidate not in broca_candidates:
+                    broca_candidates.append(tp_candidate)
 
-    # ── 3. Phoneme-level TP fallback ─────────────────────────────────
+    # Filter out repetitive candidates
+    viable = [c for c in broca_candidates if not _is_too_repetitive(c)]
+
+    if viable:
+        # Internal monologue: silently test each candidate to see which
+        # one reduces frustration and increases clarity the most.
+        best = internal_monologue(viable)
+        _record_response(best)
+        return best
+
+    # ── GATE 6: Phoneme-level TP fallback ─────────────────────────────
+    # Only reached if Broca and Word TP both failed.
     for attempt in range(3):
-        temp = 1.2 + attempt * 0.4
+        temp = 1.5 + attempt * 0.4
         candidate = _tp_generate(heard_bmus, sm_vec, temperature=temp)
         if candidate and not _is_too_repetitive(candidate):
             _record_response(candidate)
             return candidate
 
-    # Final fallback
+    # ── Final safety fallback ─────────────────────────────────────────
     if heard_words:
         last = heard_words[-1]
         if last in _POSITIVE:
@@ -589,6 +755,7 @@ while True:
         brain.hear(body_mfcc)
         body_reward = body.reward_for_state()
         out = brain.step(reward=body_reward)
+        wm.decay_activation()   # WM fades between your turns
 
         # Brain picks an action based on its state
         sm_label = out['sm_state_label']
@@ -727,6 +894,13 @@ while True:
         brain.hear(SILENCE)
         brain.step()
 
+    # ── Inject heard words into Working Memory sustained activation ────
+    # This is the biological core: the question's BMUs now "glow" in WM,
+    # creating a gravitational field that biases the response generator
+    # toward topologically related concepts on the SOM.
+    if heard_bmus:
+        wm.hold_phonemes(heard_bmus)
+
     if not outputs:
         if not is_pure_feedback:
             print("Brain: (no known words — try /help)\n")
@@ -744,6 +918,7 @@ while True:
     for _ in range(20):
         brain.hear(body.sense_as_mfcc())
         brain.step(reward=body.reward_for_state())
+        wm.decay_activation()   # WM naturally fades during settling
 
     # Determine state label
     state_counts = Counter(o['sm_state_label'] for o in outputs)

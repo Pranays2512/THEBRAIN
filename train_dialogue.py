@@ -31,14 +31,14 @@ from brain import Brain
 from vocab_extra import VOCABULARY, SILENCE, N_MFCC
 
 BRAIN_FILE   = 'brain_trained.pkl'
-N_EPOCHS     = 12       # reduced from 40 — eval overlap declines after ~5-8 epochs
+N_EPOCHS     = 20       # 359 dialogues × 20 epochs = 7180 reinforced exchanges
 REWARD_SELF  = 0.8      # reward when brain hears its OWN correct response
 REWARD_INPUT = 0.1      # small reward just for hearing human input
 NOISE_INPUT  = 0.10     # noise for "you" words (external voice)
 NOISE_SELF   = 0.05     # noise for brain's own words (self-hearing is clearer)
-SAVE_EVERY   = 3        # save checkpoint every N epochs
-EVAL_EVERY   = 3        # evaluate every N epochs (was 10 — too infrequent)
-PATIENCE     = 2        # stop if eval declines for this many consecutive evals
+SAVE_EVERY   = 5        # save checkpoint every N epochs
+EVAL_EVERY   = 5        # evaluate every N epochs
+PATIENCE     = 3        # stop if eval declines for this many consecutive evals
 
 rng = np.random.default_rng(42)
 
