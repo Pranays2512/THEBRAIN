@@ -71,10 +71,10 @@ som.update(vec, bmu, 1.0)
 print(f'  SOM test: 100 neurons, BMU={bmu} ✓')
 
 tp = brain_core.FastTP(n_neurons=100)
-tp.observe(bmu, (bmu+1) % 100)
-dist = tp.get_distribution([bmu])
+tp.observe(bmu, bmu, (bmu+1) % 100)
+dist = tp.get_distribution([bmu, bmu])
 next_bmu = tp.sample(dist)
 print(f'  TP test: transition {bmu}→{next_bmu} ✓')
 print()
-print('Ready. Run: python train_fast.py')
+print('Ready. Run: python train_world6_fast.py')
 "

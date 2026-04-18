@@ -216,6 +216,11 @@ BUTTON_NODES: List[str] = ['B2', 'D5', 'F1', 'H4']
 # Fixed door nodes — reward only when timer > 0
 DOOR_NODES: List[str] = ['C7', 'E3', 'G6', 'A5']
 
+# Danger zones — persistent small negative reward every step you're inside
+# Spread across quadrants, distinct from all button/door/food nodes
+DANGER_NODES: List[str] = ['C3', 'E6', 'G2', 'B6']
+DANGER_PENALTY = -0.04   # per step inside (vs wall = -0.05 instantaneous)
+
 # Door timer ticks (how many steps a button activation lasts)
 DOOR_OPEN_TICKS = 15
 
@@ -243,6 +248,14 @@ HUNGER_RATE = 0.020       # hunger increase per step (raised 10× from 0.002)
 MAX_HUNGER  = 1.0         # ceiling
 HUNGER_MIN_MULTIPLIER = 0.10   # reward multiplier when just-fed (sated)
 HOME_NODE = 'A0'
+
+# ═══════════════════════════════════════════════════════════════
+# FATIGUE
+# ═══════════════════════════════════════════════════════════════
+
+FATIGUE_RATE         = 0.004   # fatigue per movement step (~250 steps to fill)
+FATIGUE_WALL_BUMP    = 0.010   # extra fatigue on wall collision (wasted energy)
+FATIGUE_FOOD_RECOVER = 0.30    # fatigue reduction when food found (rest after eating)
 
 # ═══════════════════════════════════════════════════════════════
 # OPTIMAL POLICY (for evaluation)
@@ -322,6 +335,14 @@ class World6:
         self.food_count = 0
         self.wall_count = 0
 
+        # ── Fatigue ────────────────────────────────────────────────────
+        self._fatigue = 0.2  # start fresh (low fatigue)
+
+        # ── Day/Night cycle ─────────────────────────────────────────────
+        # 0.0=midnight, 0.5=noon, 1.0=midnight again
+        # One full cycle = 500 steps (each step = 0.002 of the 24h clock)
+        self._time_of_day = 0.5  # start at noon
+
         # Per-food-node hit counts (for food_balance)
         self._food_hit_counts: Dict[str, int] = {}
 
@@ -348,6 +369,8 @@ class World6:
         self.t       = 0
         self.total_steps = 0
         self._hunger = 0.5
+        self._fatigue = 0.2
+        self._time_of_day = 0.5  # reset to noon
         self.food_count = 0
         self.wall_count = 0
         self._food_hit_counts = {}
@@ -386,6 +409,15 @@ class World6:
         # ── Hunger update ─────────────────────────────────────
         self._hunger = min(MAX_HUNGER, self._hunger + HUNGER_RATE)
 
+        # ── Fatigue update with day/night modulation ────────────────────────
+        self._time_of_day = (self._time_of_day + 0.002) % 1.0
+        is_night = self._time_of_day > 0.75 or self._time_of_day < 0.25
+        night_mult = 1.5 if is_night else 1.0
+        if wall_hit:
+            self._fatigue = min(1.0, self._fatigue + (FATIGUE_RATE + FATIGUE_WALL_BUMP) * night_mult)
+        else:
+            self._fatigue = min(1.0, self._fatigue + FATIGUE_RATE * night_mult)
+
         # ── Door timer countdown ──────────────────────────────
         if self._door_timer > 0:
             self._door_timer -= 1
@@ -402,9 +434,15 @@ class World6:
         is_food  = False
         is_door  = False
 
+        is_danger = (not wall_hit) and (self._node in DANGER_NODES)
+
         if wall_hit:
             reward = WALL_PENALTY
         else:
+            # DANGER ZONE: persistent negative reward while inside
+            if is_danger:
+                reward = DANGER_PENALTY
+
             # DOOR: gives reward if timer active
             if self._node in DOOR_NODES:
                 is_door = True
@@ -413,6 +451,7 @@ class World6:
                     reward   = FOOD_REWARD * hunger_mult
                     is_food  = True
                     self._hunger = 0.0   # reset hunger after eating
+                    self._fatigue = max(0.0, self._fatigue - FATIGUE_FOOD_RECOVER)
                     self.food_count += 1
                     fn = self._node
                     self._food_hit_counts[fn] = self._food_hit_counts.get(fn, 0) + 1
@@ -423,6 +462,7 @@ class World6:
                 reward   = FOOD_REWARD * hunger_mult
                 is_food  = True
                 self._hunger = 0.0
+                self._fatigue = max(0.0, self._fatigue - FATIGUE_FOOD_RECOVER)
                 self.food_count += 1
                 fn = self._node
                 self._food_hit_counts[fn] = self._food_hit_counts.get(fn, 0) + 1
@@ -449,12 +489,16 @@ class World6:
             'is_food':    is_food,
             'is_button':  is_button,
             'is_door':    is_door,
+            'is_danger':  is_danger,
             'door_open':  (self._door_timer > 0),
             'door_ticks': self._door_timer,
             'texture':    texture_val,
             'hunger':     self._hunger,
+            'fatigue':    self._fatigue,
             'food_moved': self._food_moved_this_step,
             'food_nodes': list(self._active_food),
+            'time_of_day': self._time_of_day,
+            'is_night':   (self._time_of_day > 0.75 or self._time_of_day < 0.25),
         }
         return freq_hz, freq_idx, reward, info
 
@@ -518,7 +562,7 @@ class World6:
               f" ({self.current_freq:.1f}Hz, tex={tex:.2f})")
         print(f"  food={self.food_count} ({self.food_rate():.2f}/100)"
               f"  walls={self.wall_rate():.1%}"
-              f"  hunger={self._hunger:.2f}"
+              f"  hunger={self._hunger:.2f}  fatigue={self._fatigue:.2f}"
               f"  door_timer={self._door_timer}")
         print(f"  Active food: {self._active_food}")
         print(f"  Food balance: {self.food_balance()}")

@@ -229,40 +229,47 @@ public:
     int   n_neurons;
     float eta;   // learning rate for soft updates
 
-    // Sparse storage: from_bmu → {to_bmu: count}
-    unordered_map<int, unordered_map<int, float>> _P;
-    unordered_map<int, float> _totals;
+    // Sparse storage: context (prev << 32 | curr) → {next_bmu: count}
+    unordered_map<uint64_t, unordered_map<int, float>> _P;
+    unordered_map<uint64_t, float> _totals;
 
     FastTP() : n_neurons(0), eta(0.03f) {}
 
     FastTP(int n_neurons, float eta = 0.03f)
         : n_neurons(n_neurons), eta(eta) {}
 
-    // Record a transition from → to with given weight (default 1.0)
-    void observe(int from_bmu, int to_bmu, float weight = 1.0f) {
-        if (from_bmu < 0 || to_bmu < 0 ||
-            from_bmu >= n_neurons || to_bmu >= n_neurons) return;
-        _P[from_bmu][to_bmu] += weight;
-        _totals[from_bmu]    += weight;
+    inline uint64_t make_ctx(int prev, int curr) const {
+        return ((uint64_t)(uint32_t)prev << 32) | (uint32_t)curr;
+    }
+
+    // Record a transition (prev, curr) → next with given weight (default 1.0)
+    void observe(int prev_bmu, int curr_bmu, int next_bmu, float weight = 1.0f) {
+        if (prev_bmu < 0 || curr_bmu < 0 || next_bmu < 0 ||
+            prev_bmu >= n_neurons || curr_bmu >= n_neurons || next_bmu >= n_neurons) return;
+        uint64_t ctx = make_ctx(prev_bmu, curr_bmu);
+        _P[ctx][next_bmu] += weight;
+        _totals[ctx]    += weight;
     }
 
     // Reward-modulated soft update: strengthen or weaken a transition
-    void reinforce(int from_bmu, int to_bmu, float reward) {
-        if (from_bmu < 0 || to_bmu < 0) return;
+    void reinforce(int prev_bmu, int curr_bmu, int next_bmu, float reward) {
+        if (prev_bmu < 0 || curr_bmu < 0 || next_bmu < 0) return;
+        uint64_t ctx = make_ctx(prev_bmu, curr_bmu);
         float delta = eta * reward;
-        float& val  = _P[from_bmu][to_bmu];
+        float& val  = _P[ctx][next_bmu];
         val = max(0.0f, val + delta);
         // Recompute row total
         float total = 0.0f;
-        for (auto& kv : _P[from_bmu]) total += kv.second;
-        _totals[from_bmu] = total;
+        for (auto& kv : _P[ctx]) total += kv.second;
+        _totals[ctx] = total;
     }
 
-    // Sparse row: returns {(to_bmu, probability)} pairs
-    vector<pair<int,float>> get_row(int bmu) const {
-        auto it = _P.find(bmu);
+    // Sparse row: returns {(to_bmu, probability)} pairs for a given context
+    vector<pair<int,float>> get_row(int prev_bmu, int curr_bmu) const {
+        uint64_t ctx = make_ctx(prev_bmu, curr_bmu);
+        auto it = _P.find(ctx);
         if (it == _P.end()) return {};
-        float total = _totals.count(bmu) ? _totals.at(bmu) : 1.0f;
+        float total = _totals.count(ctx) ? _totals.at(ctx) : 1.0f;
         if (total < 1e-9f) return {};
         vector<pair<int,float>> result;
         result.reserve(it->second.size());
@@ -271,9 +278,8 @@ public:
         return result;
     }
 
-    // Aggregate distribution from multiple seed BMUs.
-    // Later seeds get higher weight (recency bias).
-    // Returns dense probability vector length n_neurons.
+    // Aggregate distribution from multiple seed BMUs acting as context windows.
+    // We form bi-grams from the end of the sequence.
     py::array_t<float> get_distribution(
             vector<int> seed_bmus,
             float temperature = 1.0f) const {
@@ -282,18 +288,21 @@ public:
         float* dist = static_cast<float*>(result.request().ptr);
         fill(dist, dist + n_neurons, 0.0f);
 
-        if (seed_bmus.empty()) {
+        if (seed_bmus.size() < 2) {
             fill(dist, dist + n_neurons, 1.0f / n_neurons);
             return result;
         }
 
-        int   n = (int)seed_bmus.size();
-        for (int si = 0; si < n; si++) {
-            int   bmu     = seed_bmus[si];
-            float recency = 0.5f + 0.5f * (float)si / max(n - 1, 1);
-            auto  it      = _P.find(bmu);
+        int n = (int)seed_bmus.size();
+        for (int si = 0; si < n - 1; si++) {
+            int prev = seed_bmus[si];
+            int curr = seed_bmus[si+1];
+            uint64_t ctx = make_ctx(prev, curr);
+            float recency = 0.5f + 0.5f * (float)si / max(n - 2, 1);
+            
+            auto it = _P.find(ctx);
             if (it == _P.end()) continue;
-            float row_total = _totals.count(bmu) ? _totals.at(bmu) : 1.0f;
+            float row_total = _totals.count(ctx) ? _totals.at(ctx) : 1.0f;
             if (row_total < 1e-9f) continue;
             for (auto& kv : it->second) {
                 if (kv.first < n_neurons)
@@ -362,15 +371,16 @@ public:
         py::dict d;
         d["n_neurons"] = n_neurons;
         d["eta"]       = eta;
-        vector<int>   froms, tos;
-        vector<float> vals;
+        vector<uint64_t> ctxs;
+        vector<int>      tos;
+        vector<float>    vals;
         for (auto& row : _P)
             for (auto& kv : row.second) {
-                froms.push_back(row.first);
+                ctxs.push_back(row.first);
                 tos.push_back(kv.first);
                 vals.push_back(kv.second);
             }
-        d["froms"] = froms;
+        d["ctxs"]  = ctxs;
         d["tos"]   = tos;
         d["vals"]  = vals;
         return d;
@@ -380,13 +390,17 @@ public:
         n_neurons = d["n_neurons"].cast<int>();
         eta       = d["eta"].cast<float>();
         _P.clear(); _totals.clear();
-        auto froms = d["froms"].cast<vector<int>>();
-        auto tos   = d["tos"].cast<vector<int>>();
-        auto vals  = d["vals"].cast<vector<float>>();
-        for (size_t i = 0; i < froms.size(); i++) {
-            _P[froms[i]][tos[i]] = vals[i];
-            _totals[froms[i]]   += vals[i];
+
+        if (d.contains("ctxs")) {   // new 2nd-order format
+            auto ctxs = d["ctxs"].cast<vector<uint64_t>>();
+            auto tos  = d["tos"].cast<vector<int>>();
+            auto vals = d["vals"].cast<vector<float>>();
+            for (size_t i = 0; i < ctxs.size(); i++) {
+                _P[ctxs[i]][tos[i]] = vals[i];
+                _totals[ctxs[i]]   += vals[i];
+            }
         }
+        // old "froms" format silently dropped — TP starts fresh on retrain
     }
 };
 
@@ -433,14 +447,14 @@ PYBIND11_MODULE(brain_core, m) {
              py::arg("n_neurons"), py::arg("eta") = 0.03f,
              "Sparse TP matrix for n_neurons BMUs")
         .def("observe",          &FastTP::observe,
-             py::arg("from_bmu"), py::arg("to_bmu"), py::arg("weight") = 1.0f,
-             "Record transition from_bmu → to_bmu")
+             py::arg("prev_bmu"), py::arg("curr_bmu"), py::arg("next_bmu"), py::arg("weight") = 1.0f,
+             "Record context transition (prev, curr) → next")
         .def("reinforce",        &FastTP::reinforce,
-             py::arg("from_bmu"), py::arg("to_bmu"), py::arg("reward"),
-             "Reward-modulated soft update of a transition")
+             py::arg("prev_bmu"), py::arg("curr_bmu"), py::arg("next_bmu"), py::arg("reward"),
+             "Reward-modulated soft update of a contextual transition")
         .def("get_row",          &FastTP::get_row,
-             py::arg("bmu"),
-             "Sparse row: list of (to_bmu, probability) pairs")
+             py::arg("prev_bmu"), py::arg("curr_bmu"),
+             "Sparse row: list of (to_bmu, probability) pairs for context")
         .def("get_distribution", &FastTP::get_distribution,
              py::arg("seed_bmus"), py::arg("temperature") = 1.0f,
              "Aggregate distribution from seed BMUs, return dense prob vector")

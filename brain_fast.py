@@ -246,8 +246,9 @@ class FastBrain:
         self.word_tp = WordTP()
 
         # State
-        self._prev_bmu:    int   = 0
-        self._current_bmu: int   = 0
+        self._prev_prev_bmu: int = 0
+        self._prev_bmu:      int = 0
+        self._current_bmu:   int = 0
         self._last_mfcc:   np.ndarray = SILENCE.copy()
         self._n_steps:     int   = 0
         self._total_reward: float = 0.0
@@ -305,16 +306,17 @@ class FastBrain:
         reward_mod = 1.0 + reward * 2.0
         self.som.update(mfcc, bmu, reward_mod)
 
-        # TP: observe prev→current transition
-        if self._n_steps > 0:
-            self.tp.observe(self._prev_bmu, bmu)
+        # TP: observe (prev_prev, prev) → current transition
+        if self._n_steps > 1:
+            self.tp.observe(self._prev_prev_bmu, self._prev_bmu, bmu)
 
-        # Reward: reinforce the prev→current transition
-        if reward > 0 and self._n_steps > 0:
-            self.tp.reinforce(self._prev_bmu, bmu, reward)
+        # Reward: reinforce the (prev_prev, prev) → current transition
+        if reward > 0 and self._n_steps > 1:
+            self.tp.reinforce(self._prev_prev_bmu, self._prev_bmu, bmu, reward)
 
-        self._prev_bmu    = bmu
-        self._current_bmu = bmu
+        self._prev_prev_bmu = self._prev_bmu
+        self._prev_bmu      = bmu
+        self._current_bmu   = bmu
         self._n_steps    += 1
         self._total_reward += reward
 
@@ -336,21 +338,24 @@ class FastBrain:
     def generate_bmus(self, seed_bmus: list[int], n_steps: int = 12,
                       temperature: float = 1.2) -> list[int]:
         """
-        Walk the phoneme-level TP from seed BMUs.
-        Used as a fallback when word_tp has no coverage.
+        Walk the phoneme-level TP from seed BMUs using bi-gram context.
         """
         if not seed_bmus:
             return []
 
-        # Aggregate distribution from all seed BMUs
-        dist = self.tp.get_distribution(seed_bmus, temperature=temperature)
-        result = []
-        cur_bmu = self.tp.sample(dist)
+        # We need at least 2 context seeds for the 2nd-order markov chain
+        current_ctx = list(seed_bmus)
+        if len(current_ctx) == 1:
+            current_ctx = [current_ctx[0], current_ctx[0]]
 
+        result = []
         for _ in range(n_steps):
-            result.append(cur_bmu)
-            dist = self.tp.get_distribution([cur_bmu], temperature=temperature)
+            dist = self.tp.get_distribution(current_ctx[-2:], temperature=temperature)
             cur_bmu = self.tp.sample(dist)
+            result.append(cur_bmu)
+            
+            # Slide window
+            current_ctx.append(cur_bmu)
 
         return result
 
@@ -368,7 +373,11 @@ class FastBrain:
     # ── Dream / offline consolidation ────────────────────────────────────────
 
     def record_turn(self, bmus: list[int], reward: float):
-        """Buffer a BMU trajectory for dreaming."""
+        """Reinforce a successful interaction sequence (used in dialogue)."""
+        if len(bmus) < 3:
+            return
+        for i in range(2, len(bmus)):
+            self.tp.reinforce(bmus[i-2], bmus[i-1], bmus[i], reward)
         if len(self._dream_buffer) >= self._max_dream_buffer:
             self._dream_buffer.pop(0)
         self._dream_buffer.append((list(bmus), reward))
@@ -390,10 +399,12 @@ class FastBrain:
 
         for idx in indices:
             bmus, reward = self._dream_buffer[idx]
-            for i in range(len(bmus) - 1):
-                self.tp.observe(bmus[i], bmus[i + 1], weight=0.5)
+            if len(bmus) < 3:
+                continue
+            for i in range(2, len(bmus)):
+                self.tp.observe(bmus[i-2], bmus[i-1], bmus[i], weight=0.5)
                 if reward > 0:
-                    self.tp.reinforce(bmus[i], bmus[i + 1], reward * 0.5)
+                    self.tp.reinforce(bmus[i-2], bmus[i-1], bmus[i], reward * 0.5)
 
     def dream_language(self, n_sequences: int = 20):
         """Alias for dream() — used by train_dialogue.py."""
@@ -417,6 +428,7 @@ class FastBrain:
             'word_tp':      self.word_tp.get_state(),
             'bmu_to_word':  self.bmu_to_word,
             'word_to_bmu':  self.word_to_bmu,
+            'prev_prev_bmu':self._prev_prev_bmu,
             'prev_bmu':     self._prev_bmu,
             'n_steps':      self._n_steps,
             'total_reward': self._total_reward,
@@ -448,6 +460,7 @@ class FastBrain:
 
         brain.bmu_to_word  = state.get('bmu_to_word', {})
         brain.word_to_bmu  = state.get('word_to_bmu', {})
+        brain._prev_prev_bmu = state.get('prev_prev_bmu', 0)
         brain._prev_bmu    = state.get('prev_bmu', 0)
         brain._current_bmu = brain._prev_bmu
         brain._n_steps     = state.get('n_steps', 0)
