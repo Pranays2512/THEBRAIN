@@ -203,16 +203,16 @@ class PrefrontalCortex:
         elif selfmodel._state['fatigue'] > 0.7:
             self._active_goal = 'rest'
         elif selfmodel._state['fear'] > 0.6:
-            self._active_goal = 'danger'
+            self._active_goal = 'safe'
         else:
             self._active_goal = None
-            
+
     def get_goal_seeds(self) -> list[str]:
         if self._active_goal == 'food':
             return ['want', 'food', 'eat', 'need']
         if self._active_goal == 'rest':
             return ['sleep', 'tired', 'calm', 'need']
-        if self._active_goal == 'danger':
+        if self._active_goal == 'safe':
             return ['run', 'stop', 'afraid', 'careful']
         return []
         

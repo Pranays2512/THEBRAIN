@@ -4,7 +4,7 @@ vocab.py — Shared vocabulary for all brain training and conversation scripts.
 ~150 words organized by semantic category. All three scripts (teach_english.py,
 teach_conversation.py, converse.py) import from here so vectors are defined once.
 
-MFCC VECTOR DESIGN (13 dims, index 0 = energy always 3.0):
+MFCC VECTOR DESIGN (17 dims, index 0 = energy always 3.0):
   v[1]  valence      : positive (+) / negative (-)      range ±1.5
   v[2]  activity     : action/movement (+) / rest (-)   range ±1.2
   v[3]  social       : interpersonal (+) / object (-)   range ±1.0
@@ -17,15 +17,24 @@ MFCC VECTOR DESIGN (13 dims, index 0 = energy always 3.0):
   v[10] embodiment   : body (+) / mind (-)              range ±0.2
   v[11] questioning  : interrogative (+) / declarative  range ±0.15
   v[12] fine         : extra distinction within cluster  range ±0.1
+
+  Environmental sensory channels (dims 13–16):
+  v[13] vegetation   : plant density  0.0 (bare) → 1.0 (dense)
+  v[14] moisture     : water/humidity 0.0 (dry)  → 1.0 (wet)
+  v[15] temperature  : warmth         0.0 (cold) → 1.0 (hot)
+  v[16] wind         : air movement   0.0 (still)→ 1.0 (storm)
+
+  Existing vocab entries leave dims 13–16 at 0.0 (no environmental signal).
+  Environmental words set them explicitly to ground the concept in felt sensation.
 """
 
 import numpy as np
 
-N_MFCC = 13
+N_MFCC = 17
 
 def _w(c, n):
-    """Build 13-dim MFCC vector from 12 semantic coefficients + frame count."""
-    v = np.zeros(13, dtype=np.float32)
+    """Build 17-dim MFCC vector. Accepts 12 or 16 semantic coefficients."""
+    v = np.zeros(N_MFCC, dtype=np.float32)
     v[0] = 3.0
     for i, x in enumerate(c):
         v[i + 1] = x

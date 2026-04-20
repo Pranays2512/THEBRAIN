@@ -64,4 +64,77 @@ VOCABULARY['fastbrain'] = _w([ 0.1,  0.5,  0.0,  0.7, -0.4,  0.4,  0.1,  0.1,  0
 VOCABULARY['am']        = _w([ 0.0,  0.1,  0.0,  0.5,  0.2,  0.1,  0.0,  0.2, -0.1,  0.2,  0.2,  0.0], 2)
 VOCABULARY['name']      = _w([ 0.2,  0.3,  0.0,  0.6, -0.1,  0.2,  0.1,  0.3, -0.2,  0.1,  0.3,  0.0], 2)
 
+# ── Cognitive/self-identity words — social zone ──────────────────────────────
+# think: cognitive act — neutral valence, low arousal, low embodiment
+VOCABULARY['think']  = _w([ 0.1,  0.0,  0.0,  0.5,  0.0,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# learn: positive cognitive act — mild positive valence, low arousal
+VOCABULARY['learn']  = _w([ 0.3,  0.1,  0.0,  0.5,  0.1,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# brain: self-concept — near fastbrain on SOM, social zone
+VOCABULARY['brain']  = _w([ 0.1,  0.3,  0.0,  0.6,  0.1,  0.3,  0.1,  0.2,  0.0,  0.3,  0.2,  0.0], 3)
+
+# ── Relation/attitude words — social and pain zone ────────────────────────────
+# like: social zone — positive valence, low embodiment, moderate arousal
+VOCABULARY['like']     = _w([ 0.5,  0.2,  0.0,  0.6,  0.2,  0.4,  0.1,  0.3,  0.0,  0.2,  0.2,  0.0], 2)
+# hate: pain-adjacent — strong negative valence, high arousal, moderate embodiment
+VOCABULARY['hate']     = _w([-0.8,  0.5,  0.0,  0.7,  0.3,  0.3,  0.0, -0.1, -0.1,  0.1,  0.5,  0.0], 2)
+# remember: social/cognitive — neutral valence, low arousal, low embodiment
+VOCABULARY['remember'] = _w([ 0.1, -0.1,  0.0,  0.5,  0.1,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# helps: social — positive valence, moderate arousal
+VOCABULARY['helps']    = _w([ 0.4,  0.2,  0.0,  0.6,  0.2,  0.3,  0.1,  0.2,  0.1,  0.2,  0.2,  0.0], 2)
+# hurts: pain zone — negative valence, high embodiment (physical sensation)
+VOCABULARY['hurts']    = _w([-0.7,  0.4,  0.0,  0.7,  0.5,  0.5,  0.0, -0.1,  0.0,  0.1,  0.7,  0.0], 3)
+# pranay: social — person, positive valence, low embodiment
+VOCABULARY['pranay']   = _w([ 0.3,  0.2,  0.0,  0.6,  0.3,  0.3,  0.1,  0.2,  0.0,  0.2,  0.2,  0.0], 3)
+
+# ── Causal / connective words — cognitive zone (close to think/learn on SOM) ───
+# why:     questioning — neutral valence, low arousal, inquisitive
+VOCABULARY['why']      = _w([ 0.0, -0.1,  0.0,  0.4,  0.0,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# because: explanatory — slight positive valence (explanations feel satisfying)
+VOCABULARY['because']  = _w([ 0.1,  0.0,  0.0,  0.5,  0.1,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# so:      consequence marker — mild positive, lower arousal than because
+VOCABULARY['so']       = _w([ 0.2,  0.1,  0.0,  0.4,  0.1,  0.2,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# cause:   causal link noun/verb — neutral, factual, low embodiment
+VOCABULARY['cause']    = _w([ 0.0,  0.1,  0.0,  0.5,  0.1,  0.3,  0.0,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# then:    sequential / consequence — low arousal, mild positive (order is reassuring)
+VOCABULARY['then']     = _w([ 0.1,  0.1,  0.0,  0.4,  0.0,  0.2,  0.1,  0.3,  0.0,  0.3,  0.1,  0.0], 2)
+
+# ── Prediction error words — surprise/mismatch signal ─────────────────────────
+# wrong:  expectation violated — negative valence, high arousal (surprise)
+VOCABULARY['wrong']  = _w([-0.5,  0.4,  0.0,  0.6, -0.2,  0.4,  0.1, -0.1,  0.0,  0.2,  0.4,  0.0], 2)
+# search: active re-exploration after mismatch — mild positive (curiosity)
+VOCABULARY['search'] = _w([ 0.2,  0.5,  0.0,  0.6,  0.2,  0.3,  0.1,  0.3,  0.1,  0.3,  0.2,  0.0], 2)
+
+# ── Environmental words — grounded in sensory channels v[13–16] ───────────────
+# Vector format: 12 semantic dims + 4 environmental dims
+#   [valence, activity, social, concreteness, certainty, intensity,
+#    temporality, agency, familiarity, embodiment, questioning, fine,
+#    vegetation, moisture, temperature, wind]
+#
+# Vegetation zone (high v[13])
+VOCABULARY['plant']  = _w([ 0.5, -0.2,  0.0,  0.9,  0.4,  0.2,  0.0,  0.0,  0.2,  0.3,  0.0,  0.0,  0.9,  0.3,  0.5,  0.1], 3)
+VOCABULARY['tree']   = _w([ 0.6, -0.1,  0.0,  1.0,  0.5,  0.4,  0.0, -0.1,  0.3,  0.2,  0.0,  0.1,  1.0,  0.2,  0.4,  0.2], 3)
+VOCABULARY['grass']  = _w([ 0.4, -0.2,  0.0,  0.9,  0.4,  0.1,  0.0,  0.0,  0.3,  0.4,  0.0,  0.0,  0.8,  0.3,  0.5,  0.3], 3)
+VOCABULARY['green']  = _w([ 0.5,  0.0,  0.0,  0.8,  0.4,  0.2,  0.0,  0.0,  0.2,  0.2,  0.0,  0.1,  0.9,  0.3,  0.5,  0.1], 2)
+# Water/moisture zone (high v[14])
+VOCABULARY['river']  = _w([ 0.4,  0.3,  0.0,  1.0,  0.5,  0.3,  0.0,  0.0,  0.2,  0.3,  0.0,  0.0,  0.2,  0.9,  0.4,  0.3], 3)
+VOCABULARY['rain']   = _w([ 0.2,  0.2,  0.0,  0.9,  0.4,  0.2,  0.1,  0.0,  0.1,  0.3,  0.0,  0.0,  0.3,  0.9,  0.2,  0.4], 2)
+VOCABULARY['wet']    = _w([-0.1,  0.0,  0.0,  0.9,  0.5,  0.2,  0.0,  0.0,  0.1,  0.5,  0.0,  0.0,  0.2,  0.8,  0.3,  0.2], 2)
+# Air/wind zone (high v[16])
+VOCABULARY['air']    = _w([ 0.5,  0.3,  0.0,  0.8,  0.4,  0.1,  0.1,  0.0,  0.2,  0.3,  0.0,  0.0,  0.1,  0.1,  0.5,  0.7], 2)
+VOCABULARY['wind']   = _w([ 0.2,  0.6,  0.0,  0.8,  0.3,  0.3,  0.1,  0.1,  0.1,  0.3,  0.0,  0.0,  0.1,  0.2,  0.4,  0.9], 2)
+VOCABULARY['sky']    = _w([ 0.7,  0.1,  0.0,  0.9,  0.5,  0.3,  0.0,  0.0,  0.2,  0.1,  0.0,  0.1,  0.0,  0.1,  0.6,  0.5], 3)
+# Temperature zone (v[15] low=cold, high=hot)
+VOCABULARY['cold']   = _w([-0.3, -0.3,  0.0,  0.8,  0.5,  0.3,  0.0,  0.0,  0.1,  0.5,  0.0,  0.0,  0.0,  0.2,  0.0,  0.4], 2)
+# 'warm' already exists in base vocab — update with environmental signal
+VOCABULARY['warm']   = _w([ 0.7,  0.1,  0.3,  0.5,  0.3,  0.2,  0.0,  0.0,  0.0,  0.1,  0.5,  0.0,  0.2,  0.1,  0.9,  0.1], 3)
+# Sun/light — high temperature, open sky
+VOCABULARY['sun']    = _w([ 0.8,  0.2,  0.0,  0.9,  0.6,  0.4,  0.1,  0.0,  0.3,  0.1,  0.0,  0.1,  0.1,  0.0,  1.0,  0.3], 3)
+
+# ── Grammar function words — agent structure ──────────────────────────────────
+# 'i': first-person agent — self-reference, social zone, high agency dim
+# In _HOLLOW so it never votes for zones, but Word TP uses it as subject prefix.
+VOCABULARY['i']  = _w([ 0.1,  0.0,  0.2,  0.5,  0.1,  0.1,  0.0,  0.8,  0.3,  0.2,  0.0,  0.0], 2)
+# 'is': copula — links subject to predicate. Neutral, low arousal, functional.
+VOCABULARY['is'] = _w([ 0.0,  0.0,  0.1,  0.3,  0.2,  0.0,  0.0,  0.2,  0.2,  0.0,  0.0,  0.0], 1)
+
 print(f"[vocab_core] {len(VOCABULARY)} grounded words loaded.")

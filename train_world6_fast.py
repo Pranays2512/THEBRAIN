@@ -34,7 +34,9 @@ from brain_fast import FastBrain, SILENCE, N_MFCC
 from vocab_core import VOCABULARY
 from world6 import (
     World6, DOOR_NODES, BUTTON_NODES,
-    bfs_optimal_actions
+    bfs_optimal_actions,
+    ENV_VEGETATION_HIGH, ENV_MOISTURE_HIGH,
+    ENV_COLD_THRESHOLD, ENV_WARM_THRESHOLD, ENV_WIND_HIGH,
 )
 
 BRAIN_FILE = 'brain_fast.pkl'
@@ -186,6 +188,16 @@ GROUNDED_DIALOGUES = [
     ("name you",         "fastbrain name"),
     ("name",             "fastbrain name"),
     ("name is",          "name fastbrain"),
+    # ═══ SOCIAL REINFORCEMENT — approval/correction chains ══════════════════
+    ("good",             "good happy calm"),
+    ("yes",              "yes good calm"),
+    ("great",            "good happy"),
+    ("right",            "yes good calm"),
+    ("no",               "bad stop sad"),
+    ("wrong",            "bad stop"),
+    ("bad",              "bad stop sad"),
+    ("good yes",         "good happy calm"),
+    ("no bad",           "bad stop sad"),
     # ═══ MULTI-TURN PAIRS — sequential context chains ════════════════════════
     ("hi",               "hi hello"),
     ("hello hi",         "hi hello yes"),
@@ -206,6 +218,52 @@ GROUNDED_DIALOGUES = [
     ("safe calm",        "calm safe awake"),
     ("tired sleep",      "sleep calm"),
     ("eat full",         "full calm stop"),
+
+    # ═══ ACTION GRAMMAR — verb-object pairs grounded in actual events ════════
+    # These teach Word TP the action→object word order from real World6 events.
+    # NOT state parroting — these are agent actions that the brain actually did.
+    ("i eat food",       "eat food full"),
+    ("i push button",    "push button open door"),
+    ("i open door",      "open door go"),
+    ("i go",             "go move"),
+    # "X is Y" — grounded conceptual relations
+    ("food is",          "food is eat hungry good"),
+    ("tree is",          "tree is plant calm green"),
+    ("river is",         "river is water drink"),
+    ("danger is",        "danger is afraid run"),
+    ("wall is",          "wall is hurt stop bad"),
+    ("button is",        "button is push open door"),
+    ("door is",          "door is open go"),
+    ("hunger is",        "hunger is need eat food"),
+    ("pain is",          "pain is hurt bad stop"),
+
+    # ═══ ENVIRONMENTAL — vegetation, water, air, temperature ════════════════
+    ("plant",            "plant calm green"),
+    ("tree",             "tree green calm"),
+    ("grass",            "grass green calm"),
+    ("green",            "plant green calm"),
+    ("plant tree",       "calm green plant"),
+    ("river",            "river water drink"),
+    ("river water",      "water drink river"),
+    ("rain",             "rain wet cold"),
+    ("rain wet",         "wet cold rain"),
+    ("wet",              "wet water river"),
+    ("wind",             "wind air go"),
+    ("air",              "air wind sky"),
+    ("sky",              "sky air go"),
+    ("wind air",         "go air wind"),
+    ("cold",             "cold tired sleep"),
+    ("cold wind",        "cold tired stop"),
+    ("warm",             "warm sun calm"),
+    ("sun",              "sun warm good"),
+    ("warm sun",         "good warm calm"),
+    ("what is plant",    "plant green calm"),
+    ("what is tree",     "tree plant calm"),
+    ("what is river",    "river water drink"),
+    ("what is wind",     "wind air go"),
+    ("what is cold",     "cold hurt stop"),
+    ("what is warm",     "warm calm good"),
+    ("what is sun",      "sun warm good"),
 ]
 
 
@@ -244,50 +302,81 @@ def feed_word(brain: FastBrain, word: str, reward: float,
     return last_bmu
 
 
+def feed_sequence(brain: FastBrain, words: list, rewards,
+                  context_mfcc: np.ndarray | None = None,
+                  blend: float = 0.30,
+                  silence_steps: int = 1) -> list:
+    """
+    Feed words as an ordered causal chain with brief silence gaps.
+    Each word gets its own reward so the brain learns:
+      cause (low/no reward) → effect → resolution (reward)
+    The silence gaps preserve temporal order in WordTP transitions.
+    """
+    bmus = []
+    available = [w for w in words if w in VOCABULARY]
+    if not available:
+        return bmus
+    # rewards can be a single float (apply to all) or a list per word
+    if isinstance(rewards, (int, float)):
+        reward_list = [float(rewards)] * len(available)
+    else:
+        reward_list = list(rewards)
+    for word, reward in zip(available, reward_list):
+        bmu = feed_word(brain, word, reward, context_mfcc=context_mfcc, blend=blend)
+        if bmu is not None:
+            bmus.append(bmu)
+        for _ in range(silence_steps):
+            brain.hear(SILENCE)
+            brain.step()
+    return bmus
+
+
 def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
     """
-    Feed grounded words during World6 events.
+    Feed grounded words during World6 events as causal chains.
     Words are blended with the current grid MFCC so their BMUs land
     topographically near the experience that gives them meaning.
+
+    Causal chain order matters: cause → intermediate → resolution.
+    WordTP learns these as temporal sequences, not isolated words.
     """
-    BLEND = 0.30   # 70% word sound, 30% experience tint
+    BLEND = 0.30
     bmus  = []
 
-    # ── Wall collision → hurt / pain / stop / bad
+    # ── Wall collision: world acts on agent — "wall hurt stop" + agent recoils
     if info['wall_hit']:
-        words = ['wall', 'hurt', 'stop', 'pain', 'bad']
-        for w in rng.choice([x for x in words if x in VOCABULARY], size=2, replace=False):
-            bmus.append(feed_word(brain, w, 0.5, context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['wall', 'hurt', 'stop'],
+            [0.0,    0.0,    0.5],
+            grid_mfcc, BLEND)
 
-    # ── Food → eat / food / good / happy
+    # ── Food: agent eats — "i eat food full" (subject → verb → object → state)
     elif info['is_food']:
-        words = ['food', 'eat', 'good', 'happy']
-        for w in rng.choice([x for x in words if x in VOCABULARY], size=2, replace=False):
-            bmus.append(feed_word(brain, w, 0.7, context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'eat', 'food', 'full'],
+            [0.0,  0.4,   0.5,   0.7],
+            grid_mfcc, BLEND)
 
-    # ── Button → push / button / open
+    # ── Button: agent acts — "i push button open" (subject → verb → object → result)
     elif info['is_button']:
-        words = ['push', 'button', 'open', 'new']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            for w in rng.choice(available, size=min(2, len(available)), replace=False):
-                bmus.append(feed_word(brain, w, 0.4, context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'push', 'button', 'open'],
+            [0.0,  0.2,    0.2,     0.4],
+            grid_mfcc, BLEND)
 
-    # ── Danger zone → afraid / careful / danger / run
+    # ── Danger: world threatens — "danger i am afraid run"
     elif info.get('is_danger'):
-        words = ['afraid', 'careful', 'danger', 'run']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            for w in rng.choice(available, size=min(2, len(available)), replace=False):
-                bmus.append(feed_word(brain, w, 0.0, context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['danger', 'i', 'am', 'afraid', 'run'],
+            [0.0,       0.0,  0.0,  0.0,     0.0],
+            grid_mfcc, BLEND)
 
-    # ── Door → door / open / go
+    # ── Door: agent opens — "i open door go" (subject → verb → object → action)
     elif info['is_door'] and info['door_open']:
-        words = ['door', 'open', 'go']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            bmus.append(feed_word(brain, rng.choice(available), 0.3,
-                                  context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'open', 'door', 'go'],
+            [0.0,  0.2,    0.2,   0.3],
+            grid_mfcc, BLEND)
 
     # ── Just left danger (safe = not danger, not wall, not special node)
     # Feed 'safe' occasionally when none of the threat conditions are active
@@ -297,20 +386,18 @@ def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
         if 'safe' in VOCABULARY:
             bmus.append(feed_word(brain, 'safe', 0.15, context_mfcc=grid_mfcc, blend=BLEND))
 
-    # ── Hunger states → hungry / need / food / want (or full / good / calm)
+    # ── Hunger: agent state — "i am hungry want food" (subject → copula → state → goal)
     hunger = info['hunger']
     if hunger > 0.75 and not info['is_food']:
-        words = ['hungry', 'need', 'food', 'want']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            bmus.append(feed_word(brain, rng.choice(available), 0.4,
-                                  context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'am', 'hungry', 'want', 'food'],
+            [0.0,  0.0,  0.0,     0.1,    0.4],
+            grid_mfcc, BLEND)
     elif hunger < 0.25 and not info['is_food'] and not info['wall_hit']:
-        words = ['full', 'good', 'happy', 'calm']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            bmus.append(feed_word(brain, rng.choice(available), 0.25,
-                                  context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'am', 'full', 'calm'],
+            [0.0,  0.0,  0.2,   0.25],
+            grid_mfcc, BLEND)
 
     # ── Texture (full 3-band: soft / neutral / rough)
     if not info['wall_hit'] and not info['is_food'] and not info['is_button']:
@@ -334,20 +421,18 @@ def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
                 bmus.append(feed_word(brain, rng.choice(available), 0.2,
                                       context_mfcc=grid_mfcc, blend=BLEND))
 
-    # ── Fatigue states → tired / sleep / need (or awake / strong / alive)
+    # ── Fatigue: agent state — "i am tired sleep" / "i am awake alive"
     fatigue = info.get('fatigue', 0.3)
     if fatigue > 0.70 and not info['is_food'] and not info['wall_hit']:
-        words = ['tired', 'sleep', 'need', 'soft']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            bmus.append(feed_word(brain, rng.choice(available), 0.35,
-                                  context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'am', 'tired', 'sleep'],
+            [0.0,  0.0,  0.0,    0.35],
+            grid_mfcc, BLEND)
     elif fatigue < 0.15 and not info['is_food'] and not info['wall_hit']:
-        words = ['awake', 'alive', 'strong', 'good']
-        available = [x for x in words if x in VOCABULARY]
-        if available:
-            bmus.append(feed_word(brain, rng.choice(available), 0.20,
-                                  context_mfcc=grid_mfcc, blend=BLEND))
+        bmus += feed_sequence(brain,
+            ['i', 'am', 'awake', 'alive'],
+            [0.0,  0.0,  0.1,    0.20],
+            grid_mfcc, BLEND)
 
     # ── Day/Night cycle → awake/tired/sleep (grounded in circadian rhythm) ─────
     if 'is_night' in info:
@@ -366,6 +451,136 @@ def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
                 bmus.append(feed_word(brain, rng.choice(available), 0.25,
                                       context_mfcc=grid_mfcc, blend=BLEND))
 
+    # ── Discovery → new → think → learn (novel event → cognition chain)
+    if info.get('is_novel'):
+        bmus += feed_sequence(brain,
+            ['new', 'think', 'learn'],
+            [0.1,   0.2,     0.4],
+            grid_mfcc, BLEND)
+
+    # ── Recall → remember → know → good (memory retrieval → success)
+    if info.get('is_recall'):
+        bmus += feed_sequence(brain,
+            ['remember', 'know', 'good'],
+            [0.1,         0.2,    0.5],
+            grid_mfcc, BLEND)
+
+    # ── Social zone → hello → like → calm (greeting chain)
+    if info.get('is_social') and rng.random() < 0.15:
+        bmus += feed_sequence(brain,
+            ['hello', 'like', 'calm'],
+            [0.1,      0.2,    0.3],
+            grid_mfcc, BLEND)
+
+    # ── Satiation → eat → full → calm (eating chain resolved)
+    if info.get('is_satiated'):
+        bmus += feed_sequence(brain,
+            ['eat', 'full', 'calm'],
+            [0.2,   0.4,    0.5],
+            grid_mfcc, BLEND)
+
+    # ── Frustration → wall → stop → bad (repeated failure chain)
+    if info.get('is_frustrated'):
+        bmus += feed_sequence(brain,
+            ['wall', 'stop', 'bad'],
+            [0.0,    0.0,    0.0],
+            grid_mfcc, BLEND)
+
+    # ── Anticipation → go → open → door (navigation chain en route to door)
+    if info.get('is_anticipating') and rng.random() < 0.08:
+        bmus += feed_sequence(brain,
+            ['go', 'open', 'door'],
+            [0.1,   0.2,    0.2],
+            grid_mfcc, BLEND)
+
+    # ── Rest event → tired → sleep → warm (fatigue resolution chain)
+    if info.get('is_resting'):
+        bmus += feed_sequence(brain,
+            ['tired', 'sleep', 'warm'],
+            [0.0,     0.2,     0.35],
+            grid_mfcc, BLEND)
+
+    # ── Boredom → new → go → move (restlessness → exploration chain)
+    if info.get('is_bored') and rng.random() < 0.2:
+        bmus += feed_sequence(brain,
+            ['new', 'go', 'move'],
+            [0.0,   0.05, 0.1],
+            grid_mfcc, BLEND)
+
+    # ── Prediction error → wrong → no → new (expectation violated → reorient)
+    if info.get('is_surprise') and rng.random() < 0.4:
+        bmus += feed_sequence(brain,
+            ['wrong', 'no',  'new'],
+            [0.0,     0.0,   0.05],
+            grid_mfcc, BLEND)
+
+    # ── Environmental sensory grounding ───────────────────────────────────────
+    # Feed environmental word chains only at low frequency (3% per step) so
+    # they accumulate over 500k steps without drowning out action events.
+    env = info.get('env', {})
+    if not info.get('wall_hit') and not info.get('is_food'):
+        veg   = env.get('vegetation',  0.0)
+        moist = env.get('moisture',    0.0)
+        temp  = env.get('temperature', 0.5)
+        wind  = env.get('wind',        0.0)
+        tod   = info.get('time_of_day', 0.5)
+
+        # Vegetation zone — plant / tree / grass / green
+        if veg > ENV_VEGETATION_HIGH and rng.random() < 0.12:
+            bmus += feed_sequence(brain,
+                ['plant', 'tree', 'green'],
+                [0.05,     0.05,   0.05],
+                grid_mfcc, BLEND)
+
+        # Lush vegetation with moisture — grass
+        if veg > 0.5 and moist > 0.4 and rng.random() < 0.02:
+            bmus += feed_sequence(brain,
+                ['grass', 'green', 'calm'],
+                [0.05,     0.05,   0.08],
+                grid_mfcc, BLEND)
+
+        # Water/moisture zone — river / rain / wet
+        if moist > ENV_MOISTURE_HIGH and rng.random() < 0.12:
+            bmus += feed_sequence(brain,
+                ['river', 'water', 'wet'],
+                [0.05,     0.1,    0.05],
+                grid_mfcc, BLEND)
+
+        # Rain: high moisture + high wind
+        if moist > 0.6 and wind > 0.5 and rng.random() < 0.02:
+            bmus += feed_sequence(brain,
+                ['rain', 'wet', 'cold'],
+                [0.0,    0.0,  -0.02],
+                grid_mfcc, BLEND)
+
+        # Open air / wind zone — air / wind / sky
+        if wind > ENV_WIND_HIGH and rng.random() < 0.12:
+            bmus += feed_sequence(brain,
+                ['air', 'wind', 'go'],
+                [0.05,   0.05,  0.05],
+                grid_mfcc, BLEND)
+
+        # Cold: low temperature (especially night)
+        is_night = tod > 0.75 or tod < 0.25
+        if temp < ENV_COLD_THRESHOLD and rng.random() < 0.12:
+            bmus += feed_sequence(brain,
+                ['cold', 'tired', 'sleep'],
+                [-0.02,   0.0,    0.05],
+                grid_mfcc, BLEND)
+
+        # Warm sunny day — warm / sun / good
+        if temp > ENV_WARM_THRESHOLD and not is_night and rng.random() < 0.12:
+            bmus += feed_sequence(brain,
+                ['warm', 'sun', 'good'],
+                [0.08,   0.05,  0.08],
+                grid_mfcc, BLEND)
+
+        # Sky: open areas with low vegetation + daytime
+        if wind > 0.4 and veg < 0.3 and not is_night and rng.random() < 0.02:
+            bmus += feed_sequence(brain,
+                ['sky', 'air', 'free'],
+                [0.05,  0.05,  0.06],
+                grid_mfcc, BLEND)
 
     return [b for b in bmus if b is not None]
 
@@ -443,6 +658,17 @@ def world6_to_mfcc(info) -> np.ndarray:
     elif fatigue < 0.20:
         v[2] += 0.3   # fresh/energised raises arousal
 
+    # Environmental sensory channels v[13–16]
+    env = info.get('env', {})
+    time_of_day = info.get('time_of_day', 0.5)
+    # Temperature modulated by day/night cycle
+    base_temp = env.get('temperature', 0.5)
+    day_factor = np.sin(time_of_day * 2 * np.pi)   # warm at noon, cold at night
+    v[13] = float(env.get('vegetation',  0.0))
+    v[14] = float(env.get('moisture',    0.0))
+    v[15] = float(np.clip(base_temp + day_factor * 0.2, 0.0, 1.0))
+    v[16] = float(env.get('wind',        0.0))
+
     return v
 
 
@@ -505,15 +731,6 @@ def run_world6_phase(brain: FastBrain, n_steps: int = 500_000):
 
 def tokenize(text: str) -> list[str]:
     return [w for w in text.lower().split() if w in VOCABULARY]
-
-
-def feed_sequence(brain: FastBrain, words: list[str], reward: float) -> list[int]:
-    bmus = []
-    for word in words:
-        bmu = feed_word(brain, word, reward)
-        if bmu is not None:
-            bmus.append(bmu)
-    return bmus
 
 
 def train_expression_epoch(brain: FastBrain, dialogues: list) -> dict:

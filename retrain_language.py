@@ -17,6 +17,8 @@ sys.dont_write_bytecode = True
 
 from brain_fast import FastBrain, SILENCE, N_MFCC
 from vocab_extra import VOCABULARY
+from vocab_core import VOCABULARY as _CORE_VOCAB
+VOCABULARY = {**VOCABULARY, **_CORE_VOCAB}   # core overrides extra
 from dialogue_corpus import DIALOGUES
 
 BRAIN_FILE = 'brain_fast.pkl'

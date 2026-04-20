@@ -34,8 +34,11 @@ INTERFACE
     desc  = mem.describe('pranay') # → "pranay is a person"
 """
 
-from collections import defaultdict
+import json
+import os
 
+import json
+import os
 
 class SemanticMemory:
     """
@@ -47,6 +50,7 @@ class SemanticMemory:
 
     def __init__(self):
         self._facts: dict[str, dict] = {}
+        self._relations: list[dict] = []
 
         # Pre-load basic facts the brain should know about itself
         self._facts['i']    = {'type': 'self', 'role': 'brain', 'alive': True}
@@ -75,6 +79,75 @@ class SemanticMemory:
     def recall(self, entity: str) -> dict:
         """Return all known facts about entity, or {} if unknown."""
         return dict(self._facts.get(entity.lower().strip(), {}))
+
+    def store_relation(self, subject: str, relation: str, obj: str,
+                       strength: float = 1.0, source: str = 'taught'):
+        """
+        Store or reinforce a normalized relation triple.
+
+        Example:
+            mem.store_relation('you', 'name', 'pranay')
+        """
+        subject = subject.lower().strip()
+        relation = relation.lower().strip()
+        obj = obj.lower().strip()
+        if not subject or not relation or not obj:
+            return
+
+        for rel in self._relations:
+            if (rel['subject'] == subject and rel['relation'] == relation
+                    and rel['object'] == obj):
+                rel['strength'] = max(rel['strength'], float(strength))
+                rel['source'] = source
+                return
+
+        self._relations.append({
+            'subject': subject,
+            'relation': relation,
+            'object': obj,
+            'strength': float(strength),
+            'source': source,
+        })
+
+    def recall_relations(self, subject: str, relation: str | None = None) -> list[dict]:
+        """Return stored relation triples for a subject, optionally filtered by relation."""
+        subject = subject.lower().strip()
+        if relation is not None:
+            relation = relation.lower().strip()
+        matches = []
+        for rel in self._relations:
+            if rel['subject'] != subject:
+                continue
+            if relation is not None and rel['relation'] != relation:
+                continue
+            matches.append(dict(rel))
+        return matches
+
+    def _latest_relation_object(self, subject: str, relation: str) -> str | None:
+        matches = self.recall_relations(subject, relation)
+        return matches[-1]['object'] if matches else None
+
+    def relation_count(self) -> int:
+        return len(self._relations)
+
+    def recent_relations(self, n: int = 5) -> list[dict]:
+        return [dict(rel) for rel in self._relations[-n:]]
+
+    def save(self, path: str = 'semantic.json'):
+        """Persist semantic facts and relations to disk."""
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump({'facts': self._facts, 'relations': self._relations}, f)
+
+    @classmethod
+    def load(cls, path: str = 'semantic.json') -> 'SemanticMemory':
+        """Load semantic memory from disk if present, otherwise start fresh."""
+        obj = cls()
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+            obj._facts.update(data.get('facts', {}))
+            obj._relations = data.get('relations', [])
+        return obj
 
     def knows(self, entity: str) -> bool:
         return entity.lower().strip() in self._facts
@@ -119,6 +192,111 @@ class SemanticMemory:
             return f"{entity} is {role}"
         return f"i know {entity}"
 
+    def find_relation_answer(self, tokens: list[str]) -> str | None:
+        """
+        Answer narrow relation queries from stored triples.
+
+        Supported:
+          - what is your name
+          - what is my name / who am i
+          - what is X
+          - how do you feel / what do you feel
+          - what do you want / what do you need
+        """
+        if not tokens:
+            return None
+
+        t = set(tokens)
+
+        if 'name' in t and ('your' in t or 'brain' in t) and 'my' not in t:
+            obj = self._latest_relation_object('i', 'name')
+            if obj:
+                return f"my name is {obj}"
+
+        if (('name' in t and 'my' in t) or tokens == ['who', 'am', 'i']):
+            obj = self._latest_relation_object('you', 'name')
+            if obj:
+                return f"your name is {obj}"
+
+        if tokens in (['how', 'do', 'you', 'feel'], ['what', 'do', 'you', 'feel']):
+            obj = self._latest_relation_object('i', 'feels')
+            if obj:
+                return f"i feel {obj}"
+
+        if tokens == ['what', 'do', 'you', 'want']:
+            obj = self._latest_relation_object('i', 'wants')
+            if obj:
+                return f"i want {obj}"
+
+        if tokens == ['what', 'do', 'you', 'need']:
+            obj = self._latest_relation_object('i', 'needs')
+            if obj:
+                return f"i need {obj}"
+
+        if len(tokens) == 3 and tokens[:2] == ['what', 'is']:
+            subject = tokens[2]
+            obj = self._latest_relation_object(subject, 'is')
+            if obj:
+                return f"{subject} is {obj}"
+            obj = self._latest_relation_object(subject, 'means')
+            if obj:
+                return f"{subject} means {obj}"
+
+        t = set(tokens)
+
+        # feel/want/need queries — check BEFORE identity handler
+        if ('feel' in t or 'feeling' in t) and 'you' in t:
+            obj = self._latest_relation_object('i', 'feels')
+            if obj:
+                return f"i feel {obj}"
+            # fall through to selfmodel in _relation_response
+
+        # "what do you like" / "do you like X" — check BEFORE identity handler
+        if 'like' in t and 'you' in t:
+            obj = self._latest_relation_object('i', 'likes')
+            if obj:
+                return f"i like {obj}"
+
+        # "what do you hate"
+        if 'hate' in t and 'you' in t:
+            obj = self._latest_relation_object('i', 'hates')
+            if obj:
+                return f"i hate {obj}"
+
+        # "what do you remember" / "what do you recall"
+        if ('remember' in t or 'recall' in t) and 'you' in t:
+            obj = self._latest_relation_object('memory', 'remember')
+            if obj:
+                return f"i remember {obj}"
+
+        # "why X" / "why do X" / "why did X" — causal lookup
+        if tokens and tokens[0] == 'why':
+            # try exact last word, then full phrase, then fuzzy substring match
+            query_words = tokens[1:]
+            candidates = [query_words[-1]] if query_words else []
+            if len(query_words) >= 2:
+                candidates.append(' '.join(query_words))
+            for candidate in candidates:
+                obj = self._latest_relation_object(candidate, 'because')
+                if obj:
+                    return f"{candidate} because {obj}"
+            # fuzzy: substring/stem match — 'hurt' matches 'hurts', 'wall hurts', etc.
+            for qw in query_words:
+                for rel in self._relations:
+                    if rel['relation'] == 'because' and any(
+                            qw == w or w.startswith(qw) or qw.startswith(w)
+                            for w in rel['subject'].split()):
+                        return f"{rel['subject']} because {rel['object']}"
+
+        # "what causes X" / "what cause X"
+        if len(tokens) >= 3 and tokens[0] == 'what' and tokens[1] in ('causes', 'cause'):
+            subject = ' '.join(tokens[2:])
+            obj = self._latest_relation_object(subject, 'because')
+            if obj:
+                return f"{obj} causes {subject}"
+
+        return None
+
     def learn_from_sentence(self, words: list):
         """
         Attempt to extract a fact from a sentence pattern.
@@ -138,6 +316,7 @@ class SemanticMemory:
             name = words[3]
             self.store(name, type='person', role='user', relation='creator')
             self.store('you', name=name, type='person', role='user')
+            self.store_relation('you', 'name', name)
             return
 
         # "your name is X" — user naming the brain
@@ -146,12 +325,72 @@ class SemanticMemory:
             self.store('brain', name=name, type='self', role='brain')
             self.store('i', name=name)
             self.store('me', name=name)
+            self.store_relation('i', 'name', name)
             return
 
         # "i am X" or "i feel X"
         if words[0] == 'i' and words[1] in ('am', 'feel') and len(words) >= 3:
             state = words[2]
             self.store('i', current_state=state)
+            if words[1] == 'feel':
+                self.store_relation('i', 'feels', state)
+            return
+
+        if words[0] == 'i' and words[1] == 'need' and len(words) >= 3:
+            self.store_relation('i', 'needs', words[2])
+            return
+
+        if words[0] == 'i' and words[1] == 'want' and len(words) >= 3:
+            self.store_relation('i', 'wants', words[2])
+            return
+
+        if words[0] == 'i' and words[1] == 'like' and len(words) >= 3:
+            self.store_relation('i', 'likes', words[2])
+            return
+
+        if words[0] == 'i' and words[1] == 'hate' and len(words) >= 3:
+            self.store_relation('i', 'hates', words[2])
+            return
+
+        # "you like X" / "you hate X"
+        if words[0] == 'you' and words[1] in ('like', 'hate') and len(words) >= 3:
+            self.store_relation('you', words[1], words[2])
+            return
+
+        if words[0] == 'you' and words[1] == 'feel' and len(words) >= 3:
+            self.store_relation('you', 'feels', words[2])
+            return
+
+        # "remember X" — explicit memory command
+        if words[0] == 'remember' and len(words) >= 2:
+            obj = ' '.join(words[1:])
+            self.store_relation('memory', 'remember', obj)
+            return
+
+        # "X because Y" — check BEFORE helps/hurts so "X hurts because Y" parses correctly
+        if 'because' in words:
+            idx = words.index('because')
+            if idx > 0 and idx < len(words) - 1:
+                cause = ' '.join(words[idx+1:])
+                effect = ' '.join(words[:idx])
+                self.store_relation(effect, 'because', cause)
+                self.store_relation(cause, 'causes', effect)
+                return
+
+        # "X causes Y" / "X cause Y"
+        if len(words) >= 3 and words[1] in ('causes', 'cause'):
+            self.store_relation(words[0], 'causes', ' '.join(words[2:]))
+            self.store_relation(' '.join(words[2:]), 'because', words[0])
+            return
+
+        # "X helps Y"
+        if len(words) >= 3 and words[1] == 'helps':
+            self.store_relation(words[0], 'helps', ' '.join(words[2:]))
+            return
+
+        # "X hurts Y"
+        if len(words) >= 3 and words[1] == 'hurts':
+            self.store_relation(words[0], 'hurts', ' '.join(words[2:]))
             return
 
         # "you are X"
@@ -166,11 +405,27 @@ class SemanticMemory:
             predicate = ' '.join(words[2:])
             if words[1] == 'means':
                 self.store(subject, meaning=predicate)
+                self.store_relation(subject, 'means', predicate)
             else:
                 self.store(subject, description=predicate)
+                self.store_relation(subject, 'is', predicate)
+
+    def save(self, path: str = 'semantic.json'):
+        with open(path, 'w') as f:
+            json.dump({'facts': self._facts, 'relations': self._relations}, f)
+
+    @classmethod
+    def load(cls, path: str = 'semantic.json') -> 'SemanticMemory':
+        obj = cls()
+        if os.path.exists(path):
+            with open(path) as f:
+                d = json.load(f)
+            obj._facts.update(d.get('facts', {}))
+            obj._relations = d.get('relations', [])
+        return obj
 
     def summary(self) -> str:
-        lines = [f"  Semantic memory: {len(self._facts)} entities"]
+        lines = [f"  Semantic memory: {len(self._facts)} entities, {len(self._relations)} relations"]
         for entity, facts in list(self._facts.items())[:8]:
             lines.append(f"    {entity:12s} → {facts}")
         return '\n'.join(lines)

@@ -34,7 +34,7 @@ except ImportError:
 SOM_ROWS  = 100
 SOM_COLS  = 50
 N_NEURONS = SOM_ROWS * SOM_COLS   # 5000
-N_MFCC    = 13                    # MFCC feature dims
+from vocab import N_MFCC           # single source of truth — currently 17
 
 # ── Silence vector (used between words) ───────────────────────────────────────
 SILENCE = np.zeros(N_MFCC, dtype=np.float32)

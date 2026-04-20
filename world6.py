@@ -121,6 +121,58 @@ import numpy as np
 from typing import Tuple, Dict, Optional, List
 
 # ═══════════════════════════════════════════════════════════════
+# ENVIRONMENTAL SENSORY PROFILES
+# ═══════════════════════════════════════════════════════════════
+# Each node has 4 environmental properties felt by the brain:
+#   vegetation [0,1] — plant density
+#   moisture   [0,1] — water/humidity
+#   temperature[0,1] — warmth (base; day/night modulates ±0.2)
+#   wind       [0,1] — air movement (corners=exposed, center=sheltered)
+#
+# Assigned by grid region — gives the brain genuine felt geography.
+
+def _build_env_profiles() -> Dict[str, Dict[str, float]]:
+    ri = {r: i for i, r in enumerate(['A','B','C','D','E','F','G','H'])}
+    profiles = {}
+    for r in ['A','B','C','D','E','F','G','H']:
+        for c in range(8):
+            node = f"{r}{c}"
+            row_i = ri[r]
+            # Distance from center (3.5, 3.5) — 0=center, 1=edge
+            dist_center = ((row_i - 3.5)**2 + (c - 3.5)**2) ** 0.5 / 5.0
+
+            # Vegetation: dense in center-right (D-F, cols 3-6), sparse at corners
+            veg_row = 1.0 - abs(row_i - 4.5) / 4.0
+            veg_col = 1.0 - abs(c - 4.5) / 4.0
+            vegetation = float(np.clip(veg_row * veg_col * 1.8, 0.05, 1.0))
+
+            # Moisture: high near left edge (col 0-2 = river bank) and center
+            moisture = float(np.clip(0.8 - c * 0.08 + (1.0 - dist_center) * 0.3, 0.05, 1.0))
+
+            # Temperature: warm in center, cold at top corners (A0, A7)
+            temperature = float(np.clip(0.5 + (1.0 - dist_center) * 0.4 - row_i * 0.03, 0.1, 0.9))
+
+            # Wind: strong at corners/top-row (exposed), calm in center
+            wind = float(np.clip(dist_center * 0.7 + (1.0 - vegetation) * 0.3, 0.05, 1.0))
+
+            profiles[node] = {
+                'vegetation':   vegetation,
+                'moisture':     moisture,
+                'temperature':  temperature,
+                'wind':         wind,
+            }
+    return profiles
+
+NODE_ENV = _build_env_profiles()
+
+# Thresholds for feeding environmental word chains during training
+ENV_VEGETATION_HIGH = 0.65
+ENV_MOISTURE_HIGH   = 0.60
+ENV_COLD_THRESHOLD  = 0.30
+ENV_WARM_THRESHOLD  = 0.70
+ENV_WIND_HIGH       = 0.55
+
+# ═══════════════════════════════════════════════════════════════
 # GRID LAYOUT
 # ═══════════════════════════════════════════════════════════════
 
@@ -250,6 +302,54 @@ HUNGER_MIN_MULTIPLIER = 0.10   # reward multiplier when just-fed (sated)
 HOME_NODE = 'A0'
 
 # ═══════════════════════════════════════════════════════════════
+# COGNITIVE EVENTS
+# ═══════════════════════════════════════════════════════════════
+
+# Discovery reward — fires on first-ever visit to a node this session.
+# Grounds: think, learn (novelty-seeking, exploration)
+DISCOVERY_REWARD = 0.08
+
+# Recall reward — fires when button→door sequence completes in ≤20 steps.
+# Grounds: remember (reusing known successful path)
+RECALL_REWARD      = 0.06
+RECALL_STEP_WINDOW = 20   # button→door must happen within this many steps
+
+# Social zone — nodes near HOME give tiny reward for "returning home".
+# Grounds: like, brain, hello (positive social self-reference)
+SOCIAL_NODES: List[str] = ['A0', 'A1', 'A2', 'B0', 'B1']
+SOCIAL_REWARD = 0.02
+
+# Satiation event — fires immediately after eating when hunger resets.
+# Grounds: full, good, happy, calm (reward after need-satisfaction)
+SATIATION_REWARD = 0.05
+
+# Frustration — fires after 4+ wall hits in a row.
+# Grounds: stop, no, bad (repeated failure signal)
+FRUSTRATION_WALL_STREAK = 4
+FRUSTRATION_REWARD = -0.03   # mild negative — frustration is aversive
+
+# Anticipation — fires when door timer active and moving toward a door node.
+# Grounds: come, go, open, wait (goal-directed movement under expectation)
+ANTICIPATION_REWARD = 0.03
+
+# Rest event — fires when fatigue > 0.6 during night and brain stays near
+# a low-texture node (soft terrain = rest area).
+# Grounds: sleep, calm, warm, safe (fatigue relief seeking)
+REST_NODES: List[str] = ['D3', 'D4', 'E3', 'E4']   # grid center, low-traffic
+REST_REWARD = 0.04
+
+# Curiosity plateau — fires when brain revisits same node >8 times in 50 steps.
+# Negative signal — sameness is aversive, pushes exploration.
+# Grounds: new, go, move (boredom-driven exploration)
+BOREDOM_REVISIT_COUNT = 8
+BOREDOM_WINDOW        = 50
+BOREDOM_REWARD        = -0.02
+
+# Prediction error — brain visited a node expecting reward, got none
+# Fires on: (1) expired door node stepped on, (2) retired food node visited
+SURPRISE_REWARD = -0.02
+
+# ═══════════════════════════════════════════════════════════════
 # FATIGUE
 # ═══════════════════════════════════════════════════════════════
 
@@ -362,6 +462,14 @@ class World6:
         self.node_visit_counts = {n: 0 for n in ALL_NODES}
         self.action_counts = [0] * N_ACTIONS
 
+        # ── Cognitive event tracking ───────────────────────────
+        self._discovered_nodes: set = set()
+        self._button_step: int = -1
+        self._wall_streak: int = 0            # consecutive wall hits
+        self._recent_nodes: list = []         # last BOREDOM_WINDOW nodes visited
+        self._just_ate: bool = False          # satiation flag for this step
+        self._prev_food_nodes: set = set()    # nodes that were food before last rotation
+
     # ── Reset ─────────────────────────────────────────────────
 
     def reset(self):
@@ -380,6 +488,12 @@ class World6:
         self._food_moved_this_step = False
         self.node_visit_counts = {n: 0 for n in ALL_NODES}
         self.action_counts = [0] * N_ACTIONS
+        self._discovered_nodes = set()
+        self._button_step = -1
+        self._wall_streak = 0
+        self._recent_nodes = []
+        self._just_ate = False
+        self._prev_food_nodes = set()
 
         init_idx = self._rng.choice(len(FOOD_CANDIDATES),
                                     size=N_FOOD_ACTIVE, replace=False)
@@ -422,19 +536,45 @@ class World6:
         if self._door_timer > 0:
             self._door_timer -= 1
 
+        # ── Cognitive: discovery ──────────────────────────────
+        is_novel = (not wall_hit) and (self._node not in self._discovered_nodes)
+        if is_novel:
+            self._discovered_nodes.add(self._node)
+
+        # ── Wall streak tracking ───────────────────────────────
+        if wall_hit:
+            self._wall_streak += 1
+        else:
+            self._wall_streak = 0
+
+        # ── Boredom tracking (recent node window) ──────────────
+        if not wall_hit:
+            self._recent_nodes.append(self._node)
+            if len(self._recent_nodes) > BOREDOM_WINDOW:
+                self._recent_nodes.pop(0)
+
         # ── Button check ──────────────────────────────────────
         is_button = False
         if not wall_hit and self._node in BUTTON_NODES:
             is_button = True
             self._door_timer = DOOR_OPEN_TICKS
             self._last_button = self._node
+            self._button_step = self.t
 
         # ── Reward computation ─────────────────────────────────
-        reward   = 0.0
-        is_food  = False
-        is_door  = False
+        reward       = 0.0
+        is_food      = False
+        is_door      = False
+        is_recall    = False
+        is_social    = False
+        is_satiated  = False
+        is_frustrated= False
+        is_anticipating = False
+        is_resting   = False
+        is_bored     = False
 
-        is_danger = (not wall_hit) and (self._node in DANGER_NODES)
+        is_danger   = (not wall_hit) and (self._node in DANGER_NODES)
+        is_surprise = False
 
         if wall_hit:
             reward = WALL_PENALTY
@@ -455,6 +595,11 @@ class World6:
                     self.food_count += 1
                     fn = self._node
                     self._food_hit_counts[fn] = self._food_hit_counts.get(fn, 0) + 1
+                    # RECALL: button→door completed within window → memory reward
+                    if (self._button_step >= 0 and
+                            self.t - self._button_step <= RECALL_STEP_WINDOW):
+                        reward += RECALL_REWARD
+                        is_recall = True
 
             # FOOD NODES (direct food, no button required)
             elif self._node in self._active_food:
@@ -466,6 +611,51 @@ class World6:
                 self.food_count += 1
                 fn = self._node
                 self._food_hit_counts[fn] = self._food_hit_counts.get(fn, 0) + 1
+
+            # DISCOVERY: first visit → learning reward
+            if is_novel:
+                reward += DISCOVERY_REWARD
+
+            # SATIATION: just ate, hunger reset → satisfaction signal
+            if is_food:
+                reward += SATIATION_REWARD
+                is_satiated = True
+
+            # ANTICIPATION: door timer active, moving toward a door
+            if self._door_timer > 0 and not is_door:
+                is_anticipating = True
+                reward += ANTICIPATION_REWARD
+
+            # REST ZONE: high fatigue + night + rest node → rest reward
+            if (self._node in REST_NODES and self._fatigue > 0.5
+                    and (self._time_of_day > 0.75 or self._time_of_day < 0.25)):
+                reward += REST_REWARD
+                is_resting = True
+
+            # SOCIAL ZONE: near home → social reward
+            if self._node in SOCIAL_NODES:
+                reward += SOCIAL_REWARD
+                is_social = True
+
+        # FRUSTRATION: wall streak ≥ threshold → aversive signal
+        if self._wall_streak >= FRUSTRATION_WALL_STREAK:
+            reward += FRUSTRATION_REWARD
+            is_frustrated = True
+
+        # BOREDOM: same node visited too often in recent window
+        if (len(self._recent_nodes) >= BOREDOM_WINDOW and
+                self._recent_nodes.count(self._node) >= BOREDOM_REVISIT_COUNT):
+            reward += BOREDOM_REWARD
+            is_bored = True
+
+        # PREDICTION ERROR: visited node that was expected to give reward but didn't
+        if not wall_hit and not is_food:
+            if self._node in DOOR_NODES and self._door_timer == 0:
+                is_surprise = True   # stepped on door with no active timer
+            elif self._node in self._prev_food_nodes:
+                is_surprise = True   # visited retired food node (food moved away)
+        if is_surprise:
+            reward += SURPRISE_REWARD
 
         if wall_hit:
             self.wall_count += 1
@@ -499,6 +689,16 @@ class World6:
             'food_nodes': list(self._active_food),
             'time_of_day': self._time_of_day,
             'is_night':   (self._time_of_day > 0.75 or self._time_of_day < 0.25),
+            'is_novel':       is_novel,
+            'is_recall':      is_recall,
+            'is_social':      is_social,
+            'is_satiated':    is_satiated,
+            'is_frustrated':  is_frustrated,
+            'is_anticipating':is_anticipating,
+            'is_resting':     is_resting,
+            'is_bored':       is_bored,
+            'is_surprise':    is_surprise,
+            'env':            dict(NODE_ENV[self._node]),
         }
         return freq_hz, freq_idx, reward, info
 
@@ -516,10 +716,13 @@ class World6:
 
         # Retire the first active food node (cyclic)
         retiring = self._active_food.pop(0)
+        self._prev_food_nodes.add(retiring)
 
         # Pick new food from available candidates
         new_food = str(self._rng.choice(available))
         self._active_food.append(new_food)
+        # Remove new node from prev set (it's active again, no surprise expected)
+        self._prev_food_nodes.discard(new_food)
 
     # ── Properties ───────────────────────────────────────────
 
