@@ -92,10 +92,13 @@ print(f" {len(brain.bmu_to_word)} BMU→word entries.")
 # Hearing these words nudges internal drive state — classical conditioning.
 # Small deltas accumulate if topic persists; can trigger spontaneous expression.
 _PAVLOV_MAP: dict[str, tuple[str, float]] = {
-    'food':   ('hunger',  +0.06),
-    'eat':    ('hunger',  +0.04),
-    'hungry': ('hunger',  +0.08),
-    'drink':  ('hunger',  +0.03),
+    # Food cues: small appetitive spike (cue arouses appetite briefly)
+    # but zone relief (-0.12/turn in SelfModel) dominates when actually in food zone.
+    'food':   ('hunger',  +0.02),
+    'eat':    ('hunger',  +0.01),
+    'hungry': ('hunger',  +0.03),
+    'drink':  ('hunger',  +0.01),
+    'full':   ('hunger',  -0.08),  # "full" strongly relieves hunger
     'water':  ('comfort', +0.03),
     'danger': ('fear',    +0.10),
     'afraid': ('fear',    +0.08),
@@ -109,7 +112,6 @@ _PAVLOV_MAP: dict[str, tuple[str, float]] = {
     'safe':   ('comfort', +0.06),
     'good':   ('comfort', +0.04),
     'happy':  ('comfort', +0.05),
-    'full':   ('hunger',  -0.05),
 }
 
 # ── Active vocabulary acquisition ────────────────────────────────────────────
@@ -802,6 +804,12 @@ def main():
     _DRIVE_COOLDOWN   = 90.0   # minimum seconds between same drive expression
     _last_curious_t   = 0.0    # last time curiosity question was asked
     _CURIOUS_COOLDOWN = 60.0   # ask at most once per minute
+    # Intrinsic reward per zone — brain self-reinforces grounded responses.
+    # Strong zones (food/danger) earn more; social is weakest (less predictable).
+    _ZONE_INTRINSIC_REWARD: dict = {
+        'food': 0.15, 'danger': 0.15, 'water': 0.12,
+        'pain': 0.10, 'rest':   0.10, 'action': 0.12, 'social': 0.05,
+    }
     try:
         while True:
             try:
@@ -845,6 +853,12 @@ def main():
                         and now_t - _drive_last_voiced['fear'] > _DRIVE_COOLDOWN):
                     _drive_chain = ['afraid', 'careful']
                     _drive_key = 'fear'
+                # zone_overdue: temporal pressure halves curiosity cooldown when
+                # a zone hasn't been visited in >8 turns AND has low visit count.
+                _c_zone = curiosity.least_visited_zone(list(ZONE_ANCHORS.keys()))
+                _cur_cooldown = (_CURIOUS_COOLDOWN / 2
+                                 if temporal.zone_overdue(_c_zone, threshold=8)
+                                 else _CURIOUS_COOLDOWN)
                 if _drive_chain and _drive_key:
                     _drive_last_voiced[_drive_key] = now_t
                     with print_lock:
@@ -852,7 +866,7 @@ def main():
                         print(f"[brain]: {' '.join(_drive_chain)}")
                         sys.stdout.write("you: ")
                         sys.stdout.flush()
-                elif now_t - _last_curious_t > _CURIOUS_COOLDOWN and silence_s > 20.0:
+                elif now_t - _last_curious_t > _cur_cooldown and silence_s > 20.0:
                     # No strong drive — curiosity surfaces instead.
                     # Brain generates from least-visited zone seeds (not "what is X" template).
                     c_words = curiosity.curiosity_words(ZONE_ANCHORS,
@@ -1011,7 +1025,14 @@ def main():
 
             # ── Semantic learning + contradiction detection ───────────────
             prev_n = semantic.contradiction_count()
+            _n_rels_before = len(semantic._relations)
             semantic.learn_from_sentence(tokens)
+            # learning_boost: high ACh (novelty turn) → new relations stored stronger.
+            # Surprise deepens encoding — same mechanism as biological long-term potentiation.
+            _boost = neuromod.learning_boost()
+            if _boost > 1.05 and len(semantic._relations) > _n_rels_before:
+                for _rel in semantic._relations[_n_rels_before:]:
+                    _rel['strength'] = min(1.5, _rel['strength'] * _boost)
             if semantic.contradiction_count() > prev_n:
                 conflict = semantic.recent_contradictions(1)[0]
                 with print_lock:
@@ -1067,6 +1088,12 @@ def main():
                     response = generate_response(_last_heard_bmus, heard_words,
                                                  raw_tokens=tokens)
 
+            zone = _resolve_zone(heard_words, _last_heard_bmus)
+            # Intrinsic reward: grounded zone response self-reinforces the SOM.
+            # Zero when brain asked about unknown word — that's uncertainty, not success.
+            intrinsic_r = (0.0 if _unknown_found
+                           else _ZONE_INTRINSIC_REWARD.get(zone, 0.0)) if response else 0.0
+
             if response:
                 with print_lock:
                     sys.stdout.write(f"\rbrain: {response}\nyou: ")
@@ -1078,7 +1105,7 @@ def main():
                 if response_words and response_words[0] in ('what', 'search', 'know'):
                     _awaiting_resolution = True
 
-                hear_own_response(response_words, reward=0.0)
+                hear_own_response(response_words, reward=intrinsic_r)
 
                 _recent_responses.append(response)
                 if len(_recent_responses) > _MAX_RECENT:
@@ -1092,9 +1119,6 @@ def main():
                     sys.stdout.flush()
                 _last_response_words = []
                 _context_buffer.append((heard_words, []))
-
-            # Recompute zone for module updating
-            zone = _resolve_zone(heard_words, _last_heard_bmus)
 
             # Module updates — order matters
             heard_bmu = _last_heard_bmus[0] if _last_heard_bmus else 0
@@ -1113,13 +1137,13 @@ def main():
 
             curiosity.update(bmu=heard_bmu, zone=zone)
 
-            neuromod.update(novelty=novelty, surprise=surprise, reward=0.0)
+            neuromod.update(novelty=novelty, surprise=surprise, reward=intrinsic_r)
 
-            selfmodel.update(zone=zone, reward=0.0,
+            selfmodel.update(zone=zone, reward=intrinsic_r,
                              wm_strength=wm.activation_strength(),
                              episode_count=episodic.count())
 
-            temporal.update(zone=zone, reward=0.0)
+            temporal.update(zone=zone, reward=intrinsic_r)
 
             episodic.record(
                 you_words   = heard_words,
@@ -1127,7 +1151,7 @@ def main():
                 zone        = zone,
                 drives      = {'hunger': selfmodel._state['hunger'],
                                'fatigue': selfmodel._state['fatigue']},
-                reward      = 0.0,
+                reward      = intrinsic_r,
             )
 
             _total_turns += 1

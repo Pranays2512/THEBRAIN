@@ -114,10 +114,11 @@ class SelfModel:
     def update(self, zone: str, reward: float, wm_strength: float, episode_count: int):
         s = self._state
         # Zone affects drives
-        if zone == 'food':   s['hunger']  = max(0.0, s['hunger']  - 0.05)
+        if zone == 'food':   s['hunger']  = max(0.0, s['hunger']  - 0.12)
         if zone == 'danger': s['fear']    = min(1.0, s['fear']    + 0.15)
-        if zone == 'rest':   s['fatigue'] = max(0.0, s['fatigue'] - 0.05)
-        if zone == 'social': s['comfort'] = min(1.0, s['comfort'] + 0.05)
+        if zone == 'rest':   s['fatigue'] = max(0.0, s['fatigue'] - 0.10)
+        if zone == 'social': s['comfort'] = min(1.0, s['comfort'] + 0.07)
+        if zone == 'water':  s['hunger']  = max(0.0, s['hunger']  - 0.05)
         # Passive drift
         s['hunger']     = min(1.0, s['hunger']     + 0.01)
         s['fatigue']    = min(1.0, s['fatigue']    + 0.005)
