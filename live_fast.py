@@ -1052,7 +1052,10 @@ def main():
                     _pending_unknown = None
                     _pending_unknown_turns = 0
 
-            # Detect unknown content words (not in vocab, not structural)
+            # Detect unknown content words (not in vocab, not structural).
+            # Skip words that semantic memory already has a factual relation for
+            # (e.g. 'xylophone' after user taught 'xylophone is music') — those
+            # are known in meaning even if not in the SOM vocabulary.
             _unknown_found = None
             if not _pending_unknown:
                 for t in tokens:
@@ -1063,7 +1066,10 @@ def main():
                             and 2 < len(t) <= 12
                             and t.isalpha()
                             and not any(t.startswith(k) or t.endswith(k)
-                                        for k in VOCABULARY if len(k) > 3)):
+                                        for k in VOCABULARY if len(k) > 3)
+                            # Skip if semantic already knows this word
+                            and not semantic._latest_relation_object(t, 'is')
+                            and not semantic._latest_relation_object(t, 'means')):
                         _unknown_found = t
                         break
 
@@ -1074,8 +1080,16 @@ def main():
                 brain.hear(SILENCE)
                 brain.step()
 
-            # ── Generate response: relation memory first, then intent bridge ──
-            if _unknown_found:
+            # ── Generate response: semantic memory first, then intent bridge ──
+            # Always check relation memory first — even for unknown-vocab words
+            # that have been taught semantically (e.g. 'what is xylophone').
+            response = _relation_response(tokens)
+            if response is not None:
+                # Semantic answered — clear any pending unknown for this word
+                if _unknown_found and response:
+                    _unknown_found = None
+            elif _unknown_found:
+                # Semantic has no answer AND word is genuinely unknown — ask.
                 _pending_unknown = _unknown_found
                 _pending_unknown_turns = 0
                 response = f"what is {_unknown_found}"
@@ -1083,10 +1097,8 @@ def main():
                 wm.enter_seeking()
                 selfmodel.spike_uncertainty(magnitude=0.5)
             else:
-                response = _relation_response(tokens)
-                if response is None:
-                    response = generate_response(_last_heard_bmus, heard_words,
-                                                 raw_tokens=tokens)
+                response = generate_response(_last_heard_bmus, heard_words,
+                                             raw_tokens=tokens)
 
             zone = _resolve_zone(heard_words, _last_heard_bmus)
             # Intrinsic reward: grounded zone response self-reinforces the SOM.

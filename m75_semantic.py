@@ -90,6 +90,16 @@ class SemanticMemory:
         """
         Store or reinforce a normalized relation triple.
 
+        Belief Revision: when a new factual relation conflicts with an existing one,
+        the beliefs compete on strength. Each time the new belief is heard, the
+        conflicting old belief is decayed by 0.3. When a belief's strength drops to
+        0 or below it is permanently removed (dead belief). The new belief is stored
+        with reduced initial strength (0.5) since the brain is uncertain — but if
+        heard again, it strengthens and wins via repeated reinforcement.
+
+        State/mutable relations (feels/wants/needs/name) are exempt — they can
+        co-exist because they reflect changing states, not fixed facts.
+
         Example:
             mem.store_relation('you', 'name', 'pranay')
         """
@@ -99,54 +109,83 @@ class SemanticMemory:
         if not subject or not relation or not obj:
             return
 
+        # Reinforce existing matching triple — strength can only increase here.
         for rel in self._relations:
             if (rel['subject'] == subject and rel['relation'] == relation
                     and rel['object'] == obj):
-                rel['strength'] = max(rel['strength'], float(strength))
+                rel['strength'] = min(2.0, rel['strength'] + float(strength) * 0.5)
                 rel['source'] = source
+                # Also decay all competing beliefs for this factual relation.
+                if relation in self._FACTUAL_RELATIONS:
+                    for rival in self._relations:
+                        if (rival['subject'] == subject
+                                and rival['relation'] == relation
+                                and rival['object'] != obj):
+                            rival['strength'] = max(0.0, rival['strength'] - 0.3)
+                    # Prune dead beliefs (strength == 0).
+                    self._relations = [r for r in self._relations
+                                       if r['strength'] > 0.0]
                 return
 
-        # Contradiction check: factual relations should be consistent.
-        # If brain already knows "X is A" and now hears "X is B" — flag it.
+        # New triple — check for contradiction with existing factual beliefs.
         if relation in self._FACTUAL_RELATIONS:
-            for rel in self._relations:
-                if (rel['subject'] == subject and rel['relation'] == relation
-                        and rel['object'] != obj):
+            conflict_found = False
+            for rival in self._relations:
+                if (rival['subject'] == subject and rival['relation'] == relation
+                        and rival['object'] != obj):
+                    # Flag contradiction for surface display.
                     self._contradictions.append({
                         'subject':  subject,
                         'relation': relation,
-                        'stored':   rel['object'],
+                        'stored':   rival['object'],
                         'new':      obj,
                     })
-                    # Store new fact but reduce strength — brain is uncertain
-                    strength = min(float(strength), 0.5)
-                    break
+                    # Decay the existing rival belief — new evidence challenges it.
+                    rival['strength'] = max(0.0, rival['strength'] - 0.3)
+                    conflict_found = True
+
+            # Prune any rivals that just hit zero.
+            self._relations = [r for r in self._relations if r['strength'] > 0.0]
+
+            # Incoming belief enters uncertain — heard once is weak evidence.
+            if conflict_found:
+                strength = min(float(strength), 0.5)
 
         self._relations.append({
-            'subject': subject,
+            'subject':  subject,
             'relation': relation,
-            'object': obj,
+            'object':   obj,
             'strength': float(strength),
-            'source': source,
+            'source':   source,
         })
 
-    def recall_relations(self, subject: str, relation: str | None = None) -> list[dict]:
-        """Return stored relation triples for a subject, optionally filtered by relation."""
+    def recall_relations(self, subject: str, relation=None) -> list:
+        """
+        Return stored relation triples for a subject, optionally filtered by relation.
+        Dead beliefs (strength == 0) are excluded — they were revised away.
+        Results are sorted strongest-first so callers naturally get the dominant belief.
+        """
         subject = subject.lower().strip()
         if relation is not None:
             relation = relation.lower().strip()
         matches = []
         for rel in self._relations:
+            if rel['strength'] <= 0.0:          # dead belief — skip
+                continue
             if rel['subject'] != subject:
                 continue
             if relation is not None and rel['relation'] != relation:
                 continue
             matches.append(dict(rel))
+        # Strongest belief first — callers get the dominant fact, not the oldest one.
+        matches.sort(key=lambda r: r['strength'], reverse=True)
         return matches
 
-    def _latest_relation_object(self, subject: str, relation: str) -> str | None:
+    def _latest_relation_object(self, subject: str, relation: str):
+        """Return the object of the strongest surviving belief for (subject, relation)."""
         matches = self.recall_relations(subject, relation)
-        return matches[-1]['object'] if matches else None
+        # recall_relations is already sorted strongest-first, so [0] is the winner.
+        return matches[0]['object'] if matches else None
 
     def recent_contradictions(self, n: int = 3) -> list[dict]:
         return self._contradictions[-n:]
@@ -154,7 +193,7 @@ class SemanticMemory:
     def contradiction_count(self) -> int:
         return len(self._contradictions)
 
-    def pop_contradiction(self) -> dict | None:
+    def pop_contradiction(self):
         """Return and remove the most recent contradiction (for surfacing in response)."""
         return self._contradictions.pop() if self._contradictions else None
 
@@ -223,7 +262,7 @@ class SemanticMemory:
             return f"{entity} is {role}"
         return f"i know {entity}"
 
-    def find_relation_answer(self, tokens: list[str]) -> str | None:
+    def find_relation_answer(self, tokens: list):
         """
         Answer narrow relation queries from stored triples.
 
