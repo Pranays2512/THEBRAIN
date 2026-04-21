@@ -5,6 +5,26 @@ class WorkingMemory:
     def __init__(self, n_neurons: int = 5000):
         self._activation = np.zeros(n_neurons, dtype=np.float32)
         self._n = n_neurons
+        self._seeking = False      # Phase 2: WM Lock — brain is actively looking for resolution
+        self._seek_turns = 0       # turns since seeking began (auto-release after 3 turns)
+
+    def enter_seeking(self):
+        """Lock WM into uncertainty-resolution mode. Brain will bias toward 'what/search/know'."""
+        self._seeking = True
+        self._seek_turns = 0
+
+    def resolve_seeking(self):
+        """Release WM lock when reward arrives — resolution felt, not parsed."""
+        self._seeking = False
+        self._seek_turns = 0
+
+    def tick_seeking(self):
+        """Age the seeking state each turn. Auto-release if no resolution arrives."""
+        if self._seeking:
+            self._seek_turns += 1
+            if self._seek_turns >= 3:
+                self._seeking = False
+                self._seek_turns = 0
 
     def update(self, bmu: int, heard_words: list, word_to_bmu: dict):
         # Decay everything
@@ -18,6 +38,12 @@ class WorkingMemory:
             if w in word_to_bmu:
                 wbmu = word_to_bmu[w]
                 self._activation[wbmu] = min(1.0, self._activation[wbmu] + 0.4)
+        # While seeking: additionally spike uncertainty-resolution BMUs
+        if self._seeking:
+            for w in ['what', 'search', 'know']:
+                if w in word_to_bmu:
+                    wb = word_to_bmu[w]
+                    self._activation[wb] = min(1.0, self._activation[wb] + 0.3)
 
     def top_active_words(self, bmu_to_word: dict, n: int = 3) -> list:
         top_idxs = np.argsort(self._activation)[::-1][:20]
@@ -66,12 +92,24 @@ class EpisodicMemory:
 class SelfModel:
     def __init__(self):
         self._state = {
-            'hunger':    0.3,
-            'fatigue':   0.2,
-            'fear':      0.0,
-            'comfort':   0.5,
-            'curiosity': 0.5,
+            'hunger':      0.3,
+            'fatigue':     0.2,
+            'fear':        0.0,
+            'comfort':     0.5,
+            'curiosity':   0.5,
+            'uncertainty': 0.0,  # epistemic tension — feeling of missing information
         }
+
+    def spike_uncertainty(self, magnitude: float = 0.4):
+        """Prediction error or novel BMU → felt gap in knowledge."""
+        s = self._state
+        s['uncertainty'] = min(1.0, s['uncertainty'] + magnitude)
+
+    def resolve_uncertainty(self, reward: float):
+        """Reward received → tension drops. Resolution is felt, not parsed."""
+        s = self._state
+        if reward > 0.1:
+            s['uncertainty'] = max(0.0, s['uncertainty'] - reward * 0.6)
 
     def update(self, zone: str, reward: float, wm_strength: float, episode_count: int):
         s = self._state
@@ -81,35 +119,41 @@ class SelfModel:
         if zone == 'rest':   s['fatigue'] = max(0.0, s['fatigue'] - 0.05)
         if zone == 'social': s['comfort'] = min(1.0, s['comfort'] + 0.05)
         # Passive drift
-        s['hunger']  = min(1.0, s['hunger']  + 0.01)
-        s['fatigue']  = min(1.0, s['fatigue'] + 0.005)
-        s['fear']     = max(0.0, s['fear']    - 0.03)
-        s['curiosity'] = max(0.2, 1.0 - wm_strength * 2)  # low WM = more curious
+        s['hunger']     = min(1.0, s['hunger']     + 0.01)
+        s['fatigue']    = min(1.0, s['fatigue']    + 0.005)
+        s['fear']       = max(0.0, s['fear']       - 0.03)
+        s['curiosity']  = max(0.2, 1.0 - wm_strength * 2)
+        # Uncertainty decays per turn — faster than spike so it resolves in ~5 turns
+        s['uncertainty'] = max(0.0, s['uncertainty'] - 0.08)
+        self.resolve_uncertainty(reward)
 
     def dominant_state(self) -> str:
         s = self._state
-        if s['fear'] > 0.5:    return 'afraid'
-        if s['hunger'] > 0.6:  return 'hungry'
-        if s['fatigue'] > 0.6: return 'tired'
-        if s['comfort'] > 0.7: return 'content'
-        if s['curiosity'] > 0.6: return 'curious'
+        if s['uncertainty'] > 0.6: return 'uncertain'
+        if s['fear'] > 0.5:        return 'afraid'
+        if s['hunger'] > 0.6:      return 'hungry'
+        if s['fatigue'] > 0.6:     return 'tired'
+        if s['comfort'] > 0.7:     return 'content'
+        if s['curiosity'] > 0.6:   return 'curious'
         return 'calm'
 
     def state_words(self) -> list:
         mapping = {
-            'afraid':  ['afraid', 'careful'],
-            'hungry':  ['hungry', 'need'],
-            'tired':   ['tired', 'sleep'],
-            'content': ['good', 'calm'],
-            'curious': ['want', 'know'],
-            'calm':    ['calm'],
+            'uncertain': ['search', 'know', 'what'],
+            'afraid':    ['afraid', 'careful'],
+            'hungry':    ['hungry', 'need'],
+            'tired':     ['tired', 'sleep'],
+            'content':   ['good', 'calm'],
+            'curious':   ['want', 'know'],
+            'calm':      ['calm'],
         }
         return mapping.get(self.dominant_state(), [])
 
     def as_vector(self) -> np.ndarray:
         s = self._state
         return np.array([s['hunger'], s['fatigue'], s['fear'],
-                         s['comfort'], s['curiosity']], dtype=np.float32)
+                         s['comfort'], s['curiosity'], s['uncertainty']],
+                        dtype=np.float32)
 
 
 class CuriosityModule:
@@ -247,3 +291,94 @@ class PrefrontalCortex:
 
         words = brain.word_tp_generate(context, max_len=4, temperature=0.9)
         return " ".join(words) if words else ""
+
+
+class LogicModule:
+    """
+    Lightweight inference engine over grounded drives + semantic relations.
+
+    Not a rule engine — draws conclusions by chaining what brain has actually
+    learned (stored in SemanticMemory) with what it currently feels (SelfModel).
+
+    Three inference types:
+      1. Drive → action: hunger > 0.6 + semantic('hungry') → ['eat','food']
+      2. Percept → consequence: zone='danger' + semantic('danger') → ['run']
+      3. 2-hop chain: heard_word → relation object → that object's relations
+    """
+
+    def __init__(self):
+        self._last_conclusion: list = []
+        self._confidence: float = 0.0
+
+    def infer(self, selfmodel, semantic, zone: str,
+              heard_words: list, vocabulary: set) -> list:
+        """
+        Returns conclusion word list to prepend to generation seeds.
+        Empty when no strong inference fires.
+        """
+        conclusions: list = []
+        s = selfmodel._state
+
+        # ── Type 1: Drive-anchored ────────────────────────────────────────
+        # High internal drive → look up what that drive word relates to.
+        # Uses SemanticMemory so conclusions grow as brain learns more relations.
+        _drive_anchors = [
+            ('hunger',  'hungry',  0.6),
+            ('fear',    'danger',  0.5),
+            ('fatigue', 'tired',   0.6),
+            ('uncertainty', 'search', 0.6),
+        ]
+        for drive_key, anchor_word, threshold in _drive_anchors:
+            if s.get(drive_key, 0.0) > threshold:
+                for rel in semantic.recall_relations(anchor_word)[:2]:
+                    for w in rel['object'].split()[:2]:
+                        if w in vocabulary and w not in conclusions:
+                            conclusions.append(w)
+
+        # ── Type 2: Zone-percept → consequence ───────────────────────────
+        # What the brain currently perceives (zone) → semantic lookup → action.
+        # Falls back to grounded defaults only if no relation stored yet.
+        _zone_defaults = {
+            'food':   ('food',   ['eat', 'food']),
+            'danger': ('danger', ['run', 'careful']),
+            'rest':   ('tired',  ['sleep', 'calm']),
+            'water':  ('water',  ['drink', 'calm']),
+            'pain':   ('hurt',   ['stop', 'hurt']),
+        }
+        if zone in _zone_defaults:
+            anchor, defaults = _zone_defaults[zone]
+            rels = semantic.recall_relations(anchor)
+            if rels:
+                for w in rels[0]['object'].split()[:2]:
+                    if w in vocabulary and w not in conclusions:
+                        conclusions.append(w)
+            else:
+                for w in defaults:
+                    if w in vocabulary and w not in conclusions:
+                        conclusions.append(w)
+
+        # ── Type 3: 2-hop relation chain from heard words ─────────────────
+        # heard_word → relation → object (1-hop) → that object's relations (2-hop)
+        # This is where "xylophone → music → good" would fire if both stored.
+        for hw in heard_words[:3]:
+            hop1 = semantic.recall_relations(hw)
+            for rel1 in hop1[:1]:
+                obj1_words = rel1['object'].split()
+                for w in obj1_words[:1]:
+                    if w in vocabulary and w not in conclusions:
+                        conclusions.append(w)
+                # 2-hop
+                if obj1_words:
+                    hop2 = semantic.recall_relations(obj1_words[0])
+                    for rel2 in hop2[:1]:
+                        for w in rel2['object'].split()[:1]:
+                            if w in vocabulary and w not in conclusions:
+                                conclusions.append(w)
+
+        self._last_conclusion = conclusions[:5]
+        self._confidence = min(1.0, len(conclusions) * 0.2)
+        return self._last_conclusion
+
+    def explain(self) -> str:
+        return (f"logic: {self._last_conclusion}  conf={self._confidence:.2f}"
+                if self._last_conclusion else "logic: no conclusion")

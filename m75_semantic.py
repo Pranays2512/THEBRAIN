@@ -48,9 +48,14 @@ class SemanticMemory:
     Supports partial recall (fuzzy match on known entities).
     """
 
+    # Factual relations that should be consistent — contradictions flagged.
+    # State relations (feels/wants/needs) are mutable — no contradiction.
+    _FACTUAL_RELATIONS = {'is', 'means', 'causes', 'because', 'helps', 'hurts'}
+
     def __init__(self):
         self._facts: dict[str, dict] = {}
         self._relations: list[dict] = []
+        self._contradictions: list[dict] = []   # detected inconsistencies
 
         # Pre-load basic facts the brain should know about itself
         self._facts['i']    = {'type': 'self', 'role': 'brain', 'alive': True}
@@ -101,6 +106,22 @@ class SemanticMemory:
                 rel['source'] = source
                 return
 
+        # Contradiction check: factual relations should be consistent.
+        # If brain already knows "X is A" and now hears "X is B" — flag it.
+        if relation in self._FACTUAL_RELATIONS:
+            for rel in self._relations:
+                if (rel['subject'] == subject and rel['relation'] == relation
+                        and rel['object'] != obj):
+                    self._contradictions.append({
+                        'subject':  subject,
+                        'relation': relation,
+                        'stored':   rel['object'],
+                        'new':      obj,
+                    })
+                    # Store new fact but reduce strength — brain is uncertain
+                    strength = min(float(strength), 0.5)
+                    break
+
         self._relations.append({
             'subject': subject,
             'relation': relation,
@@ -126,6 +147,16 @@ class SemanticMemory:
     def _latest_relation_object(self, subject: str, relation: str) -> str | None:
         matches = self.recall_relations(subject, relation)
         return matches[-1]['object'] if matches else None
+
+    def recent_contradictions(self, n: int = 3) -> list[dict]:
+        return self._contradictions[-n:]
+
+    def contradiction_count(self) -> int:
+        return len(self._contradictions)
+
+    def pop_contradiction(self) -> dict | None:
+        """Return and remove the most recent contradiction (for surfacing in response)."""
+        return self._contradictions.pop() if self._contradictions else None
 
     def relation_count(self) -> int:
         return len(self._relations)
@@ -218,20 +249,8 @@ class SemanticMemory:
             if obj:
                 return f"your name is {obj}"
 
-        if tokens in (['how', 'do', 'you', 'feel'], ['what', 'do', 'you', 'feel']):
-            obj = self._latest_relation_object('i', 'feels')
-            if obj:
-                return f"i feel {obj}"
-
-        if tokens == ['what', 'do', 'you', 'want']:
-            obj = self._latest_relation_object('i', 'wants')
-            if obj:
-                return f"i want {obj}"
-
-        if tokens == ['what', 'do', 'you', 'need']:
-            obj = self._latest_relation_object('i', 'needs')
-            if obj:
-                return f"i need {obj}"
+        # State queries (feel/want/need) routed to live SelfModel — not stored snapshots.
+        # Return None → caller falls to generate_response → reads current drive floats.
 
         if len(tokens) == 3 and tokens[:2] == ['what', 'is']:
             subject = tokens[2]
@@ -244,30 +263,8 @@ class SemanticMemory:
 
         t = set(tokens)
 
-        # feel/want/need queries — check BEFORE identity handler
-        if ('feel' in t or 'feeling' in t) and 'you' in t:
-            obj = self._latest_relation_object('i', 'feels')
-            if obj:
-                return f"i feel {obj}"
-            # fall through to selfmodel in _relation_response
-
-        # "what do you like" / "do you like X" — check BEFORE identity handler
-        if 'like' in t and 'you' in t:
-            obj = self._latest_relation_object('i', 'likes')
-            if obj:
-                return f"i like {obj}"
-
-        # "what do you hate"
-        if 'hate' in t and 'you' in t:
-            obj = self._latest_relation_object('i', 'hates')
-            if obj:
-                return f"i hate {obj}"
-
-        # "what do you remember" / "what do you recall"
-        if ('remember' in t or 'recall' in t) and 'you' in t:
-            obj = self._latest_relation_object('memory', 'remember')
-            if obj:
-                return f"i remember {obj}"
+        # feel/want/need/like/hate/remember → all routed to live drives + WordTP.
+        # Returning None here lets generate_response read current SelfModel state.
 
         # "why X" / "why do X" / "why did X" — causal lookup
         if tokens and tokens[0] == 'why':
@@ -311,6 +308,14 @@ class SemanticMemory:
         if len(words) < 3:
             return
 
+        # Never store relations where subject is a question/function word.
+        # "what is rest" → X=what is a question word → skip.
+        _QUESTION_SUBJECTS = {'what', 'who', 'how', 'why', 'when', 'where', 'which',
+                              'do', 'does', 'did', 'is', 'are', 'was', 'were',
+                              'can', 'will', 'would', 'could', 'should', 'may'}
+        if words[0] in _QUESTION_SUBJECTS:
+            return
+
         # "my name is X"
         if words[:3] == ['my', 'name', 'is'] and len(words) >= 4:
             name = words[3]
@@ -327,6 +332,17 @@ class SemanticMemory:
             self.store('me', name=name)
             self.store_relation('i', 'name', name)
             return
+
+        # "X because Y" — checked FIRST: more specific than "i am X" patterns.
+        # "i am afraid because danger" → effect='i am afraid', cause='danger'
+        if 'because' in words:
+            idx = words.index('because')
+            if idx > 0 and idx < len(words) - 1:
+                cause = ' '.join(words[idx+1:])
+                effect = ' '.join(words[:idx])
+                self.store_relation(effect, 'because', cause)
+                self.store_relation(cause, 'causes', effect)
+                return
 
         # "i am X" or "i feel X"
         if words[0] == 'i' and words[1] in ('am', 'feel') and len(words) >= 3:
@@ -352,13 +368,15 @@ class SemanticMemory:
             self.store_relation('i', 'hates', words[2])
             return
 
-        # "you like X" / "you hate X"
+        # "you like X" / "you hate X" — skip if object is question word
         if words[0] == 'you' and words[1] in ('like', 'hate') and len(words) >= 3:
-            self.store_relation('you', words[1], words[2])
+            if words[2] not in _QUESTION_SUBJECTS:
+                self.store_relation('you', words[1], words[2])
             return
 
         if words[0] == 'you' and words[1] == 'feel' and len(words) >= 3:
-            self.store_relation('you', 'feels', words[2])
+            if words[2] not in _QUESTION_SUBJECTS:
+                self.store_relation('you', 'feels', words[2])
             return
 
         # "remember X" — explicit memory command
@@ -366,16 +384,6 @@ class SemanticMemory:
             obj = ' '.join(words[1:])
             self.store_relation('memory', 'remember', obj)
             return
-
-        # "X because Y" — check BEFORE helps/hurts so "X hurts because Y" parses correctly
-        if 'because' in words:
-            idx = words.index('because')
-            if idx > 0 and idx < len(words) - 1:
-                cause = ' '.join(words[idx+1:])
-                effect = ' '.join(words[:idx])
-                self.store_relation(effect, 'because', cause)
-                self.store_relation(cause, 'causes', effect)
-                return
 
         # "X causes Y" / "X cause Y"
         if len(words) >= 3 and words[1] in ('causes', 'cause'):
@@ -412,7 +420,8 @@ class SemanticMemory:
 
     def save(self, path: str = 'semantic.json'):
         with open(path, 'w') as f:
-            json.dump({'facts': self._facts, 'relations': self._relations}, f)
+            json.dump({'facts': self._facts, 'relations': self._relations,
+                       'contradictions': self._contradictions}, f)
 
     @classmethod
     def load(cls, path: str = 'semantic.json') -> 'SemanticMemory':
@@ -422,6 +431,7 @@ class SemanticMemory:
                 d = json.load(f)
             obj._facts.update(d.get('facts', {}))
             obj._relations = d.get('relations', [])
+            obj._contradictions = d.get('contradictions', [])
         return obj
 
     def summary(self) -> str:

@@ -38,7 +38,7 @@ from vocab_core import VOCABULARY
 from m75_semantic import SemanticMemory
 from brain_modules import (WorkingMemory, EpisodicMemory, SelfModel,
                             CuriosityModule, NeuromodSystem, TemporalContext,
-                            PrefrontalCortex)
+                            PrefrontalCortex, LogicModule)
 
 BRAIN_FILE = 'brain_fast.pkl'
 SEMANTIC_FILE = 'semantic.json'
@@ -65,6 +65,17 @@ curiosity = CuriosityModule(n_neurons=5000)
 neuromod  = NeuromodSystem()
 temporal  = TemporalContext()
 pfc       = PrefrontalCortex()
+logic     = LogicModule()
+
+# Seed curiosity zone_counts with approximate World6 experience priors.
+# Brain experienced food/danger/rest/action heavily — those are NOT novel.
+# Social/water are genuinely least experienced → curiosity should target them.
+_WORLD6_ZONE_PRIORS = {
+    'food':   500, 'danger': 300, 'rest': 400,
+    'action': 350, 'pain':   200, 'water': 20, 'social': 5,
+}
+for _z, _cnt in _WORLD6_ZONE_PRIORS.items():
+    curiosity._zone_counts[_z] = _cnt
 
 # ── BMU → word map ────────────────────────────────────────────────────────────
 print("  Updating BMU→word map from clean MFCCs...", end='', flush=True)
@@ -85,7 +96,7 @@ _PAVLOV_MAP: dict[str, tuple[str, float]] = {
     'eat':    ('hunger',  +0.04),
     'hungry': ('hunger',  +0.08),
     'drink':  ('hunger',  +0.03),
-    'water':  ('hunger',  +0.03),
+    'water':  ('comfort', +0.03),
     'danger': ('fear',    +0.10),
     'afraid': ('fear',    +0.08),
     'hurt':   ('fear',    +0.06),
@@ -107,12 +118,15 @@ _PAVLOV_MAP: dict[str, tuple[str, float]] = {
 # can be used in future zone routing without retraining.
 _pending_unknown: str | None = None   # word brain just asked about
 _pending_unknown_turns: int  = 0      # turns since question was asked (auto-reset)
+_awaiting_resolution: bool  = False   # Phase 3: brain asked a question, waiting for answer
 
 _SKIP_TOKENS = {'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for',
                 'it', 'this', 'that', 'they', 'he', 'she', 'was', 'are',
                 'with', 'from', 'by', 'do', 'did', 'does', 'have', 'has',
                 'okay', 'ok', 'fine', 'well', 'great', 'sure', 'please',
-                'just', 'really', 'very', 'much', 'also', 'still', 'ever'}
+                'just', 'really', 'very', 'much', 'also', 'still', 'ever',
+                # Zone names that aren't in VOCABULARY but brain "knows" experientially
+                'rest', 'action', 'social', 'zone', 'feel', 'feeling', 'think', 'thinking'}
 
 def _synthesize_vocab_entry(word: str, definition_tokens: list[str]) -> bool:
     """Average known word vectors from definition → add word to VOCABULARY."""
@@ -175,7 +189,7 @@ ZONE_EXPRESSION = {
     'pain':   ['stop', 'hurt', 'pain', 'bad', 'no', 'cold'],
     'rest':   ['sleep', 'calm', 'tired', 'warm', 'awake', 'safe', 'alive', 'plant', 'tree', 'grass', 'sun', 'green'],
     'action': ['go', 'open', 'move', 'push', 'door', 'button', 'come', 'wind', 'air', 'sky'],
-    'social': ['hello', 'hi', 'happy', 'help', 'yes', 'know', 'sorry', 'like', 'pranay'],
+    'social': ['hello', 'hi', 'happy', 'help', 'yes', 'know', 'sorry', 'like', 'pranay', 'search'],
     'danger': ['afraid', 'careful', 'run', 'danger'],
 }
 
@@ -295,7 +309,8 @@ INTENT_SPECS = {
     },
 }
 
-_ZONE_NEUTRAL = {'i', 'me', 'you', 'we', 'and', 'is', 'am', 'not', 'now', 'here'}
+_ZONE_NEUTRAL = {'i', 'me', 'you', 'we', 'and', 'is', 'am', 'not', 'now', 'here',
+                 'very', 'little'}
 _HOLLOW = {'i', 'me', 'we', 'you', 'and', 'is', 'not',
            'why', 'how', 'what', 'when', 'where', 'who', 'which',
            'because', 'so', 'then', 'cause'}
@@ -383,92 +398,13 @@ def _template_allowed(template_words: list[str], zone: str, avoid: set[str]) -> 
         return None
     return resp
 
-
-def _self_report(heard_words: list[str], zone: str,
-                 raw_tokens: list[str] | None = None) -> str | None:
-    """
-    Build grammatical self-report from live SelfModel state — NOT from memorized patterns.
-
-    "i" = brain has a self-model and IS the agent.
-    "am" = copula — current state, not past or future.
-    state word = dominant_state() — whatever drive is highest RIGHT NOW.
-
-    Only fires on explicit state queries ("how are you", "are you okay", "you feel").
-    All other inputs fall through to Word TP — brain doesn't narrate its state
-    unless directly asked.
-    """
-    if 'i' not in VOCABULARY or 'am' not in VOCABULARY:
-        return None
-
-    # Explicit self-query only: "how are you", "are you okay", "you feel", "you okay"
-    # Use raw_tokens (unfiltered) so question words like "how"/"are" are visible.
-    all_tokens = set(raw_tokens) if raw_tokens else set(heard_words)
-    is_self_query = 'you' in all_tokens and (
-        'how' in all_tokens or 'are' in all_tokens
-        or 'feel' in all_tokens or 'okay' in all_tokens
-        or 'well' in all_tokens)
-    if not is_self_query:
-        return None
-
-    # State from live drives — read right now, not memorized
-    dom = selfmodel.dominant_state()
-    dom_word_map = {
-        'afraid':  'afraid',
-        'hungry':  'hungry',
-        'tired':   'tired',
-        'content': 'calm',
-        'calm':    'calm',
-        'curious': 'awake',
-    }
-    state_word = dom_word_map.get(dom, 'calm')
-    if state_word not in VOCABULARY:
-        return None
-
-    # "i am [state]" frame — structure from self-knowledge
-    frame = ['i', 'am', state_word]
-
-    # Word TP adds ONE goal word — what brain wants given this state
-    tp_context = [state_word] + [w for w in heard_words if w in VOCABULARY][:2]
-    tp_words = brain.word_tp_generate(tp_context, max_len=3,
-                                      temperature=neuromod.temperature())
-    zone_ok = set(ZONE_EXPRESSION.get(zone, []))
-    goal = next((w for w in tp_words
-                 if w in VOCABULARY and w in zone_ok
-                 and w not in frame and w not in _HOLLOW), None)
-    if goal:
-        frame.append(goal)
-
-    return ' '.join(frame)
-
-
 def _relation_response(tokens: list[str]) -> str | None:
     """
-    Answer direct factual/self-state queries from semantic relation memory.
-    Falls back to the current self-model for feelings/wants/needs when no
-    taught relation exists yet.
+    Answer factual queries from semantic memory (names, X is Y, causal chains).
+    State queries (feel/want/need/like/hate) return None — routed to generate_response
+    which reads live SelfModel drives instead of stored snapshots.
     """
-    answer = semantic.find_relation_answer(tokens)
-    if answer is not None:
-        return answer
-
-    if tokens in (['how', 'do', 'you', 'feel'], ['what', 'do', 'you', 'feel']):
-        words = selfmodel.state_words()
-        if words:
-            return f"i feel {words[0]}"
-
-    if tokens == ['what', 'do', 'you', 'want']:
-        goal_words = pfc.get_goal_seeds()
-        for word in goal_words:
-            if word not in {'want', 'need'}:
-                return f"i want {word}"
-
-    if tokens == ['what', 'do', 'you', 'need']:
-        goal_words = pfc.get_goal_seeds()
-        for word in goal_words:
-            if word not in {'want', 'need'}:
-                return f"i need {word}"
-
-    return None
+    return semantic.find_relation_answer(tokens)
 
 
 def _resolve_zone(heard_words: list[str], heard_bmus: list[int]) -> str:
@@ -566,6 +502,36 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
         _last_zone = zone
         seeds = [w for w in ZONE_EXPRESSION[zone] if w in VOCABULARY]
 
+        # Social zone: brain discloses current internal state — no question detection.
+        # Uncertainty state surfaces as 'search'/'what' seeds, not hardcoded responses.
+        if zone == 'social':
+            s = selfmodel._state
+            dom = selfmodel.dominant_state()
+            _dom_map = {
+                'uncertain': ('search', 'uncertainty'),
+                'afraid':    ('afraid', 'fear'),
+                'hungry':    ('hungry', 'hunger'),
+                'tired':     ('tired',  'fatigue'),
+                'content':   ('calm',   'comfort'),
+                'calm':      ('calm',   'comfort'),
+                'curious':   ('awake',  'curiosity'),
+            }
+            sw, dk = _dom_map.get(dom, ('calm', 'comfort'))
+            dv = s.get(dk, 0.5)
+            if dom == 'uncertain':
+                # Uncertainty replaces social seeds entirely so 'search'/'what'/'know'
+                # aren't drowned by 'hello'/'hi'/'happy' in WordTP context.
+                seeds = [w for w in ['search', 'what', 'know'] if w in VOCABULARY]
+            else:
+                state_seeds = [w for w in ['i', 'am'] if w in VOCABULARY]
+                if dv >= 0.85 and 'very' in VOCABULARY:
+                    state_seeds.append('very')
+                elif dv < 0.50 and 'little' in VOCABULARY:
+                    state_seeds.append('little')
+                if sw in VOCABULARY:
+                    state_seeds.append(sw)
+                seeds = state_seeds + seeds
+
         # Environmental word overrides: when input is a nature/env word, prepend
         # env-specific seeds so Word TP produces plant/water words not sleep/tired.
         _ENV_VEGETATION = {'plant', 'tree', 'grass', 'green', 'sun', 'warm'}
@@ -599,6 +565,16 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
                 seeds = [w for w in ['learn', 'think', 'know', 'feel']
                          if w in VOCABULARY] + seeds
                 zone = 'social'
+
+    # Phase 2 — WM Seeking: uncertainty is active and brain is looking for resolution.
+    if wm._seeking:
+        seek_words = [w for w in ['what', 'search', 'know'] if w in VOCABULARY]
+        seeds = seek_words + seeds
+
+    # Logic inference: drive + percept + 2-hop relation chains → conclusion words.
+    # Conclusions prepend to seeds so WordTP expresses reasoned intent, not just zone reflex.
+    logic_words = logic.infer(selfmodel, semantic, zone, heard_words, set(VOCABULARY))
+    seeds = logic_words + seeds
 
     # PFC goal appends urgency words IF they belong to the same zone.
     # PFC never replaces zone seeds — it only reinforces them when relevant.
@@ -685,7 +661,9 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
                 return resp
 
     # Fall back to zone seeds directly (always zone-correct, always meaningful)
-    available = [w for w in seeds if w in brain.word_to_bmu and w not in _HOLLOW]
+    # When seeking, 'what'/'search' are allowed even if in _HOLLOW — they carry meaning.
+    _hollow_filter = (_HOLLOW - {'what', 'search'}) if wm._seeking else _HOLLOW
+    available = [w for w in seeds if w in brain.word_to_bmu and w not in _hollow_filter]
     return ' '.join(available[:3]) if available else ''
 
 
@@ -752,6 +730,9 @@ def apply_feedback(positive: bool):
         return
 
     if positive:
+        # Phase 2: positive reward resolves WM seeking and uncertainty tension
+        wm.resolve_seeking()
+        selfmodel.resolve_uncertainty(reward=1.0)
         # Replay last response with reward so those word→BMU transitions strengthen
         hear_own_response(_last_response_words, reward=1.0)
         # Feed positive chain through SOM — grounds 'good' near happy/calm
@@ -783,6 +764,7 @@ def apply_feedback(positive: bool):
 
 def main():
     global _total_turns, _last_response_words, _last_heard_bmus, _IMAGINATION_ENABLED
+    global _awaiting_resolution
 
     print("\n" + "=" * 55)
     print("  FAST BRAIN — grounded vocabulary")
@@ -817,7 +799,9 @@ def main():
     _drive_last_voiced: dict[str, float] = {
         'hunger': 0.0, 'fatigue': 0.0, 'fear': 0.0
     }
-    _DRIVE_COOLDOWN = 30.0   # minimum seconds between same drive expression
+    _DRIVE_COOLDOWN   = 90.0   # minimum seconds between same drive expression
+    _last_curious_t   = 0.0    # last time curiosity question was asked
+    _CURIOUS_COOLDOWN = 60.0   # ask at most once per minute
     try:
         while True:
             try:
@@ -868,6 +852,26 @@ def main():
                         print(f"[brain]: {' '.join(_drive_chain)}")
                         sys.stdout.write("you: ")
                         sys.stdout.flush()
+                elif now_t - _last_curious_t > _CURIOUS_COOLDOWN and silence_s > 20.0:
+                    # No strong drive — curiosity surfaces instead.
+                    # Brain generates from least-visited zone seeds (not "what is X" template).
+                    c_words = curiosity.curiosity_words(ZONE_ANCHORS,
+                                                        getattr(brain, 'word_to_bmu', {}))
+                    if c_words:
+                        _last_curious_t = now_t
+                        # Generate expression from curiosity seeds + 'what' as opener
+                        c_seeds = [w for w in ['what'] + c_words if w in VOCABULARY]
+                        c_expr = brain.word_tp_generate(c_seeds, max_len=4,
+                                                        temperature=neuromod.temperature())
+                        if c_expr:
+                            c_out = ' '.join(c_expr[:3])
+                        else:
+                            c_out = ' '.join(c_words[:2])
+                        with print_lock:
+                            sys.stdout.write("\r\033[K")
+                            print(f"[brain]: {c_out}")
+                            sys.stdout.write("you: ")
+                            sys.stdout.flush()
 
                 # Drive monologue: only after 15s silence, once per new goal
                 # Imagination: only after 30s silence, once per 27s
@@ -907,7 +911,8 @@ def main():
                 elif cmd == 'state':
                     print(brain.status())
                     print(f"  Semantic facts: {len(semantic._facts)}")
-                    print(f"  Relation memory: {semantic.relation_count()}")
+                    print(f"  Relation memory: {semantic.relation_count()}  "
+                          f"contradictions: {semantic.contradiction_count()}")
                     for rel in semantic.recent_relations(5):
                         print(f"    {rel['subject']} -{rel['relation']}-> {rel['object']}"
                               f" [{rel['source']}]")
@@ -921,6 +926,7 @@ def main():
                     print(f"  Curiosity:     least zone = {curiosity.least_visited_zone(list(ZONE_ANCHORS.keys()))}")
                     print(f"  Temporal:      turn={temporal._turn}  phase={temporal.session_phase()}")
                     print(f"  Episodes:      {episodic.count()} recorded")
+                    print(f"  {logic.explain()}")
 
                 elif cmd == 'zones':
                     print("  Zone centers (SOM row, col):")
@@ -984,6 +990,18 @@ def main():
 
             heard_words = [w for w in tokens if w in VOCABULARY]
 
+            # ── Phase 3: Resolution check ─────────────────────────────────
+            # If brain was awaiting resolution from a prior question,
+            # and user now says content words → reward fires (felt resolution).
+            if _awaiting_resolution and heard_words:
+                content_words = [w for w in heard_words if w not in _HOLLOW and w not in _ZONE_NEUTRAL]
+                if content_words:
+                    # User answered something — reward the prior question turn
+                    brain.step(reward=0.8)
+                    selfmodel.resolve_uncertainty(reward=0.8)
+                    wm.resolve_seeking()
+                    _awaiting_resolution = False
+
             # ── Pavlovian conditioning: heard words nudge drive state ──────
             s = selfmodel._state
             for w in heard_words:
@@ -991,8 +1009,17 @@ def main():
                     drive, delta = _PAVLOV_MAP[w]
                     s[drive] = max(0.0, min(1.0, s[drive] + delta))
 
-            # ── Semantic learning ─────────────────────────────────────────
+            # ── Semantic learning + contradiction detection ───────────────
+            prev_n = semantic.contradiction_count()
             semantic.learn_from_sentence(tokens)
+            if semantic.contradiction_count() > prev_n:
+                conflict = semantic.recent_contradictions(1)[0]
+                with print_lock:
+                    sys.stdout.write("\r\033[K")
+                    print(f"[brain-conflict]: {conflict['subject']} {conflict['relation']} "
+                          f"'{conflict['stored']}' but now '{conflict['new']}' — wrong?")
+                    sys.stdout.write("you: ")
+                    sys.stdout.flush()
 
             # ── Active vocabulary acquisition ─────────────────────────────
             global _pending_unknown, _pending_unknown_turns
@@ -1031,12 +1058,11 @@ def main():
                 _pending_unknown = _unknown_found
                 _pending_unknown_turns = 0
                 response = f"what is {_unknown_found}"
+                # Phase 2: brain just asked about unknown word → enter seeking
+                wm.enter_seeking()
+                selfmodel.spike_uncertainty(magnitude=0.5)
             else:
                 response = _relation_response(tokens)
-                if response is None:
-                    # Detect current zone to give _self_report context
-                    _current_zone = _resolve_zone(heard_words, _last_heard_bmus)
-                    response = _self_report(heard_words, _current_zone, tokens)
                 if response is None:
                     response = generate_response(_last_heard_bmus, heard_words,
                                                  raw_tokens=tokens)
@@ -1047,6 +1073,10 @@ def main():
                     sys.stdout.flush()
                 response_words = response.split()
                 _last_response_words = response_words
+
+                # Phase 3: mark awaiting resolution when brain asks/seeks
+                if response_words and response_words[0] in ('what', 'search', 'know'):
+                    _awaiting_resolution = True
 
                 hear_own_response(response_words, reward=0.0)
 
@@ -1069,8 +1099,15 @@ def main():
             # Module updates — order matters
             heard_bmu = _last_heard_bmus[0] if _last_heard_bmus else 0
             novelty   = curiosity.novelty_score(heard_bmu)
-            surprise  = abs(novelty - 0.5)  # proxy: very novel OR very familiar = surprise
+            surprise  = abs(novelty - 0.5)
 
+            # Spike uncertainty when input lands on genuinely unknown BMU.
+            # This is the felt gap — brain encounters something it hasn't mapped yet.
+            # Novelty tracked for neuromod but does NOT spike uncertainty.
+            # Session-start novelty (all BMU counts=0) is not epistemic uncertainty.
+            # Uncertainty spikes only from actual unknown words (_unknown_found path).
+
+            wm.tick_seeking()
             wm.update(bmu=heard_bmu, heard_words=heard_words,
                       word_to_bmu=getattr(brain, 'word_to_bmu', {}))
 

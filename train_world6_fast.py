@@ -507,11 +507,26 @@ def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
             [0.0,   0.05, 0.1],
             grid_mfcc, BLEND)
 
-    # ── Prediction error → wrong → no → new (expectation violated → reorient)
-    if info.get('is_surprise') and rng.random() < 0.4:
+    # ── Prediction error → felt gap in knowledge (epistemic tension)
+    # 'what' grounded here: brain expected reward, got none → uncertainty spike
+    # 'search' = active seeking to resolve the gap
+    # 'know'/'good' = resolution when gap closes (food found after surprise)
+    if info.get('is_surprise'):
+        if rng.random() < 0.5:
+            bmus += feed_sequence(brain,
+                ['what', 'search', 'wrong'],
+                [-0.1,   0.0,      0.0],    # negative — gap is aversive
+                grid_mfcc, BLEND)
+        else:
+            bmus += feed_sequence(brain,
+                ['wrong', 'search', 'what'],
+                [0.0,     0.0,      -0.1],
+                grid_mfcc, BLEND)
+    # Resolution: food found after wandering (hunger was high, now eating)
+    if info.get('is_satiated') and rng.random() < 0.3:
         bmus += feed_sequence(brain,
-            ['wrong', 'no',  'new'],
-            [0.0,     0.0,   0.05],
+            ['know', 'good', 'full'],
+            [0.3,    0.4,    0.5],          # positive — gap resolved
             grid_mfcc, BLEND)
 
     # ── Environmental sensory grounding ───────────────────────────────────────

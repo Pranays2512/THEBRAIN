@@ -87,8 +87,12 @@ VOCABULARY['hurts']    = _w([-0.7,  0.4,  0.0,  0.7,  0.5,  0.5,  0.0, -0.1,  0.
 VOCABULARY['pranay']   = _w([ 0.3,  0.2,  0.0,  0.6,  0.3,  0.3,  0.1,  0.2,  0.0,  0.2,  0.2,  0.0], 3)
 
 # ── Causal / connective words — cognitive zone (close to think/learn on SOM) ───
-# why:     questioning — neutral valence, low arousal, inquisitive
-VOCABULARY['why']      = _w([ 0.0, -0.1,  0.0,  0.4,  0.0,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
+# ── Epistemic words — grounded in uncertainty/prediction-error experience ────
+# 'what': felt gap in knowledge — negative valence (tension), high novelty dim
+# NOT a grammar token. Grounded to surprise events in World6 training.
+VOCABULARY['what']     = _w([-0.2,  0.5,  0.0,  0.3, -0.3,  0.5,  0.1,  0.1,  0.8,  0.2,  0.5,  0.0], 2)
+# why:     deeper questioning — sustained low arousal tension, inquisitive
+VOCABULARY['why']      = _w([-0.1,  0.2,  0.0,  0.4, -0.2,  0.4,  0.1,  0.2,  0.7,  0.2,  0.4,  0.0], 2)
 # because: explanatory — slight positive valence (explanations feel satisfying)
 VOCABULARY['because']  = _w([ 0.1,  0.0,  0.0,  0.5,  0.1,  0.3,  0.1,  0.2,  0.0,  0.3,  0.1,  0.0], 2)
 # so:      consequence marker — mild positive, lower arousal than because
@@ -129,6 +133,12 @@ VOCABULARY['cold']   = _w([-0.3, -0.3,  0.0,  0.8,  0.5,  0.3,  0.0,  0.0,  0.1,
 VOCABULARY['warm']   = _w([ 0.7,  0.1,  0.3,  0.5,  0.3,  0.2,  0.0,  0.0,  0.0,  0.1,  0.5,  0.0,  0.2,  0.1,  0.9,  0.1], 3)
 # Sun/light — high temperature, open sky
 VOCABULARY['sun']    = _w([ 0.8,  0.2,  0.0,  0.9,  0.6,  0.4,  0.1,  0.0,  0.3,  0.1,  0.0,  0.1,  0.1,  0.0,  1.0,  0.3], 3)
+
+# ── Intensity words — graded in drive magnitude, not taught as text patterns ──
+# 'very':   high arousal amplifier — strong positive valence, high activation
+VOCABULARY['very']   = _w([ 0.3,  0.8,  0.0,  0.5,  0.3,  0.9,  0.0,  0.3,  0.1,  0.3,  0.0,  0.0], 1)
+# 'little': low arousal diminutive — mild, low intensity, calm
+VOCABULARY['little'] = _w([ 0.1, -0.4,  0.0,  0.4,  0.3, -0.5,  0.0,  0.1,  0.2,  0.1,  0.0,  0.0], 1)
 
 # ── Grammar function words — agent structure ──────────────────────────────────
 # 'i': first-person agent — self-reference, social zone, high agency dim

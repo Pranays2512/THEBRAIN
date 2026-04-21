@@ -10,7 +10,8 @@
       "Bash(python -c \"from m66_neuromod import NeuromodState; from brain import Brain; print\\('imports OK'\\)\")",
       "Bash(python -c ':*)",
       "Bash(python lang_test.py)",
-      "Bash(python speech_learn_test.py)"
+      "Bash(python speech_learn_test.py)",
+      "Bash(python -c *)"
     ]
   }
 }
