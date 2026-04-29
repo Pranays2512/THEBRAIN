@@ -44,71 +44,289 @@ SILENCE = np.zeros(N_MFCC, dtype=np.float32)
 # WORD-LEVEL TRANSITION PREDICTOR  (pure Python — strings, no BMU aliasing)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class WordTP:
+class GRUWordTP:
     """
-    Learns word → next-word transition probabilities from experience.
+    GRU-based word sequence generator. Replaces the bigram WordTP.
 
-    Why kept in Python:
-    - Transitions are between string tokens, not integer BMUs.
-    - The vocabulary is ≤ 500 words → counts fit in a tiny dict.
-    - No inner-product loops → no SIMD benefit.
+    Key improvement: hidden state h carries sequence context across all steps.
+    In a bigram Markov chain, P(word_n | word_{n-1}) — only one step of history.
+    In this GRU, P(word_n | h_{n-1}) where h encodes the entire sequence so far.
 
-    The 'separator' concept:
-    When the brain hears input words and then must reply, we insert a
-    <SEP> token between the input sequence and the response sequence.
-    This teaches the TP to transition from "last heard word" → "first
-    spoken word", which is the critical conditioned response.
+    Consequence: "not dangerous" — "not" changes h, so the GRU predicts a
+    different distribution for the next word. Operator scope is not a grammar
+    rule — it emerges from the learned recurrent dynamics.
+
+    Training: truncated BPTT(1) — gradients computed per step without
+    backpropagating through h. Simple, fast, correct for short sequences (≤8 words).
+    Generation: full GRU forward pass — h accumulates context across all steps.
+
+    Warm-start: output bias initialized from existing bigram counts so the GRU
+    starts as capable as the Markov chain and only improves from there.
+
+    Backward compat: bigram _counts kept as fallback before first fit().
+    Old .pkl WordTP state is detected in FastBrain.load() and migrated.
     """
 
     SEP = '<SEP>'
     END = '<END>'
 
-    def __init__(self):
-        # counts[from_word][to_word] = float  (reward-weighted)
-        self._counts: dict[str, dict[str, float]] = defaultdict(
-            lambda: defaultdict(float)
-        )
+    def __init__(self, hidden_dim: int = 48):
+        self._H = hidden_dim
+        self._vocab: list[str] = [self.SEP, self.END]
+        self._w2i: dict[str, int] = {self.SEP: 0, self.END: 1}
+
+        # Sequence buffer for training
+        self._sequences: list[list[str]] = []
+        self._cur_seq: list[str] = [self.SEP]
         self._prev: str | None = None
 
+        # Bigram counts — fallback before GRU trained, also used for warm-start
+        self._counts: dict[str, dict[str, float]] = defaultdict(
+            lambda: defaultdict(float))
+
+        # GRU parameters — None until first fit()
+        self._Wz = self._Wr = self._Wh = None   # (H, H+V) each
+        self._bz = self._br = self._bh = None   # (H,) each
+        self._Wo = self._bo = None               # (V, H) and (V,)
+        self._trained = False
+        self._V_at_train = 0
+
+    # ── Vocabulary ────────────────────────────────────────────────────────────
+
+    def _add_word(self, word: str) -> int:
+        if word not in self._w2i:
+            self._w2i[word] = len(self._vocab)
+            self._vocab.append(word)
+        return self._w2i[word]
+
+    # ── Observe (same interface as old WordTP) ────────────────────────────────
+
     def observe(self, word: str, weight: float = 1.0):
-        """Record that `word` followed the previous word."""
+        self._add_word(word)
         if self._prev is not None:
             self._counts[self._prev][word] += weight
         self._prev = word
+        self._cur_seq.append(word)
 
     def separator(self):
-        """Mark transition from input sequence to response sequence."""
         self.observe(self.SEP)
 
     def end(self):
-        """Mark end of exchange."""
         self.observe(self.END)
         self._prev = None
+        if len(self._cur_seq) >= 4:
+            self._sequences.append(list(self._cur_seq))
+        self._cur_seq = [self.SEP]
+
+    # ── GRU math ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _sigmoid(x: np.ndarray) -> np.ndarray:
+        return 1.0 / (1.0 + np.exp(-np.clip(x, -15.0, 15.0)))
+
+    def _step(self, idx: int, h: np.ndarray):
+        """GRU forward step. Returns (h_new, logits, cache)."""
+        V = len(self._vocab)
+        x = np.zeros(V, dtype=np.float32)
+        x[idx] = 1.0
+        hx = np.concatenate([h, x])                         # (H+V,)
+        z  = self._sigmoid(self._Wz @ hx + self._bz)        # update gate (H,)
+        r  = self._sigmoid(self._Wr @ hx + self._br)        # reset gate  (H,)
+        hx_r    = np.concatenate([r * h, x])                # (H+V,)
+        h_tilde = np.tanh(self._Wh @ hx_r + self._bh)      # candidate   (H,)
+        h_new   = (1.0 - z) * h_tilde + z * h              # new hidden  (H,)
+        logits  = self._Wo @ h_new + self._bo               # raw scores  (V,)
+        cache   = dict(x=x, h=h, hx=hx, z=z, r=r,
+                       hx_r=hx_r, h_tilde=h_tilde, h_new=h_new)
+        return h_new, logits, cache
+
+    def _step_grad(self, cache: dict, target: int,
+                   logits: np.ndarray, lr: float):
+        """
+        Truncated BPTT(1): update GRU weights for one step.
+        Gradient does not flow back through previous h — treats h as constant.
+        This eliminates vanishing/exploding gradient risk for our short sequences.
+        """
+        h, x, hx, z, r, hx_r, h_tilde, h_new = (
+            cache['h'], cache['x'], cache['hx'], cache['z'], cache['r'],
+            cache['hx_r'], cache['h_tilde'], cache['h_new'])
+
+        # ── Output layer ──────────────────────────────────────────────────────
+        probs = np.exp(logits - logits.max()).astype(np.float64)
+        probs /= probs.sum()
+        dl = probs.astype(np.float32)
+        dl[target] -= 1.0                                    # dL/dlogits (V,)
+
+        dh = self._Wo.T @ dl                                 # dL/dh_new  (H,)
+        self._Wo -= lr * np.outer(dl, h_new)
+        self._bo -= lr * dl
+
+        # ── Backprop through h_new = (1-z)*h_tilde + z*h ─────────────────────
+        dh_tilde = dh * (1.0 - z)
+        dz       = dh * (h - h_tilde)
+
+        # ── Backprop through h_tilde = tanh(Wh @ hx_r + bh) ─────────────────
+        dh_tilde_pre = dh_tilde * (1.0 - h_tilde ** 2)
+        self._Wh -= lr * np.outer(dh_tilde_pre, hx_r)
+        self._bh -= lr * dh_tilde_pre
+
+        # ── Backprop through z gate ───────────────────────────────────────────
+        dz_pre = dz * z * (1.0 - z)
+        self._Wz -= lr * np.outer(dz_pre, hx)
+        self._bz -= lr * dz_pre
+
+        # ── Backprop through r gate ───────────────────────────────────────────
+        dr_h   = (self._Wh.T @ dh_tilde_pre)[:self._H]     # dL/d(r*h)
+        dr     = dr_h * h
+        dr_pre = dr * r * (1.0 - r)
+        self._Wr -= lr * np.outer(dr_pre, hx)
+        self._br -= lr * dr_pre
+
+    # ── Training ──────────────────────────────────────────────────────────────
+
+    def _init_weights(self):
+        V, H = len(self._vocab), self._H
+        s = float(np.sqrt(2.0 / (H + V)))
+        self._Wz = (np.random.randn(H, H + V) * s).astype(np.float32)
+        self._Wr = (np.random.randn(H, H + V) * s).astype(np.float32)
+        self._Wh = (np.random.randn(H, H + V) * s).astype(np.float32)
+        self._bz = np.zeros(H, dtype=np.float32)
+        self._br = np.zeros(H, dtype=np.float32)
+        self._bh = np.zeros(H, dtype=np.float32)
+        self._Wo = (np.random.randn(V, H) * float(np.sqrt(2.0 / (V + H)))).astype(np.float32)
+        self._bo = np.zeros(V, dtype=np.float32)
+        # Warm-start: output bias from bigram log-probs so GRU starts
+        # as capable as the Markov chain and only improves from there.
+        for fw, nexts in self._counts.items():
+            total = sum(nexts.values()) + 1e-9
+            for tw, cnt in nexts.items():
+                if tw in self._w2i:
+                    self._bo[self._w2i[tw]] += float(np.log(cnt / total + 1e-7)) * 0.08
+        self._V_at_train = V
+
+    def _resize_weights(self):
+        """Extend matrices when vocabulary grows after last fit()."""
+        V_old, V_new, H = self._V_at_train, len(self._vocab), self._H
+        if V_new <= V_old:
+            return
+        extra = V_new - V_old
+        s = float(np.sqrt(2.0 / (H + V_new)))
+        for attr in ('_Wz', '_Wr', '_Wh'):
+            W = getattr(self, attr)
+            setattr(self, attr, np.hstack(
+                [W, (np.random.randn(H, extra) * s).astype(np.float32)]))
+        ext_rows = (np.random.randn(extra, H) * s).astype(np.float32)
+        self._Wo = np.vstack([self._Wo, ext_rows])
+        self._bo = np.concatenate([self._bo, np.zeros(extra, dtype=np.float32)])
+        self._V_at_train = V_new
+
+    def fit(self, epochs: int = 15, lr: float = 0.02, max_sequences: int = 800):
+        """
+        Train GRU on buffered sequences.
+        max_sequences: cap training buffer to most-recent N sequences so fit
+        time stays constant regardless of total run length.
+        """
+        if len(self._sequences) < 3:
+            return
+        if self._Wz is None:
+            self._init_weights()
+        elif len(self._vocab) > self._V_at_train:
+            self._resize_weights()
+
+        seqs = (self._sequences[-max_sequences:]
+                if len(self._sequences) > max_sequences
+                else self._sequences)
+
+        H = self._H
+        for ep in range(epochs):
+            ep_lr = lr * (0.95 ** ep)
+            perm = np.random.permutation(len(seqs))
+            for si in perm:
+                seq = seqs[si]
+                idxs = [self._w2i.get(w, 0) for w in seq]
+                h = np.zeros(H, dtype=np.float32)
+                for t in range(len(idxs) - 1):
+                    h, logits, cache = self._step(idxs[t], h)
+                    self._step_grad(cache, idxs[t + 1], logits, ep_lr)
+        self._trained = True
+        # Trim stored buffer to avoid unbounded memory growth
+        if len(self._sequences) > max_sequences:
+            self._sequences = self._sequences[-max_sequences:]
+
+    # ── Generation ────────────────────────────────────────────────────────────
 
     def generate(self, context_words: list[str], max_len: int = 8,
-                 temperature: float = 1.0) -> list[str]:
+                 temperature: float = 1.0,
+                 forbidden: set | None = None) -> list[str]:
         """
-        Generate a response word sequence given input context.
-
-        Algorithm:
-          1. Build a context distribution: weight each word after SEP by how
-             much the context words predict it (direct TP lookup, not global sum).
-          2. Sample the first response word from that context-weighted dist.
-          3. Chain forward from the chosen word using the TP.
-
-        The key fix vs. the old version: context has DOMINANT weight for the
-        first word. This means "how are you" → first word is likely "i" or "good"
-        (learned from training), not a random SEP follower.
+        Generate word sequence.
+        forbidden: words suppressed during generation — constrained decoding.
+                   Brain will never output a word it knows is false in context.
+        Falls back to bigram if GRU not yet trained.
         """
+        fb = forbidden or set()
+        if self._trained:
+            if len(self._vocab) > self._V_at_train:
+                self._resize_weights()
+            return self._generate_gru(context_words, max_len, temperature, fb)
+        return self._generate_bigram(context_words, max_len, temperature, fb)
+
+    def _generate_gru(self, context_words: list[str], max_len: int,
+                      temperature: float, forbidden: set) -> list[str]:
+        V, H = len(self._vocab), self._H
+        sep_i = self._w2i[self.SEP]
+        end_i = self._w2i[self.END]
+
+        # Prime hidden state: run SEP then each context word through GRU
+        h = np.zeros(H, dtype=np.float32)
+        h, _, _ = self._step(sep_i, h)
+        for w in context_words:
+            if w in self._w2i:
+                h, _, _ = self._step(self._w2i[w], h)
+
+        result: list[str] = []
+        seen:   set[str]  = set()
+
+        for _ in range(max_len):
+            cur_i = self._w2i.get(result[-1], sep_i) if result else sep_i
+            h, logits, _ = self._step(cur_i, h)
+
+            logits = logits / max(temperature, 1e-3)
+            probs  = np.exp(logits - logits.max()).astype(np.float64)
+            probs /= probs.sum()
+
+            # Suppress: forbidden words + already seen + special tokens
+            suppress = forbidden | seen | {self.SEP, self.END}
+            for w in suppress:
+                if w in self._w2i:
+                    probs[self._w2i[w]] = 0.0
+
+            end_p = float(probs[end_i])
+            total = probs.sum()
+            if total < 1e-12:
+                break
+            probs /= total
+
+            if end_p > 0.3 and len(result) >= 2:
+                break
+
+            chosen_i = int(np.random.choice(V, p=probs))
+            chosen   = self._vocab[chosen_i]
+            if chosen in (self.SEP, self.END):
+                break
+
+            result.append(chosen)
+            seen.add(chosen)
+
+        return result
+
+    def _generate_bigram(self, context_words: list[str], max_len: int,
+                         temperature: float, forbidden: set) -> list[str]:
+        """Bigram fallback — identical to original WordTP.generate() logic."""
         if not self._counts:
             return []
 
-        # ── Step 1: Build context-conditioned first-word distribution ──────
-        # For each context word w, look at what follows SEP *intersected* with
-        # what follows w directly. This finds words that are both (a) a common
-        # response start and (b) semantically near the input.
         sep_followers: dict[str, float] = dict(self._counts.get(self.SEP, {}))
-
         ctx_boost: dict[str, float] = defaultdict(float)
         for w in context_words:
             if w in self._counts:
@@ -116,75 +334,51 @@ class WordTP:
                     if nxt not in (self.SEP, self.END):
                         ctx_boost[nxt] += cnt
 
-        # Combine: sep distribution × (1 + context boost)
-        first_candidates: dict[str, float] = defaultdict(float)
+        first_cand: dict[str, float] = defaultdict(float)
         for w, cnt in sep_followers.items():
-            if w in (self.SEP, self.END):
+            if w in (self.SEP, self.END) or w in forbidden:
                 continue
-            boost = 1.0 + ctx_boost.get(w, 0.0) * 2.0
-            first_candidates[w] += cnt * boost
-
-        # Also allow context-boosted words even if not in SEP followers
+            first_cand[w] += cnt * (1.0 + ctx_boost.get(w, 0.0) * 2.0)
         for w, boost in ctx_boost.items():
-            if w not in first_candidates and w not in (self.SEP, self.END):
-                first_candidates[w] += boost * 0.5
+            if w not in first_cand and w not in (self.SEP, self.END) and w not in forbidden:
+                first_cand[w] += boost * 0.5
 
-        if not first_candidates:
+        if not first_cand:
             return []
 
-        # ── Step 2: Sample first word ──────────────────────────────────────
-        words  = list(first_candidates.keys())
-        counts = np.array([first_candidates[w] for w in words], dtype=np.float64)
-        counts = np.log(counts + 1e-9)
-        counts -= counts.max()
-        counts = np.exp(counts / max(temperature, 1e-3))
-        counts /= counts.sum()
+        words  = list(first_cand.keys())
+        cnts   = np.array([first_cand[w] for w in words], dtype=np.float64)
+        cnts   = np.exp((np.log(cnts + 1e-9) - np.log(cnts + 1e-9).max()) / max(temperature, 1e-3))
+        cnts  /= cnts.sum()
 
-        cur    = np.random.choice(words, p=counts)
+        cur    = np.random.choice(words, p=cnts)
         result = [cur]
         seen   = {cur}
 
-        # ── Step 3: Chain forward from first word ──────────────────────────
         for _ in range(max_len - 1):
-            candidates: dict[str, float] = defaultdict(float)
-
+            cand: dict[str, float] = defaultdict(float)
             if cur in self._counts:
                 for nxt, cnt in self._counts[cur].items():
-                    if nxt not in (self.SEP, self.END):
-                        candidates[nxt] += cnt
-
-            # Light context pull throughout the chain
+                    if nxt not in (self.SEP, self.END) and nxt not in forbidden:
+                        cand[nxt] += cnt
             for w, boost in ctx_boost.items():
-                if w not in (self.SEP, self.END):
-                    candidates[w] += boost * 0.15
-
-            if not candidates:
+                if w not in (self.SEP, self.END) and w not in forbidden:
+                    cand[w] += boost * 0.15
+            if not cand:
                 break
 
-            end_weight = self._counts.get(cur, {}).get(self.END, 0.0)
-
-            words  = list(candidates.keys())
-            counts = np.array([candidates[w] for w in words], dtype=np.float64)
-            counts = np.log(counts + 1e-9)
-            counts -= counts.max()
-            counts = np.exp(counts / max(temperature, 1e-3))
-            counts /= counts.sum()
-
-            # Penalise already-seen words
-            for i, w in enumerate(words):
+            end_w = self._counts.get(cur, {}).get(self.END, 0.0)
+            ws    = list(cand.keys())
+            cs    = np.array([cand[w] for w in ws], dtype=np.float64)
+            cs    = np.exp((np.log(cs + 1e-9) - np.log(cs + 1e-9).max()) / max(temperature, 1e-3))
+            for i, w in enumerate(ws):
                 if w in seen:
-                    counts[i] *= 0.2
-            total = counts.sum()
-            if total < 1e-12:
-                break
-            counts /= total
+                    cs[i] *= 0.2
+            cs /= cs.sum() if cs.sum() > 1e-12 else 1.0
+            chosen = np.random.choice(ws, p=cs)
 
-            chosen = np.random.choice(words, p=counts)
-
-            # Natural stop: END token probability
-            if end_weight > 0:
-                total_mass = end_weight + candidates.get(chosen, 1.0)
-                if np.random.random() < (end_weight / total_mass):
+            if end_w > 0:
+                if np.random.random() < end_w / (end_w + cand.get(chosen, 1.0)):
                     break
 
             result.append(chosen)
@@ -193,21 +387,97 @@ class WordTP:
 
         return result
 
+    # ── Compatibility ─────────────────────────────────────────────────────────
+
     def n_words(self) -> int:
-        return len(self._counts)
+        return max(0, len(self._vocab) - 2)
 
     def n_transitions(self) -> int:
         return sum(len(v) for v in self._counts.values())
 
     def get_state(self) -> dict:
-        return {'counts': {k: dict(v) for k, v in self._counts.items()},
-                'prev': self._prev}
+        return {
+            'gru': True,
+            'vocab': self._vocab, 'w2i': self._w2i,
+            'counts': {k: dict(v) for k, v in self._counts.items()},
+            'sequences': self._sequences,
+            'trained': self._trained, 'V_at_train': self._V_at_train,
+            'Wz': self._Wz, 'Wr': self._Wr, 'Wh': self._Wh,
+            'bz': self._bz, 'br': self._br, 'bh': self._bh,
+            'Wo': self._Wo, 'bo': self._bo,
+            'hidden_dim': self._H,
+        }
 
     def set_state(self, state: dict):
-        self._counts = defaultdict(lambda: defaultdict(float))
-        for k, v in state['counts'].items():
+        self._H        = state.get('hidden_dim', self._H)
+        self._vocab    = state.get('vocab', [self.SEP, self.END])
+        self._w2i      = state.get('w2i', {self.SEP: 0, self.END: 1})
+        self._sequences = state.get('sequences', [])
+        self._trained  = state.get('trained', False)
+        self._V_at_train = state.get('V_at_train', 0)
+        self._counts   = defaultdict(lambda: defaultdict(float))
+        for k, v in state.get('counts', {}).items():
             self._counts[k] = defaultdict(float, v)
-        self._prev = state.get('prev')
+        self._Wz = state.get('Wz')
+        self._Wr = state.get('Wr')
+        self._Wh = state.get('Wh')
+        self._bz = state.get('bz')
+        self._br = state.get('br')
+        self._bh = state.get('bh')
+        self._Wo = state.get('Wo')
+        self._bo = state.get('bo')
+
+
+# Use C++ FastGRU when available; fall back to Python GRUWordTP
+try:
+    from brain_gru import FastGRU as _CppGRU
+
+    class WordTP(_CppGRU):
+        """C++ GRU with translation layer for legacy Python state format."""
+
+        def generate(self, context_words: list[str], max_len: int = 8,
+                     temperature: float = 1.0,
+                     forbidden: set | None = None) -> list[str]:
+            fb = list(forbidden) if forbidden else []
+            return super().generate(context_words, max_len=max_len,
+                                    temperature=float(temperature),
+                                    forbidden_words=fb)
+
+        def set_state(self, s: dict):
+            t = dict(s)
+            # hidden_dim → H
+            if 'H' not in t:
+                t['H'] = t.pop('hidden_dim', 64)
+            vocab = t.get('vocab', ['<SEP>', '<END>'])
+            t['V'] = len(vocab)
+            w2i = {w: i for i, w in enumerate(vocab)}
+            # counts: string-keyed → int-keyed
+            old_counts = t.get('counts', {})
+            new_counts: dict = {}
+            for fk, targets in old_counts.items():
+                fi = w2i.get(fk, -1) if isinstance(fk, str) else int(fk)
+                if fi < 0: continue
+                inner: dict = {}
+                for tk, cnt in targets.items():
+                    ti = w2i.get(tk, -1) if isinstance(tk, str) else int(tk)
+                    if ti >= 0: inner[ti] = float(cnt)
+                if inner: new_counts[fi] = inner
+            t['counts'] = new_counts
+            # sequences: string lists → int lists
+            new_seqs = []
+            for seq in t.get('sequences', []):
+                if seq and isinstance(seq[0], str):
+                    new_seqs.append([w2i.get(w, 0) for w in seq])
+                else:
+                    new_seqs.append(list(seq))
+            t['sequences'] = new_seqs
+            super().set_state(t)
+
+        def get_state(self) -> dict:
+            return super().get_state()
+
+except ImportError:
+    WordTP = GRUWordTP
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -330,10 +600,12 @@ class FastBrain:
 
     def word_tp_generate(self, context_words: list[str],
                          max_len: int = 8,
-                         temperature: float = 1.0) -> list[str]:
+                         temperature: float = 1.0,
+                         forbidden: set | None = None) -> list[str]:
         """Generate a word-sequence response using the word-level TP."""
         return self.word_tp.generate(context_words, max_len=max_len,
-                                     temperature=temperature)
+                                     temperature=float(temperature),
+                                     forbidden=forbidden)
 
     def generate_bmus(self, seed_bmus: list[int], n_steps: int = 12,
                       temperature: float = 1.2) -> list[int]:

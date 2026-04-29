@@ -1,60 +1,120 @@
 import numpy as np
 from collections import deque
 
+
+# ══════════════════════════════════════════════════════════════════════
+# WorkingMemory — 4 named slots replacing 5000-element heatmap
+#
+# Why slots instead of a heatmap?
+#   • Heatmap: O(5000) per tick, no word identity (only BMU position)
+#   • Slots:   O(4) per tick, each slot holds explicit word + BMU
+#   • Named slots let modules ask "what is brain holding?" not
+#     "which region is activated?" — closer to GWT global workspace
+# ══════════════════════════════════════════════════════════════════════
+
+class _Slot:
+    __slots__ = ('word', 'bmu', 'activation', 'decay_rate')
+
+    def __init__(self):
+        self.word: str | None = None
+        self.bmu:  int   = -1
+        self.activation: float = 0.0
+        self.decay_rate: float = 0.15
+
+    def clear(self):
+        self.word = None
+        self.bmu  = -1
+        self.activation = 0.0
+
+
 class WorkingMemory:
-    def __init__(self, n_neurons: int = 5000):
-        self._activation = np.zeros(n_neurons, dtype=np.float32)
-        self._n = n_neurons
-        self._seeking = False      # Phase 2: WM Lock — brain is actively looking for resolution
-        self._seek_turns = 0       # turns since seeking began (auto-release after 3 turns)
+    N_SLOTS = 4
+
+    def __init__(self, n_neurons: int = 5000, **_):
+        # _n_neurons kept for API compat — no longer allocates the array
+        self._slots = [_Slot() for _ in range(self.N_SLOTS)]
+        self._seeking    = False
+        self._seek_turns = 0
+
+    # ── Slot access ────────────────────────────────────────────────────
+
+    def _weakest(self) -> int:
+        return min(range(self.N_SLOTS),
+                   key=lambda i: self._slots[i].activation)
+
+    def write(self, word: str, bmu: int, strength: float = 1.0):
+        """Write word to WM. Updates existing slot if word already present."""
+        for s in self._slots:
+            if s.word == word:
+                s.activation = min(1.0, s.activation + strength * 0.5)
+                s.bmu = bmu
+                return
+        idx = self._weakest()
+        s = self._slots[idx]
+        s.word = word
+        s.bmu  = bmu
+        s.activation = min(1.0, strength)
+
+    def read(self) -> list[tuple[str, float]]:
+        """Return (word, activation) pairs sorted strongest-first."""
+        return sorted(
+            [(s.word, s.activation) for s in self._slots
+             if s.word is not None and s.activation > 0.01],
+            key=lambda x: -x[1])
+
+    def tick(self):
+        """Decay all slots; clear expired ones."""
+        for s in self._slots:
+            s.activation -= s.decay_rate
+            if s.activation < 0.01:
+                s.clear()
+
+    def get_activation(self, bmu: int) -> float:
+        for s in self._slots:
+            if s.bmu == bmu:
+                return s.activation
+        return 0.0
+
+    # ── Seeking mode ───────────────────────────────────────────────────
 
     def enter_seeking(self):
-        """Lock WM into uncertainty-resolution mode. Brain will bias toward 'what/search/know'."""
-        self._seeking = True
+        self._seeking    = True
         self._seek_turns = 0
 
     def resolve_seeking(self):
-        """Release WM lock when reward arrives — resolution felt, not parsed."""
-        self._seeking = False
+        self._seeking    = False
         self._seek_turns = 0
 
     def tick_seeking(self):
-        """Age the seeking state each turn. Auto-release if no resolution arrives."""
         if self._seeking:
             self._seek_turns += 1
             if self._seek_turns >= 3:
-                self._seeking = False
+                self._seeking    = False
                 self._seek_turns = 0
 
+    # ── Legacy-compatible interface ────────────────────────────────────
+
     def update(self, bmu: int, heard_words: list, word_to_bmu: dict):
-        # Decay everything
-        self._activation *= 0.85
-        # Spike the heard BMU with Gaussian spread
-        indices = np.arange(self._n)
-        dist_sq = (indices - bmu) ** 2
-        self._activation += np.exp(-dist_sq / (2 * 3.0**2)).astype(np.float32)
-        # Also spike BMUs for heard words
+        """Drop-in replacement for old heatmap update."""
+        self.tick()
+        # Write heard words into slots
+        bmu_to_word_local = {v: k for k, v in word_to_bmu.items()}
+        if bmu in bmu_to_word_local:
+            self.write(bmu_to_word_local[bmu], bmu, 0.9)
         for w in heard_words:
             if w in word_to_bmu:
-                wbmu = word_to_bmu[w]
-                self._activation[wbmu] = min(1.0, self._activation[wbmu] + 0.4)
-        # While seeking: additionally spike uncertainty-resolution BMUs
+                self.write(w, word_to_bmu[w], 0.7)
         if self._seeking:
-            for w in ['what', 'search', 'know']:
+            for w in ('what', 'search', 'know'):
                 if w in word_to_bmu:
-                    wb = word_to_bmu[w]
-                    self._activation[wb] = min(1.0, self._activation[wb] + 0.3)
+                    self.write(w, word_to_bmu[w], 0.5)
 
-    def top_active_words(self, bmu_to_word: dict, n: int = 3) -> list:
-        top_idxs = np.argsort(self._activation)[::-1][:20]
-        words = []
-        for idx in top_idxs:
-            if idx in bmu_to_word and len(words) < n:
-                words.append(str(bmu_to_word[idx]))
-        return words
+    def top_active_words(self, _bmu_to_word: dict, n: int = 3) -> list:
+        return [w for w, _ in self.read()[:n]]
 
     def activation_strength(self) -> float:
-        return float(np.mean(np.sort(self._activation)[::-1][:10]))
+        vals = [s.activation for s in self._slots if s.activation > 0.01]
+        return float(sum(vals) / len(vals)) if vals else 0.0
 
 
 class EpisodicMemory:
@@ -78,6 +138,35 @@ class EpisodicMemory:
 
     def last_topic(self) -> str | None:
         return self._episodes[-1]['zone'] if self._episodes else None
+
+    def zone_sequence(self, n: int = 5) -> list[str]:
+        """Last N zones visited — ordered oldest→newest. Used for temporal reasoning."""
+        eps = list(self._episodes)[-n:]
+        return [e['zone'] for e in eps]
+
+    def what_followed(self, zone: str, n: int = 20) -> str | None:
+        """
+        What zone most often followed `zone` in experience?
+        Scans last N episodes for (zone → next_zone) transitions.
+        Returns most frequent successor, or None if insufficient data.
+        """
+        eps = list(self._episodes)[-n:]
+        counts: dict[str, int] = {}
+        for i in range(len(eps) - 1):
+            if eps[i]['zone'] == zone:
+                nxt = eps[i + 1]['zone']
+                counts[nxt] = counts.get(nxt, 0) + 1
+        return max(counts, key=counts.get) if counts else None
+
+    def what_preceded(self, zone: str, n: int = 20) -> str | None:
+        """What zone most often came just before `zone`?"""
+        eps = list(self._episodes)[-n:]
+        counts: dict[str, int] = {}
+        for i in range(1, len(eps)):
+            if eps[i]['zone'] == zone:
+                prev = eps[i - 1]['zone']
+                counts[prev] = counts.get(prev, 0) + 1
+        return max(counts, key=counts.get) if counts else None
 
     def topic_changed(self) -> bool:
         if len(self._episodes) < 3:
@@ -312,13 +401,18 @@ class LogicModule:
         self._confidence: float = 0.0
 
     def infer(self, selfmodel, semantic, zone: str,
-              heard_words: list, vocabulary: set) -> list:
+              heard_words: list, vocabulary: set,
+              episodic: 'EpisodicMemory | None' = None) -> list:
         """
         Returns conclusion word list to prepend to generation seeds.
         Empty when no strong inference fires.
         """
         conclusions: list = []
         s = selfmodel._state
+
+        def _not_negated(word: str) -> bool:
+            """Block conclusion if semantic memory explicitly negates it for current zone."""
+            return not semantic.is_negated(zone, word) and not semantic.is_negated(word, zone)
 
         # ── Type 1: Drive-anchored ────────────────────────────────────────
         # High internal drive → look up what that drive word relates to.
@@ -333,7 +427,7 @@ class LogicModule:
             if s.get(drive_key, 0.0) > threshold:
                 for rel in semantic.recall_relations(anchor_word)[:2]:
                     for w in rel['object'].split()[:2]:
-                        if w in vocabulary and w not in conclusions:
+                        if w in vocabulary and w not in conclusions and _not_negated(w):
                             conclusions.append(w)
 
         # ── Type 2: Zone-percept → consequence ───────────────────────────
@@ -351,35 +445,136 @@ class LogicModule:
             rels = semantic.recall_relations(anchor)
             if rels:
                 for w in rels[0]['object'].split()[:2]:
-                    if w in vocabulary and w not in conclusions:
+                    if w in vocabulary and w not in conclusions and _not_negated(w):
                         conclusions.append(w)
             else:
                 for w in defaults:
-                    if w in vocabulary and w not in conclusions:
+                    if w in vocabulary and w not in conclusions and _not_negated(w):
                         conclusions.append(w)
 
-        # ── Type 3: 2-hop relation chain from heard words ─────────────────
-        # heard_word → relation → object (1-hop) → that object's relations (2-hop)
-        # This is where "xylophone → music → good" would fire if both stored.
+        # ── Type 3: N-hop relation chain from heard words (up to 3 hops) ────
+        # Uses transitive_lookup for compositional chaining:
+        #   "xylophone → music → good" (2-hop)
+        #   "fire → danger → run → safe" (3-hop)
+        # Only words in vocabulary and not negated enter conclusions.
         for hw in heard_words[:3]:
-            hop1 = semantic.recall_relations(hw)
-            for rel1 in hop1[:1]:
-                obj1_words = rel1['object'].split()
-                for w in obj1_words[:1]:
-                    if w in vocabulary and w not in conclusions:
+            reachable = semantic.transitive_lookup(hw, max_hops=3)
+            for w in reachable[:4]:
+                if w in vocabulary and w not in conclusions and _not_negated(w):
+                    conclusions.append(w)
+
+        # ── Type 4: Temporal sequence — what usually follows this zone? ──────
+        # Brain draws on episodic history to anticipate next zone.
+        # If "danger usually → rest" in experience, seeing danger primes 'safe'/'calm'.
+        # Only fires when episodic memory is rich enough (≥5 episodes).
+        if episodic is not None and episodic.count() >= 5:
+            _ZONE_SEEDS = {
+                'food':   ['eat', 'food', 'hungry'],
+                'danger': ['run', 'careful', 'afraid'],
+                'rest':   ['sleep', 'calm', 'tired'],
+                'water':  ['water', 'drink', 'calm'],
+                'social': ['hello', 'hi', 'happy'],
+                'action': ['go', 'move', 'open'],
+                'pain':   ['stop', 'hurt'],
+            }
+            next_zone = episodic.what_followed(zone)
+            if next_zone and next_zone != zone:
+                for w in _ZONE_SEEDS.get(next_zone, [])[:1]:
+                    if w in vocabulary and w not in conclusions and _not_negated(w):
                         conclusions.append(w)
-                # 2-hop
-                if obj1_words:
-                    hop2 = semantic.recall_relations(obj1_words[0])
-                    for rel2 in hop2[:1]:
-                        for w in rel2['object'].split()[:1]:
-                            if w in vocabulary and w not in conclusions:
-                                conclusions.append(w)
 
         self._last_conclusion = conclusions[:5]
         self._confidence = min(1.0, len(conclusions) * 0.2)
         return self._last_conclusion
 
+    def decay_last_conclusion(self, semantic, amount: float = 0.2):
+        """Decay semantic relations that drove the last wrong conclusion."""
+        for w in self._last_conclusion:
+            for rel in semantic._relations:
+                if (rel['object'] and w in rel['object'].split()
+                        and rel['strength'] > 0.0):
+                    rel['strength'] = max(0.0, rel['strength'] - amount)
+        semantic._relations = [r for r in semantic._relations if r['strength'] > 0.0]
+
     def explain(self) -> str:
         return (f"logic: {self._last_conclusion}  conf={self._confidence:.2f}"
                 if self._last_conclusion else "logic: no conclusion")
+
+
+class UserModel:
+    """
+    Theory-of-mind layer: models the *user's* inferred emotional state.
+
+    Brain distinguishes "you feel sad" (→ user model) from "i feel sad" (→ self model).
+    This is the minimal other-mind model — not a belief about the world but a model
+    of the person speaking. Updated from pronoun-disambiguated conversation tokens.
+
+    Drives empathy words that seed WordTP when user is distressed — brain responds
+    to *their* state, not its own.
+    """
+
+    def __init__(self):
+        self._state = {
+            'hunger':  0.5,
+            'fatigue': 0.5,
+            'fear':    0.0,
+            'comfort': 0.5,
+        }
+        self._name: str | None = None
+
+    def addressee(self, tokens: list) -> str:
+        """
+        Return 'user' when second-person pronouns dominate, else 'self'.
+        Used to route "you feel X" → UserModel vs "i feel X" → SelfModel.
+        """
+        first  = sum(1 for t in tokens if t in ('i', 'me', 'my', 'im'))
+        second = sum(1 for t in tokens if t in ('you', 'your'))
+        return 'user' if second > first else 'self'
+
+    def update_from_words(self, tokens: list):
+        """
+        Infer user emotional state from second-person statements.
+        Only fires when 'you'/'your' present in tokens.
+        """
+        if 'you' not in tokens and 'your' not in tokens:
+            return
+        s = self._state
+        if any(t in tokens for t in ('sad', 'bad', 'afraid', 'scared', 'hurt', 'pain')):
+            s['comfort'] = max(0.0, s['comfort'] - 0.15)
+            s['fear']    = min(1.0, s['fear']    + 0.10)
+        if any(t in tokens for t in ('happy', 'good', 'great', 'calm', 'fine', 'safe')):
+            s['comfort'] = min(1.0, s['comfort'] + 0.15)
+            s['fear']    = max(0.0, s['fear']    - 0.05)
+        if any(t in tokens for t in ('hungry', 'eat', 'food', 'need')):
+            s['hunger']  = min(1.0, s['hunger']  + 0.15)
+        if any(t in tokens for t in ('tired', 'sleep', 'rest', 'exhausted')):
+            s['fatigue'] = min(1.0, s['fatigue'] + 0.15)
+        # Passive decay toward neutral each turn
+        for k in s:
+            s[k] = 0.95 * s[k] + 0.05 * 0.5
+
+    def dominant_state(self) -> str:
+        s = self._state
+        if s['fear'] > 0.5:     return 'afraid'
+        if s['hunger'] > 0.6:   return 'hungry'
+        if s['fatigue'] > 0.6:  return 'tired'
+        if s['comfort'] < 0.3:  return 'sad'
+        if s['comfort'] > 0.7:  return 'happy'
+        return 'neutral'
+
+    def empathy_seeds(self, vocabulary: set) -> list:
+        """
+        Words brain can use to express empathy toward user's state.
+        Seeds WordTP when user is in a notable state — brain's response
+        is shaped by *their* experience, not just its own drives.
+        """
+        dom = self.dominant_state()
+        mapping = {
+            'afraid':  ['careful', 'safe', 'calm'],
+            'hungry':  ['food', 'eat', 'help'],
+            'tired':   ['sleep', 'calm', 'rest'],
+            'sad':     ['good', 'happy', 'calm'],
+            'happy':   ['happy', 'good', 'yes'],
+            'neutral': [],
+        }
+        return [w for w in mapping.get(dom, []) if w in vocabulary]

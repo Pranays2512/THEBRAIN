@@ -38,25 +38,31 @@ if(APPLE)
             "-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
         set(OpenMP_CXX_LIB_NAMES "omp")
         set(OpenMP_omp_LIBRARY "${LIBOMP_PREFIX}/lib/libomp.dylib")
-        find_package(OpenMP CXX)
+        find_package(OpenMP)
     else()
         message(WARNING
             "libomp not found — building without OpenMP (no parallelism).\n"
             "Install with: brew install libomp")
     endif()
 else()
-    find_package(OpenMP CXX)
+    find_package(OpenMP)
 endif()
 
 # ── Build the extension ───────────────────────────────────────────────
-pybind11_add_module(brain_core brain_core.cpp)
+pybind11_add_module(brain_core  brain_core.cpp)
+pybind11_add_module(brain_gru   brain_gru.cpp)
+pybind11_add_module(world6_core world6_core.cpp)
 
 # Aggressive optimization
-target_compile_options(brain_core PRIVATE -O3 -ffast-math)
+target_compile_options(brain_core  PRIVATE -O3 -ffast-math)
+target_compile_options(brain_gru   PRIVATE -O3 -ffast-math)
+target_compile_options(world6_core PRIVATE -O3 -ffast-math)
 
 # Apple M-series: tune for ARM
 if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-    target_compile_options(brain_core PRIVATE -mcpu=apple-m1)
+    target_compile_options(brain_core  PRIVATE -mcpu=apple-m1)
+    target_compile_options(brain_gru   PRIVATE -mcpu=apple-m1)
+    target_compile_options(world6_core PRIVATE -mcpu=apple-m1)
     message(STATUS "Tuning for Apple M-series (arm64)")
 endif()
 

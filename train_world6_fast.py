@@ -32,6 +32,12 @@ sys.dont_write_bytecode = True
 
 from brain_fast import FastBrain, SILENCE, N_MFCC
 from vocab_core import VOCABULARY
+
+try:
+    import brain_core as _brain_core
+    _HAS_FEED_BATCH = hasattr(_brain_core, 'feed_word_frames')
+except ImportError:
+    _HAS_FEED_BATCH = False
 from world6 import (
     World6, DOOR_NODES, BUTTON_NODES,
     bfs_optimal_actions,
@@ -264,6 +270,102 @@ GROUNDED_DIALOGUES = [
     ("what is cold",     "cold hurt stop"),
     ("what is warm",     "warm calm good"),
     ("what is sun",      "sun warm good"),
+
+    # ═══ SPATIAL — near/far/found/lost/in/out grounded in World6 navigation ═══
+    ("near food",        "near eat food"),
+    ("food near",        "eat food near"),
+    ("near door",        "near open door"),
+    ("near",             "near go"),
+    ("far food",         "far hungry need"),
+    ("food far",         "far hungry go"),
+    ("far",              "far go find"),
+    ("found food",       "found eat food"),
+    ("found",            "found good"),
+    ("found door",       "found open go"),
+    ("lost",             "lost need find"),
+    ("lost food",        "lost hungry need"),
+    ("lost go",          "go find food"),
+    ("out",              "out go free"),
+    ("out danger",       "out run free"),
+    ("in",               "in here stop"),
+    ("in danger",        "run go out"),
+    ("free",             "free safe calm"),
+    ("feel free",        "free safe go"),
+    ("not free",         "stop hurt need"),
+
+    # ═══ TEMPORAL — after/before/again/still grounded in event sequences ═══════
+    ("after eat",        "full calm after eat"),
+    ("after sleep",      "awake calm after sleep"),
+    ("after",            "calm after"),
+    ("before eat",       "hungry before eat"),
+    ("before sleep",     "tired before sleep"),
+    ("before",           "before need"),
+    ("again hungry",     "again hungry need eat"),
+    ("again",            "again need"),
+    ("hurt again",       "stop hurt again bad"),
+    ("still hungry",     "still hungry need eat"),
+    ("still tired",      "still tired need sleep"),
+    ("still",            "still need"),
+    ("still safe",       "calm still safe"),
+
+    # ═══ SOCIAL — talk/listen/alone/with ════════════════════════════════════════
+    ("talk",             "talk hi hello"),
+    ("talk you",         "talk hi listen"),
+    ("listen",           "listen yes"),
+    ("listen talk",      "listen yes talk"),
+    ("alone",            "alone need help"),
+    ("feel alone",       "alone sad need"),
+    ("with you",         "with hi talk"),
+    ("with",             "with yes good"),
+    ("not alone",        "with you good"),
+    ("with me",          "yes with good"),
+
+    # ═══ SENSORY/ACTION — look/see/try ══════════════════════════════════════════
+    ("look",             "look see find"),
+    ("look food",        "look find food near"),
+    ("look door",        "look find door near"),
+    ("see food",         "see eat food found"),
+    ("see",              "see look found"),
+    ("see danger",       "see danger run afraid"),
+    ("try",              "try go push"),
+    ("try open",         "try push open door"),
+    ("try push",         "try push button open"),
+
+    # ═══ LIGHT/DARK/WORRY — night cycle + anxiety state ══════════════════════════
+    ("dark",             "dark afraid careful"),
+    ("dark danger",      "dark run afraid"),
+    ("light",            "light safe calm"),
+    ("feel light",       "light safe calm"),
+    ("worry",            "worry need help"),
+    ("worry food",       "worry hungry need eat"),
+    ("feel worry",       "worry need calm"),
+    ("not worry",        "calm safe good"),
+
+    # ═══ QUESTION WORDS — where/who/how/do ══════════════════════════════════════
+    ("where food",       "find food look"),
+    ("where",            "look find"),
+    ("where danger",     "run careful out"),
+    ("who",              "hi you"),
+    ("who you",          "hi you fastbrain"),
+    ("who am i",         "you pranay"),
+    ("how",              "learn think"),
+    ("how eat",          "go food eat"),
+    ("how open",         "push button open door"),
+    ("do",               "go do"),
+    ("do eat",           "eat food do"),
+    ("do go",            "go move do"),
+
+    # ═══ UNIVERSAL QUANTIFIERS — all/never/always ════════════════════════════════
+    ("all food",         "all food eat good"),
+    ("all",              "all know"),
+    ("never danger",     "safe calm never danger"),
+    ("never hurt",       "safe calm never hurt"),
+    ("never",            "no never stop"),
+    ("always hungry",    "always need eat food"),
+    ("always safe",      "always safe calm good"),
+    ("always",           "always need"),
+    ("all danger",       "all danger run afraid"),
+    ("food is all",      "all food eat"),
 ]
 
 
@@ -273,28 +375,37 @@ def feed_word(brain: FastBrain, word: str, reward: float,
               noise_std: float = 0.08,
               context_mfcc: np.ndarray | None = None,
               blend: float = 0.0):
-    """
-    Feed a word through the brain's acoustic pipeline.
-
-    context_mfcc + blend: tints the word's MFCC with the current
-    experience, placing its BMU near the referent cluster on the SOM.
-    """
+    """Feed a word through the brain's acoustic pipeline."""
     if word not in VOCABULARY:
         return None
     mean_vec, n_frames = VOCABULARY[word]
-    last_bmu = None
-    for i in range(n_frames):
-        frame = mean_vec + rng.normal(0, noise_std, N_MFCC)
-        if context_mfcc is not None and blend > 0:
-            frame = (1.0 - blend) * frame + blend * context_mfcc
-        brain.hear(frame.astype(np.float32))
-        r = reward if i == n_frames - 1 else 0.0
-        out = brain.step(reward=r)
-        last_bmu = out['bmu']
-    brain.hear(SILENCE)
-    brain.step()
+    mv = mean_vec.astype(np.float32)
 
-    clean_bmu = brain.som.find_bmu(mean_vec.astype(np.float32))
+    if _HAS_FEED_BATCH:
+        ctx = context_mfcc.astype(np.float32) if context_mfcc is not None else SILENCE
+        _ns_safe = brain._n_steps % (2**31 - 1)
+        last_bmu, ppb, pb, ns = _brain_core.feed_word_frames(
+            brain.som, brain.tp, mv, n_frames, noise_std, reward,
+            brain._prev_prev_bmu, brain._prev_bmu, _ns_safe,
+            ctx, float(blend) if context_mfcc is not None else 0.0)
+        brain._prev_prev_bmu = ppb
+        brain._prev_bmu      = pb
+        brain._n_steps      += ns
+        brain._total_reward += reward
+    else:
+        last_bmu = None
+        for i in range(n_frames):
+            frame = mean_vec + rng.normal(0, noise_std, N_MFCC)
+            if context_mfcc is not None and blend > 0:
+                frame = (1.0 - blend) * frame + blend * context_mfcc
+            brain.hear(frame.astype(np.float32))
+            r = reward if i == n_frames - 1 else 0.0
+            out = brain.step(reward=r)
+            last_bmu = out['bmu']
+        brain.hear(SILENCE)
+        brain.step()
+
+    clean_bmu = brain.som.find_bmu(mv)
     if word not in brain.word_to_bmu:
         brain.word_to_bmu[word] = clean_bmu
         brain.bmu_to_word[clean_bmu] = word
@@ -331,7 +442,16 @@ def feed_sequence(brain: FastBrain, words: list, rewards,
     return bmus
 
 
-def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
+_COUNT_WORDS = ['one', 'two', 'three', 'four', 'five']
+
+def _count_word(n: int) -> str | None:
+    if 1 <= n <= 5:
+        return _COUNT_WORDS[n - 1]
+    return None
+
+
+def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray,
+                               wall_streak: int = 0, food_eaten: int = 0):
     """
     Feed grounded words during World6 events as causal chains.
     Words are blended with the current grid MFCC so their BMUs land
@@ -339,19 +459,28 @@ def feed_words_if_appropriate(brain, info, grid_mfcc: np.ndarray):
 
     Causal chain order matters: cause → intermediate → resolution.
     WordTP learns these as temporal sequences, not isolated words.
+
+    Number words (one/two/three...) fed WITHOUT blend so they form their own
+    ordered SOM gradient rather than collapsing into zone clusters.
     """
     BLEND = 0.30
     bmus  = []
 
-    # ── Wall collision: world acts on agent — "wall hurt stop" + agent recoils
+    # ── Wall collision: world acts on agent — "[n] wall hurt stop"
     if info['wall_hit']:
-        bmus += feed_sequence(brain,
-            ['wall', 'hurt', 'stop'],
-            [0.0,    0.0,    0.5],
-            grid_mfcc, BLEND)
+        cw = _count_word(wall_streak)
+        words = ['wall', 'hurt', 'stop']
+        rewards = [0.0, 0.0, 0.5]
+        if cw and cw in VOCABULARY:
+            # Number fed pure (no blend) to preserve count gradient on SOM
+            bmus.append(feed_word(brain, cw, 0.0, blend=0.0))
+        bmus += feed_sequence(brain, words, rewards, grid_mfcc, BLEND)
 
-    # ── Food: agent eats — "i eat food full" (subject → verb → object → state)
+    # ── Food: agent eats — "[n] i eat food full"
     elif info['is_food']:
+        cw = _count_word(food_eaten)
+        if cw and cw in VOCABULARY:
+            bmus.append(feed_word(brain, cw, 0.0, blend=0.0))
         bmus += feed_sequence(brain,
             ['i', 'eat', 'food', 'full'],
             [0.0,  0.4,   0.5,   0.7],
@@ -700,6 +829,8 @@ def run_world6_phase(brain: FastBrain, n_steps: int = 500_000):
 
     t0 = time.time()
     events = {'wall': 0, 'food': 0, 'button': 0, 'door': 0, 'danger': 0}
+    wall_streak = 0
+    food_eaten  = 0
 
     for step in range(n_steps):
         # Semi-guided: 40% optimal (ensures diverse events), 60% random
@@ -711,13 +842,20 @@ def run_world6_phase(brain: FastBrain, n_steps: int = 500_000):
 
         _, _, reward, info = world.step(int(action))
 
-        if info['wall_hit']:          events['wall']   += 1
-        if info['is_food']:           events['food']   += 1
+        if info['wall_hit']:
+            events['wall'] += 1
+            wall_streak += 1
+        else:
+            wall_streak = 0
+        if info['is_food']:
+            events['food'] += 1
+            food_eaten += 1
         if info['is_button']:         events['button'] += 1
         if info['is_door']:           events['door']   += 1
         if info.get('is_danger'):     events['danger'] += 1
 
         if info.get('food_moved', False):
+            food_eaten = 0
             opt_policy = bfs_optimal_actions(world._active_food, BUTTON_NODES, DOOR_NODES)
 
         # 1. Brain experiences the world state
@@ -726,7 +864,7 @@ def run_world6_phase(brain: FastBrain, n_steps: int = 500_000):
         brain.step(reward=max(reward, 0))
 
         # 2. Feed grounded words blended with this experience
-        feed_words_if_appropriate(brain, info, grid_mfcc)
+        feed_words_if_appropriate(brain, info, grid_mfcc, wall_streak, food_eaten)
 
         if (step + 1) % 50_000 == 0:
             elapsed = time.time() - t0
@@ -808,6 +946,13 @@ def run_expression_phase(brain: FastBrain, epochs: int = 30):
               f"word_tp={brain.word_tp.n_transitions()} trans  "
               f"[{elapsed:.0f}s]")
 
+    # GRU fit after all Phase 2 language epochs:
+    # bigram warm-start is ready, sequences buffered → train GRU now.
+    if brain.word_tp.n_transitions() >= 3:
+        print("  Fitting GRU on buffered sequences...", end='', flush=True)
+        brain.word_tp.fit(epochs=15, lr=0.02)
+        print(f" done. (vocab={brain.word_tp.n_words()})")
+
     print(f"\n  Done. Word TP: {brain.word_tp.n_words()} words, "
           f"{brain.word_tp.n_transitions()} transitions.")
 
@@ -818,12 +963,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--quick',     action='store_true', help='10k steps + 5 epochs')
     parser.add_argument('--lang-only', action='store_true', help='Skip Phase 1')
+    parser.add_argument('--resume',    action='store_true', help='Load existing brain and continue training')
     args = parser.parse_args()
 
-    if args.lang_only and os.path.exists(BRAIN_FILE):
-        print(f"Loading {BRAIN_FILE} for expression update...")
+    if (args.lang_only or args.resume) and os.path.exists(BRAIN_FILE):
+        print(f"Loading {BRAIN_FILE} for continued training...")
         brain = FastBrain.load(BRAIN_FILE)
     else:
+        if os.path.exists(BRAIN_FILE) and not args.resume:
+            print(f"WARNING: {BRAIN_FILE} exists and will be overwritten. Use --resume to continue training.")
         print("Creating fresh FastBrain...")
         brain = FastBrain()
 

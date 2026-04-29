@@ -33,12 +33,13 @@ from collections import deque
 
 sys.dont_write_bytecode = True
 
-from brain_fast import FastBrain, SILENCE, N_MFCC, SOM_COLS
+from brain_fast import FastBrain, SILENCE, N_MFCC, SOM_COLS, SOM_ROWS
 from vocab_core import VOCABULARY
 from m75_semantic import SemanticMemory
 from brain_modules import (WorkingMemory, EpisodicMemory, SelfModel,
                             CuriosityModule, NeuromodSystem, TemporalContext,
-                            PrefrontalCortex, LogicModule)
+                            PrefrontalCortex, LogicModule, UserModel)
+from global_workspace import GlobalWorkspace
 
 BRAIN_FILE = 'brain_fast.pkl'
 SEMANTIC_FILE = 'semantic.json'
@@ -61,11 +62,21 @@ print(f"  Semantic memory: {len(semantic._facts)} facts")
 wm        = WorkingMemory(n_neurons=5000)
 episodic  = EpisodicMemory(maxlen=50)
 selfmodel = SelfModel()
+usermodel = UserModel()
 curiosity = CuriosityModule(n_neurons=5000)
 neuromod  = NeuromodSystem()
 temporal  = TemporalContext()
 pfc       = PrefrontalCortex()
 logic     = LogicModule()
+gw        = GlobalWorkspace()
+_gw_out: dict = {}          # last broadcast — used by background tick
+_steps_since_reward: int = 0  # turns since last positive feedback
+
+# Persistent user memory: recall known user name from previous sessions.
+_known_user_name: str | None = semantic._latest_relation_object('you', 'name')
+if _known_user_name:
+    usermodel._name = _known_user_name
+    print(f"  [remembered: user = {_known_user_name}]")
 
 # Seed curiosity zone_counts with approximate World6 experience priors.
 # Brain experienced food/danger/rest/action heavily — those are NOT novel.
@@ -131,18 +142,169 @@ _SKIP_TOKENS = {'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for',
                 'rest', 'action', 'social', 'zone', 'feel', 'feeling', 'think', 'thinking'}
 
 def _synthesize_vocab_entry(word: str, definition_tokens: list[str]) -> bool:
-    """Average known word vectors from definition → add word to VOCABULARY."""
+    """
+    Average known word vectors from definition → add word to VOCABULARY.
+    Also assigns zone routing so the new word participates in zone detection
+    and can appear in generated responses — partial fix for grounding/conv split.
+    """
     known = [t for t in definition_tokens if t in VOCABULARY and t not in _HOLLOW]
     if not known:
         return False
-    import numpy as np
     avg = np.mean([VOCABULARY[t][0] for t in known], axis=0)
     VOCABULARY[word] = (avg, 2)
+
+    # Zone routing: vote from definition words' zones.
+    # New word inherits the dominant zone of its definition — not perfect grounding
+    # but allows zone-routing and expression without touching frozen SOM.
+    zone_votes: dict[str, float] = {}
+    for t in known:
+        z = _WORD_TO_ZONE.get(t)
+        if z:
+            zone_votes[z] = zone_votes.get(z, 0) + 1.0
+    if zone_votes:
+        dominant = max(zone_votes, key=zone_votes.get)
+        _WORD_TO_ZONE[word] = dominant
+        if word not in ZONE_EXPRESSION[dominant]:
+            ZONE_EXPRESSION[dominant].append(word)
+        if word not in ZONE_ANCHORS[dominant]:
+            ZONE_ANCHORS[dominant].append(word)
+
+    # BMU mapping: use BMU of strongest known word so zone detection works
+    best_known = max(known, key=lambda t: zone_votes.get(_WORD_TO_ZONE.get(t, ''), 0))
+    if best_known in brain.word_to_bmu:
+        brain.word_to_bmu[word] = brain.word_to_bmu[best_known]
+
     return True
 
 # ── Conversation state ────────────────────────────────────────────────────────
+
+class ConversationState:
+    """
+    Between-turn memory: topic, entities, speaker focus, intent history, follow-up.
+    Never generates responses — only adds context seeds to the existing zone pipeline.
+    """
+    _FOLLOWUP_OPENERS = {'and', 'but', 'also', 'so', 'then'}
+    _USER_STATE_VERBS = {'feel', 'feels', 'am', 'felt', 'need', 'want', 'have'}
+    _TEACH_PATTERNS   = {'is', 'name', 'called', 'means'}
+
+    def __init__(self):
+        self.topic: str = 'social'
+        self.pending_question: str | None = None
+        self.recent_entities: list[str] = []
+        self.last_relation_hit: bool = False
+        self.last_zones: deque = deque(maxlen=4)
+        self._zone_repeat_count: int = 0
+        # ── New fields ──────────────────────────────────────────────────
+        self.intent: str = 'unknown'        # last classified high-level intent
+        self.speaker_focus: str = 'neutral' # 'user' | 'self' | 'neutral'
+        self.follow_up: bool = False        # True when this turn continues last topic
+        self.turn_history: list[dict] = []  # last 5 {input, response, intent, zone}
+
+    # ── Speaker focus ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _classify_speaker(tokens: list[str]) -> str:
+        """
+        'user'  — user is reporting their own state  ("i feel X", "i am tired")
+        'self'  — user is asking about the brain     ("how are you", "what do you feel")
+        'neutral' — bare word / action / other
+        """
+        t = set(tokens)
+        has_i   = tokens and tokens[0] in ('i', 'i\'m')
+        has_you = 'you' in t
+        has_state = bool(t & ConversationState._USER_STATE_VERBS)
+
+        if has_i and has_state and not has_you:
+            return 'user'
+        if has_you and has_state:
+            return 'self'
+        return 'neutral'
+
+    # ── Intent classification ──────────────────────────────────────────
+
+    @staticmethod
+    def _classify_intent(tokens: list[str], zone: str) -> str:
+        t = set(tokens)
+        if not tokens:
+            return 'unknown'
+        if t & {'hi', 'hello', 'bye'}:
+            return 'greeting'
+        if 'who' in t and 'you' in t:
+            return 'self_query'
+        if 'who' in t and 'am' in t:
+            return 'user_query'
+        if ('how' in t or 'what' in t) and 'you' in t:
+            return 'self_query'
+        if tokens[0] in ('i', "i'm") and t & ConversationState._USER_STATE_VERBS:
+            return 'user_state'
+        if 'wrong' in t or ('no' in t and len(tokens) <= 2):
+            return 'correction'
+        if ('my' in t or 'is' in t) and t & ConversationState._TEACH_PATTERNS:
+            return 'teach'
+        if t & {'why', 'what', 'where', 'how'} and len(tokens) >= 2:
+            return 'fact_query'
+        if zone == 'action':
+            return 'action'
+        return 'unknown'
+
+    # ── Update ─────────────────────────────────────────────────────────
+
+    def update(self, zone: str, heard_words: list, relation_hit: bool,
+               hollow_set: set, question: bool = False):
+        # Follow-up: opener word + <= 4 tokens inherits previous topic
+        self.follow_up = (bool(heard_words) and
+                          heard_words[0] in self._FOLLOWUP_OPENERS and
+                          len(heard_words) <= 4)
+
+        if zone == self.topic:
+            self._zone_repeat_count += 1
+        else:
+            self._zone_repeat_count = 0
+
+        self.topic = zone
+        self.last_zones.append(zone)
+        self.last_relation_hit = relation_hit
+        self.speaker_focus = self._classify_speaker(heard_words)
+        self.intent = self._classify_intent(heard_words, zone)
+
+        for w in heard_words:
+            if w not in hollow_set:
+                if w not in self.recent_entities:
+                    self.recent_entities.insert(0, w)
+        self.recent_entities = self.recent_entities[:6]
+
+        if question:
+            self.pending_question = ' '.join(heard_words[:4])
+        elif relation_hit:
+            self.pending_question = None
+
+    def record_turn(self, input_words: list[str], response: str):
+        self.turn_history.append({
+            'input': input_words, 'response': response,
+            'intent': self.intent, 'zone': self.topic,
+        })
+        if len(self.turn_history) > 5:
+            self.turn_history.pop(0)
+
+    # ── Queries ────────────────────────────────────────────────────────
+
+    def topic_consistent(self) -> bool:
+        return len(self.last_zones) >= 3 and len(set(list(self.last_zones)[-3:])) == 1
+
+    def entity_seeds(self, vocabulary: set) -> list[str]:
+        return [w for w in self.recent_entities[:3] if w in vocabulary]
+
+    def last_response(self) -> str:
+        return self.turn_history[-1]['response'] if self.turn_history else ''
+
+    def last_input_words(self) -> list[str]:
+        return self.turn_history[-1]['input'] if self.turn_history else []
+
+
+conv_state = ConversationState()
+
 _recent_responses: list[str] = []
-_MAX_RECENT       = 2
+_MAX_RECENT       = 5          # extended: anti-repetition across 5 turns
 _turn_history: deque = deque(maxlen=5)
 _total_turns  = 0
 _DREAM_EVERY  = 10
@@ -156,6 +318,8 @@ _PUNCT = str.maketrans('', '', '.,?!;:\'"()-/\\')
 
 _last_response_words: list[str] = []
 _last_heard_bmus:     list[int] = []
+_predicted_bmu:       int   = 0    # TP prediction of next input BMU
+_last_pe:             float = 0.0  # prediction error from last turn [0,1]
 
 # ── Conversation context buffer (lightweight turn memory) ─────────────────────
 # Stores (heard_words, response_words) for the last N turns.
@@ -172,13 +336,13 @@ _last_zone: str = 'social'                 # zone from previous turn — topic c
 # Zone definitions: which words anchor each zone's center on the SOM.
 # These are grounded words — their BMU positions were shaped by World6 events.
 ZONE_ANCHORS = {
-    'food':   ['food', 'eat', 'hungry', 'full'],
+    'food':   ['food', 'eat', 'hungry', 'full', 'found', 'near', 'search'],
     'water':  ['water', 'river', 'rain', 'wet', 'drink'],
-    'pain':   ['hurt', 'pain', 'wall', 'bad', 'stop', 'no', 'cold'],
-    'rest':   ['tired', 'sleep', 'calm', 'warm', 'soft', 'awake', 'plant', 'tree', 'grass', 'sun'],
-    'action': ['go', 'move', 'push', 'open', 'come', 'door', 'button', 'wind', 'air', 'sky'],
-    'social': ['hi', 'hello', 'bye', 'yes', 'happy', 'help', 'sorry'],
-    'danger': ['afraid', 'danger', 'careful', 'run'],
+    'pain':   ['hurt', 'pain', 'wall', 'bad', 'stop', 'no', 'cold', 'dark', 'worry', 'lost'],
+    'rest':   ['tired', 'sleep', 'calm', 'warm', 'soft', 'awake', 'plant', 'tree', 'grass', 'sun', 'still', 'light', 'free'],
+    'action': ['go', 'move', 'push', 'open', 'come', 'door', 'button', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out', 'run'],
+    'social': ['hi', 'hello', 'bye', 'yes', 'happy', 'help', 'sorry', 'talk', 'listen', 'with', 'alone'],
+    'danger': ['afraid', 'danger', 'careful', 'run', 'dark'],
 }
 
 # Zone → what the brain expresses when in this zone.
@@ -186,13 +350,13 @@ ZONE_ANCHORS = {
 # Generic words (good, feel, here, want) are deliberately removed
 # to force the brain to speak in specific grounded vocabulary.
 ZONE_EXPRESSION = {
-    'food':   ['eat', 'food', 'hungry', 'want', 'full'],
+    'food':   ['eat', 'food', 'hungry', 'want', 'full', 'found', 'near', 'far'],
     'water':  ['water', 'drink', 'wet', 'river', 'rain', 'calm', 'good'],
-    'pain':   ['stop', 'hurt', 'pain', 'bad', 'no', 'cold'],
-    'rest':   ['sleep', 'calm', 'tired', 'warm', 'awake', 'safe', 'alive', 'plant', 'tree', 'grass', 'sun', 'green'],
-    'action': ['go', 'open', 'move', 'push', 'door', 'button', 'come', 'wind', 'air', 'sky'],
-    'social': ['hello', 'hi', 'happy', 'help', 'yes', 'know', 'sorry', 'like', 'pranay', 'search'],
-    'danger': ['afraid', 'careful', 'run', 'danger'],
+    'pain':   ['stop', 'hurt', 'pain', 'bad', 'no', 'cold', 'dark', 'worry', 'lost', 'again'],
+    'rest':   ['sleep', 'calm', 'tired', 'warm', 'awake', 'safe', 'alive', 'plant', 'tree', 'grass', 'sun', 'green', 'still', 'light', 'free', 'after'],
+    'action': ['go', 'open', 'move', 'push', 'door', 'button', 'come', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out', 'do'],
+    'social': ['hello', 'hi', 'happy', 'help', 'yes', 'know', 'sorry', 'like', 'pranay', 'talk', 'listen', 'with', 'who', 'how'],
+    'danger': ['afraid', 'careful', 'run', 'danger', 'dark', 'worry'],
 }
 
 
@@ -234,6 +398,21 @@ _WORD_TO_ZONE.update({
     'river': 'water', 'rain': 'water', 'wet': 'water',  'water': 'water',
     'wind':  'action','air':  'action','sky':  'action',
     'cold':  'pain',
+    # Spatial words
+    'near': 'food', 'far': 'food', 'found': 'food', 'lost': 'pain',
+    'out': 'action', 'in': 'action', 'free': 'rest',
+    # Temporal words
+    'after': 'rest', 'before': 'social', 'again': 'pain', 'still': 'rest',
+    # Social interaction
+    'talk': 'social', 'listen': 'social', 'alone': 'social', 'with': 'social',
+    # Sensory/action
+    'look': 'action', 'see': 'action', 'try': 'action',
+    # Light/dark/mood
+    'dark': 'danger', 'light': 'rest', 'worry': 'pain',
+    # Question words
+    'where': 'action', 'who': 'social', 'how': 'social', 'do': 'action',
+    # Quantifiers
+    'all': 'social', 'never': 'social', 'always': 'social',
 })
 
 INTENT_SPECS = {
@@ -309,10 +488,28 @@ INTENT_SPECS = {
         'seeds': ['hi', 'fastbrain', 'name'],
         'template': ['hi', 'fastbrain'],
     },
+    # "who are you" / "what are you" → brain identifies as fastbrain
+    'who_are_you': {
+        'zone': 'social',
+        'required': {'who'},
+        'any_of': {'you', 'are'},
+        'seeds': ['fastbrain', 'name', 'am'],
+        'template': ['fastbrain', 'name'],
+    },
+    # "who am i" → user identity (pranay from semantic memory, or 'you pranay')
+    'who_am_i': {
+        'zone': 'social',
+        'required': {'who'},
+        'any_of': {'am'},
+        'seeds': ['you', 'pranay', 'name'],
+        'template': ['you', 'pranay'],
+    },
 }
 
 _ZONE_NEUTRAL = {'i', 'me', 'you', 'we', 'and', 'is', 'am', 'not', 'now', 'here',
-                 'very', 'little'}
+                 'very', 'little',
+                 'good', 'bad', 'safe', 'calm', 'alive', 'free', 'still', 'better',
+                 'know', 'think', 'feel', 'want', 'need', 'like', 'here', 'yes', 'no'}
 _HOLLOW = {'i', 'me', 'we', 'you', 'and', 'is', 'not',
            'why', 'how', 'what', 'when', 'where', 'who', 'which',
            'because', 'so', 'then', 'cause'}
@@ -402,11 +599,107 @@ def _template_allowed(template_words: list[str], zone: str, avoid: set[str]) -> 
 
 def _relation_response(tokens: list[str]) -> str | None:
     """
-    Answer factual queries from semantic memory (names, X is Y, causal chains).
-    State queries (feel/want/need/like/hate) return None — routed to generate_response
-    which reads live SelfModel drives instead of stored snapshots.
+    Only answers identity facts the GRU could never have learned (names).
+    Everything else — food, wall, danger, causal chains — goes to generate_response.
     """
-    return semantic.find_relation_answer(tokens)
+    t = set(tokens)
+    # "what is my name" / "who am i"
+    if ('name' in t and 'my' in t) or tokens == ['who', 'am', 'i']:
+        obj = semantic._latest_relation_object('you', 'name')
+        if obj:
+            return f"your name is {obj}"
+    # "what is your name"
+    if 'name' in t and ('your' in t or 'brain' in t) and 'my' not in t:
+        obj = semantic._latest_relation_object('i', 'name')
+        if obj:
+            return f"my name is {obj}"
+    return None
+
+
+# Drive → (selfmodel key, [(upper_threshold, answer_words), ...])
+# Thresholds are exclusive upper bounds on drive value.
+_STATE_QUERY_MAP: dict[str, tuple[str, list]] = {
+    'hungry': ('hunger',  [(0.15, ['no', 'full']),
+                           (0.50, ['little', 'hungry']),
+                           (1.01, ['yes', 'hungry', 'want', 'food'])]),
+    'tired':  ('fatigue', [(0.20, ['no', 'awake']),
+                           (0.55, ['little', 'tired']),
+                           (1.01, ['yes', 'tired', 'sleep'])]),
+    'afraid': ('fear',    [(0.25, ['no', 'calm', 'safe']),
+                           (0.55, ['little', 'afraid']),
+                           (1.01, ['yes', 'afraid', 'careful'])]),
+    'hurt':   ('fear',    [(0.25, ['no', 'safe', 'good']),
+                           (1.01, ['yes', 'hurt', 'pain'])]),
+    'full':   ('hunger',  [(0.30, ['yes', 'full', 'good']),
+                           (1.01, ['no', 'hungry', 'want'])]),
+    'calm':   ('fear',    [(0.40, ['yes', 'calm', 'safe']),
+                           (1.01, ['no', 'afraid'])]),
+    'good':   ('comfort', [(0.30, ['little', 'good']),
+                           (1.01, ['yes', 'good', 'calm'])]),
+    'sad':    ('comfort', [(0.25, ['yes', 'sad']),
+                           (1.01, ['no', 'calm', 'good'])]),
+}
+
+# dominant_state → honest words (grounded vocab only)
+_DOMINANT_TO_WORDS: dict[str, list[str]] = {
+    'uncertain': ['search', 'know', 'what'],
+    'afraid':    ['afraid', 'careful', 'stop'],
+    'hungry':    ['hungry', 'want', 'food'],
+    'tired':     ['tired', 'sleep', 'slow'],
+    'content':   ['good', 'calm', 'full'],
+    'curious':   ['awake', 'look', 'new'],
+    'calm':      ['calm', 'good', 'safe'],
+}
+
+# highest drive → what brain wants
+_DRIVE_WANT_WORDS: dict[str, list[str]] = {
+    'hunger':  ['eat', 'food', 'want'],
+    'fatigue': ['sleep', 'rest', 'calm'],
+    'fear':    ['calm', 'safe', 'stop'],
+    'comfort': ['calm', 'good', 'rest'],
+}
+
+def _state_query_response(tokens: list[str]) -> str | None:
+    """
+    Intercept questions about brain's internal state.
+    Specific: 'are you hungry?' → check drive → truthful answer.
+    Open:     'how do you feel?' → dominant_state() → words.
+              'what do you want?' → highest drive → words.
+    Returns None if not a state query directed at brain.
+    """
+    t = set(tokens)
+    if 'you' not in t:
+        return None
+
+    # Open feel query: "how do you feel" / "how are you"
+    if ('how' in t and ('feel' in t or 'are' in t or 'feeling' in t)):
+        dom = selfmodel.dominant_state()
+        words = [w for w in _DOMINANT_TO_WORDS.get(dom, ['calm']) if w in VOCABULARY]
+        return _apply_grammar(words[:3], 'social') if words else None
+
+    # Open want/need query: "what do you want" / "what do you need"
+    if 'what' in t and ('want' in t or 'need' in t):
+        s = selfmodel._state
+        # Pick highest drive (excluding curiosity/uncertainty — those aren't "wants")
+        ranked = sorted(
+            [(v, k) for k, v in s.items() if k in _DRIVE_WANT_WORDS],
+            reverse=True
+        )
+        if ranked:
+            _, top_drive = ranked[0]
+            words = [w for w in _DRIVE_WANT_WORDS[top_drive] if w in VOCABULARY]
+            return _apply_grammar(words[:3], top_drive) if words else None
+
+    # Specific state word query: "are you hungry/tired/afraid/..."
+    for state_word, (drive_key, thresholds) in _STATE_QUERY_MAP.items():
+        if state_word not in t:
+            continue
+        drive_val = selfmodel._state.get(drive_key, 0.5)
+        for upper, words in thresholds:
+            if drive_val < upper:
+                answer = [w for w in words if w in VOCABULARY]
+                return _apply_grammar(answer[:3], drive_key) if answer else None
+    return None
 
 
 def _resolve_zone(heard_words: list[str], heard_bmus: list[int]) -> str:
@@ -454,20 +747,102 @@ def _clip_to_zone(words: list[str], zone: str) -> list[str]:
     return result
 
 
+_TEMPL_EVAL  = {'good','bad','safe','wrong','big','small','warm','cold','hard',
+                'soft','fast','slow','full','empty','strong','weak','better','true',
+                'false','near','far','wet','dry','dark','light','alive','dead','new',
+                'old','hot','quiet','loud','open','closed','green','bright'}
+_TEMPL_STATE = {'hungry','tired','afraid','hurt','thirsty','calm','happy','sad',
+                'alone','awake','alive','lost','free','pain','worry','still',
+                'awake','alert','safe','content','curious'}
+_TEMPL_THING = {'food','water','wall','danger','pain','door','button','sun','rain',
+                'tree','river','sky','wind','storm','grass','plant','fire','rock',
+                'air','ground','body','home','world','place','thing','way','time'}
+_TEMPL_WANT  = {'want','need','search','find','eat','drink','go','take','get','look'}
+_TEMPL_PASS  = {'i','my','you','hello','hi','yes','no','stop','run','help','what',
+                'why','how','who','where','maybe','sorry','bye','am','is','are'}
+
+def _apply_grammar(words: list[str], zone: str) -> str:
+    """
+    Wrap GRU content words in minimal grammatical structure.
+    GRU picks WHAT — this function adds IS/AM/FEEL connectives only.
+    Passes through if words already start with a grammatical anchor.
+    """
+    if not words:
+        return ''
+    w = words
+    w0 = w[0]
+
+    # Already grammatical — pass through, but fix "i [state]" → "i am [state]"
+    if w0 in _TEMPL_PASS:
+        if w0 == 'i' and len(w) >= 2 and w[1] in _TEMPL_STATE and w[1] != 'am':
+            return f"i am {' '.join(w[1:4])}"
+        return ' '.join(w[:5])
+
+    # "[thing] [eval]..." → "[thing] is [eval]"
+    if w0 in _TEMPL_THING and len(w) >= 2 and w[1] in _TEMPL_EVAL:
+        return f"{w0} is {' '.join(w[1:3])}"
+
+    # "[eval] [thing]..." → "[thing] is [eval]"  ("good food" → "food is good")
+    if w0 in _TEMPL_EVAL and len(w) >= 2 and w[1] in _TEMPL_THING:
+        return f"{w[1]} is {w0}"
+
+    # "[state]..." → "i am [state] [rest]"  ("hungry want food" → "i am hungry want food")
+    if w0 in _TEMPL_STATE:
+        return f"i am {' '.join(w[:3])}"
+
+    # "[want] [thing]..." → "i [want] [thing]"
+    if w0 in _TEMPL_WANT and len(w) >= 2:
+        obj_words = [x for x in w[1:3] if x in _TEMPL_THING or x in _TEMPL_EVAL]
+        tail = ' '.join(obj_words) if obj_words else w[1]
+        return f"i {w0} {tail}"
+
+    # "[eval]..." alone → "that is [eval]"
+    if w0 in _TEMPL_EVAL:
+        return f"that is {' '.join(w[:2])}"
+
+    # Zone-based prefix for bare thing words
+    if w0 in _TEMPL_THING:
+        _ZONE_WANT = {'food', 'water', 'action'}
+        if zone in _ZONE_WANT:
+            # second word only if it's also a thing or eval — avoid "i want food want"
+            extra = f" {w[1]}" if len(w) >= 2 and w[1] in (_TEMPL_THING | _TEMPL_EVAL) else ""
+            return f"i want {w0}{extra}"
+        return f"{w0} is {w[1]}" if len(w) >= 2 and w[1] in _TEMPL_EVAL else w0
+
+    return ' '.join(w[:5])
+
+
 def generate_response(heard_bmus: list[int], heard_words: list[str],
                       raw_tokens: list[str] | None = None) -> str:
     """
     Intent-driven grounded response generation with turn memory.
 
+    Step 0: Semantic memory lookup (factual queries answered directly).
     Step 1: Detect which semantic zone the input activated (grounded in SOM).
     Step 2: Select expression seeds from that zone (what the brain wants to say).
     Step 3: WordTP generates the actual word sequence (how to say it).
     Step 4: Clip output to stay within the detected zone.
     """
-    global _last_zone
+    global _last_zone, _last_response_words, _recent_responses
 
     if not heard_bmus and not heard_words:
         return ''
+
+    def _commit(resp: str) -> str:
+        """Update turn memory and return response."""
+        global _last_response_words, _recent_responses
+        _last_response_words = resp.split() if resp else []
+        if resp:
+            _recent_responses.append(resp)
+            if len(_recent_responses) > _MAX_RECENT:
+                _recent_responses.pop(0)
+        return resp
+
+    # Step 0: semantic memory — factual queries answered without zone routing.
+    tokens = raw_tokens or heard_words
+    sem_ans = _relation_response(tokens)
+    if sem_ans is not None:
+        return _commit(sem_ans)
 
     # Step 1a: detect explicit grounded intent before generic zone routing.
     intent = _detect_intent(heard_words)
@@ -568,14 +943,55 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
                          if w in VOCABULARY] + seeds
                 zone = 'social'
 
+    # ── Conversation state: speaker focus + follow-up topic continuity ──────────
+    #
+    # speaker_focus == 'user'  → user reported own state ("i feel hungry")
+    #   Brain should respond with action/comfort directed AT user, not self-report.
+    #   Concretely: strip self-model seeds (which express brain's own state) and
+    #   boost action/comfort seeds relevant to what the user said.
+    #
+    # speaker_focus == 'self'  → user asked about brain ("how are you")
+    #   Brain should self-report. Self-model seeds are already present (social zone).
+    #   No change needed — default pipeline handles this.
+    #
+    # follow_up == True → "and X", "but X", "so X" extends previous topic
+    #   Pull last 2 entities from turn history as additional seeds.
+
+    # Compute speaker focus for current tokens (conv_state.speaker_focus is from previous turn).
+    _current_speaker_focus = ConversationState._classify_speaker(tokens)
+    directive_words: list[str] = []  # populated below if speaker_focus == 'user'
+
+    _input_negated = 'not' in set(tokens)
+    if _current_speaker_focus == 'user' and intent is None and not _input_negated:
+        # User stated their own state — respond with advice/action, not self-report.
+        # Skip when negated ("i am NOT hungry") — user denying state, no directive needed.
+        _USER_DIRECTIVES = {
+            'food':   ['food', 'eat', 'go', 'find'],
+            'rest':   ['sleep', 'calm', 'safe'],
+            'danger': ['run', 'careful', 'go'],
+            'pain':   ['stop', 'safe', 'calm'],
+            'social': ['good', 'calm', 'with'],
+        }
+        directive_words = [w for w in _USER_DIRECTIVES.get(zone, []) if w in VOCABULARY]
+        if directive_words:
+            seeds = directive_words + [w for w in seeds if w not in directive_words]
+
+    if conv_state.follow_up and conv_state.turn_history:
+        # Inherit topic: pull content words from last input that are in vocab
+        prev_input = conv_state.last_input_words()
+        inherit = [w for w in prev_input
+                   if w in VOCABULARY and w not in _HOLLOW and w not in seeds]
+        seeds = seeds + inherit[:2]
+
     # Phase 2 — WM Seeking: uncertainty is active and brain is looking for resolution.
-    if wm._seeking:
+    # Suppress when user is reporting own state — seeking would override directive seeds.
+    if wm._seeking and _current_speaker_focus != 'user':
         seek_words = [w for w in ['what', 'search', 'know'] if w in VOCABULARY]
         seeds = seek_words + seeds
 
     # Logic inference: drive + percept + 2-hop relation chains → conclusion words.
     # Conclusions prepend to seeds so WordTP expresses reasoned intent, not just zone reflex.
-    logic_words = logic.infer(selfmodel, semantic, zone, heard_words, set(VOCABULARY))
+    logic_words = logic.infer(selfmodel, semantic, zone, heard_words, set(VOCABULARY), episodic)
     seeds = logic_words + seeds
 
     # PFC goal appends urgency words IF they belong to the same zone.
@@ -584,6 +1000,8 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
     goal_seeds = [w for w in pfc.get_goal_seeds()
                   if _WORD_TO_ZONE.get(w, zone) == zone]
     seeds = seeds + goal_seeds
+
+
 
     # Self-model words only reinforce the zone — never override it.
     self_words = [w for w in selfmodel.state_words()
@@ -620,53 +1038,104 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
             _seen_s.add(w)
     seeds = _deduped
 
-    # Build the set of responses to avoid (last 3 turns from buffer).
+    # Conv-state entity seeds: recent content words from this topic thread.
+    # Only added when topic is consistent — not during topic transitions.
+    if conv_state.topic_consistent():
+        for ew in conv_state.entity_seeds(set(VOCABULARY)):
+            if ew not in _seen_s and _WORD_TO_ZONE.get(ew, zone) == zone:
+                seeds.append(ew)
+                _seen_s.add(ew)
+
+    # ── WM gating: attention shapes generation ────────────────────────────────
+    # Words whose BMU has high WM activation lead the seed list.
+    # WM = what brain is actively thinking about right now.
+    # High-WM words reach GRU context first → dominate generation.
+    # Low-WM words deprioritized — brain doesn't generate from dormant concepts.
+    def _wm_score(word: str) -> float:
+        bmu = brain.word_to_bmu.get(word)
+        return wm.get_activation(bmu) if bmu is not None else 0.0
+
+    _WM_GATE = 0.12  # minimum activation to be "hot"
+    seeds_hot  = [w for w in seeds if _wm_score(w) >= _WM_GATE]
+    seeds_cold = [w for w in seeds if _wm_score(w) <  _WM_GATE]
+    seeds = seeds_hot + seeds_cold  # hot words lead context → gate generation
+
+    # Build the set of responses to avoid (last _MAX_RECENT turns).
     avoid: set[str] = set(_recent_responses)
     for _, past_said in _context_buffer:
         if past_said:
             avoid.add(' '.join(past_said))
 
     def _is_meaningful(clipped: list[str]) -> bool:
-        """True if response has at least one non-hollow word."""
         return any(w not in _HOLLOW for w in clipped) if clipped else False
 
-    # Deterministic boundary: strong grounded intents can answer directly.
-    # This keeps the system expressive without letting generic WordTP override
-    # a correctly detected sensorimotor meaning.
+    # Zone-based forbidden set: words brain knows are false in this zone.
+    # Passed to GRU as constrained decoding — brain stays silent on false things.
+    forbidden = semantic.negated_words_for(zone)
+
+    # Deliberate thought: generate N candidates at different temperatures,
+    # score each on zone-match + content density + non-repetition, pick best.
+    def _score_candidate(cand: list[str]) -> float:
+        if not cand:
+            return -1.0
+        score = 0.0
+        zone_ok = set(ZONE_EXPRESSION[zone]) | set(ZONE_ANCHORS[zone])
+        for w in cand:
+            if w in zone_ok:
+                score += 0.3
+        score += len([w for w in cand if w not in _HOLLOW]) * 0.2
+        for w in cand:
+            if w in heard_words:
+                score += 0.1
+        resp_str = ' '.join(cand)
+        if resp_str in avoid or resp_str in _BLACKLISTED_RESPONSES:
+            score -= 1.5
+        return score
+
+    # Deterministic boundary: strong grounded intents answer directly.
     if intent is not None:
         template = INTENT_SPECS[intent].get('template')
         if template:
             direct = _template_allowed(template, zone, avoid)
             if direct is not None:
-                return direct
+                return _commit(direct)
 
-    # Context: zone seeds first, then heard words
     context = seeds[:3] + heard_words[:3]
     temperature = neuromod.temperature()
 
-    # Primary attempt
-    words = brain.word_tp_generate(context, max_len=5, temperature=temperature)
-    if words:
-        clipped = _clip_to_zone(words, zone)
-        if _is_meaningful(clipped):
-            resp = ' '.join(clipped)
-            if resp not in avoid:
-                return resp
+    candidates: list[list[str]] = []
+    for t_offset in [0.0, 0.15, 0.35]:
+        raw_words = brain.word_tp_generate(context, max_len=5,
+                                           temperature=temperature + t_offset,
+                                           forbidden=forbidden)
+        if raw_words:
+            clipped = _clip_to_zone(raw_words, zone)
+            if _is_meaningful(clipped):
+                candidates.append(clipped)
 
-    # Second attempt — slightly higher temperature for a different path
-    words = brain.word_tp_generate(context, max_len=5, temperature=temperature + 0.15)
-    if words:
-        clipped = _clip_to_zone(words, zone)
-        if _is_meaningful(clipped):
-            resp = ' '.join(clipped)
-            if resp not in avoid:
-                return resp
+    # User-state directive: add a synthetic candidate from directive seeds so the
+    # key content word (e.g. 'food') competes against WTP candidates under scoring.
+    # Avoids post-hoc injection while ensuring the word can win via score.
+    if _current_speaker_focus == 'user' and directive_words:
+        dir_cand = [w for w in directive_words[:3] if w in VOCABULARY and w not in _HOLLOW]
+        if dir_cand:
+            candidates.append(dir_cand)
 
-    # Fall back to zone seeds directly (always zone-correct, always meaningful)
-    # When seeking, 'what'/'search' are allowed even if in _HOLLOW — they carry meaning.
+    if candidates:
+        best = max(candidates, key=_score_candidate)
+        if _score_candidate(best) > -0.5:
+            resp = _apply_grammar(best, zone)
+            if resp not in avoid:
+                return _commit(resp)
+
+    # Low-confidence fallback: zone seeds if available.
+    # When seeking, 'what'/'search' carry meaning even if hollow.
     _hollow_filter = (_HOLLOW - {'what', 'search'}) if wm._seeking else _HOLLOW
     available = [w for w in seeds if w in brain.word_to_bmu and w not in _hollow_filter]
-    return ' '.join(available[:3]) if available else ''
+    if available:
+        return _commit(_apply_grammar(available[:5], zone))
+
+    return _commit('')
 
 
 # ── Acoustic helpers ──────────────────────────────────────────────────────────
@@ -682,7 +1151,7 @@ def say_frames(word: str, noise_std: float = 0.10) -> list[np.ndarray]:
 
 
 def hear_own_response(words: list[str], reward: float = 0.0):
-    """Feed the brain's own spoken words back through its acoustic SOM."""
+    """Feed the brain's own spoken words back through its acoustic SOM + word TP."""
     bmus = []
     for word in words:
         frames = say_frames(word, noise_std=0.05)
@@ -694,6 +1163,7 @@ def hear_own_response(words: list[str], reward: float = 0.0):
         bmus.append(out['bmu'])
         brain.hear(SILENCE)
         brain.step()
+        brain.word_tp.observe(word)   # GRU learns from brain's own words
     if bmus:
         brain.record_turn(bmus, max(reward, 0.0))
     return bmus
@@ -712,32 +1182,39 @@ def feed_input(words: list[str]) -> list[int]:
         bmus.append(out['bmu'])
         brain.hear(SILENCE)
         brain.step()
+        brain.word_tp.observe(word)   # GRU learns from user's words
     return bmus
 
 
 _SOCIAL_POSITIVE_WORDS = ['good', 'happy', 'calm', 'yes']
 _SOCIAL_NEGATIVE_WORDS = ['bad',  'stop',  'sad',  'no']
 
+# Correction mode: set True after negative feedback → next user input is correction.
+_correction_mode: bool = False
+# Permanently blacklisted responses — never repeat even if scores well.
+_BLACKLISTED_RESPONSES: set[str] = set()
+
+
 def apply_feedback(positive: bool):
     """
     Social reinforcement: user's good/bad signal fires a reward spike
     AND feeds a grounded word chain through the SOM pipeline.
 
-    This makes social signals part of the brain's experienced world —
-    'good' co-occurs with happy/calm in the SOM, shaping future expression.
-    Brain learns social approval the same way it learned food reward.
+    Negative feedback now also:
+      - permanently blacklists the wrong response,
+      - decays the logic conclusion that drove it,
+      - enters correction-seeking mode so next user input is absorbed as teaching.
     """
-    global _last_response_words
+    global _last_response_words, _correction_mode
     if not _last_response_words:
         return
 
     if positive:
-        # Phase 2: positive reward resolves WM seeking and uncertainty tension
+        global _steps_since_reward
+        _steps_since_reward = 0
         wm.resolve_seeking()
         selfmodel.resolve_uncertainty(reward=1.0)
-        # Replay last response with reward so those word→BMU transitions strengthen
         hear_own_response(_last_response_words, reward=1.0)
-        # Feed positive chain through SOM — grounds 'good' near happy/calm
         for word in _SOCIAL_POSITIVE_WORDS:
             if word in VOCABULARY:
                 frames = say_frames(word, noise_std=0.06)
@@ -748,9 +1225,17 @@ def apply_feedback(positive: bool):
                 brain.step()
         print("  [brain: +reward → good happy calm]")
     else:
-        # Replay with zero reward (not negative — just withhold)
+        # Withhold reward on wrong response
         hear_own_response(_last_response_words, reward=0.0)
-        # Feed negative chain — grounds 'bad' near stop/sad
+        # Permanently blacklist — brain will never repeat this exact response
+        _BLACKLISTED_RESPONSES.add(' '.join(_last_response_words))
+        # Decay semantic relations that drove the wrong conclusion
+        logic.decay_last_conclusion(semantic, amount=0.2)
+        # Enter correction-seeking: next user turn absorbed as teaching
+        _correction_mode = True
+        wm.enter_seeking()
+        selfmodel.spike_uncertainty(magnitude=0.3)
+        # Feed negative chain through SOM
         for word in _SOCIAL_NEGATIVE_WORDS:
             if word in VOCABULARY:
                 frames = say_frames(word, noise_std=0.06)
@@ -759,14 +1244,15 @@ def apply_feedback(positive: bool):
                     brain.step(reward=0.0)
                 brain.hear(SILENCE)
                 brain.step()
-        print("  [brain: noted → bad stop sad]")
+        print("  [brain: wrong — seeking]")
 
 
 # ── Main loop (only runs when executed directly, not when imported) ───────────
 
 def main():
     global _total_turns, _last_response_words, _last_heard_bmus, _IMAGINATION_ENABLED
-    global _awaiting_resolution
+    global _awaiting_resolution, _steps_since_reward, _gw_out
+    global _predicted_bmu, _last_pe
 
     print("\n" + "=" * 55)
     print("  FAST BRAIN — grounded vocabulary")
@@ -795,15 +1281,36 @@ def main():
     threading.Thread(target=input_thread, daemon=True).start()
 
     ticks_idle = 0
-    _last_turn_time = [time.time()]  # mutable for closure
+    _now = time.time()
+    _last_turn_time  = [_now]   # mutable for closure
+    _last_curious_t  = _now     # overwrite the earlier init — load finished now
+    _last_dream_t    = _now
     interrupted = False
+
+    # ── Inner speech: brain hears its own generated words ─────────────────────
+    # Critical: feeds words back through SOM+TP, not just prints.
+    # This creates the self-feedback loop — brain shapes its own next state.
+    def _inner_speech(words: list[str], label: str = 'thinks', reward: float = 0.01):
+        if not words:
+            return
+        bmus = hear_own_response(words, reward=reward)
+        if bmus:
+            wm.update(bmu=bmus[0], heard_words=words,
+                      word_to_bmu=getattr(brain, 'word_to_bmu', {}))
+        with print_lock:
+            sys.stdout.write("\r\033[K")
+            print(f"[{label}]: {' '.join(words)}")
+            sys.stdout.write("you: ")
+            sys.stdout.flush()
+
     # Drive surfacing: track last time each drive was voiced (seconds since epoch)
     _drive_last_voiced: dict[str, float] = {
         'hunger': 0.0, 'fatigue': 0.0, 'fear': 0.0
     }
-    _DRIVE_COOLDOWN   = 90.0   # minimum seconds between same drive expression
-    _last_curious_t   = 0.0    # last time curiosity question was asked
-    _CURIOUS_COOLDOWN = 60.0   # ask at most once per minute
+    _DRIVE_COOLDOWN   = 120.0
+    _DREAM_INTERVAL   = 90.0
+    _CURIOUS_COOLDOWN = 120.0
+    _recent_thoughts: deque = deque(maxlen=8)  # dedup inner speech across all sources
     # Intrinsic reward per zone — brain self-reinforces grounded responses.
     # Strong zones (food/danger) earn more; social is weakest (less predictable).
     _ZONE_INTRINSIC_REWARD: dict = {
@@ -823,7 +1330,9 @@ def main():
             if raw is None:
 
                 # --- ASYNC BACKGROUND TICK ---
-                brain.step()  # Pass time organically
+                # epsilon_boost from last GW broadcast modulates idle SOM steps
+                _idle_reward = _gw_out.get('epsilon_boost', 0.0) * 0.5
+                brain.step(reward=_idle_reward)
 
                 # Passive state drift
                 selfmodel.update('rest', 0.0, wm.activation_strength(), episodic.count())
@@ -853,61 +1362,59 @@ def main():
                         and now_t - _drive_last_voiced['fear'] > _DRIVE_COOLDOWN):
                     _drive_chain = ['afraid', 'careful']
                     _drive_key = 'fear'
-                # zone_overdue: temporal pressure halves curiosity cooldown when
-                # a zone hasn't been visited in >8 turns AND has low visit count.
-                _c_zone = curiosity.least_visited_zone(list(ZONE_ANCHORS.keys()))
-                _cur_cooldown = (_CURIOUS_COOLDOWN / 2
-                                 if temporal.zone_overdue(_c_zone, threshold=8)
-                                 else _CURIOUS_COOLDOWN)
-                if _drive_chain and _drive_key:
+                if silence_s < 30.0:
+                    pass  # warmup — no inner speech until brain has settled
+                elif _drive_chain and _drive_key:
                     _drive_last_voiced[_drive_key] = now_t
-                    with print_lock:
-                        sys.stdout.write("\r\033[K")
-                        print(f"[brain]: {' '.join(_drive_chain)}")
-                        sys.stdout.write("you: ")
-                        sys.stdout.flush()
-                elif now_t - _last_curious_t > _cur_cooldown and silence_s > 20.0:
-                    # No strong drive — curiosity surfaces instead.
-                    # Brain generates from least-visited zone seeds (not "what is X" template).
+                    drive_expr = brain.word_tp_generate(
+                        _drive_chain, max_len=4, temperature=0.9)
+                    words_out = drive_expr or _drive_chain[:2]
+                    key = tuple(words_out)
+                    if key not in _recent_thoughts:
+                        _recent_thoughts.append(key)
+                        _inner_speech(words_out, label='brain', reward=0.02)
+
+                elif now_t - _last_curious_t > _CURIOUS_COOLDOWN and silence_s > 20.0:
                     c_words = curiosity.curiosity_words(ZONE_ANCHORS,
                                                         getattr(brain, 'word_to_bmu', {}))
                     if c_words:
                         _last_curious_t = now_t
-                        # Generate expression from curiosity seeds + 'what' as opener
-                        c_seeds = [w for w in ['what'] + c_words if w in VOCABULARY]
+                        c_seeds = [w for w in c_words if w in VOCABULARY]
                         c_expr = brain.word_tp_generate(c_seeds, max_len=4,
                                                         temperature=neuromod.temperature())
-                        if c_expr:
-                            c_out = ' '.join(c_expr[:3])
-                        else:
-                            c_out = ' '.join(c_words[:2])
-                        with print_lock:
-                            sys.stdout.write("\r\033[K")
-                            print(f"[brain]: {c_out}")
-                            sys.stdout.write("you: ")
-                            sys.stdout.flush()
+                        words_out = c_expr or c_seeds[:2]
+                        key = tuple(words_out)
+                        if key not in _recent_thoughts:
+                            _recent_thoughts.append(key)
+                            _inner_speech(words_out, label='brain', reward=0.01)
 
-                # Drive monologue: only after 15s silence, once per new goal
-                # Imagination: only after 30s silence, once per 27s
-                if ticks_idle % 3 == 0 and silence_s >= 15.0:
+                # Goal-driven thought + imagination — both feed back through SOM
+                if ticks_idle % 3 == 0 and silence_s >= 30.0:
                     goal = pfc._active_goal
-                    with print_lock:
-                        sys.stdout.write("\r\033[K")  # clear the dangling "you: " line
-                        if goal and goal != _last_printed_goal[0]:
-                            # Drive-based monologue — fires ONCE per new goal
-                            print(f"[{temporal.session_phase()}-thought]: i want {goal}")
-                            _last_printed_goal[0] = goal
-                        elif (_IMAGINATION_ENABLED and not goal and
-                              ticks_idle % 9 == 0 and silence_s >= 30.0):
-                            # Curiosity imagination — only during genuine idle periods
-                            _last_printed_goal[0] = None
-                            thought = pfc.imagine(brain, episodic,
-                                                  curiosity=curiosity,
-                                                  zone_anchors=ZONE_ANCHORS)
-                            if thought:
-                                print(f"[{temporal.session_phase()}-imagine]: {thought}")
-                        sys.stdout.write("you: ")
-                        sys.stdout.flush()
+                    if goal and goal != _last_printed_goal[0]:
+                        goal_words = [w for w in pfc.get_goal_seeds() if w in VOCABULARY]
+                        gkey = tuple(goal_words[:3])
+                        if gkey not in _recent_thoughts:
+                            _recent_thoughts.append(gkey)
+                            _inner_speech(goal_words[:3], label='thinks', reward=0.03)
+                        _last_printed_goal[0] = goal
+                    elif (_IMAGINATION_ENABLED and not goal and
+                          ticks_idle % 9 == 0 and silence_s >= 30.0):
+                        _last_printed_goal[0] = None
+                        imagine_words = pfc.imagine(brain, episodic,
+                                                    curiosity=curiosity,
+                                                    zone_anchors=ZONE_ANCHORS)
+                        if imagine_words:
+                            ikey = tuple(imagine_words.split())
+                            if ikey not in _recent_thoughts:
+                                _recent_thoughts.append(ikey)
+                                _inner_speech(imagine_words.split(), label='imagines', reward=0.01)
+
+                # Dream replay — consolidate memory during long silence
+                if silence_s >= 60.0 and now_t - _last_dream_t > _DREAM_INTERVAL:
+                    _last_dream_t = now_t
+                    brain.dream(n_sequences=20)
+
                 continue
 
             # --- USER INPUT PROCESSING ---
@@ -941,6 +1448,7 @@ def main():
                     print(f"  Temporal:      turn={temporal._turn}  phase={temporal.session_phase()}")
                     print(f"  Episodes:      {episodic.count()} recorded")
                     print(f"  {logic.explain()}")
+                    gw.summary()
 
                 elif cmd == 'zones':
                     print("  Zone centers (SOM row, col):")
@@ -985,6 +1493,26 @@ def main():
 
             # ── Parse input ───────────────────────────────────────────────
             tokens = raw.lower().translate(_PUNCT).split()
+            global _correction_mode
+
+            # ── Correction mode absorption ────────────────────────────────
+            # When brain was wrong and user corrects → absorb as semantic teaching.
+            # Must happen before feedback shortcuts so user correction text isn't
+            # mistakenly treated as a feedback keyword.
+            if _correction_mode and tokens:
+                feedback_words = set(tokens) & (_FEEDBACK_POSITIVE | _FEEDBACK_NEGATIVE)
+                if not feedback_words:
+                    # User is teaching — absorb into semantic memory directly
+                    semantic.learn_from_sentence(tokens)
+                    wm.resolve_seeking()
+                    _correction_mode = False
+                    with print_lock:
+                        sys.stdout.write("\r\033[K")
+                        print("  [brain: correction absorbed]")
+                        sys.stdout.write("you: ")
+                        sys.stdout.flush()
+                    _total_turns += 1
+                    continue
 
             # ── Feedback shortcut ─────────────────────────────────────────
             if len(tokens) == 1 and tokens[0] in _FEEDBACK_POSITIVE:
@@ -1004,6 +1532,43 @@ def main():
 
             heard_words = [w for w in tokens if w in VOCABULARY]
 
+            # ── Emotional contagion via UserModel ────────────────────────
+            # User's expressed emotion nudges brain's OWN drives — not template response.
+            # "i feel sad" → user dominant=sad → brain's comfort drops slightly →
+            # brain responds from its own shifted state, not injected empathy words.
+            # This is alive: response emerges from internal change, not scripted care.
+            usermodel.update_from_words(tokens)
+            _user_dom = usermodel.dominant_state()
+            _s = selfmodel._state
+            if _user_dom == 'sad':
+                _s['comfort'] = max(0.0, _s['comfort'] - 0.06)
+            elif _user_dom == 'afraid':
+                _s['fear'] = min(1.0, _s['fear'] + 0.08)
+            elif _user_dom == 'happy':
+                _s['comfort'] = min(1.0, _s['comfort'] + 0.05)
+
+            # ── Salience filter — sort heard_words by drive relevance ─────
+            # Words that relate to active drives score higher and lead generation.
+            # Brain attends to what matters given current internal state, not
+            # equal-weight bag-of-words. High-salience words become first seeds.
+            def _salience(word: str) -> float:
+                score = 0.0
+                s = selfmodel._state
+                if word in ('food', 'eat', 'hungry', 'full'):
+                    score += s['hunger'] * 2.0
+                if word in ('danger', 'afraid', 'run', 'careful', 'hurt', 'pain'):
+                    score += s['fear'] * 2.0
+                if word in ('tired', 'sleep', 'rest', 'calm'):
+                    score += s['fatigue'] * 2.0
+                if word in ('water', 'drink', 'river'):
+                    score += s['hunger'] * 0.8
+                # Novelty boost: words the brain rarely hears rise in attention
+                bmu = brain.word_to_bmu.get(word)
+                if bmu is not None:
+                    score += curiosity.novelty_score(bmu) * 0.5
+                return score
+            heard_words = sorted(heard_words, key=_salience, reverse=True)
+
             # ── Phase 3: Resolution check ─────────────────────────────────
             # If brain was awaiting resolution from a prior question,
             # and user now says content words → reward fires (felt resolution).
@@ -1018,10 +1583,17 @@ def main():
 
             # ── Pavlovian conditioning: heard words nudge drive state ──────
             s = selfmodel._state
+            _negated = 'not' in set(tokens)   # "i am NOT hungry" reverses delta
             for w in heard_words:
                 if w in _PAVLOV_MAP:
                     drive, delta = _PAVLOV_MAP[w]
-                    s[drive] = max(0.0, min(1.0, s[drive] + delta))
+                    effective = -delta * 0.7 if _negated else delta
+                    s[drive] = max(0.0, min(1.0, s[drive] + effective))
+                    # Spike WM at this word's BMU so drive cluster stays hot
+                    # during response generation — grounds meaning in activation
+                    if w in brain.word_to_bmu:
+                        _dbmu = brain.word_to_bmu[w]
+                        wm.write(w, _dbmu, strength=min(1.0, wm.get_activation(_dbmu) + 0.5))
 
             # ── Semantic learning + contradiction detection ───────────────
             prev_n = semantic.contradiction_count()
@@ -1076,6 +1648,23 @@ def main():
             # ── Feed input through acoustic SOM ──────────────────────────
             _last_heard_bmus = feed_input(heard_words)
 
+            # ── Prediction error: compare TP prediction vs actual BMU ────
+            # Brain predicted _predicted_bmu last turn; actual = _last_heard_bmus[0].
+            # PE = normalized SOM distance. High PE → surprise → learn more.
+            if _predicted_bmu and _last_heard_bmus:
+                _act = _last_heard_bmus[0]
+                _pr, _pc = _predicted_bmu // SOM_COLS, _predicted_bmu % SOM_COLS
+                _ar, _ac = _act // SOM_COLS, _act % SOM_COLS
+                _dist = ((_pr - _ar) ** 2 + (_pc - _ac) ** 2) ** 0.5
+                _max_dist = (SOM_ROWS ** 2 + SOM_COLS ** 2) ** 0.5
+                _last_pe = _dist / _max_dist
+                if _last_pe > 0.25:
+                    # Significant misprediction → spike uncertainty + boost SOM learning
+                    selfmodel.spike_uncertainty(_last_pe * 0.35)
+                    brain.step(reward=_last_pe * 0.1)  # surprise = learning signal
+            else:
+                _last_pe = 0.0
+
             for _ in range(4):
                 brain.hear(SILENCE)
                 brain.step()
@@ -1088,6 +1677,10 @@ def main():
                 # Semantic answered — clear any pending unknown for this word
                 if _unknown_found and response:
                     _unknown_found = None
+            elif _state_query_response(tokens) is not None:
+                # State query: brain introspects actual drive → truthful answer
+                response = _state_query_response(tokens)
+                _unknown_found = None
             elif _unknown_found:
                 # Semantic has no answer AND word is genuinely unknown — ask.
                 _pending_unknown = _unknown_found
@@ -1117,7 +1710,22 @@ def main():
                 if response_words and response_words[0] in ('what', 'search', 'know'):
                     _awaiting_resolution = True
 
+                # Separator between user words and brain words in GRU sequence.
+                # feed_input() already observed user words; now insert boundary,
+                # hear_own_response() will observe brain words, then end() commits.
+                brain.word_tp.separator()
                 hear_own_response(response_words, reward=intrinsic_r)
+                brain.word_tp.end()   # commit full exchange as GRU training sequence
+
+                # ── Predict next input BMU from TP context ────────────────
+                # Brain uses current TP state to form expectation of what comes next.
+                # PE computed at START of next turn: actual vs this prediction.
+                try:
+                    _pred_dist = brain.tp.get_distribution(
+                        [brain._prev_bmu, brain._current_bmu])
+                    _predicted_bmu = brain.tp.sample(_pred_dist)
+                except Exception:
+                    _predicted_bmu = 0
 
                 _recent_responses.append(response)
                 if len(_recent_responses) > _MAX_RECENT:
@@ -1131,16 +1739,16 @@ def main():
                     sys.stdout.flush()
                 _last_response_words = []
                 _context_buffer.append((heard_words, []))
+                brain.word_tp.end()   # commit partial sequence even with no response
 
             # Module updates — order matters
             heard_bmu = _last_heard_bmus[0] if _last_heard_bmus else 0
             novelty   = curiosity.novelty_score(heard_bmu)
             surprise  = abs(novelty - 0.5)
+            relation_hit = (response is not None and
+                            _relation_response(tokens) is not None)
 
             # Spike uncertainty when input lands on genuinely unknown BMU.
-            # This is the felt gap — brain encounters something it hasn't mapped yet.
-            # Novelty tracked for neuromod but does NOT spike uncertainty.
-            # Session-start novelty (all BMU counts=0) is not epistemic uncertainty.
             # Uncertainty spikes only from actual unknown words (_unknown_found path).
 
             wm.tick_seeking()
@@ -1166,10 +1774,63 @@ def main():
                 reward      = intrinsic_r,
             )
 
+            # ── Global Workspace integration ──────────────────────────────
+            # Collect signals from all modules → one broadcast per turn.
+            _steps_since_reward += 1
+            # Zone-level familiarity: how many times has brain been in this zone?
+            # More robust than BMU-level (noisy MFCC hits different BMUs each turn).
+            _zone_visits = curiosity._zone_counts.get(zone, 0)
+            _familiarity = min(1.0, _zone_visits / 15.0)
+            _gw_out = gw.step(
+                qe_norm            = wm.activation_strength(),
+                familiarity        = _familiarity,
+                freq_idx           = heard_bmu,
+                prediction_error   = max(novelty, _last_pe),
+                thought_confidence = 0.5 + wm.activation_strength() * 0.5,
+                rpe                = intrinsic_r - 0.08,
+                intrinsic_rwd      = intrinsic_r,
+                corridor_boredom   = min(1.0, conv_state._zone_repeat_count / 5.0),
+                steps_since_reward = _steps_since_reward,
+                salience           = min(1.0, novelty + wm.activation_strength()),
+                l4_top_prob        = _familiarity,
+            )
+            # Broadcast GW outputs back into modules:
+            # 1. Arousal → NE (urgency raises exploration temperature)
+            neuromod._ne = max(neuromod._ne, _gw_out['arousal'] * 0.5)
+            # 2. Curiosity pull → ACh (genuine unknowns boost learning rate)
+            neuromod._ach = max(neuromod._ach, _gw_out['curiosity_pull'] * 0.7)
+            # 3. Surprise debt → uncertainty spike (unresolved errors surface)
+            if _gw_out['surprise_debt'] > 0.5:
+                selfmodel.spike_uncertainty(_gw_out['surprise_debt'] * 0.25)
+            # 4. Valence tone → comfort (positive turns feel better)
+            s = selfmodel._state
+            s['comfort'] = max(0.0, min(1.0,
+                s['comfort'] + _gw_out['valence_tone'] * 0.04))
+            # 5. Tension → curiosity pressure (stuck in known zone → explore)
+            if _gw_out['tension'] > 0.7:
+                curiosity._zone_counts[zone] = curiosity._zone_counts.get(zone, 0) + 5
+
+            # Update conversation state: topic, entities, speaker focus, intent.
+            conv_state.update(zone=zone, heard_words=heard_words,
+                              relation_hit=relation_hit,
+                              hollow_set=_HOLLOW,
+                              question=_is_question(tokens))
+            conv_state.record_turn(heard_words, response)
+
             _total_turns += 1
 
             if _total_turns % _DREAM_EVERY == 0:
                 brain.dream(n_sequences=10)
+                # GRU fit: consolidate language sequences accumulated in live use.
+                # Each call improves GRU without forgetting — sequences accumulate across sessions.
+                try:
+                    _n_seqs = len(brain.word_tp._sequences)
+                except AttributeError:
+                    _state = brain.word_tp.get_state()
+                    _n_seqs = len(_state.get('sequences', [])) if isinstance(_state, dict) else 0
+
+                if _n_seqs >= 10:
+                    brain.word_tp.fit(epochs=5, lr=0.01)
     except KeyboardInterrupt:
         interrupted = True
         print("\nStopping live session...")

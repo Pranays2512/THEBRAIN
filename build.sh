@@ -45,11 +45,22 @@ cmake --build . --config Release -j"$(sysctl -n hw.ncpu)" 2>&1
 # Copy .so to project root
 SO_FILE=$(find . -name "brain_core*.so" | head -1)
 if [ -z "$SO_FILE" ]; then
-    echo "ERROR: build produced no .so file"
+    echo "ERROR: build produced no brain_core .so file"
     exit 1
 fi
-
 cp "$SO_FILE" "$SCRIPT_DIR/"
+
+GRU_SO=$(find . -name "brain_gru*.so" | head -1)
+if [ -n "$GRU_SO" ]; then
+    cp "$GRU_SO" "$SCRIPT_DIR/"
+    echo "brain_gru.so copied"
+fi
+
+W6_SO=$(find . -name "world6_core*.so" | head -1)
+if [ -n "$W6_SO" ]; then
+    cp "$W6_SO" "$SCRIPT_DIR/"
+    echo "world6_core.so copied"
+fi
 echo ""
 echo "=== Done ==="
 echo ""

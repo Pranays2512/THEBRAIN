@@ -319,6 +319,51 @@ RECALL_STEP_WINDOW = 20   # button→door must happen within this many steps
 SOCIAL_NODES: List[str] = ['A0', 'A1', 'A2', 'B0', 'B1']
 SOCIAL_REWARD = 0.02
 
+# ═══════════════════════════════════════════════════════════════
+# THIRST DRIVE
+# ═══════════════════════════════════════════════════════════════
+
+THIRST_RATE       = 0.012    # thirst increase per step (~83 steps to fill)
+MAX_THIRST        = 1.0
+THIRST_HIGH       = 0.65
+THIRST_EXTREME    = 0.85
+THIRST_DRINK_RECOVER = 0.80  # thirst reduction when water found
+THIRST_PENALTY    = -0.03    # per step while extremely thirsty
+
+# Water nodes — near high-moisture left edge (col 0-2)
+WATER_NODES: List[str] = ['B0', 'C1', 'D2', 'E0', 'F1']
+WATER_REWARD  = 0.6          # hunger-scaled like food
+
+# ═══════════════════════════════════════════════════════════════
+# INJURY / RECOVERY
+# ═══════════════════════════════════════════════════════════════
+
+INJURY_RATE        = 0.015   # injury accumulates per step in danger zones
+INJURY_HEAL_RATE   = 0.005   # heals per step outside danger (slow recovery)
+MAX_INJURY         = 1.0
+INJURY_HIGH        = 0.55
+INJURY_PAIN_MULT   = 1.5     # danger-zone penalty multiplier when injured
+INJURY_REWARD      = 0.04    # reward for healing back below 0.2
+
+# ═══════════════════════════════════════════════════════════════
+# SOCIAL NPC
+# ═══════════════════════════════════════════════════════════════
+
+NPC_MOVE_INTERVAL  = 40      # NPC wanders every N steps
+NPC_START_NODE     = 'G7'
+NPC_SOCIAL_DIST    = 1       # must be adjacent (or same node) to meet
+NPC_REWARD         = 0.05    # reward for meeting NPC
+
+# ═══════════════════════════════════════════════════════════════
+# WEATHER / STORM
+# ═══════════════════════════════════════════════════════════════
+
+STORM_PROB         = 0.0004  # probability per step a storm starts
+STORM_DURATION_MIN = 80
+STORM_DURATION_MAX = 200
+STORM_FATIGUE_MULT = 2.0     # fatigue accumulates faster during storm
+STORM_REWARD       = -0.02   # mild aversive while storm active
+
 # Satiation event — fires immediately after eating when hunger resets.
 # Grounds: full, good, happy, calm (reward after need-satisfaction)
 SATIATION_REWARD = 0.05
@@ -470,6 +515,19 @@ class World6:
         self._just_ate: bool = False          # satiation flag for this step
         self._prev_food_nodes: set = set()    # nodes that were food before last rotation
 
+        # ── Thirst ────────────────────────────────────────────
+        self._thirst: float = 0.3
+
+        # ── Injury ────────────────────────────────────────────
+        self._injury: float = 0.0
+
+        # ── Social NPC ────────────────────────────────────────
+        self._npc_node: str = NPC_START_NODE
+        self._npc_move_counter: int = 0
+
+        # ── Weather ───────────────────────────────────────────
+        self._storm_ticks: int = 0
+
     # ── Reset ─────────────────────────────────────────────────
 
     def reset(self):
@@ -494,6 +552,11 @@ class World6:
         self._recent_nodes = []
         self._just_ate = False
         self._prev_food_nodes = set()
+        self._thirst = 0.3
+        self._injury = 0.0
+        self._npc_node = NPC_START_NODE
+        self._npc_move_counter = 0
+        self._storm_ticks = 0
 
         init_idx = self._rng.choice(len(FOOD_CANDIDATES),
                                     size=N_FOOD_ACTIVE, replace=False)
@@ -531,6 +594,30 @@ class World6:
             self._fatigue = min(1.0, self._fatigue + (FATIGUE_RATE + FATIGUE_WALL_BUMP) * night_mult)
         else:
             self._fatigue = min(1.0, self._fatigue + FATIGUE_RATE * night_mult)
+
+        # ── Thirst update ────────────────────────────────────
+        self._thirst = min(MAX_THIRST, self._thirst + THIRST_RATE)
+
+        # ── Injury update (accumulate in danger, heal outside) ───
+        if (not wall_hit) and self._node in DANGER_NODES:
+            self._injury = min(MAX_INJURY, self._injury + INJURY_RATE)
+        elif self._injury > 0:
+            self._injury = max(0.0, self._injury - INJURY_HEAL_RATE)
+
+        # ── Storm update ─────────────────────────────────────
+        if self._storm_ticks > 0:
+            self._storm_ticks -= 1
+        elif self._rng.random() < STORM_PROB:
+            dur = int(self._rng.integers(STORM_DURATION_MIN, STORM_DURATION_MAX))
+            self._storm_ticks = dur
+
+        # ── NPC wander ────────────────────────────────────────
+        self._npc_move_counter += 1
+        if self._npc_move_counter >= NPC_MOVE_INTERVAL:
+            self._npc_move_counter = 0
+            npc_neighbors = list(ADJACENCY[self._npc_node].values())
+            if npc_neighbors:
+                self._npc_node = str(self._rng.choice(npc_neighbors))
 
         # ── Door timer countdown ──────────────────────────────
         if self._door_timer > 0:
@@ -573,15 +660,38 @@ class World6:
         is_resting   = False
         is_bored     = False
 
-        is_danger   = (not wall_hit) and (self._node in DANGER_NODES)
-        is_surprise = False
+        is_danger    = (not wall_hit) and (self._node in DANGER_NODES)
+        is_surprise  = False
+        is_drinking  = False
+        is_healing   = False
+        is_npc_meet  = False
+        is_storm     = self._storm_ticks > 0
 
         if wall_hit:
             reward = WALL_PENALTY
         else:
             # DANGER ZONE: persistent negative reward while inside
             if is_danger:
-                reward = DANGER_PENALTY
+                penalty_mult = INJURY_PAIN_MULT if self._injury > INJURY_HIGH else 1.0
+                reward = DANGER_PENALTY * penalty_mult
+
+            # WATER NODE: drink and reduce thirst
+            if self._node in WATER_NODES:
+                is_drinking = True
+                thirst_mult = max(0.1, self._thirst)
+                reward += WATER_REWARD * thirst_mult
+                self._thirst = max(0.0, self._thirst - THIRST_DRINK_RECOVER)
+
+            # INJURY HEAL REWARD: recovered below 0.2
+            if self._injury < 0.2 and self._injury + INJURY_HEAL_RATE >= 0.2:
+                reward += INJURY_REWARD
+                is_healing = True
+
+            # NPC ENCOUNTER: adjacent or same node
+            npc_neighbors = set(ADJACENCY[self._npc_node].values()) | {self._npc_node}
+            if self._node in npc_neighbors:
+                reward += NPC_REWARD
+                is_npc_meet = True
 
             # DOOR: gives reward if timer active
             if self._node in DOOR_NODES:
@@ -636,6 +746,16 @@ class World6:
             if self._node in SOCIAL_NODES:
                 reward += SOCIAL_REWARD
                 is_social = True
+
+        # STORM: extra fatigue while storm active
+        if is_storm:
+            storm_extra = FATIGUE_RATE * (STORM_FATIGUE_MULT - 1.0)
+            self._fatigue = min(1.0, self._fatigue + storm_extra)
+            reward += STORM_REWARD
+
+        # EXTREME THIRST: aversive signal
+        if self._thirst > THIRST_EXTREME:
+            reward += THIRST_PENALTY
 
         # FRUSTRATION: wall streak ≥ threshold → aversive signal
         if self._wall_streak >= FRUSTRATION_WALL_STREAK:
@@ -699,6 +819,13 @@ class World6:
             'is_bored':       is_bored,
             'is_surprise':    is_surprise,
             'env':            dict(NODE_ENV[self._node]),
+            'thirst':         self._thirst,
+            'injury':         self._injury,
+            'is_drinking':    is_drinking,
+            'is_healing':     is_healing,
+            'is_npc_meet':    is_npc_meet,
+            'is_storm':       is_storm,
+            'npc_node':       self._npc_node,
         }
         return freq_hz, freq_idx, reward, info
 
@@ -769,6 +896,28 @@ class World6:
               f"  door_timer={self._door_timer}")
         print(f"  Active food: {self._active_food}")
         print(f"  Food balance: {self.food_balance()}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# C++ FAST PATH — use world6_core when available
+# ═══════════════════════════════════════════════════════════════
+
+try:
+    import world6_core as _w6c
+
+    # Replace World6 class with C++ version
+    World6 = _w6c.World6
+
+    # Replace BFS functions with C++ versions
+    def bfs_optimal_actions(food_nodes, button_nodes, door_nodes):
+        return _w6c.bfs_optimal_actions(
+            list(food_nodes), list(button_nodes), list(door_nodes))
+
+    def _bfs_to_targets_cpp(targets):
+        return _w6c.bfs_to_targets(list(targets))
+
+except ImportError:
+    pass  # keep Python implementations above
 
 
 # ═══════════════════════════════════════════════════════════════

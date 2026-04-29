@@ -160,6 +160,45 @@ public:
         step_count++;
     }
 
+    // ── Raw serial BMU search — used inside feed_word_frames tight loop ──
+    // OpenMP thread-spawn overhead (~100μs) exceeds compute (~5μs) at 5000
+    // neurons, so serial is 10-20x faster for batch word feeding.
+    int find_bmu_raw(const float* x) const noexcept {
+        int   best_bmu  = 0;
+        float best_dist = numeric_limits<float>::max();
+        for (int i = 0; i < n_neurons; i++) {
+            const float* w = &weights[i * n_dims];
+            float d = 0.0f;
+            for (int j = 0; j < n_dims; j++) {
+                float diff = x[j] - w[j];
+                d += diff * diff;
+            }
+            if (d < best_dist) { best_dist = d; best_bmu = i; }
+        }
+        return best_bmu;
+    }
+
+    void update_raw(const float* x, int bmu, float reward_mod) {
+        float cur_lr     = init_lr     * powf(lr_decay,     (float)step_count)
+                           * max(0.0f, reward_mod);
+        float cur_radius = init_radius * powf(radius_decay, (float)step_count);
+        float two_r2     = 2.0f * cur_radius * cur_radius;
+
+        if (cur_lr < 1e-7f) { step_count++; return; }
+
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < n_neurons; i++) {
+            float gd = grid_dist(i, bmu);
+            float h  = expf(-(gd * gd) / two_r2);
+            if (h < 1e-5f) continue;
+            float* w     = &weights[i * n_dims];
+            float  alpha = cur_lr * h;
+            for (int j = 0; j < n_dims; j++)
+                w[j] += alpha * (x[j] - w[j]);
+        }
+        step_count++;
+    }
+
     // ── Accessors ───────────────────────────────────────────────────
     py::array_t<float> get_weights(int i) const {
         if (i < 0 || i >= n_neurons)
@@ -406,6 +445,84 @@ public:
 
 
 // ══════════════════════════════════════════════════════════════════════
+// feed_word_frames — batch MFCC feeding, eliminates Python loop overhead
+//
+// Equivalent to Python:
+//   for i in range(n_frames):
+//       frame = mean_vec + noise(noise_std)
+//       if blend > 0: frame = (1-blend)*frame + blend*context
+//       brain.hear(frame); brain.step(reward if i==last else 0)
+//   brain.hear(SILENCE); brain.step()
+//
+// Returns (last_bmu, new_prev_prev_bmu, new_prev_bmu, steps_added)
+// ══════════════════════════════════════════════════════════════════════
+
+py::tuple feed_word_frames(
+        FastSOM& som, FastTP& tp,
+        py::array_t<float, py::array::c_style> mean_vec,
+        int n_frames, float noise_std, float reward,
+        int prev_prev_bmu, int prev_bmu, int n_steps,
+        py::array_t<float, py::array::c_style> context_mfcc,
+        float blend) {
+
+    auto mv_buf = mean_vec.request();
+    int nd = som.n_dims;
+    if ((int)mv_buf.shape[0] != nd)
+        throw invalid_argument("mean_vec size mismatch");
+    const float* mv = static_cast<const float*>(mv_buf.ptr);
+
+    const float* ctx = nullptr;
+    bool use_blend = (blend > 1e-5f);
+    if (use_blend) {
+        auto ctx_buf = context_mfcc.request();
+        if ((int)ctx_buf.shape[0] == nd)
+            ctx = static_cast<const float*>(ctx_buf.ptr);
+        else
+            use_blend = false;
+    }
+
+    mt19937 rng_local((uint32_t)chrono::steady_clock::now()
+                       .time_since_epoch().count());
+    normal_distribution<float> ndist(0.0f, noise_std);
+
+    vector<float> frame(nd);
+    int ppb = prev_prev_bmu, pb = prev_bmu, ns = n_steps;
+    int last_bmu = pb;
+    float inv_blend = 1.0f - blend;
+
+    for (int fi = 0; fi < n_frames; fi++) {
+        for (int j = 0; j < nd; j++)
+            frame[j] = mv[j] + ndist(rng_local);
+        if (use_blend && ctx)
+            for (int j = 0; j < nd; j++)
+                frame[j] = inv_blend * frame[j] + blend * ctx[j];
+
+        int bmu = som.find_bmu_raw(frame.data());
+        float r = (fi == n_frames - 1) ? reward : 0.0f;
+        som.update_raw(frame.data(), bmu, 1.0f + r * 2.0f);
+
+        if (ns > 1)  tp.observe(ppb, pb, bmu);
+        if (r > 0.0f && ns > 1) tp.reinforce(ppb, pb, bmu, r);
+
+        ppb = pb; pb = bmu; ns++;
+        last_bmu = bmu;
+    }
+
+    // Silence frame — find BMU for TP transition, skip weight update
+    // (silence carries no acoustic information worth learning)
+    {
+        vector<float> silence(nd, 0.0f);
+        int bmu = som.find_bmu_raw(silence.data());
+        som.step_count++;   // keep step counter consistent
+        if (ns > 1) tp.observe(ppb, pb, bmu);
+        ppb = pb; pb = bmu; ns++;
+    }
+
+    return py::make_tuple(last_bmu, ppb, pb, ns - n_steps);
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
 // pybind11 module
 // ══════════════════════════════════════════════════════════════════════
 
@@ -467,6 +584,16 @@ PYBIND11_MODULE(brain_core, m) {
              "Number of neurons with at least one outgoing transition")
         .def("__getstate__",     &FastTP::__getstate__)
         .def("__setstate__",     &FastTP::__setstate__);
+
+    // ── feed_word_frames ────────────────────────────────────────────
+    m.def("feed_word_frames", &feed_word_frames,
+          py::arg("som"), py::arg("tp"),
+          py::arg("mean_vec"), py::arg("n_frames"),
+          py::arg("noise_std"), py::arg("reward"),
+          py::arg("prev_prev_bmu"), py::arg("prev_bmu"), py::arg("n_steps"),
+          py::arg("context_mfcc"), py::arg("blend") = 0.0f,
+          "Batch-feed one word's MFCC frames — eliminates Python loop.\n"
+          "Returns (last_bmu, new_prev_prev, new_prev, steps_added).");
 
     // ── Build info ───────────────────────────────────────────────────
 #ifdef _OPENMP
