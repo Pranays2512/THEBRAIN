@@ -21,6 +21,7 @@
 #include "core/emotion.hpp"
 #include "core/attention.hpp"
 #include "core/self_model.hpp"
+#include "core/symbolic.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -428,4 +429,56 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("obs_count",       &SelfModel::obs_count)
         .def_property_readonly("n_self_neurons",
              [](const SelfModel& sm){ return sm.n_self_neurons; });
+
+    // ── SymbolOp enum ────────────────────────────────────────────────
+    py::enum_<SymbolOp>(m, "SymbolOp")
+        .value("NONE",     SymbolOp::NONE)
+        .value("ADD",      SymbolOp::ADD)
+        .value("SUBTRACT", SymbolOp::SUBTRACT)
+        .value("MULTIPLY", SymbolOp::MULTIPLY)
+        .value("COMPARE",  SymbolOp::COMPARE)
+        .value("SEQUENCE", SymbolOp::SEQUENCE)
+        .value("NEGATE",   SymbolOp::NEGATE)
+        .export_values();
+
+    // ── Symbolic ─────────────────────────────────────────────────────
+    py::class_<Symbolic>(m, "Symbolic")
+        .def(py::init<int>(), py::arg("n_dims"))
+        .def("bind",
+             [](Symbolic& s, const std::string& sym,
+                py::object vec_obj, SymbolOp op,
+                const std::string& category) {
+                 if (vec_obj.is_none())
+                     s.bind(sym, {}, op, category);
+                 else
+                     s.bind(sym,
+                         to_vec(vec_obj.cast<py::array_t<float,
+                                py::array::c_style>>()), op, category);
+             }, py::arg("symbol"),
+                py::arg("vec")      = py::none(),
+                py::arg("op")       = SymbolOp::NONE,
+                py::arg("category") = "")
+        .def("lookup",
+             [](Symbolic& s, const std::string& sym) {
+                 return to_np(s.lookup(sym));
+             })
+        .def("apply",
+             [](Symbolic& s, const std::string& op_sym,
+                py::array_t<float, py::array::c_style> a,
+                py::array_t<float, py::array::c_style> b) {
+                 return to_np(s.apply(op_sym, to_vec(a), to_vec(b)));
+             })
+        .def("nearest_symbol",
+             [](const Symbolic& s, py::array_t<float, py::array::c_style> arr) {
+                 return s.nearest_symbol(to_vec(arr));
+             })
+        .def("seed_math_symbols", &Symbolic::seed_math_symbols)
+        .def("knows",             &Symbolic::knows)
+        .def("symbols",           &Symbolic::symbols)
+        .def("save",              &Symbolic::save)
+        .def_static("load",
+             [](const std::string& p) { return Symbolic::load(p); })
+        .def_property_readonly("symbol_count", &Symbolic::symbol_count)
+        .def_property_readonly("n_dims",
+             [](const Symbolic& s){ return s.n_dims; });
 }
