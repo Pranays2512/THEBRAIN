@@ -15,6 +15,7 @@
 #include "core/som.hpp"
 #include "core/predictor.hpp"
 #include "core/episodic.hpp"
+#include "core/working_mem.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -155,4 +156,39 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("episode_count",   &EpisodicMemory::episode_count)
         .def_property_readonly("prototype_count", &EpisodicMemory::prototype_count)
         .def_property_readonly("step",            &EpisodicMemory::step);
+
+    // ── WorkingMemory ────────────────────────────────────────────────
+    py::class_<WorkingMemory>(m, "WorkingMemory")
+        .def(py::init<int, int, float>(),
+             py::arg("n_dims"),
+             py::arg("capacity")   = 7,
+             py::arg("decay_rate") = 0.95f)
+        .def("gate",
+             [](WorkingMemory& wm, py::array_t<float, py::array::c_style> arr,
+                float salience) {
+                 return wm.gate(to_vec(arr), salience);
+             }, py::arg("activation"), py::arg("salience") = 0.f,
+             "Insert activation into working memory. Returns True if inserted.")
+        .def("tick",     &WorkingMemory::tick,
+             "Decay all slots one time step")
+        .def("context",
+             [](const WorkingMemory& wm) { return to_np(wm.context()); },
+             "Weighted mean of all active slots")
+        .def("most_active",
+             [](const WorkingMemory& wm) { return to_np(wm.most_active()); },
+             "Vector of most active slot")
+        .def("boost_salience",
+             [](WorkingMemory& wm, py::array_t<float, py::array::c_style> arr,
+                float amount) { wm.boost_salience(to_vec(arr), amount); },
+             py::arg("vec"), py::arg("amount"))
+        .def("clear",       &WorkingMemory::clear)
+        .def("activations",
+             [](const WorkingMemory& wm) { return to_np(wm.activations()); })
+        .def("save",        &WorkingMemory::save)
+        .def_static("load",
+             [](const std::string& p) { return WorkingMemory::load(p); })
+        .def_property_readonly("size",  &WorkingMemory::size)
+        .def_property_readonly("empty", &WorkingMemory::empty)
+        .def_property_readonly("n_dims",    [](const WorkingMemory& w){ return w.n_dims; })
+        .def_property_readonly("capacity",  [](const WorkingMemory& w){ return w.capacity; });
 }
