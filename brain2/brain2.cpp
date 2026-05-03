@@ -17,6 +17,7 @@
 #include "core/episodic.hpp"
 #include "core/working_mem.hpp"
 #include "core/language.hpp"
+#include "core/imagination.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -250,4 +251,60 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("vocab_size", &Language::vocab_size)
         .def_property_readonly("n_dims",
              [](const Language& l){ return l.n_dims; });
+
+    // ── Simulation struct ────────────────────────────────────────────
+    py::class_<Simulation>(m, "Simulation")
+        .def_readonly("coherence",  &Simulation::coherence)
+        .def_readonly("valence",    &Simulation::valence)
+        .def_readonly("completed",  &Simulation::completed)
+        .def_property_readonly("frames",
+             [](const Simulation& s) {
+                 py::list out;
+                 for (const auto& f : s.frames) out.append(to_np(f));
+                 return out;
+             });
+
+    // ── Imagination ──────────────────────────────────────────────────
+    py::class_<Imagination>(m, "Imagination")
+        .def(py::init([](Predictor* p, int max_steps) {
+                 return std::make_unique<Imagination>(p, max_steps);
+             }),
+             py::arg("predictor"), py::arg("max_steps") = 20,
+             py::keep_alive<1, 2>())  // keep predictor alive
+        .def("simulate",
+             [](Imagination& im,
+                py::array_t<float, py::array::c_style> arr,
+                int steps) {
+                 return im.simulate(to_vec(arr), steps);
+             }, py::arg("start_state"), py::arg("steps") = -1)
+        .def("dream",
+             [](Imagination& im, int n_dreams, int steps_per_dream,
+                py::list seeds, unsigned seed) {
+                 std::vector<std::vector<float>> sv;
+                 for (auto& item : seeds)
+                     sv.push_back(to_vec(item.cast<
+                         py::array_t<float, py::array::c_style>>()));
+                 return im.dream(n_dreams, steps_per_dream, sv, seed);
+             }, py::arg("n_dreams"), py::arg("steps_per_dream") = 10,
+                py::arg("seeds") = py::list(), py::arg("seed") = 42u)
+        .def("evaluate",
+             [](const Imagination& im, const Simulation& s,
+                py::array_t<float, py::array::c_style> arr,
+                float threshold) {
+                 return im.evaluate(s, to_vec(arr), threshold);
+             }, py::arg("sim"), py::arg("goal_state"),
+                py::arg("threshold") = 0.8f)
+        .def("extract_frames",
+             [](const Imagination& im,
+                const std::vector<Simulation>& sims, float min_coh) {
+                 auto frames = im.extract_frames(sims, min_coh);
+                 py::list out;
+                 for (const auto& f : frames) out.append(to_np(f));
+                 return out;
+             }, py::arg("sims"), py::arg("min_coherence") = 0.4f)
+        .def_property_readonly("has_predictor", &Imagination::has_predictor)
+        .def_property_readonly("n_dims",
+             [](const Imagination& i){ return i.n_dims; })
+        .def_property_readonly("max_steps",
+             [](const Imagination& i){ return i.max_steps; });
 }
