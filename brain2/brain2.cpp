@@ -18,6 +18,7 @@
 #include "core/working_mem.hpp"
 #include "core/language.hpp"
 #include "core/imagination.hpp"
+#include "core/emotion.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -307,4 +308,49 @@ PYBIND11_MODULE(brain2, m) {
              [](const Imagination& i){ return i.n_dims; })
         .def_property_readonly("max_steps",
              [](const Imagination& i){ return i.max_steps; });
+
+    // ── EmotionState struct ──────────────────────────────────────────
+    py::class_<EmotionState>(m, "EmotionState")
+        .def_readonly("valence", &EmotionState::valence)
+        .def_readonly("arousal", &EmotionState::arousal);
+
+    // ── EmotionEvent struct ──────────────────────────────────────────
+    py::class_<EmotionEvent>(m, "EmotionEvent")
+        .def(py::init<float, float, float>(),
+             py::arg("valence_delta"), py::arg("arousal_delta"),
+             py::arg("intensity") = 1.0f)
+        .def_readwrite("valence_delta", &EmotionEvent::valence_delta)
+        .def_readwrite("arousal_delta", &EmotionEvent::arousal_delta)
+        .def_readwrite("intensity",     &EmotionEvent::intensity);
+
+    // ── Emotion ──────────────────────────────────────────────────────
+    py::class_<Emotion>(m, "Emotion")
+        .def(py::init<float, float>(),
+             py::arg("decay_rate")  = 0.05f,
+             py::arg("peak_decay")  = 0.01f)
+        .def("trigger",               &Emotion::trigger)
+        .def("from_prediction_error", &Emotion::from_prediction_error,
+             py::arg("error"))
+        .def("from_reward",           &Emotion::from_reward,
+             py::arg("reward"))
+        .def("tick",                  &Emotion::tick)
+        .def("reset",                 &Emotion::reset)
+        .def("state",                 &Emotion::state)
+        .def("save",                  &Emotion::save)
+        .def_static("load",
+             [](const std::string& p) { return Emotion::load(p); })
+        .def_property_readonly("salience",           &Emotion::salience)
+        .def_property_readonly("lr_modulator",       &Emotion::lr_modulator)
+        .def_property_readonly("attention_modulator",&Emotion::attention_modulator)
+        .def_property_readonly("approach_mode",      &Emotion::approach_mode)
+        .def_property_readonly("avoidance_mode",     &Emotion::avoidance_mode)
+        .def_property_readonly("inertia",            &Emotion::inertia)
+        .def_property_readonly("peak_valence",       &Emotion::peak_valence)
+        .def_property_readonly("peak_arousal",       &Emotion::peak_arousal)
+        .def_property("valence",
+             [](const Emotion& e){ return e.valence; },
+             [](Emotion& e, float v){ e.valence = v; })
+        .def_property("arousal",
+             [](const Emotion& e){ return e.arousal; },
+             [](Emotion& e, float v){ e.arousal = v; });
 }
