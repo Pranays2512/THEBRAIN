@@ -19,6 +19,7 @@
 #include "core/language.hpp"
 #include "core/imagination.hpp"
 #include "core/emotion.hpp"
+#include "core/attention.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -353,4 +354,42 @@ PYBIND11_MODULE(brain2, m) {
         .def_property("arousal",
              [](const Emotion& e){ return e.arousal; },
              [](Emotion& e, float v){ e.arousal = v; });
+
+    // ── AttentionResult struct ───────────────────────────────────────
+    py::class_<AttentionResult>(m, "AttentionResult")
+        .def_readonly("passed",    &AttentionResult::passed)
+        .def_readonly("score",     &AttentionResult::score)
+        .def_readonly("threshold", &AttentionResult::threshold)
+        .def_readonly("focus_bmu", &AttentionResult::focus_bmu);
+
+    // ── Attention ────────────────────────────────────────────────────
+    py::class_<Attention>(m, "Attention")
+        .def(py::init<int, float, float>(),
+             py::arg("n_neurons"),
+             py::arg("decay_rate")      = 0.1f,
+             py::arg("base_threshold")  = 0.3f)
+        .def("gate",
+             [](Attention& a,
+                py::array_t<float, py::array::c_style> arr,
+                float novelty, float arousal_modulator) {
+                 return a.gate(to_vec(arr), novelty, arousal_modulator);
+             }, py::arg("activation_map"), py::arg("novelty"),
+                py::arg("arousal_modulator") = 0.75f)
+        .def("set_top_down",
+             [](Attention& a, py::array_t<float, py::array::c_style> arr) {
+                 a.set_top_down(to_vec(arr));
+             })
+        .def("clear_top_down", &Attention::clear_top_down)
+        .def("tick",           &Attention::tick)
+        .def("reset",          &Attention::reset)
+        .def("saliency_map",
+             [](const Attention& a) { return to_np(a.saliency_map()); })
+        .def("save",           &Attention::save)
+        .def_static("load",
+             [](const std::string& p) { return Attention::load(p); })
+        .def_property_readonly("focus_neuron",  &Attention::focus_neuron)
+        .def_property_readonly("mean_saliency", &Attention::mean_saliency)
+        .def_property_readonly("threshold",     &Attention::threshold)
+        .def_property_readonly("n_neurons",
+             [](const Attention& a){ return a.n_neurons; });
 }
