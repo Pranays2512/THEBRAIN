@@ -13,6 +13,7 @@
 #include <pybind11/stl.h>
 
 #include "core/som.hpp"
+#include "core/predictor.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -74,4 +75,40 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("step",      &SOM::step)
         .def_property_readonly("lr",        &SOM::lr)
         .def_property_readonly("radius",    &SOM::radius);
+
+    // ── Predictor ────────────────────────────────────────────────────
+    py::class_<Predictor>(m, "Predictor")
+        .def(py::init<int, int, float, unsigned>(),
+             py::arg("input_dim"),
+             py::arg("hidden_dim") = 256,
+             py::arg("lr")         = 0.001f,
+             py::arg("seed")       = 42u)
+        .def("step",
+             [](Predictor& p,
+                py::array_t<float, py::array::c_style> inp,
+                py::object actual_obj) -> py::array_t<float> {
+                 auto x = to_vec(inp);
+                 if (actual_obj.is_none()) {
+                     return to_np(p.step(x, nullptr));
+                 } else {
+                     auto a = to_vec(actual_obj.cast<py::array_t<float,
+                                     py::array::c_style>>());
+                     return to_np(p.step(x, &a));
+                 }
+             }, py::arg("input"), py::arg("actual") = py::none(),
+             "Predict next activation. If actual given: compute error + update.")
+        .def("reset",      &Predictor::reset,
+             "Reset LSTM hidden/cell state (start of new sequence)")
+        .def("set_offline", &Predictor::set_offline,
+             "Set offline mode (imagination — no weight updates)")
+        .def("save",       &Predictor::save)
+        .def_static("load",
+             [](const std::string& p) { return Predictor::load(p); })
+        .def_property_readonly("last_error", &Predictor::last_error)
+        .def_property_readonly("is_offline", &Predictor::is_offline)
+        .def_property("lr",
+             &Predictor::lr,
+             [](Predictor& p, float v) { p.set_lr(v); })
+        .def_property_readonly("input_dim",  [](const Predictor& p){ return p.input_dim; })
+        .def_property_readonly("hidden_dim", [](const Predictor& p){ return p.hidden_dim; });
 }
