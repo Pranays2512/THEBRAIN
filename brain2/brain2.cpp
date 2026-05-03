@@ -14,6 +14,7 @@
 
 #include "core/som.hpp"
 #include "core/predictor.hpp"
+#include "core/episodic.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -111,4 +112,47 @@ PYBIND11_MODULE(brain2, m) {
              [](Predictor& p, float v) { p.set_lr(v); })
         .def_property_readonly("input_dim",  [](const Predictor& p){ return p.input_dim; })
         .def_property_readonly("hidden_dim", [](const Predictor& p){ return p.hidden_dim; });
+
+    // ── EpisodicMemory ───────────────────────────────────────────────
+    py::class_<EpisodicMemory>(m, "EpisodicMemory")
+        .def(py::init<int, int, float>(),
+             py::arg("n_dims"),
+             py::arg("max_episodes")       = 2000,
+             py::arg("surprise_threshold") = 0.3f)
+        .def("observe",
+             [](EpisodicMemory& em, py::array_t<float, py::array::c_style> arr) {
+                 em.observe(to_vec(arr));
+             }, "Add activation frame to current building episode")
+        .def("commit",  &EpisodicMemory::commit,
+             py::arg("prediction_error"),
+             "Commit episode if error > threshold. Returns True if stored.")
+        .def("retrieve",
+             [](const EpisodicMemory& em,
+                py::array_t<float, py::array::c_style> arr) -> py::object {
+                 auto* ep = em.retrieve(to_vec(arr));
+                 if (!ep) return py::none();
+                 py::list frames;
+                 for (const auto& f : ep->frames) frames.append(to_np(f));
+                 return frames;
+             }, "Retrieve most similar episode as list of activation arrays")
+        .def("retrieve_topk",
+             [](const EpisodicMemory& em,
+                py::array_t<float, py::array::c_style> arr, int k) {
+                 auto r = em.retrieve_topk(to_vec(arr), k);
+                 py::list out;
+                 for (auto& [sim, idx] : r) {
+                     py::tuple t = py::make_tuple(sim, idx);
+                     out.append(t);
+                 }
+                 return out;
+             }, py::arg("query"), py::arg("k") = 3)
+        .def("consolidate", &EpisodicMemory::consolidate,
+             py::arg("similarity_threshold") = 0.85f,
+             "Consolidate similar episodes into prototypes (call during rest)")
+        .def("save", &EpisodicMemory::save)
+        .def_static("load",
+             [](const std::string& p) { return EpisodicMemory::load(p); })
+        .def_property_readonly("episode_count",   &EpisodicMemory::episode_count)
+        .def_property_readonly("prototype_count", &EpisodicMemory::prototype_count)
+        .def_property_readonly("step",            &EpisodicMemory::step);
 }
