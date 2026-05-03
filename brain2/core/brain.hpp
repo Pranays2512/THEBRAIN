@@ -40,6 +40,8 @@
 #include "attention.hpp"
 #include "self_model.hpp"
 #include "symbolic.hpp"
+#include "scratchpad.hpp"
+#include "reasoning.hpp"
 
 #include <vector>
 #include <string>
@@ -82,6 +84,8 @@ public:
     Attention      attention;
     SelfModel      self_model;
     Symbolic       symbolic;
+    Scratchpad     scratchpad;
+    ReasoningEngine reasoning;
 
 private:
     std::unique_ptr<std::mutex> mtx_;
@@ -141,6 +145,8 @@ public:
           attention(som_rows * som_cols, 0.1f, 0.3f),
           self_model(self_neurons, seed),
           symbolic(som_rows * som_cols),
+          scratchpad(som_rows * som_cols),
+          reasoning(&symbolic, som_rows * som_cols, 50, 0.01f, &predictor),
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
         symbolic.seed_math_symbols();

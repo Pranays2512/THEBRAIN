@@ -22,6 +22,8 @@
 #include "core/attention.hpp"
 #include "core/self_model.hpp"
 #include "core/symbolic.hpp"
+#include "core/scratchpad.hpp"
+#include "core/reasoning.hpp"
 #include "core/brain.hpp"
 
 namespace py = pybind11;
@@ -570,7 +572,147 @@ PYBIND11_MODULE(brain2, m) {
              py::return_value_policy::reference_internal)
         .def_property_readonly("symbolic_table", [](Brain& b) -> Symbolic&     { return b.symbolic; },
              py::return_value_policy::reference_internal)
+        .def_property_readonly("scratchpad",
+             [](Brain& b) -> Scratchpad& { return b.scratchpad; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("reasoning",
+             [](Brain& b) -> ReasoningEngine& { return b.reasoning; },
+             py::return_value_policy::reference_internal)
         .def_property_readonly("step",       &Brain::step)
         .def_property_readonly("n_dims",     [](const Brain& b){ return b.n_dims; })
         .def_property_readonly("initialized",&Brain::initialized);
+
+    // ── Scratchpad ───────────────────────────────────────────────────
+    py::class_<Scratchpad>(m, "Scratchpad")
+        .def(py::init<int>(), py::arg("n_dims"))
+        .def("write",
+             [](Scratchpad& s, const std::string& name,
+                py::array_t<float, py::array::c_style> arr,
+                const std::string& tag) {
+                 s.write(name, to_vec(arr), tag);
+             }, py::arg("name"), py::arg("vec"), py::arg("tag") = "")
+        .def("read",
+             [](Scratchpad& s, const std::string& name) {
+                 return to_np(s.read(name));
+             })
+        .def("read_prev",
+             [](Scratchpad& s, const std::string& name) {
+                 return to_np(s.read_prev(name));
+             })
+        .def("has",          &Scratchpad::has)
+        .def("similarity",   &Scratchpad::similarity)
+        .def("delta",        &Scratchpad::delta)
+        .def("push",
+             [](Scratchpad& s, py::array_t<float, py::array::c_style> arr) {
+                 s.push(to_vec(arr));
+             })
+        .def("pop",
+             [](Scratchpad& s) { return to_np(s.pop()); })
+        .def("peek",
+             [](Scratchpad& s) { return to_np(s.peek()); })
+        .def("copy",         &Scratchpad::copy)
+        .def("accumulate",
+             [](Scratchpad& s, const std::string& name,
+                py::array_t<float, py::array::c_style> arr, float alpha) {
+                 s.accumulate(name, to_vec(arr), alpha);
+             }, py::arg("name"), py::arg("vec"), py::arg("alpha") = 0.5f)
+        .def("erase",        &Scratchpad::erase)
+        .def("clear",        &Scratchpad::clear)
+        .def("slot_names",   &Scratchpad::slot_names)
+        .def("tag",          &Scratchpad::tag)
+        .def("write_count",  &Scratchpad::write_count)
+        .def_property_readonly("slot_count",  &Scratchpad::slot_count)
+        .def_property_readonly("stack_size",  &Scratchpad::stack_size)
+        .def_property_readonly("n_dims",
+             [](const Scratchpad& s){ return s.n_dims; });
+
+    // ── ReasoningStep struct ─────────────────────────────────────────
+    py::class_<ReasoningStep>(m, "ReasoningStep")
+        .def(py::init<>())
+        .def(py::init([](const std::string& inp, const std::string& op,
+                         const std::string& arg, const std::string& out,
+                         float cond_sim, const std::string& cond_slot) {
+                 return ReasoningStep{inp, op, arg, out, cond_sim, cond_slot};
+             }),
+             py::arg("input_slot"), py::arg("op_symbol"),
+             py::arg("arg_slot")    = "",
+             py::arg("output_slot") = "result",
+             py::arg("condition_sim")  = 0.f,
+             py::arg("condition_slot") = "")
+        .def_readwrite("input_slot",     &ReasoningStep::input_slot)
+        .def_readwrite("op_symbol",      &ReasoningStep::op_symbol)
+        .def_readwrite("arg_slot",       &ReasoningStep::arg_slot)
+        .def_readwrite("output_slot",    &ReasoningStep::output_slot)
+        .def_readwrite("condition_sim",  &ReasoningStep::condition_sim)
+        .def_readwrite("condition_slot", &ReasoningStep::condition_slot);
+
+    // ── ReasoningResult struct ───────────────────────────────────────
+    py::class_<ReasoningResult>(m, "ReasoningResult")
+        .def_readonly("converged",    &ReasoningResult::converged)
+        .def_readonly("steps_taken",  &ReasoningResult::steps_taken)
+        .def_readonly("final_delta",  &ReasoningResult::final_delta)
+        .def_readonly("trace",        &ReasoningResult::trace)
+        .def_property_readonly("outputs",
+             [](const ReasoningResult& r) {
+                 py::list out;
+                 for (const auto& v : r.outputs) out.append(to_np(v));
+                 return out;
+             });
+
+    // ── ReasoningEngine ──────────────────────────────────────────────
+    py::class_<ReasoningEngine>(m, "ReasoningEngine")
+        .def(py::init([](Symbolic* sym, int n_dims,
+                         int max_steps, float conv_thr,
+                         py::object pred_obj) {
+                 Predictor* pred = pred_obj.is_none()
+                     ? nullptr
+                     : pred_obj.cast<Predictor*>();
+                 return std::make_unique<ReasoningEngine>(
+                     sym, n_dims, max_steps, conv_thr, pred);
+             }),
+             py::arg("symbolic"), py::arg("n_dims"),
+             py::arg("max_steps")              = 20,
+             py::arg("convergence_threshold")  = 0.01f,
+             py::arg("predictor")              = py::none(),
+             py::keep_alive<1, 2>(),
+             py::keep_alive<1, 6>())
+        .def("reason",
+             [](ReasoningEngine& re,
+                const std::vector<ReasoningStep>& steps,
+                Scratchpad& pad) {
+                 return re.reason(steps, pad);
+             })
+        .def("solve_binary",
+             [](ReasoningEngine& re,
+                const std::string& op,
+                py::array_t<float, py::array::c_style> a,
+                py::array_t<float, py::array::c_style> b,
+                Scratchpad& pad) {
+                 return to_np(re.solve_binary(op, to_vec(a), to_vec(b), pad));
+             })
+        .def("infer",
+             [](ReasoningEngine& re,
+                py::list premises_list,
+                const std::vector<ReasoningStep>& chain,
+                Scratchpad& pad) {
+                 std::vector<std::pair<std::string, std::vector<float>>> premises;
+                 for (auto& item : premises_list) {
+                     auto tup = item.cast<py::tuple>();
+                     premises.push_back({
+                         tup[0].cast<std::string>(),
+                         to_vec(tup[1].cast<py::array_t<float, py::array::c_style>>())
+                     });
+                 }
+                 return to_np(re.infer(premises, chain, pad));
+             })
+        .def("loop_until_convergence",
+             [](ReasoningEngine& re,
+                const ReasoningStep& step,
+                Scratchpad& pad, int max_iters) {
+                 return re.loop_until_convergence(step, pad, max_iters);
+             }, py::arg("step"), py::arg("pad"), py::arg("max_iters") = -1)
+        .def_property_readonly("has_symbolic",  &ReasoningEngine::has_symbolic)
+        .def_property_readonly("has_predictor", &ReasoningEngine::has_predictor)
+        .def_property_readonly("n_dims",
+             [](const ReasoningEngine& r){ return r.n_dims; });
 }
