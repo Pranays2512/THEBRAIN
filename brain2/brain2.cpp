@@ -22,6 +22,7 @@
 #include "core/attention.hpp"
 #include "core/self_model.hpp"
 #include "core/symbolic.hpp"
+#include "core/brain.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -481,4 +482,95 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("symbol_count", &Symbolic::symbol_count)
         .def_property_readonly("n_dims",
              [](const Symbolic& s){ return s.n_dims; });
+
+    // ── PerceiveResult ───────────────────────────────────────────────
+    py::class_<PerceiveResult>(m, "PerceiveResult")
+        .def_readonly("bmu",              &PerceiveResult::bmu)
+        .def_readonly("prediction_error", &PerceiveResult::prediction_error)
+        .def_readonly("attention_passed", &PerceiveResult::attention_passed)
+        .def_readonly("episodic_stored",  &PerceiveResult::episodic_stored)
+        .def_readonly("valence",          &PerceiveResult::valence)
+        .def_readonly("arousal",          &PerceiveResult::arousal)
+        .def_readonly("salience",         &PerceiveResult::salience)
+        .def_readonly("self_concept",     &PerceiveResult::self_concept);
+
+    // ── ThinkResult ──────────────────────────────────────────────────
+    py::class_<ThinkResult>(m, "ThinkResult")
+        .def_readonly("words",     &ThinkResult::words)
+        .def_readonly("coherence", &ThinkResult::coherence)
+        .def_property_readonly("concepts",
+             [](const ThinkResult& t) {
+                 py::list out;
+                 for (const auto& c : t.concepts) out.append(to_np(c));
+                 return out;
+             });
+
+    // ── Brain ────────────────────────────────────────────────────────
+    py::class_<Brain>(m, "Brain")
+        .def(py::init<int, int, int, int, int, int, int, unsigned>(),
+             py::arg("som_rows"),
+             py::arg("som_cols"),
+             py::arg("n_dims"),
+             py::arg("hidden_dim")     = 256,
+             py::arg("wm_capacity")    = 7,
+             py::arg("episodic_max")   = 2000,
+             py::arg("self_neurons")   = 16,
+             py::arg("seed")           = 42u)
+        .def("perceive",
+             [](Brain& b, py::array_t<float, py::array::c_style> arr) {
+                 return b.perceive(to_vec(arr));
+             })
+        .def("hear",         &Brain::hear)
+        .def("think",        &Brain::think,
+             py::arg("steps") = 5)
+        .def("speak",
+             [](Brain& b, py::list concepts, float min_sim) {
+                 std::vector<std::vector<float>> cv;
+                 for (auto& item : concepts)
+                     cv.push_back(to_vec(item.cast<
+                         py::array_t<float, py::array::c_style>>()));
+                 return b.speak(cv, min_sim);
+             }, py::arg("concepts"), py::arg("min_sim") = 0.f)
+        .def("dream",        &Brain::dream,
+             py::arg("n_dreams")        = 20,
+             py::arg("steps_per_dream") = 15)
+        .def("imagine_goal",
+             [](Brain& b,
+                py::array_t<float, py::array::c_style> start,
+                py::array_t<float, py::array::c_style> goal,
+                int steps) {
+                 return b.imagine_goal(to_vec(start), to_vec(goal), steps);
+             }, py::arg("start"), py::arg("goal"), py::arg("steps") = 20)
+        .def("symbol",
+             [](Brain& b, const std::string& sym) {
+                 return to_np(b.symbol(sym));
+             })
+        .def("symbolic_op",
+             [](Brain& b, const std::string& op,
+                py::array_t<float, py::array::c_style> a,
+                py::array_t<float, py::array::c_style> b_arr) {
+                 return to_np(b.symbolic_op(op, to_vec(a), to_vec(b_arr)));
+             })
+        // Direct component access
+        .def_property_readonly("som",        [](Brain& b) -> SOM&          { return b.som; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("predictor",  [](Brain& b) -> Predictor&    { return b.predictor; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("episodic",   [](Brain& b) -> EpisodicMemory& { return b.episodic; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("working_mem",[](Brain& b) -> WorkingMemory&  { return b.working_mem; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("language",   [](Brain& b) -> Language&       { return b.language; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("emotion",    [](Brain& b) -> Emotion&         { return b.emotion; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("attention",  [](Brain& b) -> Attention&        { return b.attention; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("self_model", [](Brain& b) -> SelfModel&        { return b.self_model; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("symbolic_table", [](Brain& b) -> Symbolic&     { return b.symbolic; },
+             py::return_value_policy::reference_internal)
+        .def_property_readonly("step",       &Brain::step)
+        .def_property_readonly("n_dims",     [](const Brain& b){ return b.n_dims; })
+        .def_property_readonly("initialized",&Brain::initialized);
 }
