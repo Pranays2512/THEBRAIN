@@ -16,6 +16,7 @@
 #include "core/predictor.hpp"
 #include "core/episodic.hpp"
 #include "core/working_mem.hpp"
+#include "core/language.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -191,4 +192,62 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("empty", &WorkingMemory::empty)
         .def_property_readonly("n_dims",    [](const WorkingMemory& w){ return w.n_dims; })
         .def_property_readonly("capacity",  [](const WorkingMemory& w){ return w.capacity; });
+
+    // ── Language ─────────────────────────────────────────────────────
+    py::class_<Language>(m, "Language")
+        .def(py::init<int, float>(),
+             py::arg("n_dims"),
+             py::arg("lr") = 0.05f)
+        .def("register_word",
+             [](Language& l, const std::string& w,
+                py::object vec_obj) {
+                 if (vec_obj.is_none())
+                     l.register_word(w);
+                 else
+                     l.register_word(w,
+                         to_vec(vec_obj.cast<py::array_t<float,
+                                py::array::c_style>>()));
+             }, py::arg("word"), py::arg("initial_vec") = py::none())
+        .def("encode",
+             [](const Language& l, const std::string& w) {
+                 return to_np(l.encode(w));
+             })
+        .def("decode",
+             [](const Language& l,
+                py::array_t<float, py::array::c_style> arr, int k) {
+                 auto r = l.decode(to_vec(arr), k);
+                 py::list out;
+                 for (auto& [w, s] : r)
+                     out.append(py::make_tuple(w, s));
+                 return out;
+             }, py::arg("concept_vec"), py::arg("k") = 5)
+        .def("best_word",
+             [](const Language& l,
+                py::array_t<float, py::array::c_style> arr) {
+                 return l.best_word(to_vec(arr));
+             })
+        .def("hear",
+             [](Language& l, const std::string& w,
+                py::array_t<float, py::array::c_style> arr) {
+                 l.hear(w, to_vec(arr));
+             })
+        .def("speak",
+             [](const Language& l,
+                py::list concept_seq, float min_sim) {
+                 std::vector<std::vector<float>> seqs;
+                 for (auto& item : concept_seq)
+                     seqs.push_back(to_vec(item.cast<
+                         py::array_t<float, py::array::c_style>>()));
+                 return l.speak(seqs, min_sim);
+             }, py::arg("concept_seq"), py::arg("min_sim") = 0.f)
+        .def("knows",       &Language::knows)
+        .def("familiarity", &Language::familiarity)
+        .def("frequency",   &Language::frequency)
+        .def("vocab",       &Language::vocab)
+        .def("save",        &Language::save)
+        .def_static("load",
+             [](const std::string& p) { return Language::load(p); })
+        .def_property_readonly("vocab_size", &Language::vocab_size)
+        .def_property_readonly("n_dims",
+             [](const Language& l){ return l.n_dims; });
 }
