@@ -20,6 +20,7 @@
 #include "core/imagination.hpp"
 #include "core/emotion.hpp"
 #include "core/attention.hpp"
+#include "core/self_model.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -392,4 +393,39 @@ PYBIND11_MODULE(brain2, m) {
         .def_property_readonly("threshold",     &Attention::threshold)
         .def_property_readonly("n_neurons",
              [](const Attention& a){ return a.n_neurons; });
+
+    // ── InternalState struct ─────────────────────────────────────────
+    py::class_<InternalState>(m, "InternalState")
+        .def(py::init<>())
+        .def_readwrite("valence",         &InternalState::valence)
+        .def_readwrite("arousal",         &InternalState::arousal)
+        .def_readwrite("salience",        &InternalState::salience)
+        .def_readwrite("pred_error",      &InternalState::pred_error)
+        .def_readwrite("wm_load",         &InternalState::wm_load)
+        .def_readwrite("attention_focus", &InternalState::attention_focus)
+        .def_readwrite("mean_saliency",   &InternalState::mean_saliency)
+        .def_readwrite("approach",        &InternalState::approach)
+        .def_readwrite("avoidance",       &InternalState::avoidance)
+        .def_readwrite("arousal_trend",   &InternalState::arousal_trend);
+
+    // ── SelfModel ────────────────────────────────────────────────────
+    py::class_<SelfModel>(m, "SelfModel")
+        .def(py::init<int, unsigned>(),
+             py::arg("n_self_neurons") = 16,
+             py::arg("seed")           = 42u)
+        .def("observe",          &SelfModel::observe)
+        .def("current_concept",  &SelfModel::current_concept)
+        .def("drift",            &SelfModel::drift)
+        .def("mean_recent_error",&SelfModel::mean_recent_error)
+        .def("arousal_trend",    &SelfModel::arousal_trend)
+        .def("identity",
+             [](const SelfModel& sm) { return to_np(sm.identity()); })
+        .def("concept_weights",
+             [](const SelfModel& sm, int i) { return to_np(sm.concept_weights(i)); })
+        .def("save",             &SelfModel::save)
+        .def_static("load",
+             [](const std::string& p) { return SelfModel::load(p); })
+        .def_property_readonly("obs_count",       &SelfModel::obs_count)
+        .def_property_readonly("n_self_neurons",
+             [](const SelfModel& sm){ return sm.n_self_neurons; });
 }
