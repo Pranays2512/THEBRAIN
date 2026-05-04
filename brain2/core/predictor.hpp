@@ -183,6 +183,8 @@ struct OutputLayer {
     std::vector<float> forward(const std::vector<float>& x) const {
         std::vector<float> out(b.begin(), b.end());
         matvec(W.data(), x.data(), out.data(), output_dim, input_dim);
+        // Sigmoid output: constrains prediction to [0,1] matching SOM activation range
+        sigmoid_vec(out.data(), output_dim);
         return out;
     }
 
