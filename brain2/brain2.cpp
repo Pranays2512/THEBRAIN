@@ -522,7 +522,8 @@ PYBIND11_MODULE(brain2, m) {
              [](Brain& b, py::array_t<float, py::array::c_style> arr) {
                  return b.perceive(to_vec(arr));
              })
-        .def("hear",         &Brain::hear)
+        .def("hear",          &Brain::hear)
+        .def("reset_sequence",&Brain::reset_sequence)
         .def("think",        &Brain::think,
              py::arg("steps") = 5)
         .def("speak",

@@ -90,6 +90,8 @@ public:
 private:
     std::unique_ptr<std::mutex> mtx_;
     int                         step_;
+    std::vector<float>          prev_act_map_;  // buffered for 1-step-ahead prediction
+    bool                        have_prev_act_ = false;
 
     static float cosine(const std::vector<float>& a,
                         const std::vector<float>& b) noexcept {
@@ -166,8 +168,17 @@ public:
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
 
-        // 2. Predictor: predict next activation, compute error
-        auto pred_next = predictor.step(act_map, &act_map);
+        // 2. Predictor: 1-step-ahead prediction
+        //    Input = prev act_map, actual = current act_map
+        //    First step: no actual (can't know future yet)
+        std::vector<float> pred_next;
+        if (have_prev_act_) {
+            pred_next = predictor.step(prev_act_map_, &act_map);
+        } else {
+            pred_next = predictor.step(act_map);
+        }
+        prev_act_map_  = act_map;
+        have_prev_act_ = true;
         float error = predictor.last_error();
 
         // 3. Emotion: update from surprise
@@ -204,6 +215,12 @@ public:
         r.salience         = attn_result.score;
         r.self_concept     = self_model.current_concept(istate);
         return r;
+    }
+
+    // Reset sequence boundary (call between unrelated sequences)
+    void reset_sequence() {
+        predictor.reset();
+        have_prev_act_ = false;
     }
 
     // HEAR: hear a word paired with current SOM context
