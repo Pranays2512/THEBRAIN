@@ -90,8 +90,9 @@ public:
 private:
     std::unique_ptr<std::mutex> mtx_;
     int                         step_;
-    std::vector<float>          prev_act_map_;  // buffered for 1-step-ahead prediction
+    std::vector<float>          prev_act_map_;   // buffered for 1-step-ahead prediction
     bool                        have_prev_act_ = false;
+    std::vector<float>          last_act_map_;   // last SOM activation for grounding
 
     static float cosine(const std::vector<float>& a,
                         const std::vector<float>& b) noexcept {
@@ -178,6 +179,7 @@ public:
             pred_next = predictor.step(act_map);
         }
         prev_act_map_  = act_map;
+        last_act_map_  = act_map;
         have_prev_act_ = true;
         float error = predictor.last_error();
 
@@ -223,13 +225,16 @@ public:
         have_prev_act_ = false;
     }
 
-    // HEAR: hear a word paired with current SOM context
+    // HEAR: hear a word grounded to last SOM activation (not blended WM context)
+    // This ensures word vectors learn clean concept activations, not blends.
     void hear(const std::string& word) {
-        auto ctx = working_mem.context();
-        if (ctx.empty()) {
-            ctx = std::vector<float>(som.n_neurons, 0.f);
+        if (!last_act_map_.empty()) {
+            language.hear(word, last_act_map_);
+        } else {
+            auto ctx = working_mem.context();
+            if (ctx.empty()) ctx = std::vector<float>(som.n_neurons, 0.f);
+            language.hear(word, ctx);
         }
-        language.hear(word, ctx);
     }
 
     // THINK: run N inner speech steps
