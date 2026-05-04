@@ -268,6 +268,8 @@ def main():
     parser.add_argument("--hidden", type=int, default=512)
     parser.add_argument("--n-dims", type=int, default=32)
     parser.add_argument("--log-interval", type=int, default=1000)
+    parser.add_argument("--lr", type=float, default=0.005,
+                        help="Predictor learning rate (default 0.005)")
     args = parser.parse_args()
 
     cfg = dict(
@@ -296,6 +298,7 @@ def main():
 
     t0    = time.time()
     brain = make_brain(cfg)
+    brain.predictor.lr = args.lr
 
     if args.phase in ("1", "all"):
         train_math(brain, args.steps, args.log_interval)

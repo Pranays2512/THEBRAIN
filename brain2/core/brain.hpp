@@ -139,7 +139,7 @@ public:
           som_rows(som_rows),
           som_cols(som_cols),
           som(som_rows, som_cols, n_dims, 0.15f, 0.9998f, 0.9999f, seed),
-          predictor(som_rows * som_cols, hidden_dim, 0.001f, seed),
+          predictor(som_rows * som_cols, hidden_dim, 0.005f, seed),
           episodic(som_rows * som_cols, episodic_max, 0.3f),
           working_mem(som_rows * som_cols, wm_capacity, 0.95f),
           language(som_rows * som_cols, 0.05f),
