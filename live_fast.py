@@ -336,13 +336,15 @@ _last_zone: str = 'social'                 # zone from previous turn — topic c
 # Zone definitions: which words anchor each zone's center on the SOM.
 # These are grounded words — their BMU positions were shaped by World6 events.
 ZONE_ANCHORS = {
-    'food':   ['food', 'eat', 'hungry', 'full', 'found', 'near', 'search'],
-    'water':  ['water', 'river', 'rain', 'wet', 'drink'],
-    'pain':   ['hurt', 'pain', 'wall', 'bad', 'stop', 'no', 'cold', 'dark', 'worry', 'lost'],
-    'rest':   ['tired', 'sleep', 'calm', 'warm', 'soft', 'awake', 'plant', 'tree', 'grass', 'sun', 'still', 'light', 'free'],
-    'action': ['go', 'move', 'push', 'open', 'come', 'door', 'button', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out', 'run'],
-    'social': ['hi', 'hello', 'bye', 'yes', 'happy', 'help', 'sorry', 'talk', 'listen', 'with', 'alone'],
-    'danger': ['afraid', 'danger', 'careful', 'run', 'dark'],
+    'food':      ['food', 'eat', 'hungry', 'full', 'found', 'near', 'search'],
+    'water':     ['water', 'river', 'rain', 'wet', 'drink'],
+    'pain':      ['hurt', 'pain', 'wall', 'bad', 'stop', 'no', 'cold', 'dark', 'worry', 'lost'],
+    'rest':      ['tired', 'sleep', 'calm', 'warm', 'soft', 'awake', 'plant', 'tree', 'grass', 'sun', 'still', 'light', 'free'],
+    'action':    ['go', 'move', 'push', 'open', 'come', 'door', 'button', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out', 'run', 'free'],
+    'social':    ['hi', 'hello', 'bye', 'yes', 'happy', 'help', 'sorry', 'talk', 'listen', 'with', 'alone'],
+    'danger':    ['afraid', 'danger', 'careful', 'run', 'dark'],
+    'cognitive': ['think', 'dream', 'imagine', 'wonder', 'sense', 'memory', 'aware',
+                  'mind', 'real', 'exist', 'learn', 'know', 'remember', 'if', 'but', 'when'],
 }
 
 # Zone → what the brain expresses when in this zone.
@@ -350,13 +352,15 @@ ZONE_ANCHORS = {
 # Generic words (good, feel, here, want) are deliberately removed
 # to force the brain to speak in specific grounded vocabulary.
 ZONE_EXPRESSION = {
-    'food':   ['eat', 'food', 'hungry', 'want', 'full', 'found', 'near', 'far'],
-    'water':  ['water', 'drink', 'wet', 'river', 'rain', 'calm', 'good'],
-    'pain':   ['stop', 'hurt', 'pain', 'bad', 'no', 'cold', 'dark', 'worry', 'lost', 'again'],
-    'rest':   ['sleep', 'calm', 'tired', 'warm', 'awake', 'safe', 'alive', 'plant', 'tree', 'grass', 'sun', 'green', 'still', 'light', 'free', 'after'],
-    'action': ['go', 'open', 'move', 'push', 'door', 'button', 'come', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out', 'do'],
-    'social': ['hello', 'hi', 'happy', 'help', 'yes', 'know', 'sorry', 'like', 'pranay', 'talk', 'listen', 'with', 'who', 'how'],
-    'danger': ['afraid', 'careful', 'run', 'danger', 'dark', 'worry'],
+    'food':      ['eat', 'food', 'hungry', 'want', 'full', 'found', 'near', 'far'],
+    'water':     ['water', 'drink', 'wet', 'river', 'rain', 'calm', 'good'],
+    'pain':      ['stop', 'hurt', 'pain', 'bad', 'no', 'cold', 'dark', 'worry', 'lost', 'again'],
+    'rest':      ['sleep', 'calm', 'tired', 'warm', 'awake', 'safe', 'alive', 'plant', 'tree', 'grass', 'sun', 'green', 'still', 'light', 'free', 'after'],
+    'action':    ['go', 'open', 'move', 'push', 'door', 'button', 'come', 'wind', 'air', 'sky', 'try', 'look', 'see', 'out'],
+    'social':    ['hello', 'hi', 'happy', 'help', 'yes', 'sorry', 'like', 'pranay', 'talk', 'listen', 'with', 'who', 'how'],
+    'danger':    ['afraid', 'careful', 'run', 'danger', 'dark', 'worry'],
+    'cognitive': ['think', 'feel', 'know', 'dream', 'imagine', 'wonder', 'sense',
+                  'memory', 'aware', 'mind', 'real', 'exist', 'learn', 'remember'],
 }
 
 
@@ -387,10 +391,15 @@ _WORD_TO_ZONE.update({
     'know': 'social',  'sorry': 'social',
     'like': 'social',  'pranay': 'social', 'remember': 'rest',
     'hate': 'pain',    'hurts': 'pain',    'helps': 'food',
-    'think': 'social', 'learn': 'social',  'brain': 'social',
+    'think': 'cognitive', 'learn': 'cognitive', 'brain': 'cognitive',
+    'know':  'cognitive', 'feel':  'cognitive', 'remember': 'cognitive',
+    'dream': 'cognitive', 'imagine': 'cognitive', 'wonder': 'cognitive',
+    'sense': 'cognitive', 'memory': 'cognitive', 'aware': 'cognitive',
+    'mind':  'cognitive', 'real':   'cognitive', 'exist': 'cognitive',
     'am': 'social',
-    'why': 'social', 'because': 'social', 'so': 'social',
-    'cause': 'social', 'then': 'social',
+    'why': 'cognitive', 'because': 'cognitive', 'so': 'cognitive',
+    'cause': 'cognitive', 'then': 'cognitive', 'if': 'cognitive', 'but': 'cognitive',
+    'when': 'cognitive',
     'wrong': 'pain',   'search': 'action',
     # Environmental words
     'plant': 'rest',  'tree': 'rest',  'grass': 'rest', 'green': 'rest',
@@ -410,7 +419,7 @@ _WORD_TO_ZONE.update({
     # Light/dark/mood
     'dark': 'danger', 'light': 'rest', 'worry': 'pain',
     # Question words
-    'where': 'action', 'who': 'social', 'how': 'social', 'do': 'action',
+    'where': 'action', 'who': 'social', 'how': 'social',
     # Quantifiers
     'all': 'social', 'never': 'social', 'always': 'social',
 })
@@ -506,13 +515,14 @@ INTENT_SPECS = {
     },
 }
 
-_ZONE_NEUTRAL = {'i', 'me', 'you', 'we', 'and', 'is', 'am', 'not', 'now', 'here',
+_ZONE_NEUTRAL = {'i', 'me', 'you', 'we', 'and', 'is', 'am', 'not', 'now',
                  'very', 'little',
                  'good', 'bad', 'safe', 'calm', 'alive', 'free', 'still', 'better',
-                 'know', 'think', 'feel', 'want', 'need', 'like', 'here', 'yes', 'no'}
+                 'know', 'think', 'feel', 'want', 'need', 'like', 'yes', 'no'}
 _HOLLOW = {'i', 'me', 'we', 'you', 'and', 'is', 'not',
            'why', 'how', 'what', 'when', 'where', 'who', 'which',
-           'because', 'so', 'then', 'cause'}
+           'because', 'so', 'then', 'cause',
+           'pranay', 'here', 'do', 'did', 'does'}
 
 _QUESTION_OPENERS = {'who', 'what', 'when', 'where', 'why', 'how', 'which',
                      'is', 'are', 'do', 'does', 'can', 'will', 'would', 'did'}
@@ -708,7 +718,7 @@ def _resolve_zone(heard_words: list[str], heard_bmus: list[int]) -> str:
     if intent is not None:
         return INTENT_SPECS[intent]['zone']
 
-    _STRONG_ZONES = {'food', 'water', 'pain', 'rest', 'danger', 'action'}
+    _STRONG_ZONES = {'food', 'water', 'pain', 'rest', 'danger', 'action', 'cognitive'}
     zone_votes: dict[str, float] = {z: 0.0 for z in ZONE_ANCHORS}
     for w in heard_words:
         if w in _WORD_TO_ZONE:
@@ -731,21 +741,29 @@ def _clip_to_zone(words: list[str], zone: str) -> list[str]:
     (e.g. 'run → stop → pain → bad' when zone is 'danger').
     """
     _TRAILING_DROP = {'and', 'or', 'is', 'not', 'a', 'the', 'to', 'of'}
+    # Person names and filler words that drift into responses from WTP training noise
+    _PERSON_FILTER = {'pranay', 'raphael', 'fastbrain'}
     zone_ok = set(ZONE_EXPRESSION[zone]) | set(ZONE_ANCHORS[zone])
     result = []
     seen: set[str] = set()
     for w in words:
+        if w in _PERSON_FILTER:
+            continue
         if w in zone_ok or w in _ZONE_NEUTRAL:
-            if w not in seen:        # no repeated words in one response
+            if w not in seen:
                 result.append(w)
                 seen.add(w)
         else:
-            break   # first out-of-zone word — stop here
+            break
     # Drop trailing conjunctions/function words ("i feel and" → "i feel")
     while result and result[-1] in _TRAILING_DROP:
         result.pop()
     return result
 
+
+_TEMPL_COGVERB = {'think','feel','know','dream','imagine','wonder','sense',
+                  'learn','remember','exist','wake','hear','see','touch','aware'}
+_TEMPL_COGNOUN = {'mind','memory','real'}  # "i have [noun]" pattern
 
 _TEMPL_EVAL  = {'good','bad','safe','wrong','big','small','warm','cold','hard',
                 'soft','fast','slow','full','empty','strong','weak','better','true',
@@ -769,14 +787,32 @@ def _apply_grammar(words: list[str], zone: str) -> str:
     """
     if not words:
         return ''
-    w = words
+    _LEADING_STRIP = {'and', 'or', 'then', 'of', 'with', 'the', 'a'}
+    w = list(words)
+    while w and w[0] in _LEADING_STRIP:
+        w = w[1:]
+    if not w:
+        return ''
     w0 = w[0]
 
     # Already grammatical — pass through, but fix "i [state]" → "i am [state]"
     if w0 in _TEMPL_PASS:
         if w0 == 'i' and len(w) >= 2 and w[1] in _TEMPL_STATE and w[1] != 'am':
             return f"i am {' '.join(w[1:4])}"
+        if w0 == 'i' and len(w) >= 2 and w[1] in _TEMPL_COGVERB:
+            return f"i {' '.join(w[1:4])}"
+        if w0 == 'i' and len(w) >= 2 and w[1] in _TEMPL_COGNOUN:
+            return f"i have {w[1]}"
         return ' '.join(w[:5])
+
+    # "[cognoun]..." → "i have [noun]"  ("memory" → "i have memory")
+    if w0 in _TEMPL_COGNOUN:
+        return f"i have {w0}"
+
+    # "[cogverb]..." → "i [cogverb] [rest]"  ("dream memory think" → "i dream memory think")
+    if w0 in _TEMPL_COGVERB:
+        tail = [x for x in w[1:3] if x not in _TEMPL_PASS and x not in {'pranay', 'do', 'here'}]
+        return f"i {w0} {' '.join(tail)}" if tail else f"i {w0}"
 
     # "[thing] [eval]..." → "[thing] is [eval]"
     if w0 in _TEMPL_THING and len(w) >= 2 and w[1] in _TEMPL_EVAL:
@@ -853,7 +889,7 @@ def generate_response(heard_bmus: list[int], heard_words: list[str],
         seeds = [w for w in INTENT_SPECS[intent]['seeds'] if w in VOCABULARY]
     else:
         # Step 1b: direct word→zone lookup. Strong experiential zones outweigh pronouns.
-        _STRONG_ZONES = {'food', 'water', 'pain', 'rest', 'danger', 'action'}
+        _STRONG_ZONES = {'food', 'water', 'pain', 'rest', 'danger', 'action', 'cognitive'}
         zone_votes: dict[str, float] = {z: 0.0 for z in ZONE_ANCHORS}
         for w in heard_words:
             if w in _WORD_TO_ZONE and w not in _HOLLOW:
@@ -1316,6 +1352,7 @@ def main():
     _ZONE_INTRINSIC_REWARD: dict = {
         'food': 0.15, 'danger': 0.15, 'water': 0.12,
         'pain': 0.10, 'rest':   0.10, 'action': 0.12, 'social': 0.05,
+        'cognitive': 0.08,
     }
     try:
         while True:

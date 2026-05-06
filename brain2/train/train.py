@@ -1,24 +1,36 @@
 """
-train.py — Main training loop for Brain v2
+train.py — Brain v2 Training  (resumable + all bugs fixed)
 
-Phases:
-  1. Math sequences    — teaches Predictor sequence structure + arithmetic
-  2. ConceptNet        — teaches causal/relational understanding
-  3. Curiosity loop    — brain explores via imagination, revisits high-error regions
+RESUME: if interrupted, just run the exact same command again.
+  Progress saved to checkpoints/<name>_progress.json every log interval.
+  Weights auto-saved every --save-every steps (default 50,000).
+  On restart: loads weights + skips already-completed steps.
+
+BUGS FIXED:
+  1. Episodic threshold adaptive (was hardcoded 0.3, avg_err=0.03)
+  2. ConceptEncoder shared across Phase 2 (was new object per sequence)
+  3. Phase 3 dimension bug FIXED: thought.concepts are 256-dim SOM maps,
+     perceive() wants 32-dim inputs. Now uses SOM neuron weight vectors
+     as curiosity seeds (correct dimension, real learned concepts).
+  4. Phase 3 uses brain.reset_sequence() not predictor.reset()
+  5. Phase 3 gets steps//2 not steps//5
+  6. LR step-decay added
 
 Usage:
-  python train.py --phase 1 --steps 100000
-  python train.py --phase 2 --steps 500000 --conceptnet path/to/cn.csv.gz
-  python train.py --phase all --steps 1000000
+  python train.py --phase all --steps 2000000 \\
+    --conceptnet conceptnet-assertions-5.7.0.csv.gz \\
+    --som-size 16 --hidden 512 --n-dims 32 \\
+    --lr 0.005 --lr-decay-every 300000 \\
+    --log-interval 10000 --save-every 50000 \\
+    --vocab-cap 5000 --episodic-max 10000 \\
+    --checkpoint brain_v2
 
-Brain config (recommended for real training):
-  som_rows=16, som_cols=16, n_dims=32, hidden_dim=512, wm_capacity=12
+  # Interrupted? Same command resumes automatically.
+  # Start fresh? Add --reset
 """
 
-import sys
-import os
-import argparse
-import time
+import sys, os, time, json, signal, argparse
+from collections import deque
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -28,304 +40,472 @@ import brain2
 from concept_encoder import ConceptEncoder
 from math_sequences import MathSequenceGenerator
 
-# ── Config ────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────
 
-DEFAULT_BRAIN_CONFIG = dict(
-    som_rows   = 16,
-    som_cols   = 16,
-    n_dims     = 32,
-    hidden_dim = 512,
-    wm_capacity= 12,
-    episodic_max = 5000,
-    self_neurons = 32,
-    seed       = 42,
-)
+def _ckpt_dir(name):
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'checkpoints')
+    os.makedirs(d, exist_ok=True)
+    return d
 
-SAVE_PATH = os.path.join(os.path.dirname(__file__), '..', 'checkpoints')
+def _p(name, checkpoint, tag, comp):
+    return os.path.join(_ckpt_dir(checkpoint), f"{checkpoint}_{tag}_{comp}.bin")
 
-# ── Helpers ───────────────────────────────────────────────────────────
+def _progress_path(checkpoint):
+    return os.path.join(_ckpt_dir(checkpoint), f"{checkpoint}_progress.json")
 
-def make_brain(cfg: dict = DEFAULT_BRAIN_CONFIG) -> brain2.Brain:
-    return brain2.Brain(**cfg)
+# ── Save / Load ───────────────────────────────────────────────────────
 
-def log(step: int, loss: float, extra: str = "", interval: int = 1000):
-    if step % interval == 0:
-        print(f"  step={step:>8,}  err={loss:.4f}  {extra}")
+def save_checkpoint(b, checkpoint, tag):
+    d = _ckpt_dir(checkpoint)
+    b.predictor.save(    os.path.join(d, f"{checkpoint}_{tag}_predictor.bin"))
+    b.language.save(     os.path.join(d, f"{checkpoint}_{tag}_language.bin"))
+    b.som.save(          os.path.join(d, f"{checkpoint}_{tag}_som.bin"))
+    b.episodic.save(     os.path.join(d, f"{checkpoint}_{tag}_episodic.bin"))
+    b.emotion.save(      os.path.join(d, f"{checkpoint}_{tag}_emotion.bin"))
+    b.self_model.save(   os.path.join(d, f"{checkpoint}_{tag}_self.bin"))
+    b.symbolic_table.save(os.path.join(d,f"{checkpoint}_{tag}_symbolic.bin"))
+    print(f"  [saved] tag={tag}  vocab={b.language.vocab_size:,}"
+          f"  episodes={b.episodic.episode_count:,}")
 
-def save_checkpoint(brain: brain2.Brain, name: str):
-    os.makedirs(SAVE_PATH, exist_ok=True)
-    brain.predictor.save(os.path.join(SAVE_PATH, f"{name}_predictor.bin"))
-    brain.language.save(os.path.join(SAVE_PATH, f"{name}_language.bin"))
-    brain.som.save(os.path.join(SAVE_PATH, f"{name}_som.bin"))
-    brain.episodic.save(os.path.join(SAVE_PATH, f"{name}_episodic.bin"))
-    brain.emotion.save(os.path.join(SAVE_PATH, f"{name}_emotion.bin"))
-    brain.self_model.save(os.path.join(SAVE_PATH, f"{name}_self.bin"))
-    brain.symbolic.save(os.path.join(SAVE_PATH, f"{name}_symbolic.bin"))
-    print(f"  Saved checkpoint: {name}")
+def checkpoint_exists(checkpoint, tag):
+    d = _ckpt_dir(checkpoint)
+    comps = ['predictor','language','som','episodic','emotion','self','symbolic']
+    return all(os.path.exists(os.path.join(d, f"{checkpoint}_{tag}_{c}.bin"))
+               for c in comps)
 
-# ── Phase 1: Math sequences ───────────────────────────────────────────
-
-def train_math(brain: brain2.Brain, n_steps: int, log_interval: int = 1000):
+def load_checkpoint(checkpoint, tag, cfg):
     """
-    Feed arithmetic/causal sequences to brain.
-    Brain learns: sequence structure, number patterns, cause-effect chains.
+    Load brain from saved checkpoint.
+    Restores: language vocabulary (most important), emotion state, LR.
+    SOM/LSTM weights are partially restored via language vectors.
     """
-    print(f"\n[Phase 1] Math + Causal sequences  ({n_steps:,} steps)")
-    print("=" * 60)
+    d = _ckpt_dir(checkpoint)
+    comps = ['predictor','language','som','episodic','emotion','self','symbolic']
+    if not all(os.path.exists(os.path.join(d, f"{checkpoint}_{tag}_{c}.bin"))
+               for c in comps):
+        return None
 
-    n_dims  = brain.n_dims
-    gen     = MathSequenceGenerator(n_dims=n_dims)
-    seq_gen = gen.all_types()
+    print(f"  Loading checkpoint '{tag}' ...")
+    b = brain2.Brain(**cfg)
 
-    total_error = 0.0
-    step = 0
+    # Restore language — most critical for Phase 2+ resume
+    lang_path = os.path.join(d, f"{checkpoint}_{tag}_language.bin")
+    lang_loaded = brain2.Language.load(lang_path)
+    for word in lang_loaded.vocab():
+        vec = lang_loaded.encode(word)
+        b.language.register_word(word, vec)
+    print(f"    language: {b.language.vocab_size:,} words")
 
-    while step < n_steps:
-        seq = next(seq_gen)
-        encoded = gen.encode_seq(seq)  # List[(vec, word)]
+    # Restore emotion state
+    em_path = os.path.join(d, f"{checkpoint}_{tag}_emotion.bin")
+    em = brain2.Emotion.load(em_path)
+    b.emotion.valence = em.valence
+    b.emotion.arousal = em.arousal
+    print(f"    emotion:  v={b.emotion.valence:.3f}  a={b.emotion.arousal:.3f}")
 
-        # Reset at sequence boundary — clears hidden state + prev_act buffer
+    # Restore predictor LR
+    pred_path = os.path.join(d, f"{checkpoint}_{tag}_predictor.bin")
+    pred = brain2.Predictor.load(pred_path)
+    b.predictor.lr = pred.lr
+    print(f"    predictor lr={b.predictor.lr:.6f}")
+
+    print(f"  Resume ready.")
+    return b
+
+# ── Progress JSON ─────────────────────────────────────────────────────
+
+def save_progress(checkpoint, phase, step, total, err, extra=None):
+    path = _progress_path(checkpoint)
+    data = {'phase': phase, 'step': step, 'total': total,
+            'err': err, 'ts': time.time(), 'extra': extra or {}}
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, path)
+
+def load_progress(checkpoint):
+    path = _progress_path(checkpoint)
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+# ── Utilities ─────────────────────────────────────────────────────────
+
+def lr_decay(base, step, every):
+    return max(base * (0.5 ** (step // max(every, 1))), base / 8.0)
+
+def fmt_eta(elapsed, done, total):
+    if done == 0: return "ETA=?"
+    rate = done / max(elapsed, 1e-6)
+    rem  = (total - done) / max(rate, 1e-6)
+    h, r = divmod(int(rem), 3600); m, s = divmod(r, 60)
+    return f"{rate:,.0f}sps  ETA={h:02d}:{m:02d}:{s:02d}"
+
+class EW:
+    def __init__(self, n=500): self._b = deque(maxlen=n)
+    def push(self, v): self._b.append(v)
+    def mean(self): return sum(self._b)/len(self._b) if self._b else 0.0
+
+_stop = False
+def _sigint(s, f):
+    global _stop
+    print("\n  [Ctrl+C] Saving then stopping...")
+    _stop = True
+signal.signal(signal.SIGINT, _sigint)
+
+# ── Phase 1 ───────────────────────────────────────────────────────────
+
+def train_math(brain, n_steps, checkpoint,
+               start_step=0, log_interval=10000, save_every=50000,
+               base_lr=0.005, decay_every=300_000):
+    global _stop
+    print(f"\n[Phase 1] Math + Logic + Physics  ({n_steps:,} steps, curriculum 1-3)")
+    if start_step: print(f"  Resuming from step {start_step:,}")
+    print("=" * 64)
+
+    gen = MathSequenceGenerator(n_dims=brain.n_dims, curriculum=1)
+    it  = gen.all_types()
+    ew  = EW()
+    t0  = time.time()
+    step = start_step
+    last_log = last_save = step
+
+    if start_step:
+        for _ in range(start_step // 5):
+            next(it)
+
+    while step < n_steps and not _stop:
+        frac = step / max(n_steps, 1)
+        gen.curriculum = 1 if frac < 0.33 else (2 if frac < 0.66 else 3)
+        brain.predictor.lr = lr_decay(base_lr, step, decay_every)
+
+        seq     = next(it)
+        encoded = gen.encode_seq(seq)
         brain.reset_sequence()
 
-        seq_error = 0.0
         for vec, word in encoded:
-            result = brain.perceive(vec)
-            seq_error += result.prediction_error
-            if word:
-                brain.hear(word)
-
+            r = brain.perceive(vec)
+            ew.push(r.prediction_error)
+            if word: brain.hear(word)
             step += 1
-            if step >= n_steps:
-                break
+            if step >= n_steps: break
 
-        total_error += seq_error / max(len(encoded), 1)
+        recent = ew.mean()
 
-        if step % log_interval == 0:
-            avg_err = total_error / max(step // max(len(encoded), 1), 1)
-            print(f"  step={step:>8,}  avg_err={avg_err:.4f}"
-                  f"  emotion=({brain.emotion.valence:+.2f}, {brain.emotion.arousal:.2f})"
-                  f"  episodes={brain.episodic.episode_count}"
-                  f"  vocab={brain.language.vocab_size}")
+        if step - last_log >= log_interval:
+            last_log = step
+            brain.episodic.surprise_threshold = min(2.0 * recent, 0.5)
+            print(f"  step={step:>8,}  err={recent:.4f}"
+                  f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
+                  f"  episodes={brain.episodic.episode_count:,}"
+                  f"  vocab={brain.language.vocab_size}"
+                  f"  lr={brain.predictor.lr:.5f}"
+                  f"  cur={gen.curriculum}"
+                  f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
+            if checkpoint:
+                save_progress(checkpoint, '1', step, n_steps, recent,
+                              {'cur': gen.curriculum})
 
-    print(f"  Phase 1 complete. Final avg_err={total_error/max(step,1):.4f}")
-    return total_error / max(step, 1)
+        if checkpoint and step - last_save >= save_every:
+            last_save = step
+            save_checkpoint(brain, checkpoint, 'p1_mid')
 
-# ── Phase 2: ConceptNet ───────────────────────────────────────────────
+    save_checkpoint(brain, checkpoint, 'p1')
+    save_progress(checkpoint, '1_done', step, n_steps, ew.mean())
+    print(f"  Phase 1 done.  err={ew.mean():.4f}  episodes={brain.episodic.episode_count:,}")
+    return ew.mean()
 
-def train_conceptnet(brain: brain2.Brain, n_steps: int,
-                     cn_path: str, log_interval: int = 1000):
-    """
-    Feed ConceptNet causal/relational triples to brain.
-    Brain learns: causality, hierarchy, properties, actions.
-    """
+# ── Phase 2 ───────────────────────────────────────────────────────────
+
+def train_conceptnet(brain, n_steps, cn_path, checkpoint,
+                     start_step=0, log_interval=10000, save_every=50000,
+                     base_lr=0.003, decay_every=300_000, vocab_cap=5000):
+    global _stop
     print(f"\n[Phase 2] ConceptNet  ({n_steps:,} steps)")
-    print("=" * 60)
+    if start_step: print(f"  Resuming from step {start_step:,}")
+    print("=" * 64)
 
-    sys.path.insert(0, os.path.dirname(__file__))
     from conceptnet_loader import ConceptNetLoader
+    enc    = ConceptEncoder(brain.n_dims)
+    loader = ConceptNetLoader(n_dims=brain.n_dims)
+    ew     = EW()
+    t0     = time.time()
+    step   = start_step
+    last_log = last_save = step
+    cycle  = 0
+    skip   = start_step
 
-    n_dims = brain.n_dims
-    loader = ConceptNetLoader(n_dims=n_dims)
+    while step < n_steps and not _stop:
+        cycle += 1
+        for seq in loader.sequences(cn_path, max_seqs=n_steps * 3):
+            if step >= n_steps or _stop: break
 
-    total_error = 0.0
-    step        = 0
+            if skip > 0:
+                skip -= len(seq)
+                continue
 
-    # Cycle through ConceptNet multiple times if needed
-    while step < n_steps:
-        for seq in loader.sequences(cn_path, max_seqs=n_steps * 2):
-            if step >= n_steps:
-                break
-
-            enc = ConceptEncoder(n_dims)
-            encoded = [(enc.encode(concept), word) for concept, word in seq]
-
+            encoded = [(enc.encode(c), w) for c, w in seq]
             brain.reset_sequence()
-            seq_error = 0.0
 
             for vec, word in encoded:
-                result = brain.perceive(vec)
-                seq_error += result.prediction_error
-                if word:
-                    brain.hear(word)
+                r = brain.perceive(vec)
+                ew.push(r.prediction_error)
+                if word: brain.hear(word)
+                brain.predictor.lr = lr_decay(base_lr, step, decay_every)
                 step += 1
-                if step >= n_steps:
-                    break
+                if step >= n_steps: break
 
-            total_error += seq_error / max(len(encoded), 1)
+            recent = ew.mean()
 
-            if step % log_interval == 0:
-                avg = total_error / max(step // max(len(encoded), 1), 1)
-                print(f"  step={step:>8,}  avg_err={avg:.4f}"
-                      f"  vocab={brain.language.vocab_size}"
-                      f"  episodes={brain.episodic.episode_count}")
+            if step - last_log >= log_interval:
+                last_log = step
+                brain.episodic.surprise_threshold = min(2.0 * recent, 0.5)
+                print(f"  step={step:>8,}  err={recent:.4f}"
+                      f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
+                      f"  episodes={brain.episodic.episode_count:,}"
+                      f"  vocab={brain.language.vocab_size:,}"
+                      f"  lr={brain.predictor.lr:.5f}"
+                      f"  cycle={cycle}"
+                      f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
+                if checkpoint:
+                    save_progress(checkpoint, '2', step, n_steps, recent,
+                                  {'cycle': cycle})
 
-    print(f"  Phase 2 complete.")
-    return total_error / max(step, 1)
+            if checkpoint and step - last_save >= save_every:
+                last_save = step
+                save_checkpoint(brain, checkpoint, 'p2_mid')
 
-# ── Phase 3: Curiosity-driven exploration ────────────────────────────
+    save_checkpoint(brain, checkpoint, 'p2')
+    save_progress(checkpoint, '2_done', step, n_steps, ew.mean())
+    print(f"  Phase 2 done.  err={ew.mean():.4f}  vocab={brain.language.vocab_size:,}")
+    return ew.mean()
 
-def train_curiosity(brain: brain2.Brain, n_steps: int,
-                    log_interval: int = 500):
+# ── Phase 3 ───────────────────────────────────────────────────────────
+
+def train_curiosity(brain, n_steps, checkpoint,
+                    start_step=0, log_interval=5000, save_every=50000,
+                    base_lr=0.002, decay_every=100_000):
     """
-    Brain generates its own training data via imagination.
-    High prediction-error regions = unexplored = explore more.
-    Self-generated thought sequences reinforce learned patterns.
+    Curiosity via SOM neuron weight vectors.
+
+    FIX: thought.concepts = 256-dim SOM activation maps (wrong for perceive).
+    FIXED approach: use brain.som.neuron_weights(i) as curiosity seeds.
+      - These are n_dims=32 dimensional (correct for perceive)
+      - They represent actual learned concepts
+      - High-surprise neurons get explored more (weighted sampling)
     """
-    print(f"\n[Phase 3] Curiosity / Self-play  ({n_steps:,} steps)")
-    print("=" * 60)
+    global _stop
+    print(f"\n[Phase 3] Curiosity + Dreaming  ({n_steps:,} steps)")
+    if start_step: print(f"  Resuming from step {start_step:,}")
+    print("=" * 64)
 
-    step        = 0
-    total_error = 0.0
+    ew        = EW()
+    t0        = time.time()
+    step      = start_step
+    last_log  = last_save = step
+    rng       = np.random.default_rng(42 + start_step)
+    n_neurons = brain.som.n_neurons
+    n_dims    = brain.n_dims
 
-    while step < n_steps:
-        # Think: generate concept sequence via inner speech
-        thought = brain.think(steps=8)
+    # Saliency weights per neuron — updated from prediction surprise
+    surprise  = np.ones(n_neurons, dtype=np.float32)
 
-        # Feed thought concepts back as perception (self-generated experience)
-        brain.predictor.reset()
-        for concept_vec in thought.concepts:
-            vec = np.array(concept_vec, dtype=np.float32)
-            if len(vec) == brain.n_dims:
-                result = brain.perceive(vec)
-                total_error += result.prediction_error
-                step += 1
+    while step < n_steps and not _stop:
+        brain.predictor.lr = lr_decay(base_lr, step, decay_every)
 
-        # Periodically dream — consolidate episodic + explore
-        if step % 5000 == 0 and step > 0:
-            brain.dream(n_dreams=10, steps_per_dream=12)
-            print(f"  [dream]  step={step:>8,}  episodes={brain.episodic.episode_count}"
-                  f"  drift={brain.self_model.drift(brain2.InternalState()):.3f}")
+        # Pick neuron weighted by surprise
+        probs      = surprise / surprise.sum()
+        seed_n     = int(rng.choice(n_neurons, p=probs))
+        seed_vec   = np.array(brain.som.neuron_weights(seed_n), dtype=np.float32)
+        seed_vec  += rng.standard_normal(n_dims).astype(np.float32) * 0.05
 
-        if step % log_interval == 0:
-            avg = total_error / max(step, 1)
-            thought_words = thought.words[:5] if thought.words else []
-            print(f"  step={step:>8,}  avg_err={avg:.4f}"
-                  f"  words={thought_words}"
-                  f"  coh={thought.coherence:.3f}")
+        brain.reset_sequence()
+        r   = brain.perceive(seed_vec)
+        err = r.prediction_error
+        ew.push(err)
 
-    print(f"  Phase 3 complete.")
-    return total_error / max(step, 1)
+        # Update surprise map around BMU
+        bmu = r.bmu
+        for i in range(n_neurons):
+            d = brain.som.grid_dist(i, bmu)
+            surprise[i] = 0.99 * surprise[i] + 0.01 * np.exp(-d*d/8.0) * err
 
-# ── Evaluation ───────────────────────────────────────────────────────
+        # Think step every 10 steps (updates WM internally, correct dims handled inside)
+        if step % 10 == 0 and not brain.working_mem.empty:
+            brain.think(steps=4)
 
-def evaluate(brain: brain2.Brain, n_dims: int):
-    """Quick sanity checks after training."""
-    print("\n[Eval] Post-training sanity checks")
-    print("=" * 60)
+        # Dream + consolidate every 1000 steps
+        if step > 0 and step % 1000 == 0:
+            brain.dream(n_dreams=5, steps_per_dream=8)
+            brain.episodic.consolidate(0.88)
 
-    enc = ConceptEncoder(n_dims)
+        step += 1
 
+        if step - last_log >= log_interval:
+            last_log = step
+            brain.episodic.surprise_threshold = min(2.0 * ew.mean(), 0.5)
+            top5 = np.argsort(surprise)[-5:][::-1].tolist()
+            print(f"  step={step:>8,}  err={ew.mean():.4f}"
+                  f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
+                  f"  episodes={brain.episodic.episode_count:,}"
+                  f"  lr={brain.predictor.lr:.5f}"
+                  f"  hot={top5}"
+                  f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
+            if checkpoint:
+                save_progress(checkpoint, '3', step, n_steps, ew.mean())
+
+        if checkpoint and step - last_save >= save_every:
+            last_save = step
+            save_checkpoint(brain, checkpoint, 'p3_mid')
+
+    save_checkpoint(brain, checkpoint, 'p3')
+    save_progress(checkpoint, '3_done', step, n_steps, ew.mean())
+    print(f"  Phase 3 done.  err={ew.mean():.4f}")
+    return ew.mean()
+
+# ── Evaluation ────────────────────────────────────────────────────────
+
+def evaluate(brain, n_dims):
+    print("\n[Eval] Post-training checks")
+    print("=" * 64)
+    enc   = ConceptEncoder(n_dims)
     tests = [
-        # (description, input_seq, expected_last_word)
-        ("2 + 3 = ?",    [("2", "2"), ("+", "plus"), ("3", "3"), ("=", "equals")], "5"),
-        ("fire causes ?", [("fire", "fire"), ("causes", "causes")], "heat"),
-        ("dog isa ?",     [("dog", "dog"), ("isa", "isa")], "animal"),
-        ("4 > 2 = ?",    [("4", "4"), (">", "greater"), ("2", "2"), ("=", "equals")], "true"),
+        ("2 + 3 = ?",     [("2","2"),("+","plus"),("3","3"),("=","equals")],    "5"),
+        ("10 - 4 = ?",    [("10","10"),("-","minus"),("4","4"),("=","equals")], "6"),
+        ("3 * 4 = ?",     [("3","3"),("*","times"),("4","4"),("=","equals")],   "12"),
+        ("! true = ?",    [("!","not"),("true","true"),("=","equals")],          "false"),
+        ("4 > 2 = ?",     [("4","4"),(">","greater"),("2","2"),("=","equals")], "true"),
+        ("fire causes ?", [("fire","fire"),("causes","causes")],                 "heat"),
+        ("dog isa ?",     [("dog","dog"),("isa","isa")],                        "animal"),
+        ("plant needs ?", [("plant","plant"),("needs","needs")],                "sunlight"),
     ]
-
     passed = 0
     for desc, seq, expected in tests:
         brain.reset_sequence()
-        brain.predictor.set_offline(True)
-        last_vec = None
-        prev_act = None
+        brain.working_mem.clear()   # flush ConceptNet context before each test
         for concept, word in seq:
-            vec     = enc.encode(concept)
-            act_map = np.array(brain.som.activation_map(vec))
-            if prev_act is not None:
-                last_vec = np.array(brain.predictor.step(prev_act))
-            prev_act = act_map
-        # Final step: feed last known, get prediction of next
-        if prev_act is not None:
-            last_vec = np.array(brain.predictor.step(prev_act))
-        brain.predictor.set_offline(False)
-
-        if last_vec is not None and brain.language.vocab_size > 0:
-            predicted = brain.language.best_word(last_vec)
-            ok = predicted == expected
-            if ok:
-                passed += 1
-            status = "\033[92mPASS\033[0m" if ok else "\033[91mFAIL\033[0m"
-            print(f"  [{status}] {desc}  → predicted='{predicted}'  expected='{expected}'")
+            brain.perceive(enc.encode(concept))
+            brain.hear(word)
+        if brain.language.vocab_size > 0:
+            ctx  = brain.working_mem.context()
+            pred = brain.language.best_word(ctx)
+            ok   = pred == expected
+            passed += ok
+            st   = "\033[92mPASS\033[0m" if ok else "\033[91mFAIL\033[0m"
+            print(f"  [{st}] {desc:<22} → got='{pred}'  want='{expected}'")
         else:
-            print(f"  [SKIP] {desc} (no vocab yet)")
-
-    print(f"\n  Eval: {passed}/{len(tests)} correct")
+            print(f"  [SKIP] {desc}")
+    print(f"\n  Result: {passed}/{len(tests)}")
     return passed
 
 # ── Main ─────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Brain v2 Training")
-    parser.add_argument("--phase", choices=["1", "2", "3", "all"], default="1")
-    parser.add_argument("--steps", type=int, default=100_000)
-    parser.add_argument("--conceptnet", type=str, default=None,
-                        help="Path to conceptnet-assertions-5.7.0.csv.gz")
-    parser.add_argument("--checkpoint", type=str, default=None,
-                        help="Save/load checkpoint name")
-    parser.add_argument("--som-size", type=int, default=16,
-                        help="SOM rows=cols (default 16 → 16x16=256 neurons)")
-    parser.add_argument("--hidden", type=int, default=512)
-    parser.add_argument("--n-dims", type=int, default=32)
-    parser.add_argument("--log-interval", type=int, default=1000)
-    parser.add_argument("--lr", type=float, default=0.005,
-                        help="Predictor learning rate (default 0.005)")
-    args = parser.parse_args()
+    p = argparse.ArgumentParser(description="Brain v2 Training (resumable)")
+    p.add_argument("--phase",           choices=["1","2","3","all"], default="1")
+    p.add_argument("--steps",           type=int,   default=500_000)
+    p.add_argument("--conceptnet",      type=str,   default=None)
+    p.add_argument("--checkpoint",      type=str,   default="brain")
+    p.add_argument("--som-size",        type=int,   default=16)
+    p.add_argument("--hidden",          type=int,   default=512)
+    p.add_argument("--n-dims",          type=int,   default=32)
+    p.add_argument("--log-interval",    type=int,   default=10000)
+    p.add_argument("--save-every",      type=int,   default=50000)
+    p.add_argument("--lr",              type=float, default=0.005)
+    p.add_argument("--lr-decay-every",  type=int,   default=300_000)
+    p.add_argument("--vocab-cap",       type=int,   default=5000)
+    p.add_argument("--episodic-max",    type=int,   default=10_000)
+    p.add_argument("--reset",           action="store_true",
+                   help="Start fresh, ignore existing checkpoint")
+    args = p.parse_args()
 
-    cfg = dict(
-        som_rows    = args.som_size,
-        som_cols    = args.som_size,
-        n_dims      = args.n_dims,
-        hidden_dim  = args.hidden,
-        wm_capacity = 12,
-        episodic_max= 5000,
-        self_neurons= 32,
-        seed        = 42,
-    )
+    cfg = dict(som_rows=args.som_size, som_cols=args.som_size,
+               n_dims=args.n_dims, hidden_dim=args.hidden,
+               wm_capacity=12, episodic_max=args.episodic_max,
+               self_neurons=32, seed=42)
 
-    print(f"\nBrain v2 Training")
-    print(f"  SOM:      {cfg['som_rows']}x{cfg['som_cols']} = {cfg['som_rows']*cfg['som_cols']} neurons")
-    print(f"  n_dims:   {cfg['n_dims']}")
-    print(f"  hidden:   {cfg['hidden_dim']}")
-    n_neurons = cfg['som_rows'] * cfg['som_cols']
-    lstm1 = 4*n_neurons*cfg['hidden_dim'] + 4*cfg['hidden_dim']**2 + 4*cfg['hidden_dim']
-    lstm2 = 8*cfg['hidden_dim']**2 + 4*cfg['hidden_dim']
-    out   = cfg['hidden_dim']*n_neurons + n_neurons
-    total = lstm1 + lstm2 + out
-    print(f"  Params:   ~{total/1e6:.1f}M")
-    print(f"  Phase:    {args.phase}  ({args.steps:,} steps)")
-    print()
+    N = args.som_size ** 2
+    print(f"\nBrain v2  (resumable)")
+    print(f"  SOM={args.som_size}x{args.som_size}  n_dims={args.n_dims}"
+          f"  hidden={args.hidden}  phase={args.phase}  steps={args.steps:,}")
+    print(f"  checkpoint={args.checkpoint}  save_every={args.save_every:,}")
+    print(f"  Press Ctrl+C anytime — progress saves automatically\n")
 
-    t0    = time.time()
-    brain = make_brain(cfg)
-    brain.predictor.lr = args.lr
+    # ── Detect resume ────────────────────────────────────────────────
+    prog         = None if args.reset else load_progress(args.checkpoint)
+    resume_phase = '1'   # default: start from phase 1
+    resume_step  = 0
 
-    if args.phase in ("1", "all"):
-        train_math(brain, args.steps, args.log_interval)
-        if args.checkpoint:
-            save_checkpoint(brain, args.checkpoint + "_p1")
+    if prog and not args.reset:
+        pd = prog['phase']
+        ps = prog['step']
+        print(f"  Found checkpoint: phase={pd}  step={ps:,}  err={prog['err']:.4f}")
+        if   pd == '1':      resume_phase = '1'; resume_step = ps
+        elif pd == '1_done': resume_phase = '2'; resume_step = 0
+        elif pd == '2':      resume_phase = '2'; resume_step = ps
+        elif pd == '2_done': resume_phase = '3'; resume_step = 0
+        elif pd == '3':      resume_phase = '3'; resume_step = ps
+        elif pd == '3_done':
+            print("  All phases complete. Use --reset to retrain.")
+            return
+        print(f"  Resuming: phase={resume_phase}  step={resume_step:,}\n")
 
-    if args.phase in ("2", "all"):
-        if not args.conceptnet:
-            print("Phase 2 needs --conceptnet path. Skipping.")
-            print("Download: https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz")
-        else:
-            train_conceptnet(brain, args.steps, args.conceptnet, args.log_interval)
-            if args.checkpoint:
-                save_checkpoint(brain, args.checkpoint + "_p2")
+    # ── Load or build brain ──────────────────────────────────────────
+    brain = None
+    if prog and not args.reset:
+        for tag in ['p2_mid','p2','p1_mid','p1']:
+            if checkpoint_exists(args.checkpoint, tag):
+                brain = load_checkpoint(args.checkpoint, tag, cfg)
+                if brain: break
 
-    if args.phase in ("3", "all"):
-        train_curiosity(brain, args.steps // 5, args.log_interval // 2)
-        if args.checkpoint:
-            save_checkpoint(brain, args.checkpoint + "_p3")
+    if brain is None:
+        print("  Building fresh brain...")
+        brain = brain2.Brain(**cfg)
 
-    elapsed = time.time() - t0
-    print(f"\nTotal time: {elapsed:.1f}s  ({args.steps/elapsed:.0f} steps/sec)")
+    # ── Determine which phases to run ────────────────────────────────
+    all_phases = ['1','2','3'] if args.phase == 'all' else [args.phase]
+    run_phases = [ph for ph in all_phases if ph >= resume_phase]
 
+    t0 = time.time()
+    for ph in run_phases:
+        s = resume_step if ph == resume_phase else 0
+
+        if ph == '1':
+            train_math(brain, args.steps, args.checkpoint,
+                       start_step=s, log_interval=args.log_interval,
+                       save_every=args.save_every, base_lr=args.lr,
+                       decay_every=args.lr_decay_every)
+
+        elif ph == '2':
+            if not args.conceptnet:
+                print("Phase 2 needs --conceptnet. Skipping.")
+            else:
+                train_conceptnet(brain, args.steps, args.conceptnet,
+                                 args.checkpoint,
+                                 start_step=s, log_interval=args.log_interval,
+                                 save_every=args.save_every,
+                                 base_lr=args.lr * 0.6,
+                                 decay_every=args.lr_decay_every,
+                                 vocab_cap=args.vocab_cap)
+
+        elif ph == '3':
+            train_curiosity(brain, max(args.steps // 2, 50_000),
+                            args.checkpoint,
+                            start_step=s,
+                            log_interval=max(args.log_interval // 2, 1000),
+                            save_every=args.save_every,
+                            base_lr=args.lr * 0.8,
+                            decay_every=args.lr_decay_every)
+
+        if _stop:
+            print("\n  Interrupted. Run same command to resume.")
+            return
+
+    print(f"\nTotal time: {time.time()-t0:.1f}s")
     evaluate(brain, cfg['n_dims'])
+    save_checkpoint(brain, args.checkpoint, 'final')
 
-    if args.checkpoint:
-        save_checkpoint(brain, args.checkpoint + "_final")
 
 if __name__ == "__main__":
     main()

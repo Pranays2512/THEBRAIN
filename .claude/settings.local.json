@@ -12,6 +12,9 @@
       "Bash(python lang_test.py)",
       "Bash(python speech_learn_test.py)",
       "Bash(python -c *)"
+    ],
+    "additionalDirectories": [
+      "/Users/pranay./Documents/THEBRAIN/brain2"
     ]
   }
 }

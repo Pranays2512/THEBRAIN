@@ -164,7 +164,11 @@ PYBIND11_MODULE(brain2, m) {
              [](const std::string& p) { return EpisodicMemory::load(p); })
         .def_property_readonly("episode_count",   &EpisodicMemory::episode_count)
         .def_property_readonly("prototype_count", &EpisodicMemory::prototype_count)
-        .def_property_readonly("step",            &EpisodicMemory::step);
+        .def_property_readonly("step",            &EpisodicMemory::step)
+        .def_property("surprise_threshold",
+             [](const EpisodicMemory& em){ return em.surprise_threshold; },
+             [](EpisodicMemory& em, float v){ em.surprise_threshold = v; },
+             "Adaptive surprise threshold — write from Python to update C++ side");
 
     // ── WorkingMemory ────────────────────────────────────────────────
     py::class_<WorkingMemory>(m, "WorkingMemory")

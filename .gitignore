@@ -20,10 +20,16 @@ dist/
 build_cpp/
 .claude/
 .remember/
+brain2/checkpoints/
+brain2/.cache/
+brain2/train/*.gz
+brain2/train/*.csv
+checkpoints/
 
 # Data / Save files
 *.pkl
 .*_cache*.pkl
+*.bin
 
 # Editor / OS
 .vscode/
