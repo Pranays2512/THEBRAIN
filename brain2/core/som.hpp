@@ -110,7 +110,12 @@ public:
         return best_i;
     }
 
-    // Full activation map: inverted normalized distance per neuron
+    // Full activation map: locally contrasted distance per neuron.
+    //
+    // High-dimensional SOM distances often have a very small absolute spread.
+    // A fixed exponential scale turns that into a dense "fog" where almost all
+    // neurons are active. Use the nearest-neighbor distance distribution itself
+    // as the scale so the map stays sparse across SOM sizes and training stages.
     std::vector<float> activation_map(const std::vector<float>& input) const {
         if ((int)input.size() != n_dims)
             throw std::invalid_argument("SOM::activation_map: input dim mismatch");
@@ -124,12 +129,16 @@ public:
             dists[i] = l2sq(inp, weights_.data() + size_t(i) * n_dims);
 
         float mn = *std::min_element(dists.begin(), dists.end());
-        float mx = *std::max_element(dists.begin(), dists.end());
-        float rng = mx - mn;
-        if (rng > 0.f)
-            for (auto& d : dists) d = 1.f - (d - mn) / rng;
-        else
-            std::fill(dists.begin(), dists.end(), 1.f);
+
+        std::vector<float> deltas = dists;
+        for (auto& d : deltas) d -= mn;
+
+        size_t kth = std::max<size_t>(1, deltas.size() / 20); // ~5th percentile
+        std::nth_element(deltas.begin(), deltas.begin() + kth, deltas.end());
+        float sigma = std::max(deltas[kth], 1e-6f);
+
+        for (auto& d : dists)
+            d = std::exp(-(d - mn) / sigma);
         return dists;
     }
 

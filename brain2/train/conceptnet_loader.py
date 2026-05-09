@@ -80,10 +80,45 @@ def _extract_concept(uri: str) -> Optional[str]:
 
 
 class ConceptNetLoader:
-    def __init__(self, n_dims: int, min_weight: float = 1.0):
+    def __init__(self, n_dims: int, min_weight: float = 1.0, vocab_cap: int = 5000):
         self.enc        = ConceptEncoder(n_dims)
         self.n_dims     = n_dims
         self.min_weight = min_weight
+        self.vocab_cap  = vocab_cap
+        self._allowed_words = None
+
+    def _build_vocab(self, path: str):
+        from collections import Counter
+        import json
+
+        print(f"Scanning ConceptNet to build top {self.vocab_cap} vocabulary...")
+        counts = Counter()
+        opener = gzip.open if path.endswith(".gz") else open
+        with opener(path, "rt", encoding="utf-8") as f:
+            reader = csv.reader(f, delimiter="\t")
+            for row in reader:
+                if len(row) < 5 or row[1] not in USEFUL_RELATIONS:
+                    continue
+                try:
+                    weight = float(json.loads(row[4]).get("weight", 1.0))
+                    if weight < self.min_weight:
+                        continue
+                except Exception:
+                    pass
+
+                concept_a = _extract_concept(row[2])
+                concept_b = _extract_concept(row[3])
+                if concept_a:
+                    counts[concept_a] += 1
+                if concept_b:
+                    counts[concept_b] += 1
+
+        top = counts.most_common(self.vocab_cap)
+        self._allowed_words = {word for word, _ in top}
+        if top:
+            print(f"  Vocab built. Top={top[0][0]}:{top[0][1]} floor={top[-1][0]}:{top[-1][1]}")
+        else:
+            print("  Vocab built, but no usable words were found.")
 
     def download_if_needed(self, path: str = CONCEPTNET_PATH) -> str:
         if os.path.exists(path):
@@ -108,6 +143,9 @@ class ConceptNetLoader:
         if not os.path.exists(path):
             print(f"ConceptNet not found at {path}. Run download_if_needed() first.")
             return
+
+        if self._allowed_words is None and self.vocab_cap > 0:
+            self._build_vocab(path)
 
         opener = gzip.open if path.endswith(".gz") else open
         count  = 0
@@ -138,6 +176,12 @@ class ConceptNetLoader:
                 concept_a = _extract_concept(row[2])
                 concept_b = _extract_concept(row[3])
                 if not concept_a or not concept_b:
+                    continue
+
+                if self._allowed_words and (
+                    concept_a not in self._allowed_words or
+                    concept_b not in self._allowed_words
+                ):
                     continue
 
                 rel_word = RELATION_WORD.get(relation, "relates")

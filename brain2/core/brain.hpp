@@ -47,6 +47,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <algorithm>
 
 namespace brain2 {
 
@@ -159,6 +160,31 @@ public:
     Brain& operator=(Brain&&) = default;
     Brain(const Brain&)       = delete;
     Brain& operator=(const Brain&) = delete;
+
+    void load_components(const std::string& predictor_path,
+                         const std::string& language_path,
+                         const std::string& som_path,
+                         const std::string& episodic_path,
+                         const std::string& emotion_path,
+                         const std::string& self_path,
+                         const std::string& symbolic_path) {
+        predictor = Predictor::load(predictor_path);
+        language  = Language::load(language_path);
+        som       = SOM::load(som_path);
+        episodic  = EpisodicMemory::load(episodic_path);
+        emotion   = Emotion::load(emotion_path);
+        self_model = SelfModel::load(self_path);
+        symbolic  = Symbolic::load(symbolic_path);
+
+        n_dims      = som.n_dims;
+        som_rows    = som.rows;
+        som_cols    = som.cols;
+        imagination = Imagination(&predictor, 50);
+        reasoning   = ReasoningEngine(&symbolic, som.n_neurons, 50, 0.01f, &predictor);
+        prev_act_map_.clear();
+        last_act_map_.clear();
+        have_prev_act_ = false;
+    }
 
     // PERCEIVE: process one raw input vector through full pipeline
     PerceiveResult perceive(const std::vector<float>& input) {
@@ -298,7 +324,7 @@ public:
             // Retrieve top memories similar to current context
             auto topk = episodic.retrieve_topk(ctx, 5);
             for (auto& [sim, idx] : topk) {
-                auto* ep = episodic.retrieve(ctx);
+                auto* ep = episodic.get_episode(idx);
                 if (ep && !ep->frames.empty())
                     seeds.push_back(ep->frames[0]);
             }

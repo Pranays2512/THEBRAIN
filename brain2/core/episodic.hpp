@@ -154,6 +154,12 @@ public:
         return best;
     }
 
+    // Retrieve episode by index
+    const Episode* get_episode(int idx) const {
+        if (idx >= 0 && idx < (int)episodes_.size()) return &episodes_[idx];
+        return nullptr;
+    }
+
     // Retrieve top-k most similar episodes (sorted by similarity)
     std::vector<std::pair<float, int>> retrieve_topk(
             const std::vector<float>& query, int k = 3) const {

@@ -528,6 +528,14 @@ PYBIND11_MODULE(brain2, m) {
              })
         .def("hear",          &Brain::hear)
         .def("reset_sequence",&Brain::reset_sequence)
+        .def("load_components", &Brain::load_components,
+             py::arg("predictor_path"),
+             py::arg("language_path"),
+             py::arg("som_path"),
+             py::arg("episodic_path"),
+             py::arg("emotion_path"),
+             py::arg("self_path"),
+             py::arg("symbolic_path"))
         .def("think",        &Brain::think,
              py::arg("steps") = 5)
         .def("speak",
