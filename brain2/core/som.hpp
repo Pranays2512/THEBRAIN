@@ -29,6 +29,9 @@
 #include <omp.h>
 #endif
 
+#include "cuda_math.cuh"
+
+
 namespace brain2 {
 
 class SOM {
@@ -36,7 +39,7 @@ public:
     int rows, cols, n_neurons, n_dims;
 
 private:
-    std::vector<float>           weights_;
+    DeviceVector<float>          weights_;
     float                        lr_, radius_, lr_decay_, radius_decay_;
     int                          step_;
     std::unique_ptr<std::mutex>  update_mtx_;
@@ -86,9 +89,18 @@ public:
             throw std::invalid_argument("SOM::find_bmu: input dim mismatch");
         const float* inp = input.data();
         float best_d = std::numeric_limits<float>::max();
-        int   best_i = 0;
+        int best_i = 0;
+
+#ifdef USE_CUDA
+        // For find_bmu, we can do it on CPU for simplicity as it's a reduction,
+        // or just let CPU read managed memory. Since the map is small, 
+        // reading managed memory on CPU is fine, but to avoid page faults
+        // cuda_device_synchronize is safe.
+        cuda_device_synchronize();
+#endif
 
 #ifdef USE_OPENMP
+
         #pragma omp parallel
         {
             float ld = std::numeric_limits<float>::max();
@@ -122,11 +134,16 @@ public:
         const float* inp = input.data();
         std::vector<float> dists(n_neurons, 0.f);
 
+#ifdef USE_CUDA
+        cuda_som_distances(weights_.data(), inp, dists.data(), n_neurons, n_dims);
+        cuda_device_synchronize();
+#else
 #ifdef USE_OPENMP
         #pragma omp parallel for schedule(static)
 #endif
         for (int i = 0; i < n_neurons; i++)
             dists[i] = l2sq(inp, weights_.data() + size_t(i) * n_dims);
+#endif
 
         float mn = *std::min_element(dists.begin(), dists.end());
 
@@ -157,6 +174,10 @@ public:
         float eff_lr = lr_ * std::max(0.01f, std::min(reward_mod, 3.f));
         float r2     = radius_ * radius_ * 2.f;
 
+#ifdef USE_CUDA
+        cuda_som_update(weights_.data(), inp, bmu, eff_lr, r2, n_neurons, n_dims, cols);
+        cuda_device_synchronize();
+#else
 #ifdef USE_OPENMP
         #pragma omp parallel for schedule(static)
 #endif
@@ -169,6 +190,7 @@ public:
             for (int j = 0; j < n_dims; j++)
                 w[j] += sc * (inp[j] - w[j]);
         }
+#endif
         lr_     *= lr_decay_;
         radius_ *= radius_decay_;
         step_++;

@@ -108,6 +108,13 @@ PYBIND11_MODULE(brain2, m) {
                  }
              }, py::arg("input"), py::arg("actual") = py::none(),
              "Predict next activation. If actual given: compute error + update.")
+        .def("train_sequence",
+             [](Predictor& p,
+                const std::vector<std::vector<float>>& inputs,
+                const std::vector<float>& target,
+                int n_bptt) { return p.train_sequence(inputs, target, n_bptt); },
+             py::arg("inputs"), py::arg("target"), py::arg("n_bptt") = -1,
+             "Train sequence with answer-only loss and N-step BPTT")
         .def("reset",      &Predictor::reset,
              "Reset LSTM hidden/cell state (start of new sequence)")
         .def("set_offline", &Predictor::set_offline,

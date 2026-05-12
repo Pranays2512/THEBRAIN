@@ -1,61 +1,48 @@
 """
-train.py — Brain v2 Training  (resumable + all bugs fixed)
+train.py — Brain v2 Training  (resumable, N-step BPTT, answer-only loss)
 
-BUGS FIXED IN THIS VERSION:
+KEY CHANGES FROM PREVIOUS VERSION:
   ─────────────────────────────────────────────────────────────────────────
-  BUG 1 [predictor.hpp] — LSTM weights never trained.
-    The old predictor.hpp only updated out_.W and out_.b in step().
-    Both LSTM layers (lstm1_, lstm2_) had RANDOM weights for the entire
-    3M-step run. The output layer was trying to map random LSTM features
-    to SOM activations — it collapsed to predicting the mean activation.
-    FIX: rebuild brain2.so with the new predictor.hpp (1-step TBPTT through
-         both LSTM layers). Requires a recompile. You MUST retrain from scratch
-         after applying this fix — existing checkpoints have untrained LSTMs.
+  WHY THE PREVIOUS RUN STILL FAILED (0/8 after 2 days):
 
-  BUG 2 [train.py + eval_v3.py] — Language vector drift (Hebbian collapse).
-    brain.hear(word) uses last_act_map_ (whatever the brain last perceived).
-    Over 500k ConceptNet sequences, each word appears across diverse contexts.
-    EMA toward diverse activations → all word vectors converge toward the
-    mean SOM activation. "Rainbow", "sunlight", "voice" all ended up at
-    the mean because they co-occurred with almost everything.
-    FIX: call brain.language.hear(word, clean_activation) where clean_activation
-         = brain.som.activation_map(enc.encode(word)). This grounds each word
-         to its *deterministic concept encoder* activation, not the random
-         context the brain happened to be in.
+  The 1-step TBPTT in step() cannot propagate gradient far enough back.
+  For "2 + 3 = 5" (5 tokens), the loss at the "=" step only reaches back
+  1 step to "3". The weights that processed "2" and "+" never get any
+  signal to produce "5". The LSTM learns to echo the last input, not to
+  reason through the sequence.
 
-  BUG 3 [predict_next()] — Training/eval LSTM state mismatch.
-    brain.perceive() uses 1-step-ahead prediction: LSTM input = prev_act,
-    target = current_act. For sequence [fire, causes, heat]:
-      train step 1: LSTM(fire) → h1       [no target, warmup]
-      train step 2: LSTM(fire) → h2       [target = causes]  ← fire AGAIN
-      train step 3: LSTM(causes) → h3     [target = heat]
-    But old predict_next([fire, causes]) did:
-      eval step 1: LSTM(fire) → h1
-      eval step 2: LSTM(causes) → h_WRONG  ← h_WRONG ≠ h2
-    h_WRONG ≠ h2 so output(h_WRONG) predicted garbage, not heat.
-    FIX: warmup step with acts[0] before the main loop in predict_next().
+  FIX: predictor.train_sequence(inputs, target)
+    — feeds entire input sequence through LSTM (recording snapshots)
+    — computes loss ONLY at the final output against `target` (answer-only)
+    — runs full N-step BPTT back through all stored snapshots
+    — gradient from "predict 5" now flows all the way back to "2"
 
-  BUG 4 [filtered_decode() + evaluate()] — Drifted vectors used for decoding.
-    Old code compared predictor output against lang.encode(word) — the
-    drifted Hebbian vectors. Since all drifted vectors and the mean-ish
-    predictor output all cluster near the mean, whichever word happened
-    to be closest to the mean (rainbow, sunlight) always won at ~0.93.
-    FIX: compare against som.activation_map(enc.encode(word)) — clean,
-         fixed, deterministic activations that do not drift.
+  TRAINING EXAMPLES:
+    Math   "2 + 3 = ?":  inputs=[act(2),act(+),act(3),act(=)], target=act(5)
+    ConceptNet "dog isa animal": inputs=[act(dog),act(isa)], target=act(animal)
+
+  PREDICT_NEXT CHANGE:
+    The warmup step was needed to match brain.perceive()'s "prev_act fed twice"
+    scheme. train_sequence() feeds each token exactly once, so the warmup is
+    removed from predict_next(). Eval now correctly mirrors training.
+
+  PYBIND11: add to your bindings file before recompiling:
+    .def("train_sequence",
+         [](brain2::Predictor& p,
+            const std::vector<std::vector<float>>& inputs,
+            const std::vector<float>& target,
+            int n_bptt) { return p.train_sequence(inputs, target, n_bptt); },
+         py::arg("inputs"), py::arg("target"), py::arg("n_bptt") = -1)
   ─────────────────────────────────────────────────────────────────────────
-
-RESUME: if interrupted, just run the exact same command again.
-  Progress saved to checkpoints/<name>_progress.json every log interval.
-  Weights auto-saved every --save-every steps (default 50,000).
 
 Usage:
-  python train.py --phase all --steps 2000000 \\
-    --conceptnet conceptnet-assertions-5.7.0.csv.gz \\
+  python train/train.py --phase all --steps 2000000 \\
+    --conceptnet train/conceptnet-assertions-5.7.0.csv.gz \\
     --som-size 64 --hidden 512 --n-dims 64 \\
-    --lr 0.005 --lr-decay-every 300000 \\
+    --lr 0.005 --lr-decay-every 400000 \\
     --log-interval 10000 --save-every 50000 \\
     --vocab-cap 5000 --episodic-max 10000 \\
-    --checkpoint brain_v9
+    --checkpoint brain_v10 --reset
 """
 
 import sys, os, time, json, signal, argparse
@@ -71,13 +58,10 @@ from math_sequences import MathSequenceGenerator
 
 # ── Paths ─────────────────────────────────────────────────────────────
 
-def _ckpt_dir(name):
+def _ckpt_dir(checkpoint):
     d = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'checkpoints')
     os.makedirs(d, exist_ok=True)
     return d
-
-def _p(name, checkpoint, tag, comp):
-    return os.path.join(_ckpt_dir(checkpoint), f"{checkpoint}_{tag}_{comp}.bin")
 
 def _progress_path(checkpoint):
     return os.path.join(_ckpt_dir(checkpoint), f"{checkpoint}_progress.json")
@@ -86,13 +70,13 @@ def _progress_path(checkpoint):
 
 def save_checkpoint(b, checkpoint, tag):
     d = _ckpt_dir(checkpoint)
-    b.predictor.save(     os.path.join(d, f"{checkpoint}_{tag}_predictor.bin"))
-    b.language.save(      os.path.join(d, f"{checkpoint}_{tag}_language.bin"))
-    b.som.save(           os.path.join(d, f"{checkpoint}_{tag}_som.bin"))
-    b.episodic.save(      os.path.join(d, f"{checkpoint}_{tag}_episodic.bin"))
-    b.emotion.save(       os.path.join(d, f"{checkpoint}_{tag}_emotion.bin"))
-    b.self_model.save(    os.path.join(d, f"{checkpoint}_{tag}_self.bin"))
-    b.symbolic_table.save(os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin"))
+    b.predictor.save(      os.path.join(d, f"{checkpoint}_{tag}_predictor.bin"))
+    b.language.save(       os.path.join(d, f"{checkpoint}_{tag}_language.bin"))
+    b.som.save(            os.path.join(d, f"{checkpoint}_{tag}_som.bin"))
+    b.episodic.save(       os.path.join(d, f"{checkpoint}_{tag}_episodic.bin"))
+    b.emotion.save(        os.path.join(d, f"{checkpoint}_{tag}_emotion.bin"))
+    b.self_model.save(     os.path.join(d, f"{checkpoint}_{tag}_self.bin"))
+    b.symbolic_table.save( os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin"))
     print(f"  [saved] tag={tag}  vocab={b.language.vocab_size:,}"
           f"  episodes={b.episodic.episode_count:,}")
 
@@ -108,7 +92,6 @@ def load_checkpoint(checkpoint, tag, cfg):
     if not all(os.path.exists(os.path.join(d, f"{checkpoint}_{tag}_{c}.bin"))
                for c in comps):
         return None
-
     print(f"  Loading checkpoint '{tag}' ...")
     b = brain2.Brain(**cfg)
     b.load_components(
@@ -120,13 +103,10 @@ def load_checkpoint(checkpoint, tag, cfg):
         os.path.join(d, f"{checkpoint}_{tag}_self.bin"),
         os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin")
     )
-    print(f"    language: {b.language.vocab_size:,} words")
-    print(f"    emotion:  v={b.emotion.valence:.3f}  a={b.emotion.arousal:.3f}")
-    print(f"    predictor lr={b.predictor.lr:.6f}")
-    print(f"  Resume ready.")
+    print(f"    vocab={b.language.vocab_size:,}  lr={b.predictor.lr:.6f}")
     return b
 
-# ── Progress JSON ─────────────────────────────────────────────────────
+# ── Progress ──────────────────────────────────────────────────────────
 
 def save_progress(checkpoint, phase, step, total, err, extra=None):
     path = _progress_path(checkpoint)
@@ -165,97 +145,127 @@ class HealthError(RuntimeError):
     pass
 
 def _cos(a, b):
-    na = np.linalg.norm(a)
-    nb = np.linalg.norm(b)
-    if na < 1e-8 or nb < 1e-8:
-        return 0.0
-    return float(np.dot(a, b) / (na * nb))
+    na, nb = np.linalg.norm(a), np.linalg.norm(b)
+    return float(np.dot(a, b) / (na * nb)) if na > 1e-8 and nb > 1e-8 else 0.0
 
 def checkpoint_health(brain, enc, phase, step, fatal=True):
-    """Fast tripwires that catch broken long runs within minutes."""
     problems = []
     concepts = ["2", "5", "=", "fire", "dog", "plant", "true", "false"]
     means, peaks = [], []
-
     for c in concepts:
         act = np.asarray(brain.som.activation_map(enc.encode(c)), dtype=np.float32)
         if np.isnan(act).any() or np.isinf(act).any():
-            problems.append(f"SOM activation for {c!r} contains NaN/Inf")
+            problems.append(f"SOM NaN/Inf for {c!r}")
             continue
         means.append(float(np.mean(act)))
         peaks.append(float(np.max(act)))
 
     mean_act = float(np.mean(means)) if means else 1.0
-    min_peak = float(np.min(peaks)) if peaks else 0.0
-    if mean_act > 0.20:
-        problems.append(f"SOM map is foggy: mean activation {mean_act:.3f} > 0.200")
-    if min_peak < 0.8:
-        problems.append(f"SOM map has weak peak: min peak {min_peak:.3f} < 0.800")
+    min_peak  = float(np.min(peaks)) if peaks else 0.0
+    if mean_act > 0.20: problems.append(f"SOM foggy: mean={mean_act:.3f}")
+    if min_peak  < 0.80: problems.append(f"SOM weak peak: {min_peak:.3f}")
     if brain.predictor.input_dim != brain.som.n_neurons:
-        problems.append(f"Predictor/SOM dim mismatch: {brain.predictor.input_dim} vs {brain.som.n_neurons}")
+        problems.append("Predictor/SOM dim mismatch")
     if brain.language.n_dims != brain.som.n_neurons:
-        problems.append(f"Language/SOM dim mismatch: {brain.language.n_dims} vs {brain.som.n_neurons}")
+        problems.append("Language/SOM dim mismatch")
 
-    # BUG 4 FIX: detect language collapse using SOM activations, not drifted lang vectors.
-    # Previously used lang.encode() which was the drifted vector — already collapsed.
-    # Use som.activation_map(enc.encode(word)) for a clean collapse check.
     collapse = None
     vocab = [w for w in brain.language.vocab() if brain.language.frequency(w) >= 10]
     if len(vocab) >= 64:
-        sample = vocab[:64]
-        sims = []
-        for a, b in zip(sample, sample[1:]):
-            va = np.array(brain.som.activation_map(enc.encode(a)), dtype=np.float32)
-            vb = np.array(brain.som.activation_map(enc.encode(b)), dtype=np.float32)
-            sims.append(_cos(va, vb))
-        collapse = float(np.mean(sims)) if sims else 0.0
-        # SOM activations naturally cluster similar concepts. Threshold is looser.
+        sims = [_cos(np.array(brain.som.activation_map(enc.encode(a)), dtype=np.float32),
+                     np.array(brain.som.activation_map(enc.encode(b)), dtype=np.float32))
+                for a, b in zip(vocab[:64], vocab[1:65])]
+        collapse = float(np.mean(sims))
         if collapse > 0.90:
-            problems.append(f"SOM activations collapsed: mean pair cosine {collapse:.3f} > 0.900")
+            problems.append(f"SOM activations collapsed: {collapse:.3f}")
 
     status = "OK" if not problems else "FAIL"
     msg = (f"  [health:{status}] phase={phase} step={step:,}"
            f" som_mean={mean_act:.3f} peak={min_peak:.3f}")
-    if collapse is not None:
-        msg += f" act_pair_cos={collapse:.3f}"
+    if collapse is not None: msg += f" act_pair_cos={collapse:.3f}"
     print(msg)
-
     if problems:
-        for p in problems:
-            print(f"    ! {p}")
-        if fatal:
-            raise HealthError("Training health check failed; aborting.")
+        for pr in problems: print(f"    ! {pr}")
+        if fatal: raise HealthError("Health check failed; aborting.")
 
-
-# ── BUG 2 FIX: clean language grounding ──────────────────────────────
+# ── Language grounding (clean activations, no Hebbian drift) ──────────
 
 def hear_clean(brain, enc, word):
-    """
-    Ground word → SOM activation using the concept encoder, NOT last_act_map_.
-
-    brain.hear(word) uses last_act_map_ (whatever the brain just perceived).
-    Across 500k diverse ConceptNet triples, every word's vector EMA-drifts
-    toward the mean activation map — all vectors collapse to nearly the same
-    point and cosine similarity between any two words → ~1.0.
-
-    Instead: compute the deterministic SOM activation for this word's concept
-    vector and pass that directly. Word meaning is grounded to the concept
-    encoder geometry (numbers are ordered, similar chars are nearby), not to
-    whatever random context the brain happened to be in.
-    """
+    """Ground word to its own deterministic SOM activation, not last_act_map_."""
     clean_act = brain.som.activation_map(enc.encode(word))
     brain.language.hear(word, clean_act)
 
-
 def pre_register_vocab(brain, enc, words):
-    """
-    Seed all vocabulary words with clean SOM activations before training.
-    This ensures words start in the right place rather than at random_vec().
-    """
+    """Seed words with clean SOM activations before training."""
     for word in words:
         clean_act = brain.som.activation_map(enc.encode(word))
         brain.language.register_word(word, clean_act)
 
+# ── Core sequence trainer ─────────────────────────────────────────────
+
+def run_sequence(brain, enc, seq, ew, use_train_sequence=True):
+    """
+    Process one training sequence through the brain.
+
+    For Phases 1+2 (use_train_sequence=True):
+      - SOM: updated via brain.perceive() with predictor offline
+      - Language: grounded via hear_clean()
+      - Predictor: trained via train_sequence() with full N-step BPTT
+        and answer-only loss (loss only at the final token)
+
+    For Phase 3 (use_train_sequence=False):
+      - Full brain.perceive() online loop (1-step BPTT, fine for curiosity)
+
+    Returns prediction error at the answer token.
+    """
+    if not seq:
+        return 0.0
+
+    # Build clean SOM activations for every token
+    acts = [np.array(brain.som.activation_map(enc.encode(c)), dtype=np.float32)
+            for c, _ in seq]
+    words = [w for _, w in seq]
+
+    if use_train_sequence:
+        # ── SOM update (offline predictor — no weight update in perceive) ──
+        brain.predictor.set_offline(True)
+        brain.reset_sequence()
+        brain.working_mem.clear()
+        for act in acts:
+            brain.perceive(act.tolist())
+        brain.predictor.set_offline(False)
+
+        # ── Language grounding ────────────────────────────────────────────
+        for word in words:
+            if word:
+                hear_clean(brain, enc, word)
+
+        # ── Predictor: answer-only loss + full N-step BPTT ───────────────
+        # Input sequence = all tokens except the last.
+        # Target         = the last token (the "answer").
+        # For ConceptNet [A, rel, B]: inputs=[A,rel], target=B
+        # For math [2,+,3,=,5]:      inputs=[2,+,3,=], target=5
+        if len(acts) >= 2:
+            brain.predictor.reset()
+            err = brain.predictor.train_sequence(
+                [a.tolist() for a in acts[:-1]],  # inputs
+                acts[-1].tolist(),                  # target (answer)
+                -1                                  # n_bptt = full sequence
+            )
+            ew.push(err)
+            return err
+        return 0.0
+    else:
+        # Online 1-step BPTT (Phase 3 curiosity)
+        brain.reset_sequence()
+        brain.working_mem.clear()
+        err = 0.0
+        for act, word in zip(acts, words):
+            r = brain.perceive(act.tolist())
+            err = r.prediction_error
+            ew.push(err)
+            if word: hear_clean(brain, enc, word)
+        return err
 
 _stop = False
 def _sigint(s, f):
@@ -264,45 +274,44 @@ def _sigint(s, f):
     _stop = True
 signal.signal(signal.SIGINT, _sigint)
 
-# ── Phase 1 ───────────────────────────────────────────────────────────
+# ── Phase 1: Math + Logic ─────────────────────────────────────────────
 
 def train_math(brain, n_steps, checkpoint,
                start_step=0, log_interval=10000, save_every=50000,
-               base_lr=0.005, decay_every=300_000,
+               base_lr=0.005, decay_every=400_000,
                health_interval=5000, health_fatal=True):
     global _stop
-    print(f"\n[Phase 1] Math + Logic + Physics  ({n_steps:,} steps, curriculum 1-3)")
+    print(f"\n[Phase 1] Math + Logic + Physics  ({n_steps:,} steps, curriculum 1→3)")
     if start_step: print(f"  Resuming from step {start_step:,}")
     print("=" * 64)
 
     gen        = MathSequenceGenerator(n_dims=brain.n_dims, curriculum=1)
-    health_enc = ConceptEncoder(brain.n_dims)
     enc        = ConceptEncoder(brain.n_dims)
+    health_enc = ConceptEncoder(brain.n_dims)
     it         = gen.all_types()
     ew         = EW()
     t0         = time.time()
     step       = start_step
-    last_log   = last_save = step
-    last_health = step
+    last_log   = last_save = last_health = step
 
     if start_step:
         for _ in range(start_step // 5):
             next(it)
 
-    # BUG 2 FIX: pre-register math/logic vocabulary with clean activations
+    # Pre-register math vocabulary with clean SOM activations
     math_words = [str(i) for i in range(21)] + [
-        "plus", "minus", "times", "divided", "equals", "greater", "less",
-        "true", "false", "not", "and", "or", "then", "therefore", "because",
-        "x", "y", "z", "mod",
-        "causes", "prevents", "isa", "hasa", "needs", "produces",
-        "before", "after", "above", "below", "inside", "outside",
-        "all", "some", "opposite",
-        "fire", "heat", "burn", "water", "ice", "cold", "sun", "light",
-        "rain", "wet", "gravity", "fall", "eat", "full", "sleep", "rest",
-        "dog", "cat", "tree", "apple", "bird", "fish", "human", "plant",
-        "animal", "fruit", "mammal", "food",
-        "force", "mass", "acceleration", "energy", "pressure", "speed",
-        "distance", "time", "voltage", "current", "resistance",
+        "plus","minus","times","divided","equals","greater","less",
+        "true","false","not","and","or","then","therefore","because",
+        "x","y","z","mod",
+        "causes","prevents","isa","hasa","needs","produces",
+        "before","after","above","below","inside","outside",
+        "all","some","opposite",
+        "fire","heat","burn","water","ice","cold","sun","light",
+        "rain","wet","gravity","fall","eat","full","sleep","rest",
+        "dog","cat","tree","apple","bird","fish","human","plant",
+        "animal","fruit","mammal","food",
+        "force","mass","acceleration","energy","pressure","speed",
+        "distance","time","voltage","current","resistance",
     ]
     pre_register_vocab(brain, enc, math_words)
 
@@ -311,23 +320,13 @@ def train_math(brain, n_steps, checkpoint,
         gen.curriculum = 1 if frac < 0.33 else (2 if frac < 0.66 else 3)
         brain.predictor.lr = lr_decay(base_lr, step, decay_every)
 
-        seq     = next(it)
-        encoded = gen.encode_seq(seq)
-        brain.reset_sequence()
-        brain.working_mem.clear()
-
-        for vec, word in encoded:
-            r = brain.perceive(vec)
-            ew.push(r.prediction_error)
-            # BUG 2 FIX: ground word to its own clean activation, not last_act_map_
-            if word: hear_clean(brain, enc, word)
-            step += 1
-            if step >= n_steps: break
-
-        recent = ew.mean()
+        seq = next(it)
+        run_sequence(brain, enc, seq, ew, use_train_sequence=True)
+        step += len(seq)
 
         if step - last_log >= log_interval:
             last_log = step
+            recent = ew.mean()
             brain.episodic.surprise_threshold = min(2.0 * recent, 0.5)
             print(f"  step={step:>8,}  err={recent:.4f}"
                   f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
@@ -336,9 +335,7 @@ def train_math(brain, n_steps, checkpoint,
                   f"  lr={brain.predictor.lr:.5f}"
                   f"  cur={gen.curriculum}"
                   f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
-            if checkpoint:
-                save_progress(checkpoint, '1', step, n_steps, recent,
-                              {'cur': gen.curriculum})
+            save_progress(checkpoint, '1', step, n_steps, recent, {'cur': gen.curriculum})
 
         if health_interval and step - last_health >= health_interval:
             last_health = step
@@ -348,16 +345,17 @@ def train_math(brain, n_steps, checkpoint,
             last_save = step
             save_checkpoint(brain, checkpoint, 'p1_mid')
 
-    save_checkpoint(brain, checkpoint, 'p1')
-    save_progress(checkpoint, '1_done', step, n_steps, ew.mean())
-    print(f"  Phase 1 done.  err={ew.mean():.4f}  episodes={brain.episodic.episode_count:,}")
+    if not _stop:
+        save_checkpoint(brain, checkpoint, 'p1')
+        save_progress(checkpoint, '1_done', step, n_steps, ew.mean())
+        print(f"  Phase 1 done.  err={ew.mean():.4f}  vocab={brain.language.vocab_size}")
     return ew.mean()
 
-# ── Phase 2 ───────────────────────────────────────────────────────────
+# ── Phase 2: ConceptNet ───────────────────────────────────────────────
 
 def train_conceptnet(brain, n_steps, cn_path, checkpoint,
                      start_step=0, log_interval=10000, save_every=50000,
-                     base_lr=0.003, decay_every=300_000, vocab_cap=5000,
+                     base_lr=0.003, decay_every=400_000, vocab_cap=5000,
                      health_interval=5000, health_fatal=True):
     global _stop
     print(f"\n[Phase 2] ConceptNet  ({n_steps:,} steps)")
@@ -370,64 +368,45 @@ def train_conceptnet(brain, n_steps, cn_path, checkpoint,
     ew     = EW()
     t0     = time.time()
     step   = start_step
-    last_log = last_save = step
-    last_health = step
+    last_log = last_save = last_health = step
     cycle  = 0
     skip   = start_step
 
-    # BUG 2 FIX: build ConceptNet vocabulary first, then pre-register with clean activations
-    # This seeds every word at the right point in SOM space before EMA can corrupt it.
-    print("  Pre-scanning ConceptNet to build vocabulary...")
+    # Pre-register entire ConceptNet vocab with clean SOM activations
+    print("  Building ConceptNet vocabulary...")
     loader._build_vocab(cn_path)
     if loader._allowed_words:
-        print(f"  Pre-registering {len(loader._allowed_words):,} vocabulary words"
-              f" with clean SOM activations...")
+        print(f"  Pre-registering {len(loader._allowed_words):,} words...")
         pre_register_vocab(brain, enc, list(loader._allowed_words))
-        # Also register relation words
-        relation_words = [
-            "causes", "makes_want", "can", "isa", "hasa", "is", "partof",
-            "usedfor", "receives", "wants", "goal", "cannot", "not_want", "opposite",
-        ]
-        pre_register_vocab(brain, enc, relation_words)
-        print(f"  Pre-registration done. vocab_size={brain.language.vocab_size:,}")
+        pre_register_vocab(brain, enc, [
+            "causes","makes_want","can","isa","hasa","is","partof",
+            "usedfor","receives","wants","goal","cannot","not_want","opposite",
+        ])
+        print(f"  Pre-registration done. vocab={brain.language.vocab_size:,}")
 
     while step < n_steps and not _stop:
         cycle += 1
         for seq in loader.sequences(cn_path, max_seqs=n_steps * 3):
             if step >= n_steps or _stop: break
-
             if skip > 0:
                 skip -= len(seq)
                 continue
 
-            encoded = [(enc.encode(c), w) for c, w in seq]
-            brain.reset_sequence()
-            brain.working_mem.clear()
-
-            for vec, word in encoded:
-                r = brain.perceive(vec)
-                ew.push(r.prediction_error)
-                # BUG 2 FIX: ground word to its own clean activation
-                if word: hear_clean(brain, enc, word)
-                brain.predictor.lr = lr_decay(base_lr, step, decay_every)
-                step += 1
-                if step >= n_steps: break
-
-            recent = ew.mean()
+            brain.predictor.lr = lr_decay(base_lr, step, decay_every)
+            run_sequence(brain, enc, seq, ew, use_train_sequence=True)
+            step += len(seq)
 
             if step - last_log >= log_interval:
                 last_log = step
+                recent = ew.mean()
                 brain.episodic.surprise_threshold = min(2.0 * recent, 0.5)
                 print(f"  step={step:>8,}  err={recent:.4f}"
                       f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
                       f"  episodes={brain.episodic.episode_count:,}"
                       f"  vocab={brain.language.vocab_size:,}"
-                      f"  lr={brain.predictor.lr:.5f}"
-                      f"  cycle={cycle}"
+                      f"  lr={brain.predictor.lr:.5f}  cycle={cycle}"
                       f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
-                if checkpoint:
-                    save_progress(checkpoint, '2', step, n_steps, recent,
-                                  {'cycle': cycle})
+                save_progress(checkpoint, '2', step, n_steps, recent, {'cycle': cycle})
 
             if health_interval and step - last_health >= health_interval:
                 last_health = step
@@ -437,12 +416,13 @@ def train_conceptnet(brain, n_steps, cn_path, checkpoint,
                 last_save = step
                 save_checkpoint(brain, checkpoint, 'p2_mid')
 
-    save_checkpoint(brain, checkpoint, 'p2')
-    save_progress(checkpoint, '2_done', step, n_steps, ew.mean())
-    print(f"  Phase 2 done.  err={ew.mean():.4f}  vocab={brain.language.vocab_size:,}")
+    if not _stop:
+        save_checkpoint(brain, checkpoint, 'p2')
+        save_progress(checkpoint, '2_done', step, n_steps, ew.mean())
+        print(f"  Phase 2 done.  err={ew.mean():.4f}  vocab={brain.language.vocab_size:,}")
     return ew.mean()
 
-# ── Phase 3 ───────────────────────────────────────────────────────────
+# ── Phase 3: Curiosity + Dreaming ────────────────────────────────────
 
 def train_curiosity(brain, n_steps, checkpoint,
                     start_step=0, log_interval=5000, save_every=50000,
@@ -456,8 +436,7 @@ def train_curiosity(brain, n_steps, checkpoint,
     ew          = EW()
     t0          = time.time()
     step        = start_step
-    last_log    = last_save = step
-    last_health = step
+    last_log    = last_save = last_health = step
     rng         = np.random.default_rng(42 + start_step)
     health_enc  = ConceptEncoder(brain.n_dims)
     n_neurons   = brain.som.n_neurons
@@ -467,22 +446,23 @@ def train_curiosity(brain, n_steps, checkpoint,
     while step < n_steps and not _stop:
         brain.predictor.lr = lr_decay(base_lr, step, decay_every)
 
-        probs     = surprise / surprise.sum()
-        seed_n    = int(rng.choice(n_neurons, p=probs))
-        seed_vec  = np.array(brain.som.neuron_weights(seed_n), dtype=np.float32)
+        probs    = surprise / surprise.sum()
+        seed_n   = int(rng.choice(n_neurons, p=probs))
+        seed_vec = np.array(brain.som.neuron_weights(seed_n), dtype=np.float32)
         seed_vec += rng.standard_normal(n_dims).astype(np.float32) * 0.05
 
+        # 2-step curiosity sequence — use online 1-step BPTT (fine here)
         brain.reset_sequence()
-        brain.perceive(seed_vec)
-        noisy_vec = seed_vec + rng.standard_normal(n_dims).astype(np.float32) * 0.05
-        r   = brain.perceive(noisy_vec)
+        brain.perceive(seed_vec.tolist())
+        noisy = seed_vec + rng.standard_normal(n_dims).astype(np.float32) * 0.05
+        r = brain.perceive(noisy.tolist())
         err = r.prediction_error
         ew.push(err)
 
         bmu = r.bmu
         for i in range(n_neurons):
             d = brain.som.grid_dist(i, bmu)
-            surprise[i] = 0.99 * surprise[i] + 0.01 * np.exp(-d*d/8.0) * err
+            surprise[i] = 0.99*surprise[i] + 0.01*np.exp(-d*d/8.0)*err
 
         if step % 10 == 0 and not brain.working_mem.empty:
             brain.think(steps=4)
@@ -500,11 +480,9 @@ def train_curiosity(brain, n_steps, checkpoint,
             print(f"  step={step:>8,}  err={ew.mean():.4f}"
                   f"  ep_thr={brain.episodic.surprise_threshold:.3f}"
                   f"  episodes={brain.episodic.episode_count:,}"
-                  f"  lr={brain.predictor.lr:.5f}"
-                  f"  hot={top5}"
+                  f"  lr={brain.predictor.lr:.5f}  hot={top5}"
                   f"  {fmt_eta(time.time()-t0, step-start_step, n_steps-start_step)}")
-            if checkpoint:
-                save_progress(checkpoint, '3', step, n_steps, ew.mean())
+            save_progress(checkpoint, '3', step, n_steps, ew.mean())
 
         if health_interval and step - last_health >= health_interval:
             last_health = step
@@ -519,45 +497,34 @@ def train_curiosity(brain, n_steps, checkpoint,
     print(f"  Phase 3 done.  err={ew.mean():.4f}")
     return ew.mean()
 
-# ── Evaluation (all 4 bugs fixed) ────────────────────────────────────
+# ── Eval (matches train_sequence training exactly) ────────────────────
 
 def predict_next(som, pred, enc, seq):
     """
-    BUG 3 FIX: warmup step replicates brain.perceive()'s 1-step-ahead scheme.
+    Feed all tokens as inputs, return prediction for the answer token.
 
-    brain.perceive() feeds prev_act_map to the LSTM and trains toward current_act:
-      step 1: LSTM input=acts[0], no target  (have_prev=False)
-      step 2: LSTM input=acts[0], target=acts[1]   <- acts[0] fed TWICE
-      step 3: LSTM input=acts[1], target=acts[2]
-      ...
+    NO warmup step — train_sequence feeds each token exactly once,
+    so eval does the same. The old warmup was only needed to match
+    brain.perceive()'s 'prev_act fed twice' scheme, which is no
+    longer used for Phases 1 and 2.
 
-    To match this in eval, we do one warmup step with acts[0], then loop
-    over the full sequence. The warmup reproduces the training's first step,
-    so the hidden state at each subsequent step matches training exactly.
+    Mirrors: train_sequence(inputs=acts[:-1], target=acts[-1])
     """
     pred.reset()
-    acts = [som.activation_map(enc.encode(concept)) for concept, _ in seq]
-
+    acts = [np.array(som.activation_map(enc.encode(c)), dtype=np.float32)
+            for c, _ in seq]
     pred.set_offline(True)
-    # Warmup: replicate training's first step (have_prev=False, just forward)
-    pred.step(acts[0])
-    # Main loop: mirrors training steps 2, 3, ...
     predicted = None
     for act in acts:
-        predicted = pred.step(act)
+        predicted = pred.step(act.tolist())
     pred.set_offline(False)
-    return predicted
+    return np.array(predicted, dtype=np.float32)
 
 
 def filtered_decode(som, enc, lang, predicted_vec, k=5, min_freq=1):
     """
-    BUG 4 FIX: compare predictor output against clean SOM activations,
-    NOT lang.encode(word) (which returns the Hebbian-drifted vector).
-
-    Even with hear_clean(), lang.encode() returns the internally stored
-    vector. After many steps it's still slightly drifted. The SOM activation
-    of enc.encode(word) is always exactly right and matches what the
-    predictor was trained against (since perceive() runs enc.encode through SOM).
+    Decode using clean SOM activations, not drifted language vectors.
+    Matches what train_sequence was trained to predict.
     """
     pn = np.linalg.norm(predicted_vec)
     if pn < 1e-8:
@@ -566,7 +533,6 @@ def filtered_decode(som, enc, lang, predicted_vec, k=5, min_freq=1):
     for word in lang.vocab():
         if lang.frequency(word) < min_freq:
             continue
-        # Clean, fixed SOM activation — matches what the predictor was trained on
         vec = np.array(som.activation_map(enc.encode(word)), dtype=np.float32)
         vn  = np.linalg.norm(vec)
         if vn < 1e-8:
@@ -580,7 +546,7 @@ def filtered_decode(som, enc, lang, predicted_vec, k=5, min_freq=1):
 def evaluate(brain, n_dims):
     print("\n[Eval] Post-training checks")
     print("=" * 64)
-    enc   = ConceptEncoder(n_dims)
+    enc = ConceptEncoder(n_dims)
     tests = [
         ("2 + 3 = ?",     [("2","2"),("+","plus"),("3","3"),("=","equals")],    "5"),
         ("10 - 4 = ?",    [("10","10"),("-","minus"),("4","4"),("=","equals")], "6"),
@@ -593,27 +559,24 @@ def evaluate(brain, n_dims):
     ]
     passed = 0
     for desc, seq, expected in tests:
-        if brain.language.vocab_size > 0:
-            predicted = predict_next(brain.som, brain.predictor, enc, seq)
-            # BUG 4 FIX: use SOM-based decoding
-            top5 = filtered_decode(brain.som, enc, brain.language, predicted, k=5, min_freq=1)
-            got  = top5[0][0] if top5 else "?"
-            ok   = got == expected
-            passed += ok
-            st   = "\033[92mPASS\033[0m" if ok else "\033[91mFAIL\033[0m"
-            top3 = [(w, f"{s:.3f}") for w, s in top5[:3]]
-            print(f"  [{st}] {desc:<22} → got='{got}'  want='{expected}'")
-            if not ok:
-                print(f"          top3: {top3}")
-        else:
-            print(f"  [SKIP] {desc}")
+        if brain.language.vocab_size == 0:
+            print(f"  [SKIP] {desc}"); continue
+        predicted = predict_next(brain.som, brain.predictor, enc, seq)
+        top5 = filtered_decode(brain.som, enc, brain.language, predicted, k=5, min_freq=1)
+        got  = top5[0][0] if top5 else "?"
+        ok   = got == expected
+        passed += ok
+        st   = "\033[92mPASS\033[0m" if ok else "\033[91mFAIL\033[0m"
+        print(f"  [{st}] {desc:<22} → got='{got}'  want='{expected}'")
+        if not ok:
+            print(f"          top3: {[(w,f'{s:.3f}') for w,s in top5[:3]]}")
     print(f"\n  Result: {passed}/{len(tests)}")
     return passed
 
 # ── Main ─────────────────────────────────────────────────────────────
 
 def main():
-    p = argparse.ArgumentParser(description="Brain v2 Training (resumable)")
+    p = argparse.ArgumentParser()
     p.add_argument("--phase",           choices=["1","2","3","all"], default="1")
     p.add_argument("--steps",           type=int,   default=500_000)
     p.add_argument("--conceptnet",      type=str,   default=None)
@@ -626,7 +589,7 @@ def main():
     p.add_argument("--health-interval", type=int,   default=5000)
     p.add_argument("--no-health-stop",  action="store_true")
     p.add_argument("--lr",              type=float, default=0.005)
-    p.add_argument("--lr-decay-every",  type=int,   default=300_000)
+    p.add_argument("--lr-decay-every",  type=int,   default=400_000)
     p.add_argument("--vocab-cap",       type=int,   default=5000)
     p.add_argument("--episodic-max",    type=int,   default=10_000)
     p.add_argument("--reset",           action="store_true")
@@ -637,34 +600,31 @@ def main():
                wm_capacity=12, episodic_max=args.episodic_max,
                self_neurons=32, seed=42)
 
-    print(f"\nBrain v2  (resumable)")
+    print(f"\nBrain v2  —  N-step BPTT + answer-only loss")
     print(f"  SOM={args.som_size}x{args.som_size}  n_dims={args.n_dims}"
           f"  hidden={args.hidden}  phase={args.phase}  steps={args.steps:,}")
-    print(f"  checkpoint={args.checkpoint}  save_every={args.save_every:,}")
-    print(f"  Press Ctrl+C anytime — progress saves automatically\n")
+    print(f"  checkpoint={args.checkpoint}  Press Ctrl+C to save+stop\n")
 
-    # ── Detect resume ────────────────────────────────────────────────
     prog         = None if args.reset else load_progress(args.checkpoint)
     resume_phase = '1'
     resume_step  = 0
 
     if prog and not args.reset:
-        pd = prog['phase']; ps = prog['step']
+        pd, ps = prog['phase'], prog['step']
         print(f"  Found checkpoint: phase={pd}  step={ps:,}  err={prog['err']:.4f}")
-        if   pd == '1':      resume_phase = '1'; resume_step = ps
-        elif pd == '1_done': resume_phase = '2'; resume_step = 0
-        elif pd == '2':      resume_phase = '2'; resume_step = ps
-        elif pd == '2_done': resume_phase = '3'; resume_step = 0
-        elif pd == '3':      resume_phase = '3'; resume_step = ps
+        if   pd == '1':      resume_phase='1'; resume_step=ps
+        elif pd == '1_done': resume_phase='2'; resume_step=0
+        elif pd == '2':      resume_phase='2'; resume_step=ps
+        elif pd == '2_done': resume_phase='3'; resume_step=0
+        elif pd == '3':      resume_phase='3'; resume_step=ps
         elif pd == '3_done':
             print("  All phases complete. Use --reset to retrain.")
             return
         print(f"  Resuming: phase={resume_phase}  step={resume_step:,}\n")
 
-    # ── Load or build brain ──────────────────────────────────────────
     brain = None
     if prog and not args.reset:
-        for tag in ['p3', 'p3_mid', 'p2', 'p2_mid', 'p1', 'p1_mid']:
+        for tag in ['p3','p3_mid','p2','p2_mid','p1','p1_mid']:
             if checkpoint_exists(args.checkpoint, tag):
                 brain = load_checkpoint(args.checkpoint, tag, cfg)
                 if brain: break
@@ -673,7 +633,6 @@ def main():
         print("  Building fresh brain...")
         brain = brain2.Brain(**cfg)
 
-    # ── Run phases ───────────────────────────────────────────────────
     all_phases = ['1','2','3'] if args.phase == 'all' else [args.phase]
     run_phases = [ph for ph in all_phases if ph >= resume_phase]
 
@@ -684,8 +643,10 @@ def main():
 
             if ph == '1':
                 train_math(brain, args.steps, args.checkpoint,
-                           start_step=s, log_interval=args.log_interval,
-                           save_every=args.save_every, base_lr=args.lr,
+                           start_step=s,
+                           log_interval=args.log_interval,
+                           save_every=args.save_every,
+                           base_lr=args.lr,
                            decay_every=args.lr_decay_every,
                            health_interval=args.health_interval,
                            health_fatal=not args.no_health_stop)
@@ -696,7 +657,8 @@ def main():
                 else:
                     train_conceptnet(brain, args.steps, args.conceptnet,
                                      args.checkpoint,
-                                     start_step=s, log_interval=args.log_interval,
+                                     start_step=s,
+                                     log_interval=args.log_interval,
                                      save_every=args.save_every,
                                      base_lr=args.lr * 0.6,
                                      decay_every=args.lr_decay_every,
@@ -705,12 +667,12 @@ def main():
                                      health_fatal=not args.no_health_stop)
 
             elif ph == '3':
-                train_curiosity(brain, max(args.steps // 2, 50_000),
+                train_curiosity(brain, max(args.steps // 4, 50_000),
                                 args.checkpoint,
                                 start_step=s,
                                 log_interval=max(args.log_interval // 2, 1000),
                                 save_every=args.save_every,
-                                base_lr=args.lr * 0.8,
+                                base_lr=args.lr * 0.5,
                                 decay_every=args.lr_decay_every,
                                 health_interval=args.health_interval,
                                 health_fatal=not args.no_health_stop)
@@ -718,12 +680,11 @@ def main():
             if _stop:
                 print("\n  Interrupted. Run same command to resume.")
                 return
+
     except HealthError as e:
         print(f"\n  [ABORTED] {e}")
-        if args.checkpoint:
-            save_checkpoint(brain, args.checkpoint, 'failed_health')
-            save_progress(args.checkpoint, 'failed_health', 0, args.steps, 0.0)
-        print("  Fix the failing health metric before launching a long run.")
+        save_checkpoint(brain, args.checkpoint, 'failed_health')
+        save_progress(args.checkpoint, 'failed_health', 0, args.steps, 0.0)
         return
 
     print(f"\nTotal time: {time.time()-t0:.1f}s")

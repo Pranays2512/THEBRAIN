@@ -4,6 +4,8 @@ project(brain2 VERSION 2.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(USE_CUDA "Enable CUDA GPU acceleration" OFF)
+
 # Release flags
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -18,10 +20,21 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(pybind11 REQUIRED CONFIG)
 
 # OpenMP
+if(APPLE)
+    set(OpenMP_ROOT "/opt/homebrew/opt/libomp")
+endif()
 find_package(OpenMP)
 
+if(USE_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    add_compile_definitions(USE_CUDA)
+    set(CUDA_SOURCES core/cuda_math.cu)
+    message(STATUS "CUDA: enabled")
+endif()
+
 # Brain2 extension module
-pybind11_add_module(brain2 brain2.cpp)
+pybind11_add_module(brain2 brain2.cpp ${CUDA_SOURCES})
 target_include_directories(brain2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(OpenMP_CXX_FOUND)
