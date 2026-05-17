@@ -1,8 +1,8 @@
 #pragma once
 /*
- * brain.hpp — Integration Layer, Brain v2
+ * brain.hpp — Integration Layer, Brain v3
  *
- * Wires all 10 components into a unified cognitive loop:
+ * Wires all 16 components into a unified cognitive loop:
  *
  * PERCEIVE (external input → SOM → Predictor → error → all components):
  *   1. SOM: raw vector → activation map + BMU
@@ -42,6 +42,13 @@
 #include "symbolic.hpp"
 #include "scratchpad.hpp"
 #include "reasoning.hpp"
+// Brain V3 additions
+#include "predictive_coding.hpp"
+#include "binding_memory.hpp"
+#include "global_workspace.hpp"
+#include "basal_ganglia.hpp"
+#include "procedural_memory.hpp"
+#include "hierarchical_predictor.hpp"
 
 #include <vector>
 #include <string>
@@ -74,7 +81,7 @@ public:
     int som_rows;
     int som_cols;
 
-    // All 10 components — public for direct access in training loops
+    // All 16 components — public for direct access in training loops
     SOM            som;
     Predictor      predictor;
     EpisodicMemory episodic;
@@ -87,6 +94,13 @@ public:
     Symbolic       symbolic;
     Scratchpad     scratchpad;
     ReasoningEngine reasoning;
+    // Brain V3
+    PredictiveCodingLayer pc_som;        // wraps SOM output
+    BindingMemory         binding;       // hippocampal triple storage
+    GlobalWorkspace       global_ws;     // lateral inhibition
+    BasalGanglia          bg_controller; // learned op selector
+    ProceduralMemory      procedures;    // reusable strategies
+    HierarchicalPredictor h_predictor;  // chunk + episode predictors
 
 private:
     std::unique_ptr<std::mutex> mtx_;
@@ -151,6 +165,13 @@ public:
           symbolic(som_rows * som_cols),
           scratchpad(som_rows * som_cols),
           reasoning(&symbolic, som_rows * som_cols, 50, 0.01f, &predictor),
+          // V3 components
+          pc_som(som_rows * som_cols, 0.05f, 0.01f),
+          binding(som_rows * som_cols, 2000),
+          global_ws(som_rows * som_cols),
+          bg_controller(som_rows * som_cols, 0.001f, seed),
+          procedures(som_rows * som_cols),
+          h_predictor(som_rows * som_cols, 128, 64, seed),
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
         symbolic.seed_math_symbols();
@@ -167,14 +188,19 @@ public:
                          const std::string& episodic_path,
                          const std::string& emotion_path,
                          const std::string& self_path,
-                         const std::string& symbolic_path) {
-        predictor = Predictor::load(predictor_path);
-        language  = Language::load(language_path);
-        som       = SOM::load(som_path);
-        episodic  = EpisodicMemory::load(episodic_path);
-        emotion   = Emotion::load(emotion_path);
+                         const std::string& symbolic_path,
+                         // V3 components (optional — empty string = skip)
+                         const std::string& binding_path    = "",
+                         const std::string& bg_path         = "",
+                         const std::string& procedures_path = "",
+                         const std::string& hpred_path      = "") {
+        predictor  = Predictor::load(predictor_path);
+        language   = Language::load(language_path);
+        som        = SOM::load(som_path);
+        episodic   = EpisodicMemory::load(episodic_path);
+        emotion    = Emotion::load(emotion_path);
         self_model = SelfModel::load(self_path);
-        symbolic  = Symbolic::load(symbolic_path);
+        symbolic   = Symbolic::load(symbolic_path);
 
         n_dims      = som.n_dims;
         som_rows    = som.rows;
@@ -184,20 +210,28 @@ public:
         prev_act_map_.clear();
         last_act_map_.clear();
         have_prev_act_ = false;
+
+        // V3 optional loads
+        if (!binding_path.empty())    binding      = BindingMemory::load(binding_path);
+        if (!bg_path.empty())         bg_controller = BasalGanglia::load(bg_path);
+        if (!procedures_path.empty()) procedures   = ProceduralMemory::load(procedures_path);
+        if (!hpred_path.empty())      h_predictor  = HierarchicalPredictor::load(hpred_path);
     }
 
-    // PERCEIVE: process one raw input vector through full pipeline
+    // PERCEIVE: process one raw input vector through full pipeline (Brain V3)
     PerceiveResult perceive(const std::vector<float>& input) {
-        int N = som.n_neurons;
-
         // 1. SOM: find BMU + activation map
-        int bmu = som.find_bmu(input);
+        int bmu      = som.find_bmu(input);
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
 
-        // 2. Predictor: 1-step-ahead prediction
-        //    Input = prev act_map, actual = current act_map
-        //    First step: no actual (can't know future yet)
+        // 2. Predictive coding — compute error signal from SOM output
+        //    Only propagate to downstream if error is above threshold
+        const auto& pc_error = pc_som.compute(act_map);
+        bool do_propagate = pc_som.should_propagate();
+        pc_som.update();  // update prediction toward actual
+
+        // 3. Predictor: 1-step-ahead prediction (fast level 0)
         std::vector<float> pred_next;
         if (have_prev_act_) {
             pred_next = predictor.step(prev_act_map_, &act_map);
@@ -209,25 +243,62 @@ public:
         have_prev_act_ = true;
         float error = predictor.last_error();
 
-        // 3. Emotion: update from surprise
+        // 4. Hierarchical predictor — chunk + episode levels
+        h_predictor.observe(act_map);
+
+        // 5. Global Workspace — modules compete for broadcast
+        //    Winner: highest salience module broadcasts, losers are attenuated
+        global_ws.bid((int)GWModule::SOM,    pc_som.error_norm, act_map);
+        global_ws.bid((int)GWModule::PREDICT, 1.f - error,      pred_next);
+        global_ws.bid((int)GWModule::EMOTION, emotion.salience(), act_map);
+        int gw_winner = global_ws.compete();
+        scratchpad.write("attention", global_ws.broadcast(), "gw");
+
+        // 6. Emotion: update from surprise
         emotion.from_prediction_error(error);
         emotion.tick();
 
-        // 4. Attention: gate by novelty + emotional arousal
+        // 7. Attention: gate by novelty + emotional arousal
         auto attn_result = attention.gate(act_map, error,
                                           emotion.attention_modulator());
 
-        // 5. WorkingMemory: insert if attention passed
-        if (attn_result.passed) {
+        // 8. WorkingMemory: gate only if attention passed AND either:
+        //    a) this IS the GW winner (most salient representation), or
+        //    b) predictive coding says this is genuinely novel
+        bool wm_gate_open = attn_result.passed &&
+            (global_ws.is_winner((int)GWModule::SOM) || do_propagate || error > 0.15f);
+        if (wm_gate_open) {
             working_mem.gate(act_map, emotion.salience());
         }
         working_mem.tick();
 
-        // 6. EpisodicMemory: observe all activations, commit if surprising
-        episodic.observe(act_map);
-        bool stored = episodic.commit(error);
+        // 9. EpisodicMemory: only observe/commit if GW winner was SOM or EMOTION
+        //    (suppress during purely predictive states to avoid storing mundane frames)
+        bool episodic_active = global_ws.is_winner((int)GWModule::SOM) ||
+                               global_ws.is_winner((int)GWModule::EMOTION);
+        if (episodic_active) episodic.observe(act_map);
+        bool stored = episodic_active && episodic.commit(error);
 
-        // 7. SelfModel: observe internal state
+        // 10. Basal Ganglia — select next op (greedy, no forced execute)
+        //     First check procedural memory for a matching strategy
+        auto ctx_summary = working_mem.context();
+        if (ctx_summary.empty()) ctx_summary.assign(som.n_neurons, 0.f);
+        auto goal_vec = scratchpad.has("goal")
+                      ? scratchpad.read("goal")
+                      : std::vector<float>(som.n_neurons, 0.f);
+        // Try procedural memory first; fall back to BG selection
+        auto* proc = procedures.retrieve(ctx_summary);
+        Op selected_op;
+        if (proc) {
+            selected_op = proc->steps.empty() ? Op::HALT : proc->steps[0];
+        } else {
+            auto bg_act = bg_controller.select_op(ctx_summary, goal_vec, /*greedy=*/false);
+            selected_op = bg_act.op;
+        }
+        scratchpad.write("last_op",
+            std::vector<float>{(float)(int)selected_op}, "bg");
+
+        // 11. SelfModel
         auto istate = build_internal_state();
         self_model.observe(istate);
 
@@ -245,10 +316,47 @@ public:
         return r;
     }
 
+    // Explicit triple binding — call from training loop with known (subject, relation, object)
+    // e.g. after processing "dog isa animal": bind(dog_vec, isa_vec, animal_vec)
+    void bind_triple(const std::vector<float>& subj,
+                     const std::vector<float>& rel,
+                     const std::vector<float>& obj) {
+        binding.bind(subj, rel, obj);
+        scratchpad.write("subject",  subj, "bind");
+        scratchpad.write("relation", rel,  "bind");
+        scratchpad.write("object",   obj,  "bind");
+    }
+
+    // Query BindingMemory by (subject, relation) → object
+    std::vector<float> binding_query(const std::vector<float>& a,
+                                     const std::vector<float>& b,
+                                     bool want_object = true,
+                                     float threshold = 0.5f) {
+        return binding.query(a, b, want_object, threshold);
+    }
+
+    // Reinforce the last BG op-chain (+1 correct, -1 wrong)
+    void reinforce_bg(float reward) {
+        bg_controller.reinforce(reward);
+    }
+
+    // Consolidate current scratchpad op-chain into procedural memory
+    void consolidate_procedure(const std::vector<int>& op_ints,
+                               const std::string& name = "") {
+        std::vector<Op> ops;
+        for (int i : op_ints) ops.push_back((Op)i);
+        auto ctx = working_mem.context();
+        if (!ctx.empty()) procedures.consolidate(ops, ctx, name);
+    }
+
     // Reset sequence boundary (call between unrelated sequences)
     void reset_sequence() {
         predictor.reset();
+        working_mem.clear();
+        scratchpad.clear();
         have_prev_act_ = false;
+        h_predictor.reset();
+        bg_controller.clear_traces();
     }
 
     // HEAR: hear a word grounded to last SOM activation (not blended WM context)

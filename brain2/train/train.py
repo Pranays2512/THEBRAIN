@@ -77,8 +77,14 @@ def save_checkpoint(b, checkpoint, tag):
     b.emotion.save(        os.path.join(d, f"{checkpoint}_{tag}_emotion.bin"))
     b.self_model.save(     os.path.join(d, f"{checkpoint}_{tag}_self.bin"))
     b.symbolic_table.save( os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin"))
+    # V3 components
+    b.binding.save(        os.path.join(d, f"{checkpoint}_{tag}_binding.bin"))
+    b.bg_controller.save(  os.path.join(d, f"{checkpoint}_{tag}_bg.bin"))
+    b.procedures.save(     os.path.join(d, f"{checkpoint}_{tag}_procedures.bin"))
+    b.h_predictor.save(    os.path.join(d, f"{checkpoint}_{tag}_hpred.bin"))
     print(f"  [saved] tag={tag}  vocab={b.language.vocab_size:,}"
-          f"  episodes={b.episodic.episode_count:,}")
+          f"  episodes={b.episodic.episode_count:,}"
+          f"  bindings={b.binding.size}  procs={b.procedures.size()}")
 
 def checkpoint_exists(checkpoint, tag):
     d = _ckpt_dir(checkpoint)
@@ -94,6 +100,11 @@ def load_checkpoint(checkpoint, tag, cfg):
         return None
     print(f"  Loading checkpoint '{tag}' ...")
     b = brain2.Brain(**cfg)
+
+    def _v3_path(name):
+        p = os.path.join(d, f"{checkpoint}_{tag}_{name}.bin")
+        return p if os.path.exists(p) else ""
+
     b.load_components(
         os.path.join(d, f"{checkpoint}_{tag}_predictor.bin"),
         os.path.join(d, f"{checkpoint}_{tag}_language.bin"),
@@ -101,7 +112,11 @@ def load_checkpoint(checkpoint, tag, cfg):
         os.path.join(d, f"{checkpoint}_{tag}_episodic.bin"),
         os.path.join(d, f"{checkpoint}_{tag}_emotion.bin"),
         os.path.join(d, f"{checkpoint}_{tag}_self.bin"),
-        os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin")
+        os.path.join(d, f"{checkpoint}_{tag}_symbolic.bin"),
+        _v3_path('binding'),
+        _v3_path('bg'),
+        _v3_path('procedures'),
+        _v3_path('hpred'),
     )
     print(f"    vocab={b.language.vocab_size:,}  lr={b.predictor.lr:.6f}")
     return b
@@ -208,10 +223,12 @@ def run_sequence(brain, enc, seq, ew, use_train_sequence=True):
     Process one training sequence through the brain.
 
     For Phases 1+2 (use_train_sequence=True):
-      - SOM: updated via brain.perceive() with predictor offline
+      - SOM: updated via brain.perceive() with RAW n_dims input (enc.encode)
       - Language: grounded via hear_clean()
-      - Predictor: trained via train_sequence() with full N-step BPTT
-        and answer-only loss (loss only at the final token)
+      - Predictor: trained via train_sequence() with answer-only loss + N-step BPTT
+      - Binding: bind_triple(subject, relation, object) for ConceptNet triples
+                 and math (operand, op, answer)
+      - BG: reinforce_bg(reward) after each sequence
 
     For Phase 3 (use_train_sequence=False):
       - Full brain.perceive() online loop (1-step BPTT, fine for curiosity)
@@ -221,47 +238,113 @@ def run_sequence(brain, enc, seq, ew, use_train_sequence=True):
     if not seq:
         return 0.0
 
-    # Build clean SOM activations for every token
-    acts = [np.array(brain.som.activation_map(enc.encode(c)), dtype=np.float32)
-            for c, _ in seq]
-    words = [w for _, w in seq]
+    tokens  = [c for c, _ in seq]
+    words   = [w for _, w in seq]
+
+    # Raw n_dims vectors for perceive() + SOM training
+    raw_vecs = [np.array(enc.encode(c), dtype=np.float32) for c in tokens]
 
     if use_train_sequence:
         # ── SOM update (offline predictor — no weight update in perceive) ──
         brain.predictor.set_offline(True)
         brain.reset_sequence()
         brain.working_mem.clear()
-        for act in acts:
-            brain.perceive(act.tolist())
+        for rv in raw_vecs:                        # FIX 1: raw n_dims, not act_map
+            brain.perceive(rv.tolist())
         brain.predictor.set_offline(False)
+
+        # SOM activation maps for the predictor (4096-dim when som=64x64, n_dims=64)
+        acts = [np.array(brain.som.activation_map(r.tolist()), dtype=np.float32)
+                for r in raw_vecs]
 
         # ── Language grounding ────────────────────────────────────────────
         for word in words:
             if word:
                 hear_clean(brain, enc, word)
 
-        # ── Predictor: answer-only loss + full N-step BPTT ───────────────
-        # Input sequence = all tokens except the last.
-        # Target         = the last token (the "answer").
-        # For ConceptNet [A, rel, B]: inputs=[A,rel], target=B
-        # For math [2,+,3,=,5]:      inputs=[2,+,3,=], target=5
+        # ── Predictor & Strategy Execution ───────────────────────────────
+        err = 0.0
         if len(acts) >= 2:
             brain.predictor.reset()
-            err = brain.predictor.train_sequence(
-                [a.tolist() for a in acts[:-1]],  # inputs
-                acts[-1].tolist(),                  # target (answer)
-                -1                                  # n_bptt = full sequence
+            # 1. Baseline LSTM error
+            lstm_err = brain.predictor.train_sequence(
+                [a.tolist() for a in acts[:-1]],  # inputs (all except answer)
+                acts[-1].tolist(),                # target = answer token
+                -1                                # n_bptt = full sequence
             )
+
+            # 2. See what strategy the BG chose for this sequence
+            op_int = int(brain.scratchpad.read("last_op")[0]) if brain.scratchpad.has("last_op") else 6
+            ans_vec = None
+            
+            # 3. Execute the strategy to see if it yields the correct answer
+            if op_int == 4: # Op::BIND_QUERY
+                if len(tokens) == 3:
+                    ans_vec = np.array(brain.binding_query(acts[0].tolist(), acts[1].tolist(), True), dtype=np.float32)
+                elif len(tokens) >= 4 and any(w in tokens for w in ["plus", "minus", "times", "divided", "equals", "+", "-", "*"]):
+                    subj_vec = 0.8 * acts[0] + 0.2 * acts[2]
+                    norm = np.linalg.norm(subj_vec)
+                    if norm > 1e-8:
+                        subj_vec /= norm
+                    ans_vec = np.array(brain.binding_query(subj_vec.tolist(), acts[1].tolist(), True), dtype=np.float32)
+
+            # 4. Compute final error for credit assignment
+            target_vec = acts[-1]
+            if ans_vec is not None and np.linalg.norm(ans_vec) > 1e-5:
+                # Strategy provided an answer
+                diff = ans_vec - target_vec
+                err = float(np.sqrt(np.mean(diff**2)))
+                # If the strategy was right, we don't need to punish the LSTM as hard
+                if err < 0.1:
+                    lstm_err = err 
+            else:
+                # Strategy failed or didn't provide answer, fallback to LSTM error
+                err = lstm_err
+                
             ew.push(err)
-            return err
-        return 0.0
+
+            # ── BG reinforce: reward = 1 if strategy worked, -1 if it failed ─────────
+            # FIX 3: Give BG a causal reward signal based on its chosen strategy
+            reward = 1.0 if err < 0.1 else (-1.0 if err > 0.5 else 0.0)
+            brain.reinforce_bg(reward)
+
+            # If consistently low error, consolidate current op sequence
+            if err < 0.05 and len(tokens) >= 2:
+                brain.consolidate_procedure([op_int], name=f"{tokens[0]}_{tokens[1]}")
+
+        # ── Binding: explicit (subject, relation, object) triples ─────────
+        # FIX 4a: For ConceptNet [A, rel, B] — bind the triple exactly
+        if len(tokens) == 3:
+            brain.bind_triple(
+                acts[0].tolist(),   # subject
+                acts[1].tolist(),   # relation
+                acts[2].tolist()    # object
+            )
+        # FIX 4b: For math [a, op, b, =, answer] — bind (0.8*a + 0.2*b, op, answer)
+        elif len(tokens) >= 4 and any(w in tokens for w in ["plus", "minus", "times",
+                                                              "divided", "equals", "+", "-", "*"]):
+            subj_vec = 0.8 * acts[0] + 0.2 * acts[2]
+            norm = np.linalg.norm(subj_vec)
+            if norm > 1e-8:
+                subj_vec /= norm
+            brain.bind_triple(
+                subj_vec.tolist(),   # combined operand
+                acts[1].tolist(),    # operator
+                acts[-1].tolist()    # answer
+            )
+
+        return err
+
     else:
         # Online 1-step BPTT (Phase 3 curiosity)
         brain.reset_sequence()
         brain.working_mem.clear()
         err = 0.0
-        for act, word in zip(acts, words):
-            r = brain.perceive(act.tolist())
+        
+        acts = [np.array(brain.som.activation_map(r.tolist()), dtype=np.float32) for r in raw_vecs]
+
+        for i, (rv, word) in enumerate(zip(raw_vecs, words)):  # FIX 1 in Phase 3 too
+            r = brain.perceive(rv.tolist())
             err = r.prediction_error
             ew.push(err)
             if word: hear_clean(brain, enc, word)
@@ -515,7 +598,7 @@ def predict_next(som, pred, enc, seq):
             for c, _ in seq]
     pred.set_offline(True)
     predicted = None
-    for act in acts:
+    for act in acts[:-1]:   # feed all tokens except the answer
         predicted = pred.step(act.tolist())
     pred.set_offline(False)
     return np.array(predicted, dtype=np.float32)

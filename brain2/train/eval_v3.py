@@ -45,29 +45,62 @@ N_DIMS     = 64
 SOM_SIZE   = 64
 
 
-def load_components(checkpoint=CHECKPOINT, tag=TAG):
+def load_brain(checkpoint=CHECKPOINT, tag=TAG):
     d = CKPT_DIR
-    def p(comp): return os.path.join(d, f"{checkpoint}_{tag}_{comp}.bin")
+    def p(comp): 
+        path = os.path.join(d, f"{checkpoint}_{tag}_{comp}.bin")
+        return path if os.path.exists(path) else ""
+    
     print(f"Loading {checkpoint}_{tag} ...")
-    som  = brain2.SOM.load(p("som"))
-    print(f"  SOM: {som.rows}x{som.cols}, n_dims={som.n_dims}, steps={som.step:,}")
-    pred = brain2.Predictor.load(p("predictor"))
-    print(f"  Predictor: input={pred.input_dim}, hidden={pred.hidden_dim}, lr={pred.lr:.6f}")
-    lang = brain2.Language.load(p("language"))
-    print(f"  Language: {lang.vocab_size:,} words  (n_dims={lang.n_dims})")
+    b = brain2.Brain(SOM_SIZE, SOM_SIZE, N_DIMS)
+    b.load_components(
+        p("predictor"), p("language"), p("som"), p("episodic"),
+        p("emotion"), p("self"), p("symbolic"),
+        p("binding"), p("bg"), p("procedures"), p("hpred")
+    )
+    print(f"  SOM: {b.som.rows}x{b.som.cols}, n_dims={b.som.n_dims}")
+    print(f"  Language: {b.language.vocab_size:,} words")
+    print(f"  Binding: {b.binding.size} triples")
     print("Ready.\n")
-    return som, pred, lang
+    return b
 
 
-def predict_next(som, pred, enc, seq):
-    """Feed sequence through SOM + LSTM predictor, return predicted next activation."""
-    pred.reset()
+def predict_next(brain, enc, seq):
+    """
+    V3 Answering Logic:
+    1. Try BindingMemory query (if it's a 2-term query like 'dog isa ?')
+    2. Fallback to Predictor LSTM
+    """
+    # 1. Try Binding Memory for ConceptNet triples
+    if len(seq) == 2:
+        subj = brain.som.activation_map(enc.encode(seq[0][0]))
+        rel  = brain.som.activation_map(enc.encode(seq[1][0]))
+        bind_ans = np.array(brain.binding_query(subj, rel, True), dtype=np.float32)
+        if np.linalg.norm(bind_ans) > 1e-5:
+            return bind_ans
+
+    # 2. Try Binding Memory for Math (if we stored (0.8*op1+0.2*op2, op, ans))
+    if len(seq) == 4 and any(w in [x[0] for x in seq] for w in ["+", "-", "*", "plus", "minus", "times"]):
+        a_vec = np.array(brain.som.activation_map(enc.encode(seq[0][0])), dtype=np.float32)
+        b_vec = np.array(brain.som.activation_map(enc.encode(seq[2][0])), dtype=np.float32)
+        subj = 0.8 * a_vec + 0.2 * b_vec
+        subj_norm = np.linalg.norm(subj)
+        if subj_norm > 1e-8:
+            subj /= subj_norm
+        
+        rel  = brain.som.activation_map(enc.encode(seq[1][0]))
+        bind_ans = np.array(brain.binding_query(subj.tolist(), rel, True), dtype=np.float32)
+        if np.linalg.norm(bind_ans) > 1e-5:
+            return bind_ans
+
+    # 3. Fallback: Predictor N-step
+    brain.predictor.reset()
     predicted = None
+    brain.predictor.set_offline(True)
     for concept, word in seq:
-        act = som.activation_map(enc.encode(concept))
-        pred.set_offline(True)
-        predicted = pred.step(act)
-        pred.set_offline(False)
+        act = brain.som.activation_map(enc.encode(concept))
+        predicted = np.array(brain.predictor.step(act), dtype=np.float32)
+    brain.predictor.set_offline(False)
     return predicted
 
 
@@ -104,8 +137,8 @@ def filtered_decode(som, enc, lang, predicted_vec, k=5, min_freq=50):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def evaluate(som, pred, lang, min_freq=50):
-    n_dims = som.n_dims
+def evaluate(brain, min_freq=50):
+    n_dims = brain.som.n_dims
     enc = ConceptEncoder(n_dims)
 
     tests = [
@@ -119,16 +152,16 @@ def evaluate(som, pred, lang, min_freq=50):
         ("plant needs ?", [("plant","plant"),("needs","needs")],                  "sunlight"),
     ]
 
-    print(f"[Eval] Clean SOM decode  (freq≥{min_freq},  checkpoint={CHECKPOINT})")
+    print(f"[Eval] V3 Integration  (freq≥{min_freq},  checkpoint={CHECKPOINT})")
     print("=" * 68)
     passed = 0
     for desc, seq, expected in tests:
-        predicted = predict_next(som, pred, enc, seq)
-        top5 = filtered_decode(som, enc, lang, predicted, k=5, min_freq=min_freq)
+        predicted = predict_next(brain, enc, seq)
+        top5 = filtered_decode(brain.som, enc, brain.language, predicted, k=5, min_freq=min_freq)
         got  = top5[0][0] if top5 else "?"
 
         target_sim = 0.0
-        target_vec = np.array(som.activation_map(enc.encode(expected)), dtype=np.float32)
+        target_vec = np.array(brain.som.activation_map(enc.encode(expected)), dtype=np.float32)
         pn = np.linalg.norm(predicted)
         tn = np.linalg.norm(target_vec)
         if pn > 1e-8 and tn > 1e-8:
@@ -158,5 +191,5 @@ if __name__ == "__main__":
     p.add_argument("--min-freq",   type=int, default=50)
     args = p.parse_args()
 
-    som, pred, lang = load_components(args.checkpoint, args.tag)
-    evaluate(som, pred, lang, args.min_freq)
+    brain = load_brain(args.checkpoint, args.tag)
+    evaluate(brain, args.min_freq)
