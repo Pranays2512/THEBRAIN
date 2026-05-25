@@ -1,0 +1,19 @@
+Alice went to the store.
+Alice bought a red apple.
+Alice ate the red apple.
+Alice felt happy.
+
+Bob went to the park.
+Bob found a brown dog.
+Bob played with the brown dog.
+Bob felt tired.
+
+Alice went to the park.
+Alice found a green frog.
+Alice played with the green frog.
+Alice felt happy.
+
+Bob went to the store.
+Bob bought a blue hat.
+Bob wore the blue hat.
+Bob felt cool.

@@ -6,7 +6,7 @@ BUILD_DIR="build"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-PYBIND11_DIR=$(python3 -c "import pybind11; print(pybind11.get_cmake_dir())")
+PYBIND11_DIR=$(../../venv/bin/python -c "import pybind11; print(pybind11.get_cmake_dir())")
 
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \

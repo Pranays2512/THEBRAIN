@@ -64,20 +64,21 @@ struct BindingMemory {
 
     // Query: given (subj, rel) → obj  [want_object=true]
     //         given (subj, obj) → rel  [want_object=false]
-    std::vector<float> query(const std::vector<float>& a,
-                             const std::vector<float>& b,
-                             bool want_object = true,
-                             float threshold = 0.5f) const {
+    // Returns pair of (best_match_vector, confidence_score)
+    std::pair<std::vector<float>, float> query(const std::vector<float>& a,
+                                               const std::vector<float>& b,
+                                               bool want_object = true,
+                                               float threshold = 0.3f) const {
         float best = -1.f;
         const Binding* best_bnd = nullptr;
         for (const auto& bnd : bindings_) {
             float sa = cos_sim(a, bnd.subject);
             float sb = want_object ? cos_sim(b, bnd.relation) : cos_sim(b, bnd.object);
-            float s  = (sa + sb) * 0.5f; // strength removed from score, used only for eviction
+            float s  = (sa + sb) * 0.5f; 
             if (s > best) { best = s; best_bnd = &bnd; }
         }
-        if (!best_bnd || best < threshold) return std::vector<float>(n_dims, 0.f);
-        return want_object ? best_bnd->object : best_bnd->relation;
+        if (!best_bnd || best < threshold) return {std::vector<float>(n_dims, 0.f), best};
+        return {want_object ? best_bnd->object : best_bnd->relation, best};
     }
 
     int size() const { return (int)bindings_.size(); }

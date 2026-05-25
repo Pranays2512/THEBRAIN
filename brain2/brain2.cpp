@@ -161,8 +161,18 @@ PYBIND11_MODULE(brain2, m) {
             if (!ep)
               return py::none();
             py::list frames;
-            for (const auto &f : ep->frames)
-              frames.append(to_np(f));
+            std::function<void(const EpisodeNode&)> flatten = [&](const EpisodeNode& node) {
+                if (node.children.empty()) {
+                    std::vector<float> f_float(node.summary_spike.size(), 0.0f);
+                    for (size_t i = 0; i < node.summary_spike.size(); ++i) {
+                        if (node.summary_spike[i]) f_float[i] = 1.0f;
+                    }
+                    frames.append(to_np(f_float));
+                } else {
+                    for (const auto& child : node.children) flatten(child);
+                }
+            };
+            flatten(ep->root);
             return frames;
           },
           "Retrieve most similar episode as list of activation arrays")
@@ -230,7 +240,7 @@ PYBIND11_MODULE(brain2, m) {
       .def_property_readonly("n_dims",
                              [](const WorkingMemory &w) { return w.n_dims; })
       .def_property_readonly("capacity",
-                             [](const WorkingMemory &w) { return w.capacity; });
+                             [](const WorkingMemory &w) { return w.get_base_capacity(); });
 
   // ── Language ─────────────────────────────────────────────────────
   py::class_<Language>(m, "Language")
@@ -640,13 +650,21 @@ PYBIND11_MODULE(brain2, m) {
           [](Brain &b, py::array_t<float, py::array::c_style> subj,
              py::array_t<float, py::array::c_style> rel, bool want_object,
              float threshold) {
-            return to_np(b.binding_query(to_vec(subj), to_vec(rel), want_object,
-                                         threshold));
+            auto [vec, conf] = b.binding_query(to_vec(subj), to_vec(rel), want_object, threshold);
+            return py::make_tuple(to_np(vec), conf);
           },
           py::arg("subj"), py::arg("rel"), py::arg("want_object") = true,
           py::arg("threshold") = 0.5f)
+      .def(
+          "analogy_op",
+          [](Brain &b, py::array_t<float, py::array::c_style> a,
+             py::array_t<float, py::array::c_style> c) {
+            return to_np(b.analogy_op(to_vec(a), to_vec(c)));
+          },
+          py::arg("subj"), py::arg("rel"),
+          "Perform structure mapping analogy given (subj, rel)")
       .def("reinforce_bg", &Brain::reinforce_bg, py::arg("reward"),
-           "Reinforce last BG op-chain (+1 correct, -1 wrong)")
+           "Reinforce last BG op-chain using TD(lambda)")
       .def(
           "consolidate_procedure",
           [](Brain &b, py::list ops_list, const std::string &name) {
@@ -673,8 +691,8 @@ PYBIND11_MODULE(brain2, m) {
           [](Brain &b) -> HierarchicalPredictor & { return b.h_predictor; },
           py::return_value_policy::reference_internal)
       .def_property_readonly("step", &Brain::step)
-      .def_property_readonly("n_dims", [](const Brain &b) { return b.n_dims; })
       .def_property_readonly("initialized", &Brain::initialized);
+
 
   // ── Scratchpad ───────────────────────────────────────────────────
   py::class_<Scratchpad>(m, "Scratchpad")
@@ -826,7 +844,8 @@ PYBIND11_MODULE(brain2, m) {
           "query",
           [](BindingMemory &bm, py::array_t<float, py::array::c_style> a,
              py::array_t<float, py::array::c_style> b, bool want_object) {
-            return to_np(bm.query(to_vec(a), to_vec(b), want_object));
+            auto [vec, conf] = bm.query(to_vec(a), to_vec(b), want_object);
+            return py::make_tuple(to_np(vec), conf);
           },
           py::arg("a"), py::arg("b"), py::arg("want_object") = true)
       .def("save", &BindingMemory::save)
@@ -856,6 +875,7 @@ PYBIND11_MODULE(brain2, m) {
       .value("COMPARE", Op::COMPARE)
       .value("BIND_QUERY", Op::BIND_QUERY)
       .value("RETRIEVE", Op::RETRIEVE)
+      .value("ANALOGY", Op::ANALOGY)
       .value("HALT", Op::HALT)
       .export_values();
 
@@ -871,7 +891,7 @@ PYBIND11_MODULE(brain2, m) {
             return (int)act.op;
           },
           py::arg("ctx"), py::arg("goal"), py::arg("greedy") = false)
-      .def("reinforce", &BasalGanglia::reinforce)
+      .def("reinforce", &BasalGanglia::reinforce, py::arg("final_reward"), py::arg("gamma") = 0.99f, py::arg("lambda_") = 0.95f)
       .def("save", &BasalGanglia::save)
       .def_static("load",
                   [](const std::string &p) { return BasalGanglia::load(p); });

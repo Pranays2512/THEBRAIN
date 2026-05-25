@@ -1,22 +1,17 @@
 #pragma once
 /*
- * working_mem.hpp — Working Memory (Prefrontal Cortex), Component 3 of Brain v2
+ * working_mem.hpp — Hierarchical Spiking Working Memory (Prefrontal Cortex)
  *
- * Holds 7±2 currently active concept vectors.
- * Maintains thread of thought across time steps.
+ * Implements a rostro-caudal hierarchy of LIF neuron buffers.
+ * - Tier 0 (Sensory): Fast decay, high capacity.
+ * - Tier 1 (Chunk/Semantic): Medium decay, medium capacity.
+ * - Tier 2 (Goal/Executive): Slow decay, low capacity.
  *
- * Gating policy:
- *   - New item enters if it passes relevance threshold OR slots available
- *   - When full: least relevant item (lowest dot product with context) dropped
- *   - Emotional salience (external signal) can force retention
- *   - Items decay each tick — unused thoughts fade
- *
- * Context vector = weighted average of all current slots.
- * This is what the Predictor and Language components read.
+ * When a tier fills up, the most stable/salient item being evicted
+ * is promoted to the next tier up, preserving abstract context over long timescales.
  */
 
 #include <vector>
-#include <array>
 #include <cmath>
 #include <algorithm>
 #include <mutex>
@@ -28,67 +23,129 @@
 
 namespace brain2 {
 
-struct WMSlot {
-    std::vector<float> vec;
-    float salience;   // emotional weight — high salience = resist eviction
-    float activation; // decays each tick
-    int   age;        // ticks since inserted
+struct LIFSlot {
+    std::vector<float> voltage;
+    std::vector<float> spike_trace; // low-pass filter of spikes (firing rate)
+    float salience;   
+    float activity;   
+    int   age;
+
+    LIFSlot(int n) {
+        voltage.resize(n, 0.f);
+        spike_trace.resize(n, 0.f);
+        salience = 0.f;
+        activity = 0.f;
+        age = 0;
+    }
+    LIFSlot() : LIFSlot(0) {}
+};
+
+struct Tier {
+    int capacity;
+    float decay_rate;
+    float trace_decay;
+    std::vector<LIFSlot> slots;
+    
+    Tier(int c, float d, float t) : capacity(c), decay_rate(d), trace_decay(t) {}
+    Tier() = default;
 };
 
 class WorkingMemory {
 public:
     int   n_dims;
-    int   capacity;   // max slots (default 7)
-    float decay_rate; // activation decay per tick (default 0.95)
+    float threshold;  // LIF firing threshold
 
 private:
-    std::vector<WMSlot>         slots_;
+    std::vector<Tier>           tiers_;
     std::unique_ptr<std::mutex> mtx_;
 
-    // Dot product relevance between two vectors
-    static float dot(const std::vector<float>& a,
-                     const std::vector<float>& b) noexcept {
+    static float dot(const std::vector<float>& a, const std::vector<float>& b) noexcept {
         float s = 0.f;
         size_t n = std::min(a.size(), b.size());
         for (size_t i = 0; i < n; i++) s += a[i] * b[i];
         return s;
     }
 
-    // L2 norm
     static float norm(const std::vector<float>& v) noexcept {
         float s = 0.f;
         for (auto x : v) s += x * x;
         return std::sqrt(s);
     }
 
-    // Cosine similarity
-    static float cosine(const std::vector<float>& a,
-                        const std::vector<float>& b) noexcept {
+    static float cosine(const std::vector<float>& a, const std::vector<float>& b) noexcept {
         float na = norm(a), nb = norm(b);
         if (na < 1e-8f || nb < 1e-8f) return 0.f;
         return dot(a, b) / (na * nb);
     }
 
-    // Index of least important slot (lowest activation * salience)
-    int least_important() const noexcept {
+    int least_important(int t_idx) const noexcept {
         int idx = 0;
         float min_val = std::numeric_limits<float>::max();
-        for (int i = 0; i < (int)slots_.size(); i++) {
-            float val = slots_[i].activation * (1.f + slots_[i].salience);
+        for (int i = 0; i < (int)tiers_[t_idx].slots.size(); i++) {
+            float val = tiers_[t_idx].slots[i].activity * (1.f + tiers_[t_idx].slots[i].salience);
             if (val < min_val) { min_val = val; idx = i; }
         }
         return idx;
     }
 
-public:
-    WorkingMemory() : n_dims(0), capacity(7), decay_rate(0.95f),
-                      mtx_(std::make_unique<std::mutex>()) {}
+    // Internal gate to a specific tier
+    bool gate_tier(int t_idx, const std::vector<float>& activation, float salience, bool is_promotion = false) {
+        if (t_idx >= (int)tiers_.size()) return false;
+        auto& tier = tiers_[t_idx];
+        
+        // Merge if similar
+        for (auto& s : tier.slots) {
+            if (cosine(s.spike_trace, activation) > 0.85f || cosine(s.voltage, activation) > 0.85f) {
+                for (int i = 0; i < n_dims; i++) {
+                    s.voltage[i] += activation[i] * (is_promotion ? 1.0f : 0.5f);
+                }
+                s.salience   = std::max(s.salience, salience);
+                s.age        = 0;
+                return true;
+            }
+        }
 
+        LIFSlot slot(n_dims);
+        for (int i = 0; i < n_dims; i++) {
+            slot.voltage[i] = activation[i];
+            if (is_promotion) slot.spike_trace[i] = activation[i]; // maintain trace across tiers
+        }
+        slot.salience   = salience;
+        slot.activity   = 1.0f;
+        slot.age        = 0;
+
+        if ((int)tier.slots.size() < tier.capacity) {
+            tier.slots.push_back(std::move(slot));
+        } else {
+            int evict_idx = least_important(t_idx);
+            auto evicted = std::move(tier.slots[evict_idx]);
+            tier.slots[evict_idx] = std::move(slot);
+            
+            // Promote evicted slot to next tier if it was strong enough
+            if (evicted.activity > 0.2f && t_idx + 1 < (int)tiers_.size()) {
+                gate_tier(t_idx + 1, evicted.spike_trace, evicted.salience, true);
+            }
+        }
+        return true;
+    }
+
+public:
+    WorkingMemory() : n_dims(0), threshold(1.0f), mtx_(std::make_unique<std::mutex>()) {}
+
+    // Default hierarchy: 7-slot fast, 4-slot mid, 2-slot slow
     WorkingMemory(int n_dims, int capacity = 7, float decay_rate = 0.95f)
-        : n_dims(n_dims), capacity(capacity), decay_rate(decay_rate),
-          mtx_(std::make_unique<std::mutex>())
+        : n_dims(n_dims), threshold(1.0f), mtx_(std::make_unique<std::mutex>())
     {
-        slots_.reserve(capacity);
+        // For backwards compatibility with tests that define capacity and decay_rate, 
+        // we use them for Tier 0.
+        tiers_.emplace_back(capacity, decay_rate, 0.90f); 
+        tiers_.emplace_back(std::max(1, capacity / 2), decay_rate * 1.02f, 0.95f);
+        tiers_.emplace_back(std::max(1, capacity / 4), decay_rate * 1.04f, 0.99f);
+        
+        // Cap decays at 0.995 to avoid infinite potentials
+        for (auto& t : tiers_) {
+            t.decay_rate = std::min(0.995f, t.decay_rate);
+        }
     }
 
     WorkingMemory(WorkingMemory&&)            = default;
@@ -96,124 +153,157 @@ public:
     WorkingMemory(const WorkingMemory&)       = delete;
     WorkingMemory& operator=(const WorkingMemory&) = delete;
 
-    // Try to insert new activation into working memory
-    // salience: emotional weight [0,1] — high = resist eviction
-    // Returns true if inserted
+    // Gate into Sensory Level 0
     bool gate(const std::vector<float>& activation, float salience = 0.f) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if ((int)activation.size() != n_dims) return false;
-
-        // Check if similar item already present — update it instead
-        for (auto& s : slots_) {
-            if (cosine(s.vec, activation) > 0.9f) {
-                s.activation = std::min(1.f, s.activation + 0.3f);
-                s.salience   = std::max(s.salience, salience);
-                s.age        = 0;
-                return true;
-            }
-        }
-
-        WMSlot slot;
-        slot.vec        = activation;
-        slot.salience   = salience;
-        slot.activation = 1.f;
-        slot.age        = 0;
-
-        if ((int)slots_.size() < capacity) {
-            slots_.push_back(std::move(slot));
-        } else {
-            // Evict least important
-            int idx = least_important();
-            slots_[idx] = std::move(slot);
-        }
-        return true;
+        return gate_tier(0, activation, salience, false);
     }
 
-    // Decay all slots — call each tick
     void tick() {
         std::lock_guard<std::mutex> lock(*mtx_);
-        for (auto& s : slots_) {
-            s.activation *= decay_rate;
-            s.age++;
+        for (int t = 0; t < (int)tiers_.size(); t++) {
+            auto& tier = tiers_[t];
+            
+            // Lateral Inhibition: distinct concept clusters suppress each other
+            int n_slots = (int)tier.slots.size();
+            std::vector<float> inhibitions(n_slots, 0.f);
+            for (int i = 0; i < n_slots; i++) {
+                for (int j = 0; j < n_slots; j++) {
+                    if (i == j) continue;
+                    // Lower similarity means they are competing distinct concepts
+                    float sim = cosine(tier.slots[i].spike_trace, tier.slots[j].spike_trace);
+                    if (sim < 0.3f) {
+                        // J inhibits I based on J's activity
+                        inhibitions[i] += tier.slots[j].activity * 0.15f;
+                    }
+                }
+            }
+
+            for (int i = 0; i < n_slots; i++) {
+                auto& s = tier.slots[i];
+                float total_spikes = 0.f;
+                for (int d = 0; d < n_dims; d++) {
+                    s.voltage[d] -= inhibitions[i]; // apply inhibition
+                    if (s.voltage[d] < 0.f) s.voltage[d] = 0.f;
+
+                    s.voltage[d] *= tier.decay_rate;
+                    float spike = 0.f;
+                    if (s.voltage[d] > threshold) {
+                        spike = 1.0f;
+                        s.voltage[d] = 0.0f;
+                    }
+                    s.spike_trace[d] = s.spike_trace[d] * tier.trace_decay + spike * (1.0f - tier.trace_decay);
+                    total_spikes += s.spike_trace[d];
+                }
+                s.activity = total_spikes / (n_dims + 1e-5f);
+                s.age++;
+            }
+            // Remove dead slots
+            tier.slots.erase(
+                std::remove_if(tier.slots.begin(), tier.slots.end(),
+                    [](const LIFSlot& s){ return s.activity < 0.001f; }),
+                tier.slots.end());
         }
-        // Remove fully decayed slots
-        slots_.erase(
-            std::remove_if(slots_.begin(), slots_.end(),
-                [](const WMSlot& s){ return s.activation < 0.01f; }),
-            slots_.end());
     }
 
-    // Context vector: weighted mean of all slots by activation
+    // Context is a hierarchical blend: lower tiers are more heavily weighted for immediate context
     std::vector<float> context() const {
         std::lock_guard<std::mutex> lock(*mtx_);
-        if (slots_.empty()) return std::vector<float>(n_dims, 0.f);
         std::vector<float> ctx(n_dims, 0.f);
-        float total = 0.f;
-        for (const auto& s : slots_) {
-            float w = s.activation;
-            for (int i = 0; i < n_dims; i++) ctx[i] += w * s.vec[i];
-            total += w;
+        float total_weight = 0.f;
+        
+        for (int t = 0; t < (int)tiers_.size(); t++) {
+            float tier_weight = 1.0f / (t + 1.0f); // T0=1.0, T1=0.5, T2=0.33
+            const auto& tier = tiers_[t];
+            for (const auto& s : tier.slots) {
+                float w = (s.activity + 0.1f) * tier_weight;
+                for (int i = 0; i < n_dims; i++) ctx[i] += w * s.spike_trace[i];
+                total_weight += w;
+            }
         }
-        if (total > 0.f)
-            for (auto& x : ctx) x /= total;
+        
+        if (total_weight > 0.f) {
+            for (auto& x : ctx) x /= total_weight;
+        }
         return ctx;
     }
 
-    // Most active slot vector
+    // Most active slot across all tiers
     std::vector<float> most_active() const {
         std::lock_guard<std::mutex> lock(*mtx_);
-        if (slots_.empty()) return std::vector<float>(n_dims, 0.f);
-        const WMSlot* best = &slots_[0];
-        for (const auto& s : slots_)
-            if (s.activation > best->activation) best = &s;
-        return best->vec;
+        const LIFSlot* best = nullptr;
+        for (const auto& t : tiers_) {
+            for (const auto& s : t.slots) {
+                if (!best || s.activity > best->activity) best = &s;
+            }
+        }
+        return best ? best->spike_trace : std::vector<float>(n_dims, 0.f);
     }
 
-    // Boost salience of slot most similar to given vector (emotion signal)
     void boost_salience(const std::vector<float>& v, float amount) {
         std::lock_guard<std::mutex> lock(*mtx_);
         float best_sim = -1.f;
-        int   best_idx = -1;
-        for (int i = 0; i < (int)slots_.size(); i++) {
-            float sim = cosine(slots_[i].vec, v);
-            if (sim > best_sim) { best_sim = sim; best_idx = i; }
+        LIFSlot* best_slot = nullptr;
+        
+        for (auto& t : tiers_) {
+            for (auto& s : t.slots) {
+                float sim = cosine(s.spike_trace, v);
+                if (sim > best_sim) { best_sim = sim; best_slot = &s; }
+            }
         }
-        if (best_idx >= 0)
-            slots_[best_idx].salience = std::min(1.f,
-                slots_[best_idx].salience + amount);
+        if (best_slot) {
+            best_slot->salience = std::min(1.f, best_slot->salience + amount);
+        }
     }
 
     void clear() {
         std::lock_guard<std::mutex> lock(*mtx_);
-        slots_.clear();
+        for (auto& t : tiers_) t.slots.clear();
     }
 
-    int   size()  const noexcept { return (int)slots_.size(); }
-    bool  empty() const noexcept { return slots_.empty(); }
+    int size() const noexcept { 
+        int sz = 0;
+        for (const auto& t : tiers_) sz += (int)t.slots.size();
+        return sz; 
+    }
+    
+    // Specifically returning tier 0 capacity to maintain python test assumptions
+    int get_base_capacity() const noexcept {
+        return tiers_.empty() ? 0 : tiers_[0].capacity;
+    }
 
-    // Return all slot activations (for inspection/testing)
+    bool empty() const noexcept { return size() == 0; }
+
     std::vector<float> activations() const {
         std::lock_guard<std::mutex> lock(*mtx_);
         std::vector<float> a;
-        a.reserve(slots_.size());
-        for (const auto& s : slots_) a.push_back(s.activation);
+        for (const auto& t : tiers_) {
+            for (const auto& s : t.slots) a.push_back(s.activity);
+        }
         return a;
     }
 
     void save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);
         if (!f) throw std::runtime_error("WorkingMemory::save: cannot open " + path);
-        f.write((const char*)&n_dims,      sizeof(int));
-        f.write((const char*)&capacity,    sizeof(int));
-        f.write((const char*)&decay_rate,  sizeof(float));
-        int n = (int)slots_.size();
-        f.write((const char*)&n, sizeof(int));
-        for (const auto& s : slots_) {
-            f.write((const char*)s.vec.data(),
-                    (std::streamsize)(s.vec.size() * sizeof(float)));
-            f.write((const char*)&s.salience,   sizeof(float));
-            f.write((const char*)&s.activation, sizeof(float));
-            f.write((const char*)&s.age,        sizeof(int));
+        f.write((const char*)&n_dims, sizeof(int));
+        int nt = (int)tiers_.size();
+        f.write((const char*)&nt, sizeof(int));
+        
+        for (const auto& t : tiers_) {
+            f.write((const char*)&t.capacity, sizeof(int));
+            f.write((const char*)&t.decay_rate, sizeof(float));
+            f.write((const char*)&t.trace_decay, sizeof(float));
+            int ns = (int)t.slots.size();
+            f.write((const char*)&ns, sizeof(int));
+            for (const auto& s : t.slots) {
+                f.write((const char*)s.voltage.data(),     (std::streamsize)(n_dims * sizeof(float)));
+                f.write((const char*)s.spike_trace.data(), (std::streamsize)(n_dims * sizeof(float)));
+                f.write((const char*)&s.salience, sizeof(float));
+                f.write((const char*)&s.activity, sizeof(float));
+                f.write((const char*)&s.age,      sizeof(int));
+            }
         }
     }
 
@@ -221,19 +311,25 @@ public:
         std::ifstream f(path, std::ios::binary);
         if (!f) throw std::runtime_error("WorkingMemory::load: cannot open " + path);
         WorkingMemory wm;
-        f.read((char*)&wm.n_dims,     sizeof(int));
-        f.read((char*)&wm.capacity,   sizeof(int));
-        f.read((char*)&wm.decay_rate, sizeof(float));
+        f.read((char*)&wm.n_dims, sizeof(int));
+        wm.threshold = 1.0f;
         wm.mtx_ = std::make_unique<std::mutex>();
-        int n; f.read((char*)&n, sizeof(int));
-        wm.slots_.resize(n);
-        for (auto& s : wm.slots_) {
-            s.vec.resize(wm.n_dims);
-            f.read((char*)s.vec.data(),
-                   (std::streamsize)(wm.n_dims * sizeof(float)));
-            f.read((char*)&s.salience,   sizeof(float));
-            f.read((char*)&s.activation, sizeof(float));
-            f.read((char*)&s.age,        sizeof(int));
+        
+        int nt; f.read((char*)&nt, sizeof(int));
+        wm.tiers_.resize(nt);
+        for (auto& t : wm.tiers_) {
+            f.read((char*)&t.capacity, sizeof(int));
+            f.read((char*)&t.decay_rate, sizeof(float));
+            f.read((char*)&t.trace_decay, sizeof(float));
+            int ns; f.read((char*)&ns, sizeof(int));
+            t.slots.resize(ns, LIFSlot(wm.n_dims));
+            for (auto& s : t.slots) {
+                f.read((char*)s.voltage.data(),     (std::streamsize)(wm.n_dims * sizeof(float)));
+                f.read((char*)s.spike_trace.data(), (std::streamsize)(wm.n_dims * sizeof(float)));
+                f.read((char*)&s.salience, sizeof(float));
+                f.read((char*)&s.activity, sizeof(float));
+                f.read((char*)&s.age,      sizeof(int));
+            }
         }
         return wm;
     }

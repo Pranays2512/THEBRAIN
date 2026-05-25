@@ -31,6 +31,16 @@ struct PredictiveCodingLayer {
         return error;
     }
 
+    // Returns error vector if surprise is high enough, else returns zeros.
+    const std::vector<float>& propagate(const std::vector<float>& actual) {
+        compute(actual);
+        if (!should_propagate()) {
+            std::fill(error.begin(), error.end(), 0.f);
+            error_norm = 0.f;
+        }
+        return error;
+    }
+
     // Update prediction toward actual (Hebbian)
     void update() {
         for (int i = 0; i < n_dims; i++)

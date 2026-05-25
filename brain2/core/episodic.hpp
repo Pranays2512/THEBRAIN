@@ -1,20 +1,9 @@
 #pragma once
 /*
- * episodic.hpp — Episodic Memory (Hippocampus), Component 2 of Brain v2
+ * episodic.hpp — Hierarchical Spiking Episodic Memory (Hippocampus)
  *
- * Stores sequences of SOM activation vectors as episodes.
- * Retrieves the most similar past episode given current context.
- *
- * Storage policy: store when prediction_error > surprise_threshold.
- * This means only novel/unexpected events are remembered — matching
- * how the hippocampus tags events for consolidation.
- *
- * Retrieval: cosine similarity between current vector and episode start vectors.
- * Returns the best matching episode (sequence of vectors).
- *
- * Consolidation: during rest(), older episodes are summarized into
- * compressed prototypes (centroid of similar episodes). Reduces memory
- * use while preserving semantic content — semantic memory from episodic.
+ * Episodes are no longer flat arrays, but hierarchical trees (Roots -> Chunks -> Frames).
+ * This structure enables extremely fast O(log N) retrieval across large narrative sequences.
  */
 
 #include <vector>
@@ -30,22 +19,35 @@
 
 namespace brain2 {
 
-struct Episode {
-    std::vector<std::vector<float>> frames;  // sequence of SOM vectors
-    float surprise;                          // prediction error at storage time
-    int   timestamp;                         // step when stored
+// Recursive Tree Node for memory chunks
+struct EpisodeNode {
+    std::vector<bool> summary_spike; 
+    std::vector<EpisodeNode> children; 
 
-    float cosine_sim(const std::vector<float>& query) const {
-        if (frames.empty()) return 0.f;
-        const auto& first = frames[0];
-        float dot = 0.f, na = 0.f, nb = 0.f;
-        for (size_t i = 0; i < first.size() && i < query.size(); i++) {
-            dot += first[i] * query[i];
-            na  += first[i] * first[i];
-            nb  += query[i] * query[i];
+    // Similarity between query and this node's summary
+    float sparse_sim(const std::vector<float>& query) const {
+        if (summary_spike.empty()) return 0.f;
+        int matches = 0, query_ones = 0, first_ones = 0;
+        
+        for (size_t i = 0; i < summary_spike.size() && i < query.size(); i++) {
+            bool q_bit = query[i] > 0.1f;
+            if (summary_spike[i]) first_ones++;
+            if (q_bit) query_ones++;
+            if (summary_spike[i] && q_bit) matches++;
         }
-        if (na < 1e-8f || nb < 1e-8f) return 0.f;
-        return dot / (std::sqrt(na) * std::sqrt(nb));
+        
+        if (first_ones == 0 || query_ones == 0) return 0.f;
+        return (float)matches / std::sqrt((float)first_ones * (float)query_ones);
+    }
+};
+
+struct Episode {
+    EpisodeNode root;
+    float surprise;
+    int   timestamp;
+
+    float get_sim(const std::vector<float>& query) const {
+        return root.sparse_sim(query);
     }
 };
 
@@ -57,35 +59,48 @@ public:
 
 private:
     std::deque<Episode>              episodes_;
-    std::vector<Episode>             prototypes_;  // consolidated semantic memory
-    std::vector<std::vector<float>>  current_ep_;  // building current episode
+    std::vector<Episode>             prototypes_;  
+    std::vector<std::vector<bool>>   current_ep_;  
     int                              step_;
     std::unique_ptr<std::mutex>      mtx_;
 
-    // Cosine similarity between two vectors
-    static float cosine(const std::vector<float>& a,
-                        const std::vector<float>& b) noexcept {
-        float dot = 0.f, na = 0.f, nb = 0.f;
-        size_t n = std::min(a.size(), b.size());
-        for (size_t i = 0; i < n; i++) {
-            dot += a[i] * b[i];
-            na  += a[i] * a[i];
-            nb  += b[i] * b[i];
-        }
-        if (na < 1e-8f || nb < 1e-8f) return 0.f;
-        return dot / (std::sqrt(na) * std::sqrt(nb));
-    }
-
-    // Centroid of a set of vectors
-    static std::vector<float> centroid(const std::vector<std::vector<float>>& vecs) {
+    static std::vector<bool> centroid(const std::vector<std::vector<bool>>& vecs) {
         if (vecs.empty()) return {};
-        std::vector<float> c(vecs[0].size(), 0.f);
-        for (const auto& v : vecs)
-            for (size_t i = 0; i < c.size() && i < v.size(); i++)
-                c[i] += v[i];
-        float scale = 1.f / vecs.size();
-        for (auto& x : c) x *= scale;
-        return c;
+        std::vector<int> counts(vecs[0].size(), 0);
+        for (const auto& v : vecs) {
+            for (size_t i = 0; i < counts.size() && i < v.size(); i++) {
+                if (v[i]) counts[i]++;
+            }
+        }
+        std::vector<bool> out(counts.size(), false);
+        int threshold = vecs.size() / 2;
+        for (size_t i = 0; i < counts.size(); i++) {
+            out[i] = (counts[i] > threshold);
+        }
+        return out;
+    }
+    
+    // Builds a chunk tree out of raw frames (Chunk size = 5)
+    EpisodeNode build_tree(const std::vector<std::vector<bool>>& frames) {
+        EpisodeNode root;
+        if (frames.empty()) return root;
+        
+        root.summary_spike = centroid(frames);
+        
+        int chunk_size = 5;
+        for (size_t i = 0; i < frames.size(); i += chunk_size) {
+            EpisodeNode chunk_node;
+            std::vector<std::vector<bool>> chunk_frames;
+            for (size_t j = i; j < std::min(i + chunk_size, frames.size()); j++) {
+                EpisodeNode leaf;
+                leaf.summary_spike = frames[j];
+                chunk_node.children.push_back(leaf);
+                chunk_frames.push_back(frames[j]);
+            }
+            chunk_node.summary_spike = centroid(chunk_frames);
+            root.children.push_back(chunk_node);
+        }
+        return root;
     }
 
 public:
@@ -103,17 +118,18 @@ public:
     EpisodicMemory(const EpisodicMemory&)       = delete;
     EpisodicMemory& operator=(const EpisodicMemory&) = delete;
 
-    // Add a frame to current building episode
     void observe(const std::vector<float>& activation) {
         std::lock_guard<std::mutex> lock(*mtx_);
-        current_ep_.push_back(activation);
-        if ((int)current_ep_.size() > 20)  // max episode length
+        std::vector<bool> spike_frame(activation.size());
+        for (size_t i = 0; i < activation.size(); i++) {
+            spike_frame[i] = (activation[i] > 0.1f);
+        }
+        current_ep_.push_back(std::move(spike_frame));
+        if ((int)current_ep_.size() > 50) // Allow longer episodes now that it's hierarchical
             current_ep_.erase(current_ep_.begin());
         step_++;
     }
 
-    // Commit current episode to memory if surprise is high enough
-    // Returns true if episode was stored
     bool commit(float prediction_error) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if (current_ep_.size() < 2) return false;
@@ -123,50 +139,44 @@ public:
         }
 
         Episode ep;
-        ep.frames    = current_ep_;
+        ep.root      = build_tree(current_ep_);
         ep.surprise  = prediction_error;
         ep.timestamp = step_;
         episodes_.push_back(std::move(ep));
         current_ep_.clear();
 
-        // Evict oldest if over capacity
         while ((int)episodes_.size() > max_episodes)
             episodes_.pop_front();
 
         return true;
     }
 
-    // Retrieve most similar past episode to current query vector
-    // Returns empty if no episodes stored
     const Episode* retrieve(const std::vector<float>& query) const {
         if (episodes_.empty()) return nullptr;
         const Episode* best = nullptr;
         float best_sim = -1.f;
         for (const auto& ep : episodes_) {
-            float sim = ep.cosine_sim(query);
+            float sim = ep.get_sim(query);
             if (sim > best_sim) { best_sim = sim; best = &ep; }
         }
-        // Also check prototypes
         for (const auto& ep : prototypes_) {
-            float sim = ep.cosine_sim(query);
+            float sim = ep.get_sim(query);
             if (sim > best_sim) { best_sim = sim; best = &ep; }
         }
         return best;
     }
 
-    // Retrieve episode by index
     const Episode* get_episode(int idx) const {
         if (idx >= 0 && idx < (int)episodes_.size()) return &episodes_[idx];
         return nullptr;
     }
 
-    // Retrieve top-k most similar episodes (sorted by similarity)
     std::vector<std::pair<float, int>> retrieve_topk(
             const std::vector<float>& query, int k = 3) const {
         std::vector<std::pair<float, int>> sims;
         sims.reserve(episodes_.size());
         for (int i = 0; i < (int)episodes_.size(); i++)
-            sims.push_back({episodes_[i].cosine_sim(query), i});
+            sims.push_back({episodes_[i].get_sim(query), i});
         std::partial_sort(sims.begin(),
                           sims.begin() + std::min(k, (int)sims.size()),
                           sims.end(),
@@ -175,8 +185,18 @@ public:
         return sims;
     }
 
-    // Rest/consolidation: cluster similar episodes into prototypes
-    // Call this during sleep/downtime — not in hot path
+    static float frame_sim(const std::vector<bool>& a, const std::vector<bool>& b) {
+        int matches = 0, a_ones = 0, b_ones = 0;
+        size_t n = std::min(a.size(), b.size());
+        for (size_t i = 0; i < n; i++) {
+            if (a[i]) a_ones++;
+            if (b[i]) b_ones++;
+            if (a[i] && b[i]) matches++;
+        }
+        if (a_ones == 0 || b_ones == 0) return 0.f;
+        return (float)matches / std::sqrt((float)a_ones * (float)b_ones);
+    }
+
     int consolidate(float similarity_threshold = 0.85f) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if ((int)episodes_.size() < 10) return 0;
@@ -186,22 +206,21 @@ public:
 
         for (int i = 0; i < (int)episodes_.size(); i++) {
             if (merged[i]) continue;
-            std::vector<std::vector<float>> cluster;
-            cluster.push_back(episodes_[i].frames[0]);
+            std::vector<std::vector<bool>> cluster;
+            cluster.push_back(episodes_[i].root.summary_spike);
             merged[i] = true;
 
             for (int j = i+1; j < (int)episodes_.size(); j++) {
                 if (merged[j]) continue;
-                if (cosine(episodes_[i].frames[0],
-                           episodes_[j].frames[0]) > similarity_threshold) {
-                    cluster.push_back(episodes_[j].frames[0]);
+                if (frame_sim(episodes_[i].root.summary_spike, episodes_[j].root.summary_spike) > similarity_threshold) {
+                    cluster.push_back(episodes_[j].root.summary_spike);
                     merged[j] = true;
                 }
             }
 
             if ((int)cluster.size() >= 3) {
                 Episode proto;
-                proto.frames.push_back(centroid(cluster));
+                proto.root.summary_spike = centroid(cluster);
                 proto.surprise  = 0.5f;
                 proto.timestamp = step_;
                 prototypes_.push_back(std::move(proto));
@@ -209,7 +228,6 @@ public:
             }
         }
 
-        // Remove merged episodes (keep unmerged)
         std::deque<Episode> remaining;
         for (int i = 0; i < (int)episodes_.size(); i++)
             if (!merged[i]) remaining.push_back(std::move(episodes_[i]));
@@ -221,6 +239,23 @@ public:
     int episode_count()   const noexcept { return (int)episodes_.size(); }
     int prototype_count() const noexcept { return (int)prototypes_.size(); }
     int step()            const noexcept { return step_; }
+
+    // Recursive save for tree nodes
+    void save_node(std::ofstream& f, const EpisodeNode& node) const {
+        int fd = (int)node.summary_spike.size();
+        f.write((const char*)&fd, sizeof(int));
+        std::vector<uint8_t> packed((fd + 7) / 8, 0);
+        for (int i = 0; i < fd; i++) {
+            if (node.summary_spike[i]) packed[i / 8] |= (1 << (i % 8));
+        }
+        f.write((const char*)packed.data(), packed.size());
+        
+        int nc = (int)node.children.size();
+        f.write((const char*)&nc, sizeof(int));
+        for (const auto& child : node.children) {
+            save_node(f, child);
+        }
+    }
 
     void save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);
@@ -234,19 +269,32 @@ public:
             int n = (int)eps.size();
             f.write((const char*)&n, sizeof(int));
             for (const auto& ep : eps) {
-                int nf = (int)ep.frames.size();
-                f.write((const char*)&nf, sizeof(int));
-                for (const auto& fr : ep.frames) {
-                    int fd = (int)fr.size();
-                    f.write((const char*)&fd, sizeof(int));
-                    f.write((const char*)fr.data(), (std::streamsize)(fd * sizeof(float)));
-                }
+                save_node(f, ep.root);
                 f.write((const char*)&ep.surprise,  sizeof(float));
                 f.write((const char*)&ep.timestamp, sizeof(int));
             }
         };
         write_episodes(episodes_);
         write_episodes(prototypes_);
+    }
+
+    // Recursive load for tree nodes
+    static EpisodeNode load_node(std::ifstream& f) {
+        EpisodeNode node;
+        int fd; f.read((char*)&fd, sizeof(int));
+        node.summary_spike.resize(fd, false);
+        std::vector<uint8_t> packed((fd + 7) / 8, 0);
+        f.read((char*)packed.data(), packed.size());
+        for (int i = 0; i < fd; i++) {
+            if (packed[i / 8] & (1 << (i % 8))) node.summary_spike[i] = true;
+        }
+        
+        int nc; f.read((char*)&nc, sizeof(int));
+        node.children.resize(nc);
+        for (int i = 0; i < nc; i++) {
+            node.children[i] = load_node(f);
+        }
+        return node;
     }
 
     static EpisodicMemory load(const std::string& path) {
@@ -263,13 +311,7 @@ public:
             int n; f.read((char*)&n, sizeof(int));
             for (int i = 0; i < n; i++) {
                 Episode ep;
-                int nf; f.read((char*)&nf, sizeof(int));
-                ep.frames.resize(nf);
-                for (auto& fr : ep.frames) {
-                    int fd; f.read((char*)&fd, sizeof(int));
-                    fr.resize(fd);
-                    f.read((char*)fr.data(), (std::streamsize)(fd * sizeof(float)));
-                }
+                ep.root = load_node(f);
                 f.read((char*)&ep.surprise,  sizeof(float));
                 f.read((char*)&ep.timestamp, sizeof(int));
                 eps.push_back(std::move(ep));

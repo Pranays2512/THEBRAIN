@@ -172,6 +172,8 @@ struct HierarchicalPredictor {
     // Delayed targets for autonomous hierarchical learning
     std::vector<float> prev_chunk_summary_;
     std::vector<float> prev_ep_summary_;
+    std::vector<float> current_chunk_pred_;
+    std::vector<float> current_ep_pred_;
     bool has_prev_chunk_ = false;
     bool has_prev_ep_    = false;
 
@@ -179,7 +181,8 @@ struct HierarchicalPredictor {
     HierarchicalPredictor(int n_dims, int chunk_h = 128, int episode_h = 64,
                           unsigned seed = 42)
         : n_dims(n_dims), chunk_acc_(n_dims, 0.f), episode_acc_(n_dims, 0.f),
-          prev_chunk_summary_(n_dims, 0.f), prev_ep_summary_(n_dims, 0.f) {
+          prev_chunk_summary_(n_dims, 0.f), prev_ep_summary_(n_dims, 0.f),
+          current_chunk_pred_(n_dims, 0.f), current_ep_pred_(n_dims, 0.f) {
         std::mt19937 rng(seed);
         chunk   = MiniLSTM(n_dims, chunk_h,   rng);
         episode = MiniLSTM(n_dims, episode_h, rng);
@@ -203,7 +206,7 @@ struct HierarchicalPredictor {
 
             // Step chunk predictor: previous summary should predict THIS summary
             if (has_prev_chunk_) {
-                chunk.step(prev_chunk_summary_, &summary, lr_chunk);
+                current_chunk_pred_ = chunk.step(prev_chunk_summary_, &summary, lr_chunk);
             }
             prev_chunk_summary_ = summary;
             has_prev_chunk_ = true;
@@ -222,7 +225,7 @@ struct HierarchicalPredictor {
 
                 // Step episode predictor: previous episode should predict THIS episode
                 if (has_prev_ep_) {
-                    episode.step(prev_ep_summary_, &ep_summary, lr_episode);
+                    current_ep_pred_ = episode.step(prev_ep_summary_, &ep_summary, lr_episode);
                 }
                 prev_ep_summary_ = ep_summary;
                 has_prev_ep_ = true;
@@ -238,6 +241,8 @@ struct HierarchicalPredictor {
         episode.reset();
         chunk_acc_.assign(n_dims, 0.f);
         episode_acc_.assign(n_dims, 0.f);
+        current_chunk_pred_.assign(n_dims, 0.f);
+        current_ep_pred_.assign(n_dims, 0.f);
         fast_step_count_ = 0;
         chunk_step_count_ = 0;
         has_prev_chunk_ = false;

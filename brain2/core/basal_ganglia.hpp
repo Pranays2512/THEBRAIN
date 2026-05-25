@@ -17,8 +17,9 @@ enum class Op : int {
     COMPARE    = 3,  // cosine similarity between two slots
     BIND_QUERY = 4,  // query BindingMemory with (slot_a, slot_b) → slot_out
     RETRIEVE   = 5,  // retrieve from episodic memory
-    HALT       = 6,  // done — answer is in "result" slot
-    N_OPS      = 7
+    ANALOGY    = 6,  // structural mapping analogy
+    HALT       = 7,  // done — answer is in "result" slot
+    N_OPS      = 8
 };
 
 struct BGAction {
@@ -28,20 +29,20 @@ struct BGAction {
     std::string slot_out = "result";
 };
 
-// Small 2-layer MLP trained by REINFORCE
+// Small 2-layer MLP trained by TD(lambda) Actor-Critic
 struct BasalGanglia {
     int n_dims = 0;
     int hidden = 64;
     int n_ops  = (int)Op::N_OPS;
 
-    // Weights: W1[hidden × 2n_dims], b1[hidden], W2[n_ops × hidden], b2[n_ops]
-    std::vector<float> W1, b1, W2, b2;
+    // Weights: Actor + Critic
+    std::vector<float> W1, b1, W2, b2; // Actor
+    std::vector<float> W_v, b_v;       // Critic
 
     float lr_   = 0.001f;
     int   step_ = 0;
 
-    // REINFORCE: track selected op + hidden layer + input for proper gradient
-    struct Trace { int op_idx; std::vector<float> h1; std::vector<float> inp; };
+    struct Trace { int op_idx; std::vector<float> h1; std::vector<float> inp; float value; };
     std::vector<Trace> traces_;
     std::mt19937       rng_;
 
@@ -54,34 +55,39 @@ struct BasalGanglia {
         b1.resize(hidden, 0.f);
         W2.resize(n_ops * hidden); for (auto& w : W2) w = nd(rng_);
         b2.resize(n_ops, 0.f);
+        W_v.resize(hidden);        for (auto& w : W_v) w = nd(rng_);
+        b_v.resize(1, 0.f);
     }
 
-    // Forward: ctx(n_dims) + goal(n_dims) → logits(n_ops)
-    std::vector<float> forward(const std::vector<float>& ctx,
-                               const std::vector<float>& goal) {
-        // Build input — pad/clip to exactly 2*n_dims
-        std::vector<float> inp(2 * n_dims, 0.f);
-        for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp[i]          = ctx[i];
-        for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp[n_dims + i]  = goal[i];
+    // Forward returns (logits, value)
+    std::pair<std::vector<float>, float> forward(const std::vector<float>& ctx,
+                                                 const std::vector<float>& goal,
+                                                 std::vector<float>& h_out,
+                                                 std::vector<float>& inp_out) {
+        inp_out.assign(2 * n_dims, 0.f);
+        for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp_out[i]          = ctx[i];
+        for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp_out[n_dims + i]  = goal[i];
 
-        // Layer 1 — tanh (store h for reinforce)
-        std::vector<float> h(hidden, 0.f);
+        h_out.assign(hidden, 0.f);
         for (int i = 0; i < hidden; i++) {
             float s = b1[i];
             const float* row = W1.data() + i * 2 * n_dims;
-            for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp[j];
-            h[i] = std::tanh(s);
+            for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp_out[j];
+            h_out[i] = std::tanh(s);
         }
 
-        // Layer 2 — logits
         std::vector<float> logits(n_ops, 0.f);
         for (int i = 0; i < n_ops; i++) {
             float s = b2[i];
             const float* row = W2.data() + i * hidden;
-            for (int j = 0; j < hidden; j++) s += row[j] * h[j];
+            for (int j = 0; j < hidden; j++) s += row[j] * h_out[j];
             logits[i] = s;
         }
-        return logits; // h not returned here; stored in select_op instead
+
+        float value = b_v[0];
+        for (int j = 0; j < hidden; j++) value += W_v[j] * h_out[j];
+
+        return {logits, value};
     }
 
     static std::vector<float> softmax(const std::vector<float>& x) {
@@ -93,23 +99,11 @@ struct BasalGanglia {
         return out;
     }
 
-    // Select operation given current scratchpad context + goal
     BGAction select_op(const std::vector<float>& ctx,
                        const std::vector<float>& goal,
                        bool greedy = false) {
-        // Rebuild input identical to forward()
-        std::vector<float> inp(2 * n_dims, 0.f);
-        for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp[i]         = ctx[i];
-        for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp[n_dims + i] = goal[i];
-        // Layer 1 — recompute h so we can store it for reinforce
-        std::vector<float> h(hidden, 0.f);
-        for (int i = 0; i < hidden; i++) {
-            float s = b1[i];
-            const float* row = W1.data() + i * 2 * n_dims;
-            for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp[j];
-            h[i] = std::tanh(s);
-        }
-        auto logits = forward(ctx, goal);
+        std::vector<float> h, inp;
+        auto [logits, value] = forward(ctx, goal, h, inp);
         auto probs  = softmax(logits);
         int chosen;
         if (greedy) {
@@ -118,7 +112,7 @@ struct BasalGanglia {
             std::discrete_distribution<int> dist(probs.begin(), probs.end());
             chosen = dist(rng_);
         }
-        traces_.push_back({chosen, h, inp}); // store h and inp for proper W2/W1 gradient
+        traces_.push_back({chosen, h, inp, value});
         BGAction act;
         act.op       = (Op)chosen;
         act.slot_a   = "subject";
@@ -127,26 +121,44 @@ struct BasalGanglia {
         return act;
     }
 
-    // REINFORCE: proper policy gradient — update W2, b2, W1, b1
-    void reinforce(float reward, bool only_last = true) {
+    // TD(λ) backward pass
+    void reinforce(float final_reward, float gamma = 0.99f, float lambda = 0.95f) {
         if (traces_.empty()) return;
-        int start = only_last ? traces_.size() - 1 : 0;
+        
+        float g_lambda = final_reward;
         int in = 2 * n_dims;
-        for (int i = start; i < (int)traces_.size(); i++) {
+
+        for (int i = (int)traces_.size() - 1; i >= 0; i--) {
             auto& t = traces_[i];
-            // Update W2 and b2
+            float td_error = g_lambda - t.value;
+
+            // Critic Update
+            b_v[0] += lr_ * td_error;
+            for (int j = 0; j < hidden; j++) {
+                W_v[j] += lr_ * td_error * t.h1[j];
+            }
+
+            // Actor Update
             float* row2 = W2.data() + t.op_idx * hidden;
             for (int j = 0; j < hidden; j++)
-                row2[j] += lr_ * reward * t.h1[j];
-            b2[t.op_idx] += lr_ * reward;
+                row2[j] += lr_ * td_error * t.h1[j]; // PG with advantage
+            b2[t.op_idx] += lr_ * td_error;
 
-            // Backprop through tanh into W1 and b1
+            // Backprop through tanh into W1 and b1 (Actor + Critic)
             for (int j = 0; j < hidden; j++) {
-                float d = reward * W2[t.op_idx * hidden + j] * (1.f - t.h1[j] * t.h1[j]);
+                float d_act = td_error * W2[t.op_idx * hidden + j];
+                float d_crit = td_error * W_v[j];
+                float d = (d_act + d_crit) * (1.f - t.h1[j] * t.h1[j]);
+                
                 b1[j] += lr_ * d;
                 float* row1 = W1.data() + j * in;
                 for (int k = 0; k < in; k++)
                     row1[k] += lr_ * d * t.inp[k];
+            }
+
+            // Bootstrap next step
+            if (i > 0) {
+                g_lambda = 0.f + gamma * ((1.f - lambda) * t.value + lambda * g_lambda);
             }
         }
         traces_.clear();
@@ -164,6 +176,8 @@ struct BasalGanglia {
         f.write((const char*)b1.data(), b1.size() * sizeof(float));
         f.write((const char*)W2.data(), W2.size() * sizeof(float));
         f.write((const char*)b2.data(), b2.size() * sizeof(float));
+        f.write((const char*)W_v.data(), W_v.size() * sizeof(float));
+        f.write((const char*)b_v.data(), b_v.size() * sizeof(float));
     }
 
     static BasalGanglia load(const std::string& path) {
@@ -177,10 +191,14 @@ struct BasalGanglia {
         bg.b1.resize(bg.hidden);
         bg.W2.resize(bg.n_ops * bg.hidden);
         bg.b2.resize(bg.n_ops);
+        bg.W_v.resize(bg.hidden);
+        bg.b_v.resize(1);
         f.read((char*)bg.W1.data(), bg.W1.size() * sizeof(float));
         f.read((char*)bg.b1.data(), bg.b1.size() * sizeof(float));
         f.read((char*)bg.W2.data(), bg.W2.size() * sizeof(float));
         f.read((char*)bg.b2.data(), bg.b2.size() * sizeof(float));
+        f.read((char*)bg.W_v.data(), bg.W_v.size() * sizeof(float));
+        f.read((char*)bg.b_v.data(), bg.b_v.size() * sizeof(float));
         return bg;
     }
 };
