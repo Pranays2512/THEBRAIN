@@ -67,7 +67,7 @@ struct ProceduralMemory {
 
     // Retrieve the best-matching procedure for current context (nullptr if none)
     Procedure* retrieve(const std::vector<float>& context) {
-        float best = 0.4f;  // minimum similarity threshold
+        float best = 0.3f;  // threshold — 0.3 works for both 16-dim and 64-dim triggers
         Procedure* best_p = nullptr;
         for (auto& p : procedures_) {
             float s = cos_sim(p.trigger_embedding, context) * p.success_rate;

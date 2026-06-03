@@ -248,13 +248,15 @@ def main():
                     b.scratchpad.write("object", b.language.encode(obj_val), "context")
                     goal_vec = b.language.encode(goal)
                     b.scratchpad.write("goal", goal_vec, "goal")
-                    bmu = b.som.activation_map(goal_vec)
-                    b.working_mem.gate(bmu * 10.0, 1.0)
-                    b.working_mem.tick()
-                    ctx = b.working_mem.context()
-                    
-                    # Retrieve procedure from neural memory instead of hardcoding
-                    seq = b.procedures.retrieve(ctx)
+                    # Retrieve procedure: try goal_vec directly first (stable trigger),
+                    # fall back to SOM/WM context path
+                    seq = b.procedures.retrieve(goal_vec)
+                    if not seq:
+                        bmu = b.som.activation_map(goal_vec)
+                        b.working_mem.gate(bmu * 10.0, 1.0)
+                        b.working_mem.tick()
+                        ctx = b.working_mem.context()
+                        seq = b.procedures.retrieve(ctx)
                     
                     if not seq:
                         print("Brain: I don't know how to compute that.")

@@ -114,11 +114,15 @@ def run_procedural(user_input):
         goal_vec = b.language.encode(goal)
         b.scratchpad.write("goal", goal_vec, "goal")
 
-        bmu = b.som.activation_map(goal_vec)
-        b.working_mem.gate(bmu * 10.0, 1.0)
-        b.working_mem.tick()
-        ctx = b.working_mem.context()
-        seq = b.procedures.retrieve(ctx)
+        # Use goal_vec directly as retrieval key (matches new consolidate trigger)
+        seq = b.procedures.retrieve(goal_vec)
+        # Fallback: SOM/WM context path
+        if not seq:
+            bmu = b.som.activation_map(goal_vec)
+            b.working_mem.gate(bmu * 10.0, 1.0)
+            b.working_mem.tick()
+            ctx = b.working_mem.context()
+            seq = b.procedures.retrieve(ctx)
 
         if not seq:
             return "I don't know how to compute that."

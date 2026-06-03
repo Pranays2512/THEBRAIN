@@ -457,13 +457,21 @@ public:
         bg_controller.reinforce(reward);
     }
 
-    // Consolidate current scratchpad op-chain into procedural memory
+    // Consolidate current scratchpad op-chain into procedural memory.
+    // Uses the GOAL WORD embedding as the trigger (not SOM context) — this is
+    // stable across SOM updates and makes retrieval deterministic by intent.
     void consolidate_procedure(const std::vector<int>& op_ints,
                                const std::string& name = "") {
         std::vector<Op> ops;
         for (int i : op_ints) ops.push_back((Op)i);
-        auto ctx = working_mem.context();
-        if (!ctx.empty()) procedures.consolidate(ops, ctx, name);
+        // Prefer goal-word vector as trigger; fall back to WM context if name unknown
+        std::vector<float> trigger;
+        if (!name.empty() && language.knows(name)) {
+            trigger = language.encode(name);
+        } else {
+            trigger = working_mem.context();
+        }
+        if (!trigger.empty()) procedures.consolidate(ops, trigger, name);
     }
 
     // Reset sequence boundary (call between unrelated sequences)
@@ -1045,6 +1053,8 @@ public:
         auto current_ctx = simulate_op(Op::HALT, tmp);
         std::vector<float> h, inp;
         auto [logits, value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+        // Apply emotion-state bias (soft tiebreaker, never overrides trained preferences)
+        apply_emotion_bias(logits);
         auto probs = BasalGanglia::softmax(logits);
         int chosen = (int)(std::max_element(probs.begin(), probs.end()) - probs.begin());
         // Record trace so reinforce_bg has something to update
@@ -1056,6 +1066,33 @@ public:
         scratchpad.branch(next_ctx, 0.0f);
         scratchpad.move_to_best_child();
         return chosen;
+    }
+
+    // Apply a soft emotion-valence bias to BG logits.
+    // Positive valence → approach ops (SPEAK, RETRIEVE, BIND_QUERY) get a small boost.
+    // Negative valence → avoidant ops (HALT, COMPARE, NOT) get a small boost.
+    // Scale 0.05 = gentle tiebreaker; never overrides trained preferences.
+    void apply_emotion_bias(std::vector<float>& logits) const {
+        float v = emotion.valence;        // [-1, +1]
+        float a = emotion.arousal;        // [ 0,  1]
+        float scale = 0.05f * (0.5f + 0.5f * a);  // stronger when aroused
+
+        // Approach ops (positive valence boosts)
+        static const int approach_ops[] = {
+            (int)Op::SPEAK, (int)Op::SPEAK_SUBJ, (int)Op::SPEAK_REL,
+            (int)Op::SPEAK_OBJ, (int)Op::RETRIEVE, (int)Op::BIND_QUERY
+        };
+        // Avoidant ops (negative valence boosts)
+        static const int avoid_ops[] = {
+            (int)Op::HALT, (int)Op::COMPARE, (int)Op::NOT
+        };
+
+        for (int op : approach_ops) {
+            if (op < (int)logits.size()) logits[op] += scale * v;
+        }
+        for (int op : avoid_ops) {
+            if (op < (int)logits.size()) logits[op] += scale * (-v);
+        }
     }
 
     int reason_step(const std::string& goal_word, float epsilon = 0.0f) {
