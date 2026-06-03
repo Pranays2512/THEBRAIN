@@ -1,0 +1,700 @@
+[semantic_query] Q: fish isa ? | A: animal
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: fish can ? | A: swim
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: fox has ? | A: fur
+[semantic_query] Q: lion isa ? | A: animal
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: lion has ? | A: mane
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: lion isa ? | A: animal
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: wolf isa ? | A: animal
+[semantic_query] Q: cat isa ? | A: animal
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: wolf isa ? | A: animal
+[semantic_query] Q: wolf can ? | A: howl
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: tiger can ? | A: roar
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: fish has ? | A: scales
+[semantic_query] Q: fox can ? | A: run
+[semantic_query] Q: bear can ? | A: climb
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: fox can ? | A: run
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: lion has ? | A: mane
+[semantic_query] Q: bird isa ? | A: animal
+[semantic_query] Q: fox isa ? | A: animal
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: elephant has ? | A: trunk
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: bird can ? | A: fly
+[semantic_query] Q: bird has ? | A: wings
+[semantic_query] Q: wolf has ? | A: fur
+[semantic_query] Q: fox isa ? | A: animal
+[semantic_query] Q: dog has ? | A: fur
+[semantic_query] Q: lion has ? | A: mane
+[semantic_query] Q: tiger can ? | A: roar
+[semantic_query] Q: bear has ? | A: wings
+[semantic_query] Q: bird can ? | A: fly
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: bird isa ? | A: animal
+[semantic_query] Q: wolf can ? | A: howl
+[semantic_query] Q: fish can ? | A: swim
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: bird isa ? | A: animal
+[semantic_query] Q: fish can ? | A: swim
+[semantic_query] Q: tiger can ? | A: roar
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: dog isa ? | A: animal
+[semantic_query] Q: lion isa ? | A: animal
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: fox has ? | A: fur
+[semantic_query] Q: fox can ? | A: run
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: fish can ? | A: swim
+[semantic_query] Q: tiger can ? | A: roar
+[semantic_query] Q: dog isa ? | A: animal
+[semantic_query] Q: fish has ? | A: scales
+[semantic_query] Q: bear can ? | A: climb
+[semantic_query] Q: elephant can ? | A: swim
+[semantic_query] Q: bird has ? | A: wings
+[semantic_query] Q: cat has ? | A: fur
+[semantic_query] Q: fox isa ? | A: animal
+[semantic_query] Q: dog has ? | A: fur
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: elephant has ? | A: trunk
+[semantic_query] Q: cat has ? | A: fur
+[semantic_query] Q: bird can ? | A: fly
+[semantic_query] Q: dog can ? | A: run
+[semantic_query] Q: cat isa ? | A: animal
+[semantic_query] Q: bird isa ? | A: animal
+[semantic_query] Q: wolf can ? | A: howl
+[semantic_query] Q: cat has ? | A: fur
+[semantic_query] Q: bird has ? | A: wings
+[semantic_query] Q: elephant has ? | A: trunk
+[semantic_query] Q: elephant isa ? | A: animal
+[semantic_query] Q: elephant can ? | A: swim
+[semantic_query] Q: tiger isa ? | A: animal
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: cat can ? | A: think
+[semantic_query] Q: cat has ? | A: fur
+[semantic_query] Q: dog has ? | A: fur
+[semantic_query] Q: bear isa ? | A: animal
+[semantic_query] Q: wolf can ? | A: howl
+[semantic_query] Q: fox has ? | A: fur
+[semantic_query] Q: dog has ? | A: fur
+[semantic_query] Q: tiger can ? | A: roar
+[semantic_query] Q: dog has ? | A: fur
+[semantic_query] Q: bird can ? | A: fly
+[semantic_query] Q: lion can ? | A: touch
+[semantic_query] Q: dog isa ? | A: animal
+[semantic_query] Q: fish has ? | A: scales
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe apple | A: apple isa fruit. apple hascolor red. apple is sweet.
+[describe] Q: describe tiger | A: tiger isa animal. tiger can roar. tiger has stripes. tiger eats meat. tiger isa predator.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe pizza | A: pizza isa food. pizza is yummy. pizza taste savory. pizza has cheese. pizza taste yummy.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe tiger | A: tiger isa animal. tiger can roar. tiger has stripes. tiger eats meat. tiger isa predator.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe elephant | A: elephant isa animal. elephant has trunk. elephant can swim.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe tiger | A: tiger isa animal. tiger can roar. tiger has stripes. tiger eats meat. tiger isa predator.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe elephant | A: elephant isa animal. elephant has trunk. elephant can swim.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe robot | A: robot isa machine. robot can compute. robot has arms. robot made_of metal.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe car | A: car isa vehicle. car has wheels. car has engine. car can drive.
+[describe] Q: describe robot | A: robot isa machine. robot can compute. robot has arms. robot made_of metal.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe fox | A: fox isa animal. fox can run. fox has fur. fox eats meat.
+[describe] Q: describe fox | A: fox isa animal. fox can run. fox has fur. fox eats meat.
+[describe] Q: describe elephant | A: elephant isa animal. elephant has trunk. elephant can swim.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe car | A: car isa vehicle. car has wheels. car has engine. car can drive.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe fox | A: fox isa animal. fox can run. fox has fur. fox eats meat.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe pizza | A: pizza isa food. pizza is yummy. pizza taste savory. pizza has cheese. pizza taste yummy.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe pizza | A: pizza isa food. pizza is yummy. pizza taste savory. pizza has cheese. pizza taste yummy.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe apple | A: apple isa fruit. apple hascolor red. apple is sweet.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe robot | A: robot isa machine. robot can compute. robot has arms. robot made_of metal.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe robot | A: robot isa machine. robot can compute. robot has arms. robot made_of metal.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe bird | A: bird isa animal. bird can fly. bird has wings. bird has feathers. bird has beak. bird livesin trees.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe elephant | A: elephant isa animal. elephant has trunk. elephant can swim.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe fish | A: fish isa animal. fish can swim. fish has scales. fish has gills. fish livesin water. fish has fins.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe sun | A: sun isa star. sun hascolor yellow. sun is hot. sun emits light. sun emits heat. sun color yellow.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe pizza | A: pizza isa food. pizza is yummy. pizza taste savory. pizza has cheese. pizza taste yummy.
+[describe] Q: describe wolf | A: wolf isa animal. wolf can howl. wolf has fur. wolf eats meat.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe earth | A: earth isa planet. earth has water. earth has life. earth isin space.
+[describe] Q: describe car | A: car isa vehicle. car has wheels. car has engine. car can drive.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe fox | A: fox isa animal. fox can run. fox has fur. fox eats meat.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe dog | A: dog isa animal. dog can run. dog says woof. dog isa mammal. dog has fur. dog has paws. dog has tail. dog makes bark.
+[describe] Q: describe robot | A: robot isa machine. robot can compute. robot has arms. robot made_of metal.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe bear | A: bear isa animal. bear hascolor brown. bear can climb.
+[describe] Q: describe lion | A: lion isa animal. lion says roar. lion has mane.
+[describe] Q: describe car | A: car isa vehicle. car has wheels. car has engine. car can drive.
+[describe] Q: describe moon | A: moon isa satellite. moon isa nature. moon isin space. moon has craters.
+[describe] Q: describe elephant | A: elephant isa animal. elephant has trunk. elephant can swim.
+[describe] Q: describe cat | A: cat isa animal. cat says meow. cat isa mammal. cat has fur. cat has claws. cat makes meow.
+[describe] Q: describe car | A: car isa vehicle. car has wheels. car has engine. car can drive.
+[algebra] Q: 8 x + 42 = 170 | A: x = 16
+[algebra] Q: 7 x + 36 = 127 | A: x = 13
+[algebra] Q: 4 x + 25 = 69 | A: x = 11
+[algebra] Q: 15 x + 27 = 102 | A: x = 5
+[algebra] Q: 9 x + 15 = 195 | A: x = 20
+[algebra] Q: 12 x + 44 = 80 | A: x = 3
+[algebra] Q: 8 x + 23 = 167 | A: x = 18
+[algebra] Q: 11 x + 4 = 70 | A: x = 6
+[algebra] Q: 7 x + 34 = 132 | A: x = 14
+[algebra] Q: 7 x + 12 = 96 | A: x = 12
+[algebra] Q: 12 x + 29 = 245 | A: x = 18
+[algebra] Q: 13 x + 23 = 101 | A: x = 6
+[algebra] Q: 10 x + 23 = 53 | A: x = 3
+[algebra] Q: 10 x + 15 = 95 | A: x = 8
+[algebra] Q: 4 x + 45 = 121 | A: x = 19
+[algebra] Q: 11 x + 14 = 157 | A: x = 13
+[algebra] Q: 10 x + 50 = 240 | A: x = 19
+[algebra] Q: 2 x + 9 = 15 | A: x = 3
+[algebra] Q: 2 x + 9 = 31 | A: x = 11
+[algebra] Q: 9 x + 8 = 179 | A: x = 19
+[algebra] Q: 11 x + 42 = 196 | A: x = 14
+[algebra] Q: 6 x + 47 = 131 | A: x = 14
+[algebra] Q: 5 x + 17 = 62 | A: x = 9
+[algebra] Q: 2 x + 37 = 73 | A: x = 18
+[algebra] Q: 11 x + 1 = 56 | A: x = 5
+[algebra] Q: 5 x + 20 = 35 | A: x = 3
+[algebra] Q: 4 x + 10 = 86 | A: x = 19
+[algebra] Q: 9 x + 21 = 165 | A: x = 16
+[algebra] Q: 1 x + 1 = 9 | A: x = 8
+[algebra] Q: 6 x + 10 = 112 | A: x = 17
+[algebra] Q: 15 x + 47 = 137 | A: x = 6
+[algebra] Q: 5 x + 1 = 71 | A: x = 14
+[algebra] Q: 9 x + 26 = 35 | A: x = 1
+[algebra] Q: 4 x + 17 = 53 | A: x = 9
+[algebra] Q: 11 x + 39 = 171 | A: x = 12
+[algebra] Q: 11 x + 24 = 35 | A: x = 1
+[algebra] Q: 12 x + 2 = 194 | A: x = 16
+[algebra] Q: 13 x + 11 = 63 | A: x = 4
+[algebra] Q: 10 x + 31 = 71 | A: x = 4
+[algebra] Q: 8 x + 24 = 64 | A: x = 5
+[algebra] Q: 13 x + 40 = 157 | A: x = 9
+[algebra] Q: 15 x + 8 = 128 | A: x = 8
+[algebra] Q: 7 x + 38 = 171 | A: x = 19
+[algebra] Q: 4 x + 24 = 40 | A: x = 4
+[algebra] Q: 11 x + 30 = 250 | A: x = 20
+[algebra] Q: 15 x + 35 = 170 | A: x = 9
+[algebra] Q: 14 x + 33 = 187 | A: x = 11
+[algebra] Q: 14 x + 31 = 101 | A: x = 5
+[algebra] Q: 7 x + 5 = 124 | A: x = 17
+[algebra] Q: 2 x + 47 = 71 | A: x = 12
+[algebra] Q: 11 x + 5 = 93 | A: x = 8
+[algebra] Q: 2 x + 47 = 81 | A: x = 17
+[algebra] Q: 13 x + 16 = 94 | A: x = 6
+[algebra] Q: 15 x + 15 = 210 | A: x = 13
+[algebra] Q: 8 x + 41 = 145 | A: x = 13
+[algebra] Q: 6 x + 17 = 41 | A: x = 4
+[algebra] Q: 15 x + 25 = 295 | A: x = 18
+[algebra] Q: 7 x + 25 = 137 | A: x = 16
+[algebra] Q: 3 x + 34 = 52 | A: x = 6
+[algebra] Q: 11 x + 17 = 72 | A: x = 5
+[algebra] Q: 8 x + 40 = 88 | A: x = 6
+[algebra] Q: 15 x + 18 = 93 | A: x = 5
+[algebra] Q: 4 x + 34 = 102 | A: x = 17
+[algebra] Q: 9 x + 43 = 79 | A: x = 4
+[algebra] Q: 5 x + 8 = 78 | A: x = 14
+[algebra] Q: 11 x + 32 = 98 | A: x = 6
+[algebra] Q: 15 x + 36 = 276 | A: x = 16
+[algebra] Q: 10 x + 9 = 39 | A: x = 3
+[algebra] Q: 2 x + 21 = 59 | A: x = 19
+[algebra] Q: 7 x + 28 = 140 | A: x = 16
+[algebra] Q: 3 x + 12 = 66 | A: x = 18
+[algebra] Q: 5 x + 10 = 95 | A: x = 17
+[algebra] Q: 3 x + 5 = 47 | A: x = 14
+[algebra] Q: 12 x + 49 = 61 | A: x = 1
+[algebra] Q: 12 x + 3 = 231 | A: x = 19
+[algebra] Q: 9 x + 34 = 97 | A: x = 7
+[algebra] Q: 1 x + 15 = 23 | A: x = 8
+[algebra] Q: 10 x + 25 = 155 | A: x = 13
+[algebra] Q: 7 x + 41 = 181 | A: x = 20
+[algebra] Q: 5 x + 2 = 92 | A: x = 18
+[algebra] Q: 15 x + 15 = 90 | A: x = 5
+[algebra] Q: 11 x + 35 = 79 | A: x = 4
+[algebra] Q: 2 x + 17 = 27 | A: x = 5
+[algebra] Q: 12 x + 34 = 58 | A: x = 2
+[algebra] Q: 13 x + 7 = 189 | A: x = 14
+[algebra] Q: 8 x + 38 = 54 | A: x = 2
+[algebra] Q: 11 x + 13 = 167 | A: x = 14
+[algebra] Q: 6 x + 21 = 129 | A: x = 18
+[algebra] Q: 10 x + 12 = 152 | A: x = 14
+[algebra] Q: 5 x + 41 = 141 | A: x = 20
+[algebra] Q: 4 x + 1 = 77 | A: x = 19
+[algebra] Q: 13 x + 28 = 210 | A: x = 14
+[algebra] Q: 8 x + 5 = 101 | A: x = 12
+[algebra] Q: 15 x + 40 = 130 | A: x = 6
+[algebra] Q: 4 x + 21 = 53 | A: x = 8
+[algebra] Q: 2 x + 22 = 40 | A: x = 9
+[algebra] Q: 6 x + 35 = 119 | A: x = 14
+[algebra] Q: 11 x + 34 = 122 | A: x = 8
+[algebra] Q: 6 x + 49 = 151 | A: x = 17
+[algebra] Q: 15 x + 18 = 228 | A: x = 14
+[permute] Q: 5 permute 3 | A: 60
+[permute] Q: 8 permute 6 | A: 20160
+[permute] Q: 5 permute 1 | A: 5
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 8 permute 7 | A: 40320
+[permute] Q: 4 permute 2 | A: 12
+[permute] Q: 6 permute 1 | A: 6
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 8 permute 1 | A: 8
+[permute] Q: 7 permute 3 | A: 210
+[permute] Q: 5 permute 3 | A: 60
+[permute] Q: 6 permute 1 | A: 6
+[permute] Q: 7 permute 2 | A: 42
+[permute] Q: 7 permute 1 | A: 7
+[permute] Q: 7 permute 4 | A: 840
+[permute] Q: 8 permute 2 | A: 56
+[permute] Q: 6 permute 5 | A: 720
+[permute] Q: 7 permute 2 | A: 42
+[permute] Q: 5 permute 2 | A: 20
+[permute] Q: 4 permute 2 | A: 12
+[permute] Q: 8 permute 4 | A: 1680
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 6 permute 1 | A: 6
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 5 permute 1 | A: 5
+[permute] Q: 6 permute 4 | A: 360
+[permute] Q: 4 permute 1 | A: 4
+[permute] Q: 8 permute 4 | A: 1680
+[permute] Q: 7 permute 2 | A: 42
+[permute] Q: 4 permute 1 | A: 4
+[permute] Q: 6 permute 1 | A: 6
+[permute] Q: 8 permute 6 | A: 20160
+[permute] Q: 8 permute 7 | A: 40320
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 7 permute 4 | A: 840
+[permute] Q: 8 permute 1 | A: 8
+[permute] Q: 7 permute 2 | A: 42
+[permute] Q: 8 permute 4 | A: 1680
+[permute] Q: 8 permute 6 | A: 20160
+[permute] Q: 6 permute 3 | A: 120
+[permute] Q: 4 permute 1 | A: 4
+[permute] Q: 5 permute 4 | A: 120
+[permute] Q: 8 permute 3 | A: 336
+[permute] Q: 7 permute 6 | A: 5040
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 8 permute 5 | A: 6720
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 6 permute 2 | A: 30
+[permute] Q: 8 permute 4 | A: 1680
+[permute] Q: 5 permute 1 | A: 5
+[permute] Q: 7 permute 5 | A: 2520
+[permute] Q: 7 permute 4 | A: 840
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 6 permute 3 | A: 120
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 6 permute 4 | A: 360
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 4 permute 3 | A: 24
+[permute] Q: 5 permute 1 | A: 5
+[permute] Q: 6 permute 5 | A: 720
+[permute] Q: 8 permute 7 | A: 40320
+[permute] Q: 6 permute 1 | A: 6
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 4 permute 1 | A: 4
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 5 permute 2 | A: 20
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 8 permute 3 | A: 336
+[permute] Q: 5 permute 3 | A: 60
+[permute] Q: 6 permute 2 | A: 30
+[permute] Q: 6 permute 4 | A: 360
+[permute] Q: 4 permute 3 | A: 24
+[permute] Q: 8 permute 5 | A: 6720
+[permute] Q: 8 permute 1 | A: 8
+[permute] Q: 8 permute 1 | A: 8
+[permute] Q: 6 permute 2 | A: 30
+[permute] Q: 7 permute 6 | A: 5040
+[permute] Q: 4 permute 1 | A: 4
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 8 permute 3 | A: 336
+[permute] Q: 3 permute 2 | A: 6
+[permute] Q: 8 permute 5 | A: 6720
+[permute] Q: 5 permute 4 | A: 120
+[permute] Q: 6 permute 5 | A: 720
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 8 permute 5 | A: 6720
+[permute] Q: 8 permute 2 | A: 56
+[permute] Q: 4 permute 3 | A: 24
+[permute] Q: 4 permute 3 | A: 24
+[permute] Q: 4 permute 3 | A: 24
+[permute] Q: 7 permute 1 | A: 7
+[permute] Q: 8 permute 3 | A: 336
+[permute] Q: 6 permute 3 | A: 120
+[permute] Q: 8 permute 3 | A: 336
+[permute] Q: 7 permute 3 | A: 210
+[permute] Q: 3 permute 1 | A: 3
+[permute] Q: 5 permute 3 | A: 60
+[permute] Q: 7 permute 4 | A: 840
+[permute] Q: 5 permute 2 | A: 20
+[probability] Q: probability of 18 in 72 | A: 0.25
+[probability] Q: probability of 13 in 52 | A: 0.25
+[probability] Q: probability of 8 in 80 | A: 0.10
+[probability] Q: probability of 14 in 56 | A: 0.25
+[probability] Q: probability of 17 in 68 | A: 0.25
+[probability] Q: probability of 12 in 36 | A: 0.33
+[probability] Q: probability of 17 in 34 | A: 0.50
+[probability] Q: probability of 7 in 21 | A: 0.33
+[probability] Q: probability of 14 in 126 | A: 0.11
+[probability] Q: probability of 9 in 27 | A: 0.33
+[probability] Q: probability of 15 in 135 | A: 0.11
+[probability] Q: probability of 19 in 95 | A: 0.20
+[probability] Q: probability of 3 in 21 | A: 0.14
+[probability] Q: probability of 6 in 6 | A: 1.00
+[probability] Q: probability of 14 in 98 | A: 0.14
+[probability] Q: probability of 15 in 150 | A: 0.10
+[probability] Q: probability of 16 in 80 | A: 0.20
+[probability] Q: probability of 16 in 128 | A: 0.12
+[probability] Q: probability of 20 in 20 | A: 1.00
+[probability] Q: probability of 12 in 12 | A: 1.00
+[probability] Q: probability of 9 in 45 | A: 0.20
+[probability] Q: probability of 14 in 42 | A: 0.33
+[probability] Q: probability of 11 in 99 | A: 0.11
+[probability] Q: probability of 10 in 70 | A: 0.14
+[probability] Q: probability of 2 in 18 | A: 0.11
+[probability] Q: probability of 3 in 18 | A: 0.17
+[probability] Q: probability of 18 in 90 | A: 0.20
+[probability] Q: probability of 12 in 108 | A: 0.11
+[probability] Q: probability of 11 in 99 | A: 0.11
+[probability] Q: probability of 18 in 180 | A: 0.10
+[probability] Q: probability of 2 in 8 | A: 0.25
+[probability] Q: probability of 18 in 126 | A: 0.14
+[probability] Q: probability of 18 in 108 | A: 0.17
+[probability] Q: probability of 8 in 56 | A: 0.14
+[probability] Q: probability of 9 in 72 | A: 0.12
+[probability] Q: probability of 20 in 120 | A: 0.17
+[probability] Q: probability of 12 in 24 | A: 0.50
+[probability] Q: probability of 8 in 72 | A: 0.11
+[probability] Q: probability of 14 in 84 | A: 0.17
+[probability] Q: probability of 17 in 136 | A: 0.12
+[probability] Q: probability of 19 in 171 | A: 0.11
+[probability] Q: probability of 6 in 24 | A: 0.25
+[probability] Q: probability of 17 in 153 | A: 0.11
+[probability] Q: probability of 14 in 42 | A: 0.33
+[probability] Q: probability of 11 in 66 | A: 0.17
+[probability] Q: probability of 8 in 80 | A: 0.10
+[probability] Q: probability of 13 in 91 | A: 0.14
+[probability] Q: probability of 17 in 119 | A: 0.14
+[probability] Q: probability of 13 in 39 | A: 0.33
+[probability] Q: probability of 7 in 14 | A: 0.50
+[probability] Q: probability of 6 in 48 | A: 0.12
+[probability] Q: probability of 8 in 80 | A: 0.10
+[probability] Q: probability of 3 in 9 | A: 0.33
+[probability] Q: probability of 1 in 3 | A: 0.33
+[probability] Q: probability of 16 in 96 | A: 0.17
+[probability] Q: probability of 14 in 14 | A: 1.00
+[probability] Q: probability of 5 in 35 | A: 0.14
+[probability] Q: probability of 2 in 4 | A: 0.50
+[probability] Q: probability of 3 in 30 | A: 0.10
+[probability] Q: probability of 8 in 80 | A: 0.10
+[probability] Q: probability of 11 in 11 | A: 1.00
+[probability] Q: probability of 5 in 10 | A: 0.50
+[probability] Q: probability of 19 in 57 | A: 0.33
+[probability] Q: probability of 7 in 35 | A: 0.20
+[probability] Q: probability of 8 in 64 | A: 0.12
+[probability] Q: probability of 8 in 48 | A: 0.17
+[probability] Q: probability of 14 in 70 | A: 0.20
+[probability] Q: probability of 7 in 63 | A: 0.11
+[probability] Q: probability of 14 in 42 | A: 0.33
+[probability] Q: probability of 9 in 72 | A: 0.12
+[probability] Q: probability of 16 in 32 | A: 0.50
+[probability] Q: probability of 19 in 19 | A: 1.00
+[probability] Q: probability of 13 in 91 | A: 0.14
+[probability] Q: probability of 2 in 4 | A: 0.50
+[probability] Q: probability of 12 in 120 | A: 0.10
+[probability] Q: probability of 6 in 12 | A: 0.50
+[probability] Q: probability of 3 in 27 | A: 0.11
+[probability] Q: probability of 1 in 6 | A: 0.17
+[probability] Q: probability of 10 in 70 | A: 0.14
+[probability] Q: probability of 13 in 13 | A: 1.00
+[probability] Q: probability of 12 in 48 | A: 0.25
+[probability] Q: probability of 20 in 200 | A: 0.10
+[probability] Q: probability of 6 in 54 | A: 0.11
+[probability] Q: probability of 7 in 35 | A: 0.20
+[probability] Q: probability of 5 in 40 | A: 0.12
+[probability] Q: probability of 7 in 70 | A: 0.10
+[probability] Q: probability of 17 in 68 | A: 0.25
+[probability] Q: probability of 18 in 36 | A: 0.50
+[probability] Q: probability of 8 in 48 | A: 0.17
+[probability] Q: probability of 14 in 70 | A: 0.20
+[probability] Q: probability of 7 in 28 | A: 0.25
+[probability] Q: probability of 13 in 52 | A: 0.25
+[probability] Q: probability of 8 in 80 | A: 0.10
+[probability] Q: probability of 1 in 2 | A: 0.50
+[probability] Q: probability of 8 in 48 | A: 0.17
+[probability] Q: probability of 13 in 26 | A: 0.50
+[probability] Q: probability of 13 in 39 | A: 0.33
+[probability] Q: probability of 6 in 60 | A: 0.10
+[probability] Q: probability of 17 in 51 | A: 0.33
+[probability] Q: probability of 13 in 117 | A: 0.11
+[area] Q: area of 49 and 50 | A: 2450
+[area] Q: area of 40 and 42 | A: 1680
+[area] Q: area of 14 and 28 | A: 392
+[area] Q: area of 21 and 36 | A: 756
+[area] Q: area of 9 and 36 | A: 324
+[area] Q: area of 42 and 30 | A: 1260
+[area] Q: area of 46 and 10 | A: 460
+[area] Q: area of 20 and 29 | A: 580
+[area] Q: area of 9 and 46 | A: 414
+[area] Q: area of 4 and 46 | A: 184
+[area] Q: area of 5 and 8 | A: 40
+[area] Q: area of 11 and 23 | A: 253
+[area] Q: area of 36 and 29 | A: 1044
+[area] Q: area of 12 and 29 | A: 348
+[area] Q: area of 37 and 49 | A: 1813
+[area] Q: area of 27 and 26 | A: 702
+[area] Q: area of 42 and 21 | A: 882
+[area] Q: area of 26 and 10 | A: 260
+[area] Q: area of 36 and 7 | A: 252
+[area] Q: area of 13 and 25 | A: 325
+[area] Q: area of 39 and 13 | A: 507
+[area] Q: area of 10 and 49 | A: 490
+[area] Q: area of 38 and 34 | A: 1292
+[area] Q: area of 2 and 45 | A: 90
+[area] Q: area of 21 and 30 | A: 630
+[area] Q: area of 23 and 37 | A: 851
+[area] Q: area of 14 and 11 | A: 154
+[area] Q: area of 37 and 30 | A: 1110
+[area] Q: area of 45 and 47 | A: 2115
+[area] Q: area of 35 and 47 | A: 1645
+[area] Q: area of 44 and 30 | A: 1320
+[area] Q: area of 33 and 19 | A: 627
+[area] Q: area of 27 and 33 | A: 891
+[area] Q: area of 23 and 4 | A: 92
+[area] Q: area of 22 and 9 | A: 198
+[area] Q: area of 36 and 31 | A: 1116
+[area] Q: area of 46 and 5 | A: 230
+[area] Q: area of 26 and 1 | A: 26
+[area] Q: area of 6 and 10 | A: 60
+[area] Q: area of 20 and 16 | A: 320
+[area] Q: area of 31 and 39 | A: 1209
+[area] Q: area of 2 and 34 | A: 68
+[area] Q: area of 7 and 41 | A: 287
+[area] Q: area of 25 and 38 | A: 950
+[area] Q: area of 21 and 2 | A: 42
+[area] Q: area of 12 and 11 | A: 132
+[area] Q: area of 48 and 36 | A: 1728
+[area] Q: area of 17 and 46 | A: 782
+[area] Q: area of 49 and 14 | A: 686
+[area] Q: area of 32 and 22 | A: 704
+[area] Q: area of 7 and 16 | A: 112
+[area] Q: area of 11 and 49 | A: 539
+[area] Q: area of 11 and 1 | A: 11
+[area] Q: area of 2 and 49 | A: 98
+[area] Q: area of 48 and 35 | A: 1680
+[area] Q: area of 5 and 1 | A: 5
+[area] Q: area of 3 and 49 | A: 147
+[area] Q: area of 6 and 3 | A: 18
+[area] Q: area of 16 and 26 | A: 416
+[area] Q: area of 37 and 40 | A: 1480
+[area] Q: area of 11 and 38 | A: 418
+[area] Q: area of 4 and 5 | A: 20
+[area] Q: area of 23 and 41 | A: 943
+[area] Q: area of 21 and 5 | A: 105
+[area] Q: area of 15 and 47 | A: 705
+[area] Q: area of 6 and 40 | A: 240
+[area] Q: area of 7 and 36 | A: 252
+[area] Q: area of 3 and 5 | A: 15
+[area] Q: area of 39 and 20 | A: 780
+[area] Q: area of 34 and 37 | A: 1258
+[area] Q: area of 36 and 35 | A: 1260
+[area] Q: area of 50 and 24 | A: 1200
+[area] Q: area of 15 and 47 | A: 705
+[area] Q: area of 16 and 31 | A: 496
+[area] Q: area of 39 and 46 | A: 1794
+[area] Q: area of 34 and 2 | A: 68
+[area] Q: area of 2 and 33 | A: 66
+[area] Q: area of 24 and 1 | A: 24
+[area] Q: area of 37 and 42 | A: 1554
+[area] Q: area of 26 and 41 | A: 1066
+[area] Q: area of 20 and 26 | A: 520
+[area] Q: area of 19 and 6 | A: 114
+[area] Q: area of 4 and 25 | A: 100
+[area] Q: area of 7 and 12 | A: 84
+[area] Q: area of 25 and 20 | A: 500
+[area] Q: area of 15 and 32 | A: 480
+[area] Q: area of 45 and 18 | A: 810
+[area] Q: area of 49 and 49 | A: 2401
+[area] Q: area of 41 and 28 | A: 1148
+[area] Q: area of 16 and 10 | A: 160
+[area] Q: area of 39 and 36 | A: 1404
+[area] Q: area of 11 and 26 | A: 286
+[area] Q: area of 35 and 22 | A: 770
+[area] Q: area of 28 and 50 | A: 1400
+[area] Q: area of 48 and 20 | A: 960
+[area] Q: area of 29 and 48 | A: 1392
+[area] Q: area of 19 and 22 | A: 418
+[area] Q: area of 5 and 30 | A: 150
+[area] Q: area of 6 and 31 | A: 186
+[area] Q: area of 31 and 6 | A: 186
+[power] Q: 4 power 1 | A: 4
+[power] Q: 7 power 4 | A: 2401
+[power] Q: 6 power 4 | A: 1296
+[power] Q: 10 power 2 | A: 100
+[power] Q: 4 power 4 | A: 256
+[power] Q: 1 power 1 | A: 1
+[power] Q: 4 power 1 | A: 4
+[power] Q: 2 power 4 | A: 16
+[power] Q: 2 power 1 | A: 2
+[power] Q: 7 power 3 | A: 343
+[power] Q: 5 power 3 | A: 125
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 10 power 1 | A: 10
+[power] Q: 3 power 1 | A: 3
+[power] Q: 10 power 1 | A: 10
+[power] Q: 10 power 2 | A: 100
+[power] Q: 5 power 3 | A: 125
+[power] Q: 5 power 3 | A: 125
+[power] Q: 4 power 4 | A: 256
+[power] Q: 10 power 1 | A: 10
+[power] Q: 3 power 1 | A: 3
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 1 power 2 | A: 1
+[power] Q: 3 power 1 | A: 3
+[power] Q: 6 power 4 | A: 1296
+[power] Q: 3 power 2 | A: 9
+[power] Q: 3 power 3 | A: 27
+[power] Q: 7 power 2 | A: 49
+[power] Q: 1 power 4 | A: 1
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 10 power 2 | A: 100
+[power] Q: 1 power 4 | A: 1
+[power] Q: 8 power 3 | A: 512
+[power] Q: 1 power 1 | A: 1
+[power] Q: 2 power 4 | A: 16
+[power] Q: 4 power 1 | A: 4
+[power] Q: 9 power 1 | A: 9
+[power] Q: 8 power 2 | A: 64
+[power] Q: 10 power 2 | A: 100
+[power] Q: 8 power 2 | A: 64
+[power] Q: 4 power 2 | A: 16
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 5 power 4 | A: 625
+[power] Q: 2 power 3 | A: 8
+[power] Q: 8 power 2 | A: 64
+[power] Q: 2 power 4 | A: 16
+[power] Q: 3 power 4 | A: 81
+[power] Q: 10 power 1 | A: 10
+[power] Q: 9 power 4 | A: 6561
+[power] Q: 2 power 1 | A: 2
+[power] Q: 6 power 3 | A: 216
+[power] Q: 9 power 2 | A: 81
+[power] Q: 2 power 1 | A: 2
+[power] Q: 7 power 4 | A: 2401
+[power] Q: 4 power 2 | A: 16
+[power] Q: 6 power 2 | A: 36
+[power] Q: 3 power 2 | A: 9
+[power] Q: 4 power 4 | A: 256
+[power] Q: 4 power 4 | A: 256
+[power] Q: 7 power 2 | A: 49
+[power] Q: 10 power 2 | A: 100
+[power] Q: 6 power 2 | A: 36
+[power] Q: 1 power 1 | A: 1
+[power] Q: 1 power 3 | A: 1
+[power] Q: 6 power 1 | A: 6
+[power] Q: 5 power 1 | A: 5
+[power] Q: 8 power 1 | A: 8
+[power] Q: 3 power 3 | A: 27
+[power] Q: 7 power 3 | A: 343
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 3 power 2 | A: 9
+[power] Q: 4 power 4 | A: 256
+[power] Q: 10 power 3 | A: 1000
+[power] Q: 8 power 3 | A: 512
+[power] Q: 4 power 4 | A: 256
+[power] Q: 8 power 3 | A: 512
+[power] Q: 10 power 2 | A: 100
+[power] Q: 1 power 3 | A: 1
+[power] Q: 3 power 4 | A: 81
+[power] Q: 6 power 2 | A: 36
+[power] Q: 2 power 1 | A: 2
+[power] Q: 10 power 4 | A: 10000
+[power] Q: 10 power 3 | A: 1000
+[power] Q: 2 power 4 | A: 16
+[power] Q: 9 power 1 | A: 9
+[power] Q: 10 power 3 | A: 1000
+[power] Q: 3 power 3 | A: 27
+[power] Q: 1 power 1 | A: 1
+[power] Q: 8 power 1 | A: 8
+[power] Q: 9 power 4 | A: 6561
+[power] Q: 4 power 1 | A: 4
+[power] Q: 4 power 1 | A: 4
+[power] Q: 7 power 4 | A: 2401
+[power] Q: 9 power 2 | A: 81
+[power] Q: 1 power 2 | A: 1
+[power] Q: 6 power 2 | A: 36
+[power] Q: 8 power 1 | A: 8
+[power] Q: 7 power 3 | A: 343
+[power] Q: 8 power 2 | A: 64
+[power] Q: 5 power 3 | A: 125

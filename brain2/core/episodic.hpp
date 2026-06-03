@@ -45,6 +45,7 @@ struct Episode {
     EpisodeNode root;
     float surprise;
     int   timestamp;
+    std::vector<float> payload; // Original semantic vector (e.g. subject)
 
     float get_sim(const std::vector<float>& query) const {
         return root.sparse_sim(query);
@@ -130,10 +131,11 @@ public:
         step_++;
     }
 
-    bool commit(float prediction_error) {
+    bool commit(float prediction_error, const std::vector<float>& payload = {}) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if (current_ep_.size() < 2) return false;
-        if (prediction_error < surprise_threshold) {
+        // If we are given a payload, force commit even if surprise is low
+        if (prediction_error < surprise_threshold && payload.empty()) {
             current_ep_.clear();
             return false;
         }
@@ -142,6 +144,7 @@ public:
         ep.root      = build_tree(current_ep_);
         ep.surprise  = prediction_error;
         ep.timestamp = step_;
+        ep.payload   = payload;
         episodes_.push_back(std::move(ep));
         current_ep_.clear();
 
@@ -169,6 +172,11 @@ public:
     const Episode* get_episode(int idx) const {
         if (idx >= 0 && idx < (int)episodes_.size()) return &episodes_[idx];
         return nullptr;
+    }
+
+    std::vector<float> get_last_episode() const {
+        if (episodes_.empty()) return {};
+        return episodes_.back().payload;
     }
 
     std::vector<std::pair<float, int>> retrieve_topk(

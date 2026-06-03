@@ -38,6 +38,7 @@
 #include "imagination.hpp"
 #include "emotion.hpp"
 #include "attention.hpp"
+#include "decoder.hpp"
 #include "self_model.hpp"
 #include "symbolic.hpp"
 #include "scratchpad.hpp"
@@ -53,9 +54,12 @@
 
 #include <vector>
 #include <string>
+#include <numeric>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <algorithm>
+#include <chrono>
 
 namespace brain2 {
 
@@ -106,6 +110,16 @@ public:
     BasalGanglia          bg_controller; // learned op selector
     ProceduralMemory      procedures;    // reusable strategies
     HierarchicalPredictor h_predictor;  // chunk + episode predictors
+    DecoderRNN            decoder;       // generative sequence decoder
+    std::vector<std::string> spoken_words;
+
+    std::vector<std::string> get_spoken_words() {
+        return spoken_words;
+    }
+    
+    void clear_spoken_words() {
+        spoken_words.clear();
+    }
 
 private:
     std::unique_ptr<std::mutex> mtx_;
@@ -202,7 +216,8 @@ public:
                          const std::string& binding_path    = "",
                          const std::string& bg_path         = "",
                          const std::string& procedures_path = "",
-                         const std::string& hpred_path      = "") {
+                         const std::string& hpred_path      = "",
+                         const std::string& decoder_path    = "") {
         predictor  = Predictor::load(predictor_path);
         language   = Language::load(language_path);
         som        = SOM::load(som_path);
@@ -225,14 +240,42 @@ public:
         if (!bg_path.empty())         bg_controller = BasalGanglia::load(bg_path);
         if (!procedures_path.empty()) procedures   = ProceduralMemory::load(procedures_path);
         if (!hpred_path.empty())      h_predictor  = HierarchicalPredictor::load(hpred_path);
+        if (!decoder_path.empty())    decoder      = DecoderRNN::load(decoder_path);
     }
 
-    // PERCEIVE: process one raw input vector through full pipeline (Brain V4)
+    void save_components(const std::string& directory) const {
+        predictor.save(directory + "/predictor.bin");
+        language.save(directory + "/language.bin");
+        som.save(directory + "/som.bin");
+        episodic.save(directory + "/episodic.bin");
+        emotion.save(directory + "/emotion.bin");
+        self_model.save(directory + "/self.bin");
+        symbolic.save(directory + "/symbolic.bin");
+        
+        // V3 Optional Components (save if active)
+        binding.save(directory + "/binding.bin");
+        bg_controller.save(directory + "/bg.bin");
+        procedures.save(directory + "/procedures.bin");
+        h_predictor.save(directory + "/hpred.bin");
+        decoder.save(directory + "/decoder.bin");
+    }
+
+    bool commit_episode(float err, const std::vector<float>& payload = {}) {
+        return episodic.commit(err, payload);
+    }
+
+    // PERCEIVE: process one raw input vector through full pipeline
     PerceiveResult perceive(const std::vector<float>& input) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        scratchpad.write("sensory_input", input, "sensory");
+
         // 1. SOM: find BMU + activation map
         int bmu      = som.find_bmu(input);
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
+        
+        // Add to Episodic Memory
+        episodic.observe(act_map);
 
         // 2. Predictive coding 1: SOM output -> Error signal
         auto pc1_err = pc_som.propagate(act_map);
@@ -337,6 +380,48 @@ public:
         r.salience         = attn_result.score;
         r.self_concept     = self_model.current_concept(istate);
         return r;
+    }
+
+    // ── Unsupervised Daydreaming (Phase 1) ──────────────────────────────────
+    // Runs the predictive coding cycle on internally generated "imagination"
+    // Updates weights unsupervised to consolidate models without real input.
+    void daydream() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        
+        // 1. Generate a short dream sequence (5 steps) from random noise in concept space (64-dim)
+        std::vector<std::vector<float>> empty_seeds;
+        unsigned int seed = (unsigned int)std::chrono::system_clock::now().time_since_epoch().count();
+        auto sims = imagination.dream(1, 5, empty_seeds, seed);
+        auto frames = imagination.extract_frames(sims, 0.0f); 
+        
+        if (frames.size() < 2) return;
+        
+        bool was_offline = predictor.is_offline();
+        predictor.set_offline(false);
+        
+        // frames[0] is already an activation map (output of predictor or noise of same size)
+        auto act_map_0 = frames[0];
+        std::vector<float> prev_err = pc_som.propagate(act_map_0);
+        pc_som.update();
+        
+        // 2. Step through the dream sequence
+        for (size_t i = 1; i < frames.size(); i++) {
+            auto act_map = frames[i];
+            auto curr_err = pc_som.propagate(act_map);
+            pc_som.update();
+            
+            // Train predictor: input is prev_err, target is curr_err
+            predictor.step(prev_err, &curr_err);
+            
+            prev_err = curr_err;
+            
+            // Emotion responds to internal prediction errors
+            float error = predictor.last_error();
+            emotion.from_prediction_error(error);
+            emotion.tick();
+        }
+        
+        predictor.set_offline(was_offline);
     }
 
     // Explicit triple binding — call from training loop with known (subject, relation, object)
@@ -446,6 +531,581 @@ public:
         predictor.set_offline(false);
         result.coherence = (coh_count > 0) ? total_coh / float(coh_count) : 0.f;
         return result;
+    }
+
+    std::vector<float> simulate_op(Op op, Scratchpad& pad, bool commit = true) {
+        switch (op) {
+            case Op::READ: {
+                auto res = pad.read("result");
+                pad.write("focus", res, "attn");
+                break;
+            }
+            case Op::WRITE: {
+                auto focus = pad.read("focus");
+                if (!focus.empty()) pad.write("subject", focus, "mem");
+                break;
+            }
+            case Op::MATH_SUB: {
+                auto subj = pad.read("subject");
+                auto obj  = pad.read("object");
+                if (!subj.empty() && !obj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    auto o_sym = language.best_word(obj);
+                    if (!s_sym.empty() && !o_sym.empty()) {
+                        try {
+                            int res = std::stoi(s_sym) - std::stoi(o_sym);
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_DIV: {
+                auto res = pad.read("result");
+                auto rel = pad.read("relation");
+                if (!res.empty() && !rel.empty()) {
+                    auto r_sym = language.best_word(res);
+                    auto d_sym = language.best_word(rel);
+                    if (!r_sym.empty() && !d_sym.empty()) {
+                        try {
+                            int d_val = std::stoi(d_sym);
+                            if (d_val != 0) {
+                                int fin = std::stoi(r_sym) / d_val;
+                                std::string fin_sym = std::to_string(fin);
+                                if (!language.knows(fin_sym)) {
+                                    language.register_word(fin_sym);
+                                    symbolic.bind(fin_sym);
+                                }
+                                pad.write("result", language.encode(fin_sym), "math");
+                            }
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::STORE_TMP: {
+                auto res = pad.read("result");
+                if (!res.empty()) {
+                    pad.write("relation", res, "math");
+                }
+                break;
+            }
+            case Op::MATH_ADD: {
+                auto subj = pad.read("subject");
+                auto obj  = pad.read("object");
+                if (!subj.empty() && !obj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    auto o_sym = language.best_word(obj);
+                    if (!s_sym.empty() && !o_sym.empty()) {
+                        try {
+                            int res = std::stoi(s_sym) + std::stoi(o_sym);
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_MUL: {
+                auto subj = pad.read("subject");
+                auto obj  = pad.read("object");
+                if (!subj.empty() && !obj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    auto o_sym = language.best_word(obj);
+                    if (!s_sym.empty() && !o_sym.empty()) {
+                        try {
+                            int res = std::stoi(s_sym) * std::stoi(o_sym);
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_POW: {
+                auto subj = pad.read("subject");
+                auto obj  = pad.read("object");
+                if (!subj.empty() && !obj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    auto o_sym = language.best_word(obj);
+                    if (!s_sym.empty() && !o_sym.empty()) {
+                        try {
+                            int res = std::pow(std::stoi(s_sym), std::stoi(o_sym));
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_FACT: {
+                auto subj = pad.read("subject");
+                if (!subj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    if (!s_sym.empty()) {
+                        try {
+                            int n = std::stoi(s_sym);
+                            long long res = 1;
+                            for (int i = 2; i <= n; i++) res *= i;
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_FACT_REL: {
+                auto rel = pad.read("relation");
+                if (!rel.empty()) {
+                    auto r_sym = language.best_word(rel);
+                    if (!r_sym.empty()) {
+                        try {
+                            int n = std::stoi(r_sym);
+                            long long res = 1;
+                            for (int i = 2; i <= n; i++) res *= i;
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("relation", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_DIV_FLOAT: {
+                // Float division: subject / object → written as 2-decimal string e.g. "0.17"
+                auto subj = pad.read("subject");
+                auto obj  = pad.read("object");
+                if (!subj.empty() && !obj.empty()) {
+                    auto s_sym = language.best_word(subj);
+                    auto o_sym = language.best_word(obj);
+                    if (!s_sym.empty() && !o_sym.empty()) {
+                        try {
+                            float denom = std::stof(o_sym);
+                            if (std::abs(denom) > 1e-6f) {
+                                float val = std::stof(s_sym) / denom;
+                                // Format to 2 decimal places
+                                char buf[32];
+                                std::snprintf(buf, sizeof(buf), "%.2f", val);
+                                std::string res_sym(buf);
+                                if (!language.knows(res_sym)) {
+                                    language.register_word(res_sym);
+                                    symbolic.bind(res_sym);
+                                }
+                                pad.write("result", language.encode(res_sym), "math");
+                            }
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::COMPARE: {
+                auto result = pad.read("result");
+                auto obj    = pad.read("object"); // Compare result with queried object
+                float sim = 0.f;
+                if (!result.empty() && !obj.empty()) {
+                    sim = cosine(result, obj);
+                }
+                std::vector<float> sim_vec(n_dims, sim);
+                pad.write("comparison", sim_vec, "eval");
+                break;
+            }
+            case Op::NOT: {
+                auto obj = pad.read("object");
+                if (!obj.empty()) {
+                    for (auto& x : obj) x = -x;
+                    pad.write("object", obj, "modifier");
+                }
+                break;
+            }
+            case Op::BIND_QUERY: {
+                auto subj = pad.read("subject");
+                auto rel  = pad.read("relation");
+                if (!subj.empty() && !rel.empty()) {
+                    auto [ans, conf] = binding.query(subj, rel, true);
+                    if (conf > 0.5f) {
+                        pad.write("result", ans, "binding");
+                    }
+                }
+                break;
+            }
+            case Op::BIND_ISA: {
+                auto subj = pad.read("subject");
+                if (!subj.empty()) {
+                    auto isa_vec = language.encode("isa");
+                    auto [ans, conf] = binding.query(subj, isa_vec, true);
+                    if (conf > 0.5f) {
+                        pad.write("result", ans, "binding");
+                    }
+                }
+                break;
+            }
+            case Op::RETRIEVE: {
+                auto focus = pad.read("focus");
+                if (!focus.empty()) {
+                    auto topk = episodic.retrieve_topk(focus, 1);
+                    if (!topk.empty()) {
+                        auto* ep = episodic.get_episode(topk[0].second);
+                        if (ep) {
+                            if (!ep->payload.empty()) {
+                                pad.write("result", ep->payload, "episodic");
+                            } else if (!ep->root.summary_spike.empty()) {
+                                std::vector<float> dense(n_dims, 0.f);
+                                size_t lim = std::min(dense.size(), ep->root.summary_spike.size());
+                                for (size_t i = 0; i < lim; i++) {
+                                    if (ep->root.summary_spike[i]) dense[i] = 1.0f;
+                                }
+                                pad.write("result", dense, "episodic");
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            case Op::ANALOGY: {
+                auto a   = pad.read("subject");
+                auto rel = pad.read("relation");
+                auto ctx = working_mem.context();
+                if (!a.empty() && !rel.empty()) {
+                    auto mapped = analogy.structure_map(a, rel, ctx.empty() ? std::vector<float>(n_dims, 0.f) : ctx);
+                    pad.write("result", mapped, "analogy");
+                }
+                break;
+            }
+            case Op::ASK_USER: {
+                // Signals that the BG wants to ask the user a question
+                // Writes a special "ask" goal to result
+                auto ask_vec = language.encode("ask");
+                pad.write("result", ask_vec, "curiosity");
+                break;
+            }
+            case Op::STORE_SUBJ: {
+                auto sens = pad.read("sensory_input");
+                if (!sens.empty()) pad.write("subject", sens, "context");
+                break;
+            }
+            case Op::STORE_REL: {
+                auto sens = pad.read("sensory_input");
+                if (!sens.empty()) pad.write("relation", sens, "context");
+                break;
+            }
+            case Op::STORE_OBJ: {
+                auto sens = pad.read("sensory_input");
+                if (!sens.empty()) pad.write("object", sens, "context");
+                break;
+            }
+            case Op::SPEAK: {
+                auto res = pad.read("result");
+                if (!res.empty()) {
+                    std::string word = language.best_word(res);
+                    if (!word.empty() && commit) {
+                        spoken_words.push_back(word);
+                    }
+                }
+                break;
+            }
+            case Op::SPEAK_SUBJ: {
+                auto res = pad.read("subject");
+                if (!res.empty()) {
+                    std::string word = language.best_word(res);
+                    if (!word.empty() && commit) {
+                        spoken_words.push_back(word);
+                    }
+                }
+                break;
+            }
+            case Op::SPEAK_REL: {
+                auto res = pad.read("relation");
+                if (!res.empty()) {
+                    std::string word = language.best_word(res);
+                    if (!word.empty() && commit) {
+                        spoken_words.push_back(word);
+                    }
+                }
+                break;
+            }
+            case Op::SPEAK_OBJ: {
+                auto res = pad.read("object");
+                if (!res.empty()) {
+                    std::string word = language.best_word(res);
+                    if (!word.empty() && commit) {
+                        spoken_words.push_back(word);
+                    }
+                }
+                break;
+            }
+            case Op::ATTEND: {
+                // Focus on the missing slot that contains '?'
+                auto subj = pad.read("subject");
+                auto rel = pad.read("relation");
+                auto obj = pad.read("object");
+                
+                auto q_vec = language.encode("?");
+                
+                if (!subj.empty() && cosine(subj, q_vec) > 0.8f) {
+                    pad.write("focus", subj, "attention");
+                } else if (!rel.empty() && cosine(rel, q_vec) > 0.8f) {
+                    pad.write("focus", rel, "attention");
+                } else if (!obj.empty() && cosine(obj, q_vec) > 0.8f) {
+                    pad.write("focus", obj, "attention");
+                }
+                break;
+            }
+            case Op::HALT:
+            default:
+                break;
+        }
+
+        std::vector<float> ctx(n_dims, 0.f);
+        auto slots = pad.slot_names();
+        for (const auto& s : slots) {
+            auto val = pad.read(s);
+            
+            // Create a deterministic slot-specific embedding
+            std::string slot_sym = "SLOT_" + s;
+            if (!symbolic.knows(slot_sym)) symbolic.bind(slot_sym);
+            auto slot_embed = symbolic.lookup(slot_sym);
+            
+            size_t lim = std::min(val.size(), ctx.size());
+            for (size_t i = 0; i < lim; i++) {
+                ctx[i] += val[i] * slot_embed[i];
+            }
+        }
+        float norm_val = 0.f;
+        for (float x : ctx) norm_val += x * x;
+        if (norm_val > 1e-8f) {
+            norm_val = std::sqrt(norm_val);
+            for (float& x : ctx) x /= norm_val;
+        }
+        return ctx;
+    }
+
+    void load_bg(const std::string& path) {
+        bg_controller = BasalGanglia::load(path);
+    }
+
+    void save_bg(const std::string& path) const {
+        bg_controller.save(path);
+    }
+
+    void start_reasoning() {
+        bg_controller.clear_traces();
+        std::vector<float> initial_ctx = simulate_op(Op::HALT, scratchpad);
+        scratchpad.start_tree(initial_ctx);
+    }
+
+    std::vector<int> reason(const std::string& goal_word, int max_steps = 10, float epsilon = 0.0f) {
+        std::vector<int> solution_path;
+        auto goal_vec = language.encode(goal_word);
+        
+        std::vector<float> initial_ctx = simulate_op(Op::HALT, scratchpad); // just gets current summary
+        int root_id = scratchpad.start_tree(initial_ctx);
+        
+        for (int step = 0; step < max_steps; step++) {
+            auto current_ctx = scratchpad.current_tree_state();
+            
+            bool greedy = (epsilon == 0.0f);
+            auto act = bg_controller.select_op(current_ctx, goal_vec, greedy, -1);
+            
+            // Re-run forward pass to get value just for logging/halting
+            std::vector<float> h, inp;
+            auto [logits, current_value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+            
+            if (current_value >= 0.95f) {
+                solution_path.push_back((int)Op::HALT);
+                break; // Reached goal!
+            }
+            
+            struct Eval { int op; float cost; int child_id; };
+            std::vector<Eval> evals;
+            auto probs = BasalGanglia::softmax(logits);
+            
+            for (int op_idx = 0; op_idx < (int)Op::N_OPS; op_idx++) {
+                if (op_idx == (int)Op::HALT) continue;
+                if (probs[op_idx] < 0.05f) continue;
+                
+                auto sim_pad = scratchpad; // Deep copy
+                auto next_ctx = simulate_op((Op)op_idx, sim_pad, false);
+                
+                std::vector<float> h_child, inp_child;
+                auto [logits_c, value_c] = bg_controller.forward(next_ctx, goal_vec, h_child, inp_child);
+                
+                // PUCT style heuristic: combine Critic value with Actor prior
+                float c_puct = 2.0f;
+                float h_cost = (1.0f - value_c) - c_puct * probs[op_idx];
+                
+                int child_id = scratchpad.branch(next_ctx, h_cost);
+                evals.push_back({op_idx, h_cost, child_id});
+            }
+            
+            if (evals.empty()) break;
+            
+            int best_id = scratchpad.move_to_best_child();
+            int picked_op = (int)Op::HALT;
+            for (auto& e : evals) {
+                if (e.child_id == best_id) {
+                    picked_op = e.op;
+                    break;
+                }
+            }
+            
+            solution_path.push_back(picked_op);
+            simulate_op((Op)picked_op, scratchpad);
+        }
+        return solution_path;
+    }
+
+    // Unified Cognitive Step: PERCEIVE -> THINK -> SPEAK
+    std::string cognitive_step(const std::string& input_text) {
+        // 1. PERCEIVE
+        auto input_vec = language.encode(input_text);
+        auto perceive_res = perceive(input_vec);
+        
+        // 2. THINK (Reasoning)
+        // Load working memory context into scratchpad to ground the tree search
+        auto ctx = working_mem.context();
+        if (!ctx.empty()) {
+            scratchpad.write("subject", ctx, "context");
+        }
+        
+        // We set a default conversational goal: resolve uncertainty or reply
+        std::string goal_word = "reply";
+        
+        // Use PUCT to reason for up to 5 steps
+        std::vector<int> solution = reason(goal_word, 5, 0.05f); // 5% epsilon exploration
+        
+        // 3. SPEAK
+        // After reasoning, the scratchpad contains the final result. Decode it to a word.
+        auto result_vec = scratchpad.read("result");
+        std::string reply = "";
+        
+        if (!result_vec.empty()) {
+            reply = language.best_word(result_vec);
+        } else {
+            // If no clear result from reasoning, use fast inner speech (Imagination)
+            auto think_res = think(1);
+            if (!think_res.words.empty()) {
+                reply = think_res.words[0];
+            } else {
+                reply = "...";
+            }
+        }
+        
+        return reply;
+    }
+
+    int force_reason_step(int op_idx, const std::string& goal_word) {
+        auto goal_vec = language.encode(goal_word);
+        // Use same fresh-slot context as direct_reason_step for train/infer consistency
+        Scratchpad tmp = scratchpad;
+        auto current_ctx = simulate_op(Op::HALT, tmp);
+        std::vector<float> h, inp;
+        auto [logits, value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+        // Record trace for the FORCED op so reinforce_bg can update W2 row for that op
+        bg_controller.record_trace(op_idx, h, inp, value);
+        Op forced = (Op)op_idx;
+        simulate_op(forced, scratchpad);
+        auto next_ctx = simulate_op(Op::HALT, scratchpad);
+        scratchpad.branch(next_ctx, 0.0f);
+        scratchpad.move_to_best_child();
+        return op_idx;
+    }
+
+    // Greedy one-shot op selection — mirrors training without PUCT tree overhead.
+    // Records a trace so reinforce_bg can backprop gradient.
+    int direct_reason_step(const std::string& goal_word) {
+        auto goal_vec = language.encode(goal_word);
+        // Use simulate_op(HALT) to get a fresh flat summary of ALL current slots,
+        // including sensory_input that was just written by perceive(). This is the
+        // key difference from current_tree_state() which returns a stale tree snapshot.
+        Scratchpad tmp = scratchpad;
+        auto current_ctx = simulate_op(Op::HALT, tmp);
+        std::vector<float> h, inp;
+        auto [logits, value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+        auto probs = BasalGanglia::softmax(logits);
+        int chosen = (int)(std::max_element(probs.begin(), probs.end()) - probs.begin());
+        // Record trace so reinforce_bg has something to update
+        bg_controller.record_trace(chosen, h, inp, value);
+        // Apply op directly to scratchpad (no tree branching needed for linear parsing)
+        simulate_op((Op)chosen, scratchpad);
+        // Update tree state so next step sees the result
+        auto next_ctx = simulate_op(Op::HALT, scratchpad);
+        scratchpad.branch(next_ctx, 0.0f);
+        scratchpad.move_to_best_child();
+        return chosen;
+    }
+
+    int reason_step(const std::string& goal_word, float epsilon = 0.0f) {
+        auto goal_vec = language.encode(goal_word);
+        auto current_ctx = scratchpad.current_tree_state();
+        
+        std::vector<float> h, inp;
+        auto [logits, current_value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+        
+        struct Eval { int op; float cost; int child_id; };
+        std::vector<Eval> evals;
+        auto probs = BasalGanglia::softmax(logits);
+        
+        std::mutex evals_mtx;
+        
+        #pragma omp parallel for
+        for (int op_idx = 0; op_idx < (int)Op::N_OPS; op_idx++) {
+            if (op_idx == (int)Op::HALT) continue;
+            if (probs[op_idx] < 0.05f) continue;
+            
+            Scratchpad sim_pad = scratchpad;
+            auto next_ctx = simulate_op((Op)op_idx, sim_pad, false);
+            std::vector<float> local_h, local_inp;
+            auto [next_logits, next_val] = bg_controller.forward(next_ctx, goal_vec, local_h, local_inp);
+            
+            // PUCT style heuristic: combine Critic value with Actor prior
+            // This prevents the search from falling into OOD hallucinations
+            float c_puct = 2.0f;
+            float h_cost = (1.0f - next_val) - c_puct * probs[op_idx];
+            
+            int child_id = scratchpad.branch(next_ctx, h_cost);
+            
+            std::lock_guard<std::mutex> lock(evals_mtx);
+            evals.push_back({op_idx, h_cost, child_id});
+        }
+        
+        if (evals.empty()) return (int)Op::HALT;
+        
+        int best_id = scratchpad.move_to_best_child();
+        int picked_op = (int)Op::HALT;
+        for (auto& e : evals) {
+            if (e.child_id == best_id) {
+                picked_op = e.op;
+                break;
+            }
+        }
+        
+        bg_controller.record_trace(picked_op, h, inp, current_value);
+        simulate_op((Op)picked_op, scratchpad);
+        return picked_op;
     }
 
     // SPEAK: convert concept sequence to word sequence

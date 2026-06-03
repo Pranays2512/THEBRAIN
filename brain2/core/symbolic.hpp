@@ -45,6 +45,7 @@ enum class SymbolOp {
     ADD,        // Blend sum
     SUBTRACT,   // Blend difference
     MULTIPLY,   // Element-wise product (normalized)
+    DIVIDE,     // Element-wise division (normalized)
     COMPARE,    // Similarity measure → scaled identity
     SEQUENCE,   // Sequence continuation hint
     NEGATE,     // Flip sign
@@ -155,6 +156,14 @@ public:
                 for (int i = 0; i < n; i++) result[i] = a[i] * b[i];
                 return normalize(result);
             }
+            case SymbolOp::DIVIDE: {
+                for (int i = 0; i < n; i++) {
+                    // Prevent division by zero with small epsilon
+                    float denom = (std::abs(b[i]) < 1e-6f) ? 1e-6f * (b[i] >= 0 ? 1 : -1) : b[i];
+                    result[i] = a[i] / denom;
+                }
+                return normalize(result);
+            }
             case SymbolOp::COMPARE: {
                 // Return similarity score as uniform scaled identity vector
                 float na = norm(a), nb = norm(b);
@@ -218,6 +227,7 @@ public:
         bind("+",  {}, SymbolOp::ADD,      "math");
         bind("-",  {}, SymbolOp::SUBTRACT, "math");
         bind("*",  {}, SymbolOp::MULTIPLY, "math");
+        bind("/",  {}, SymbolOp::DIVIDE,   "math");
         bind("=",  {}, SymbolOp::COMPARE,  "relation");
         bind(">",  {}, SymbolOp::COMPARE,  "relation");
         bind("<",  {}, SymbolOp::COMPARE,  "relation");

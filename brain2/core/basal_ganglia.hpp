@@ -11,15 +11,34 @@ namespace brain2 {
 
 // Operations the BG controller can select
 enum class Op : int {
-    READ       = 0,  // load from scratchpad slot into working buffer
-    WRITE      = 1,  // write working buffer to scratchpad slot
-    APPLY      = 2,  // apply symbolic op(slot_a, slot_b) → slot_out
-    COMPARE    = 3,  // cosine similarity between two slots
-    BIND_QUERY = 4,  // query BindingMemory with (slot_a, slot_b) → slot_out
-    RETRIEVE   = 5,  // retrieve from episodic memory
-    ANALOGY    = 6,  // structural mapping analogy
-    HALT       = 7,  // done — answer is in "result" slot
-    N_OPS      = 8
+    READ       = 0,  
+    WRITE      = 1,  
+    MATH_SUB   = 2,  
+    MATH_DIV   = 3,  
+    COMPARE    = 4,  
+    BIND_QUERY = 5,  
+    RETRIEVE   = 6,  
+    ANALOGY    = 7,  
+    HALT       = 8,  
+    STORE_SUBJ = 9,
+    STORE_REL  = 10,
+    STORE_OBJ  = 11,
+    NOT        = 12,
+    BIND_ISA   = 13,
+    ASK_USER   = 14,
+    SPEAK      = 15,
+    ATTEND     = 16,
+    SPEAK_SUBJ = 17,
+    SPEAK_REL  = 18,
+    SPEAK_OBJ  = 19,
+    MATH_ADD   = 20,
+    MATH_MUL   = 21,
+    MATH_FACT  = 22,
+    MATH_FACT_REL = 23,
+    MATH_POW   = 24,
+    STORE_TMP  = 25,
+    MATH_DIV_FLOAT = 26,
+    N_OPS      = 27
 };
 
 struct BGAction {
@@ -32,7 +51,7 @@ struct BGAction {
 // Small 2-layer MLP trained by TD(lambda) Actor-Critic
 struct BasalGanglia {
     int n_dims = 0;
-    int hidden = 64;
+    int hidden = 256;
     int n_ops  = (int)Op::N_OPS;
 
     // Weights: Actor + Critic
@@ -46,9 +65,23 @@ struct BasalGanglia {
     std::vector<Trace> traces_;
     std::mt19937       rng_;
 
-    BasalGanglia() : rng_(42) {}
+    struct VectorHash {
+        size_t operator()(const std::vector<float>& v) const {
+            size_t seed = v.size();
+            for(auto& i : v) {
+                seed ^= std::hash<float>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+            return seed;
+        }
+    };
+
+    // Memoization Cache
+    std::unordered_map<std::vector<float>, std::pair<std::vector<float>, float>, VectorHash> cache_;
+    std::unique_ptr<std::mutex> cache_mtx_;
+
+    BasalGanglia() : rng_(42), cache_mtx_(std::make_unique<std::mutex>()) {}
     BasalGanglia(int n_dims, float lr = 0.001f, unsigned seed = 42)
-        : n_dims(n_dims), lr_(lr), rng_(seed) {
+        : n_dims(n_dims), lr_(lr), rng_(seed), cache_mtx_(std::make_unique<std::mutex>()) {
         int in = 2 * n_dims;
         std::normal_distribution<float> nd(0.f, 0.02f);
         W1.resize(hidden * in);   for (auto& w : W1) w = nd(rng_);
@@ -64,6 +97,26 @@ struct BasalGanglia {
                                                  const std::vector<float>& goal,
                                                  std::vector<float>& h_out,
                                                  std::vector<float>& inp_out) {
+        
+        {
+            std::lock_guard<std::mutex> lock(*cache_mtx_);
+            auto it = cache_.find(ctx);
+            if (it != cache_.end()) {
+                // Must reconstruct inp_out and h_out because trace recording requires them!
+                inp_out.assign(2 * n_dims, 0.f);
+                for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp_out[i]          = ctx[i];
+                for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp_out[n_dims + i]  = goal[i];
+                h_out.assign(hidden, 0.f);
+                for (int i = 0; i < hidden; i++) {
+                    float s = b1[i];
+                    const float* row = W1.data() + i * 2 * n_dims;
+                    for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp_out[j];
+                    h_out[i] = std::tanh(s);
+                }
+                return it->second;
+            }
+        }
+
         inp_out.assign(2 * n_dims, 0.f);
         for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp_out[i]          = ctx[i];
         for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp_out[n_dims + i]  = goal[i];
@@ -87,7 +140,12 @@ struct BasalGanglia {
         float value = b_v[0];
         for (int j = 0; j < hidden; j++) value += W_v[j] * h_out[j];
 
-        return {logits, value};
+        std::pair<std::vector<float>, float> result = {logits, value};
+        {
+            std::lock_guard<std::mutex> lock(*cache_mtx_);
+            cache_[ctx] = result;
+        }
+        return result;
     }
 
     static std::vector<float> softmax(const std::vector<float>& x) {
@@ -99,14 +157,20 @@ struct BasalGanglia {
         return out;
     }
 
+    void record_trace(int op_idx, const std::vector<float>& h, const std::vector<float>& inp, float value) {
+        traces_.push_back({op_idx, h, inp, value});
+    }
+
     BGAction select_op(const std::vector<float>& ctx,
                        const std::vector<float>& goal,
-                       bool greedy = false) {
+                       bool greedy = false, int force_action = -1) {
         std::vector<float> h, inp;
         auto [logits, value] = forward(ctx, goal, h, inp);
         auto probs  = softmax(logits);
         int chosen;
-        if (greedy) {
+        if (force_action >= 0) {
+            chosen = force_action;
+        } else if (greedy) {
             chosen = (int)(std::max_element(probs.begin(), probs.end()) - probs.begin());
         } else {
             std::discrete_distribution<int> dist(probs.begin(), probs.end());
@@ -164,7 +228,11 @@ struct BasalGanglia {
         traces_.clear();
     }
 
-    void clear_traces() { traces_.clear(); }
+    void clear_traces() { 
+        traces_.clear(); 
+        std::lock_guard<std::mutex> lock(*cache_mtx_);
+        cache_.clear();
+    }
 
     void save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);
@@ -199,6 +267,32 @@ struct BasalGanglia {
         f.read((char*)bg.b2.data(), bg.b2.size() * sizeof(float));
         f.read((char*)bg.W_v.data(), bg.W_v.size() * sizeof(float));
         f.read((char*)bg.b_v.data(), bg.b_v.size() * sizeof(float));
+        
+        // Dynamic Expansion if ops were added
+        int current_ops = (int)Op::N_OPS;
+        if (bg.n_ops < current_ops) {
+            std::normal_distribution<float> nd(0.f, 0.02f);
+            
+            std::vector<float> new_W2(current_ops * bg.hidden, 0.f);
+            for (int i = 0; i < bg.n_ops; i++) {
+                for (int j = 0; j < bg.hidden; j++) {
+                    new_W2[i * bg.hidden + j] = bg.W2[i * bg.hidden + j];
+                }
+            }
+            for (int i = bg.n_ops; i < current_ops; i++) {
+                for (int j = 0; j < bg.hidden; j++) {
+                    new_W2[i * bg.hidden + j] = nd(bg.rng_);
+                }
+            }
+            
+            std::vector<float> new_b2(current_ops, 0.f);
+            for (int i = 0; i < bg.n_ops; i++) new_b2[i] = bg.b2[i];
+            
+            bg.W2 = new_W2;
+            bg.b2 = new_b2;
+            bg.n_ops = current_ops;
+        }
+        
         return bg;
     }
 };

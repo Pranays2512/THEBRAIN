@@ -1,0 +1,3 @@
+derivative finds ?
+apple isa ?
+exit

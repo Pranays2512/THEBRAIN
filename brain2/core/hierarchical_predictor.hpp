@@ -142,6 +142,8 @@ struct MiniLSTM {
         Wx.resize(4*h_dim*in_dim); Wh.resize(4*h_dim*h_dim);
         b.resize(4*h_dim); Wo.resize(in_dim*h_dim); bo.resize(in_dim);
         h.assign(h_dim, 0.f); c.assign(h_dim, 0.f);
+        ig.assign(h_dim, 0.f); fg.assign(h_dim, 0.f);
+        gg.assign(h_dim, 0.f); og.assign(h_dim, 0.f);
         f.read((char*)Wx.data(), Wx.size()*sizeof(float));
         f.read((char*)Wh.data(), Wh.size()*sizeof(float));
         f.read((char*)b.data(),  b.size()*sizeof(float));
@@ -268,6 +270,10 @@ struct HierarchicalPredictor {
         f.read((char*)&hp.episode_size, sizeof(int));
         hp.chunk_acc_.assign(hp.n_dims, 0.f);
         hp.episode_acc_.assign(hp.n_dims, 0.f);
+        hp.prev_chunk_summary_.assign(hp.n_dims, 0.f);
+        hp.prev_ep_summary_.assign(hp.n_dims, 0.f);
+        hp.current_chunk_pred_.assign(hp.n_dims, 0.f);
+        hp.current_ep_pred_.assign(hp.n_dims, 0.f);
         hp.chunk.load(f);
         hp.episode.load(f);
         return hp;

@@ -1,0 +1,700 @@
+[semantic_query] fish isa ?
+[semantic_query] tiger isa ?
+[semantic_query] cat can ?
+[semantic_query] tiger isa ?
+[semantic_query] fish can ?
+[semantic_query] dog can ?
+[semantic_query] fox has ?
+[semantic_query] lion isa ?
+[semantic_query] dog can ?
+[semantic_query] dog can ?
+[semantic_query] elephant isa ?
+[semantic_query] lion has ?
+[semantic_query] bear isa ?
+[semantic_query] lion isa ?
+[semantic_query] tiger isa ?
+[semantic_query] wolf isa ?
+[semantic_query] cat isa ?
+[semantic_query] tiger isa ?
+[semantic_query] wolf isa ?
+[semantic_query] wolf can ?
+[semantic_query] bear isa ?
+[semantic_query] tiger isa ?
+[semantic_query] tiger can ?
+[semantic_query] cat can ?
+[semantic_query] fish has ?
+[semantic_query] fox can ?
+[semantic_query] bear can ?
+[semantic_query] tiger isa ?
+[semantic_query] fox can ?
+[semantic_query] cat can ?
+[semantic_query] lion has ?
+[semantic_query] bird isa ?
+[semantic_query] fox isa ?
+[semantic_query] bear isa ?
+[semantic_query] elephant has ?
+[semantic_query] cat can ?
+[semantic_query] bird can ?
+[semantic_query] bird has ?
+[semantic_query] wolf has ?
+[semantic_query] fox isa ?
+[semantic_query] dog has ?
+[semantic_query] lion has ?
+[semantic_query] tiger can ?
+[semantic_query] bear has ?
+[semantic_query] bird can ?
+[semantic_query] elephant isa ?
+[semantic_query] dog can ?
+[semantic_query] bird isa ?
+[semantic_query] wolf can ?
+[semantic_query] fish can ?
+[semantic_query] dog can ?
+[semantic_query] bird isa ?
+[semantic_query] fish can ?
+[semantic_query] tiger can ?
+[semantic_query] elephant isa ?
+[semantic_query] dog isa ?
+[semantic_query] lion isa ?
+[semantic_query] elephant isa ?
+[semantic_query] fox has ?
+[semantic_query] fox can ?
+[semantic_query] bear isa ?
+[semantic_query] fish can ?
+[semantic_query] tiger can ?
+[semantic_query] dog isa ?
+[semantic_query] fish has ?
+[semantic_query] bear can ?
+[semantic_query] elephant can ?
+[semantic_query] bird has ?
+[semantic_query] cat has ?
+[semantic_query] fox isa ?
+[semantic_query] dog has ?
+[semantic_query] elephant isa ?
+[semantic_query] bear isa ?
+[semantic_query] elephant has ?
+[semantic_query] cat has ?
+[semantic_query] bird can ?
+[semantic_query] dog can ?
+[semantic_query] cat isa ?
+[semantic_query] bird isa ?
+[semantic_query] wolf can ?
+[semantic_query] cat has ?
+[semantic_query] bird has ?
+[semantic_query] elephant has ?
+[semantic_query] elephant isa ?
+[semantic_query] elephant can ?
+[semantic_query] tiger isa ?
+[semantic_query] cat can ?
+[semantic_query] cat can ?
+[semantic_query] cat has ?
+[semantic_query] dog has ?
+[semantic_query] bear isa ?
+[semantic_query] wolf can ?
+[semantic_query] fox has ?
+[semantic_query] dog has ?
+[semantic_query] tiger can ?
+[semantic_query] dog has ?
+[semantic_query] bird can ?
+[semantic_query] lion can ?
+[semantic_query] dog isa ?
+[semantic_query] fish has ?
+[describe] describe moon
+[describe] describe apple
+[describe] describe tiger
+[describe] describe fish
+[describe] describe bear
+[describe] describe pizza
+[describe] describe fish
+[describe] describe moon
+[describe] describe bird
+[describe] describe tiger
+[describe] describe bear
+[describe] describe lion
+[describe] describe bird
+[describe] describe wolf
+[describe] describe elephant
+[describe] describe bear
+[describe] describe tiger
+[describe] describe wolf
+[describe] describe wolf
+[describe] describe bird
+[describe] describe sun
+[describe] describe fish
+[describe] describe fish
+[describe] describe bear
+[describe] describe elephant
+[describe] describe bear
+[describe] describe bear
+[describe] describe fish
+[describe] describe bird
+[describe] describe bear
+[describe] describe robot
+[describe] describe earth
+[describe] describe car
+[describe] describe robot
+[describe] describe moon
+[describe] describe fox
+[describe] describe fox
+[describe] describe elephant
+[describe] describe earth
+[describe] describe dog
+[describe] describe car
+[describe] describe wolf
+[describe] describe fox
+[describe] describe lion
+[describe] describe pizza
+[describe] describe dog
+[describe] describe earth
+[describe] describe sun
+[describe] describe pizza
+[describe] describe bird
+[describe] describe apple
+[describe] describe lion
+[describe] describe fish
+[describe] describe lion
+[describe] describe cat
+[describe] describe cat
+[describe] describe sun
+[describe] describe dog
+[describe] describe moon
+[describe] describe sun
+[describe] describe cat
+[describe] describe sun
+[describe] describe robot
+[describe] describe cat
+[describe] describe bear
+[describe] describe lion
+[describe] describe robot
+[describe] describe wolf
+[describe] describe bird
+[describe] describe earth
+[describe] describe wolf
+[describe] describe bird
+[describe] describe cat
+[describe] describe elephant
+[describe] describe bear
+[describe] describe fish
+[describe] describe cat
+[describe] describe wolf
+[describe] describe sun
+[describe] describe dog
+[describe] describe cat
+[describe] describe earth
+[describe] describe pizza
+[describe] describe wolf
+[describe] describe bear
+[describe] describe earth
+[describe] describe car
+[describe] describe moon
+[describe] describe fox
+[describe] describe dog
+[describe] describe dog
+[describe] describe robot
+[describe] describe moon
+[describe] describe bear
+[describe] describe lion
+[describe] describe car
+[describe] describe moon
+[describe] describe elephant
+[describe] describe cat
+[describe] describe car
+[algebra] 8 x + 42 = 170
+[algebra] 7 x + 36 = 127
+[algebra] 4 x + 25 = 69
+[algebra] 15 x + 27 = 102
+[algebra] 9 x + 15 = 195
+[algebra] 12 x + 44 = 80
+[algebra] 8 x + 23 = 167
+[algebra] 11 x + 4 = 70
+[algebra] 7 x + 34 = 132
+[algebra] 7 x + 12 = 96
+[algebra] 12 x + 29 = 245
+[algebra] 13 x + 23 = 101
+[algebra] 10 x + 23 = 53
+[algebra] 10 x + 15 = 95
+[algebra] 4 x + 45 = 121
+[algebra] 11 x + 14 = 157
+[algebra] 10 x + 50 = 240
+[algebra] 2 x + 9 = 15
+[algebra] 2 x + 9 = 31
+[algebra] 9 x + 8 = 179
+[algebra] 11 x + 42 = 196
+[algebra] 6 x + 47 = 131
+[algebra] 5 x + 17 = 62
+[algebra] 2 x + 37 = 73
+[algebra] 11 x + 1 = 56
+[algebra] 5 x + 20 = 35
+[algebra] 4 x + 10 = 86
+[algebra] 9 x + 21 = 165
+[algebra] 1 x + 1 = 9
+[algebra] 6 x + 10 = 112
+[algebra] 15 x + 47 = 137
+[algebra] 5 x + 1 = 71
+[algebra] 9 x + 26 = 35
+[algebra] 4 x + 17 = 53
+[algebra] 11 x + 39 = 171
+[algebra] 11 x + 24 = 35
+[algebra] 12 x + 2 = 194
+[algebra] 13 x + 11 = 63
+[algebra] 10 x + 31 = 71
+[algebra] 8 x + 24 = 64
+[algebra] 13 x + 40 = 157
+[algebra] 15 x + 8 = 128
+[algebra] 7 x + 38 = 171
+[algebra] 4 x + 24 = 40
+[algebra] 11 x + 30 = 250
+[algebra] 15 x + 35 = 170
+[algebra] 14 x + 33 = 187
+[algebra] 14 x + 31 = 101
+[algebra] 7 x + 5 = 124
+[algebra] 2 x + 47 = 71
+[algebra] 11 x + 5 = 93
+[algebra] 2 x + 47 = 81
+[algebra] 13 x + 16 = 94
+[algebra] 15 x + 15 = 210
+[algebra] 8 x + 41 = 145
+[algebra] 6 x + 17 = 41
+[algebra] 15 x + 25 = 295
+[algebra] 7 x + 25 = 137
+[algebra] 3 x + 34 = 52
+[algebra] 11 x + 17 = 72
+[algebra] 8 x + 40 = 88
+[algebra] 15 x + 18 = 93
+[algebra] 4 x + 34 = 102
+[algebra] 9 x + 43 = 79
+[algebra] 5 x + 8 = 78
+[algebra] 11 x + 32 = 98
+[algebra] 15 x + 36 = 276
+[algebra] 10 x + 9 = 39
+[algebra] 2 x + 21 = 59
+[algebra] 7 x + 28 = 140
+[algebra] 3 x + 12 = 66
+[algebra] 5 x + 10 = 95
+[algebra] 3 x + 5 = 47
+[algebra] 12 x + 49 = 61
+[algebra] 12 x + 3 = 231
+[algebra] 9 x + 34 = 97
+[algebra] 1 x + 15 = 23
+[algebra] 10 x + 25 = 155
+[algebra] 7 x + 41 = 181
+[algebra] 5 x + 2 = 92
+[algebra] 15 x + 15 = 90
+[algebra] 11 x + 35 = 79
+[algebra] 2 x + 17 = 27
+[algebra] 12 x + 34 = 58
+[algebra] 13 x + 7 = 189
+[algebra] 8 x + 38 = 54
+[algebra] 11 x + 13 = 167
+[algebra] 6 x + 21 = 129
+[algebra] 10 x + 12 = 152
+[algebra] 5 x + 41 = 141
+[algebra] 4 x + 1 = 77
+[algebra] 13 x + 28 = 210
+[algebra] 8 x + 5 = 101
+[algebra] 15 x + 40 = 130
+[algebra] 4 x + 21 = 53
+[algebra] 2 x + 22 = 40
+[algebra] 6 x + 35 = 119
+[algebra] 11 x + 34 = 122
+[algebra] 6 x + 49 = 151
+[algebra] 15 x + 18 = 228
+[permute] 5 permute 3
+[permute] 8 permute 6
+[permute] 5 permute 1
+[permute] 3 permute 1
+[permute] 8 permute 7
+[permute] 4 permute 2
+[permute] 6 permute 1
+[permute] 3 permute 2
+[permute] 3 permute 1
+[permute] 8 permute 1
+[permute] 7 permute 3
+[permute] 5 permute 3
+[permute] 6 permute 1
+[permute] 7 permute 2
+[permute] 7 permute 1
+[permute] 7 permute 4
+[permute] 8 permute 2
+[permute] 6 permute 5
+[permute] 7 permute 2
+[permute] 5 permute 2
+[permute] 4 permute 2
+[permute] 8 permute 4
+[permute] 3 permute 2
+[permute] 6 permute 1
+[permute] 3 permute 1
+[permute] 5 permute 1
+[permute] 6 permute 4
+[permute] 4 permute 1
+[permute] 8 permute 4
+[permute] 7 permute 2
+[permute] 4 permute 1
+[permute] 6 permute 1
+[permute] 8 permute 6
+[permute] 8 permute 7
+[permute] 3 permute 2
+[permute] 7 permute 4
+[permute] 8 permute 1
+[permute] 7 permute 2
+[permute] 8 permute 4
+[permute] 8 permute 6
+[permute] 6 permute 3
+[permute] 4 permute 1
+[permute] 5 permute 4
+[permute] 8 permute 3
+[permute] 7 permute 6
+[permute] 3 permute 1
+[permute] 8 permute 5
+[permute] 3 permute 2
+[permute] 6 permute 2
+[permute] 8 permute 4
+[permute] 5 permute 1
+[permute] 7 permute 5
+[permute] 7 permute 4
+[permute] 3 permute 2
+[permute] 6 permute 3
+[permute] 3 permute 2
+[permute] 6 permute 4
+[permute] 3 permute 2
+[permute] 4 permute 3
+[permute] 5 permute 1
+[permute] 6 permute 5
+[permute] 8 permute 7
+[permute] 6 permute 1
+[permute] 3 permute 1
+[permute] 4 permute 1
+[permute] 3 permute 1
+[permute] 5 permute 2
+[permute] 3 permute 2
+[permute] 8 permute 3
+[permute] 5 permute 3
+[permute] 6 permute 2
+[permute] 6 permute 4
+[permute] 4 permute 3
+[permute] 8 permute 5
+[permute] 8 permute 1
+[permute] 8 permute 1
+[permute] 6 permute 2
+[permute] 7 permute 6
+[permute] 4 permute 1
+[permute] 3 permute 1
+[permute] 8 permute 3
+[permute] 3 permute 2
+[permute] 8 permute 5
+[permute] 5 permute 4
+[permute] 6 permute 5
+[permute] 3 permute 1
+[permute] 8 permute 5
+[permute] 8 permute 2
+[permute] 4 permute 3
+[permute] 4 permute 3
+[permute] 4 permute 3
+[permute] 7 permute 1
+[permute] 8 permute 3
+[permute] 6 permute 3
+[permute] 8 permute 3
+[permute] 7 permute 3
+[permute] 3 permute 1
+[permute] 5 permute 3
+[permute] 7 permute 4
+[permute] 5 permute 2
+[probability] probability of 18 in 72
+[probability] probability of 13 in 52
+[probability] probability of 8 in 80
+[probability] probability of 14 in 56
+[probability] probability of 17 in 68
+[probability] probability of 12 in 36
+[probability] probability of 17 in 34
+[probability] probability of 7 in 21
+[probability] probability of 14 in 126
+[probability] probability of 9 in 27
+[probability] probability of 15 in 135
+[probability] probability of 19 in 95
+[probability] probability of 3 in 21
+[probability] probability of 6 in 6
+[probability] probability of 14 in 98
+[probability] probability of 15 in 150
+[probability] probability of 16 in 80
+[probability] probability of 16 in 128
+[probability] probability of 20 in 20
+[probability] probability of 12 in 12
+[probability] probability of 9 in 45
+[probability] probability of 14 in 42
+[probability] probability of 11 in 99
+[probability] probability of 10 in 70
+[probability] probability of 2 in 18
+[probability] probability of 3 in 18
+[probability] probability of 18 in 90
+[probability] probability of 12 in 108
+[probability] probability of 11 in 99
+[probability] probability of 18 in 180
+[probability] probability of 2 in 8
+[probability] probability of 18 in 126
+[probability] probability of 18 in 108
+[probability] probability of 8 in 56
+[probability] probability of 9 in 72
+[probability] probability of 20 in 120
+[probability] probability of 12 in 24
+[probability] probability of 8 in 72
+[probability] probability of 14 in 84
+[probability] probability of 17 in 136
+[probability] probability of 19 in 171
+[probability] probability of 6 in 24
+[probability] probability of 17 in 153
+[probability] probability of 14 in 42
+[probability] probability of 11 in 66
+[probability] probability of 8 in 80
+[probability] probability of 13 in 91
+[probability] probability of 17 in 119
+[probability] probability of 13 in 39
+[probability] probability of 7 in 14
+[probability] probability of 6 in 48
+[probability] probability of 8 in 80
+[probability] probability of 3 in 9
+[probability] probability of 1 in 3
+[probability] probability of 16 in 96
+[probability] probability of 14 in 14
+[probability] probability of 5 in 35
+[probability] probability of 2 in 4
+[probability] probability of 3 in 30
+[probability] probability of 8 in 80
+[probability] probability of 11 in 11
+[probability] probability of 5 in 10
+[probability] probability of 19 in 57
+[probability] probability of 7 in 35
+[probability] probability of 8 in 64
+[probability] probability of 8 in 48
+[probability] probability of 14 in 70
+[probability] probability of 7 in 63
+[probability] probability of 14 in 42
+[probability] probability of 9 in 72
+[probability] probability of 16 in 32
+[probability] probability of 19 in 19
+[probability] probability of 13 in 91
+[probability] probability of 2 in 4
+[probability] probability of 12 in 120
+[probability] probability of 6 in 12
+[probability] probability of 3 in 27
+[probability] probability of 1 in 6
+[probability] probability of 10 in 70
+[probability] probability of 13 in 13
+[probability] probability of 12 in 48
+[probability] probability of 20 in 200
+[probability] probability of 6 in 54
+[probability] probability of 7 in 35
+[probability] probability of 5 in 40
+[probability] probability of 7 in 70
+[probability] probability of 17 in 68
+[probability] probability of 18 in 36
+[probability] probability of 8 in 48
+[probability] probability of 14 in 70
+[probability] probability of 7 in 28
+[probability] probability of 13 in 52
+[probability] probability of 8 in 80
+[probability] probability of 1 in 2
+[probability] probability of 8 in 48
+[probability] probability of 13 in 26
+[probability] probability of 13 in 39
+[probability] probability of 6 in 60
+[probability] probability of 17 in 51
+[probability] probability of 13 in 117
+[area] area of 49 and 50
+[area] area of 40 and 42
+[area] area of 14 and 28
+[area] area of 21 and 36
+[area] area of 9 and 36
+[area] area of 42 and 30
+[area] area of 46 and 10
+[area] area of 20 and 29
+[area] area of 9 and 46
+[area] area of 4 and 46
+[area] area of 5 and 8
+[area] area of 11 and 23
+[area] area of 36 and 29
+[area] area of 12 and 29
+[area] area of 37 and 49
+[area] area of 27 and 26
+[area] area of 42 and 21
+[area] area of 26 and 10
+[area] area of 36 and 7
+[area] area of 13 and 25
+[area] area of 39 and 13
+[area] area of 10 and 49
+[area] area of 38 and 34
+[area] area of 2 and 45
+[area] area of 21 and 30
+[area] area of 23 and 37
+[area] area of 14 and 11
+[area] area of 37 and 30
+[area] area of 45 and 47
+[area] area of 35 and 47
+[area] area of 44 and 30
+[area] area of 33 and 19
+[area] area of 27 and 33
+[area] area of 23 and 4
+[area] area of 22 and 9
+[area] area of 36 and 31
+[area] area of 46 and 5
+[area] area of 26 and 1
+[area] area of 6 and 10
+[area] area of 20 and 16
+[area] area of 31 and 39
+[area] area of 2 and 34
+[area] area of 7 and 41
+[area] area of 25 and 38
+[area] area of 21 and 2
+[area] area of 12 and 11
+[area] area of 48 and 36
+[area] area of 17 and 46
+[area] area of 49 and 14
+[area] area of 32 and 22
+[area] area of 7 and 16
+[area] area of 11 and 49
+[area] area of 11 and 1
+[area] area of 2 and 49
+[area] area of 48 and 35
+[area] area of 5 and 1
+[area] area of 3 and 49
+[area] area of 6 and 3
+[area] area of 16 and 26
+[area] area of 37 and 40
+[area] area of 11 and 38
+[area] area of 4 and 5
+[area] area of 23 and 41
+[area] area of 21 and 5
+[area] area of 15 and 47
+[area] area of 6 and 40
+[area] area of 7 and 36
+[area] area of 3 and 5
+[area] area of 39 and 20
+[area] area of 34 and 37
+[area] area of 36 and 35
+[area] area of 50 and 24
+[area] area of 15 and 47
+[area] area of 16 and 31
+[area] area of 39 and 46
+[area] area of 34 and 2
+[area] area of 2 and 33
+[area] area of 24 and 1
+[area] area of 37 and 42
+[area] area of 26 and 41
+[area] area of 20 and 26
+[area] area of 19 and 6
+[area] area of 4 and 25
+[area] area of 7 and 12
+[area] area of 25 and 20
+[area] area of 15 and 32
+[area] area of 45 and 18
+[area] area of 49 and 49
+[area] area of 41 and 28
+[area] area of 16 and 10
+[area] area of 39 and 36
+[area] area of 11 and 26
+[area] area of 35 and 22
+[area] area of 28 and 50
+[area] area of 48 and 20
+[area] area of 29 and 48
+[area] area of 19 and 22
+[area] area of 5 and 30
+[area] area of 6 and 31
+[area] area of 31 and 6
+[power] 4 power 1
+[power] 7 power 4
+[power] 6 power 4
+[power] 10 power 2
+[power] 4 power 4
+[power] 1 power 1
+[power] 4 power 1
+[power] 2 power 4
+[power] 2 power 1
+[power] 7 power 3
+[power] 5 power 3
+[power] 10 power 4
+[power] 10 power 1
+[power] 3 power 1
+[power] 10 power 1
+[power] 10 power 2
+[power] 5 power 3
+[power] 5 power 3
+[power] 4 power 4
+[power] 10 power 1
+[power] 3 power 1
+[power] 10 power 4
+[power] 1 power 2
+[power] 3 power 1
+[power] 6 power 4
+[power] 3 power 2
+[power] 3 power 3
+[power] 7 power 2
+[power] 1 power 4
+[power] 10 power 4
+[power] 10 power 2
+[power] 1 power 4
+[power] 8 power 3
+[power] 1 power 1
+[power] 2 power 4
+[power] 4 power 1
+[power] 9 power 1
+[power] 8 power 2
+[power] 10 power 2
+[power] 8 power 2
+[power] 4 power 2
+[power] 10 power 4
+[power] 5 power 4
+[power] 2 power 3
+[power] 8 power 2
+[power] 2 power 4
+[power] 3 power 4
+[power] 10 power 1
+[power] 9 power 4
+[power] 2 power 1
+[power] 6 power 3
+[power] 9 power 2
+[power] 2 power 1
+[power] 7 power 4
+[power] 4 power 2
+[power] 6 power 2
+[power] 3 power 2
+[power] 4 power 4
+[power] 4 power 4
+[power] 7 power 2
+[power] 10 power 2
+[power] 6 power 2
+[power] 1 power 1
+[power] 1 power 3
+[power] 6 power 1
+[power] 5 power 1
+[power] 8 power 1
+[power] 3 power 3
+[power] 7 power 3
+[power] 10 power 4
+[power] 3 power 2
+[power] 4 power 4
+[power] 10 power 3
+[power] 8 power 3
+[power] 4 power 4
+[power] 8 power 3
+[power] 10 power 2
+[power] 1 power 3
+[power] 3 power 4
+[power] 6 power 2
+[power] 2 power 1
+[power] 10 power 4
+[power] 10 power 3
+[power] 2 power 4
+[power] 9 power 1
+[power] 10 power 3
+[power] 3 power 3
+[power] 1 power 1
+[power] 8 power 1
+[power] 9 power 4
+[power] 4 power 1
+[power] 4 power 1
+[power] 7 power 4
+[power] 9 power 2
+[power] 1 power 2
+[power] 6 power 2
+[power] 8 power 1
+[power] 7 power 3
+[power] 8 power 2
+[power] 5 power 3

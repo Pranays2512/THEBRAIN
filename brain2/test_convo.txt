@@ -1,0 +1,7 @@
+hello
+hello is greeting
+hello is ?
+pranay is creator
+pranay is ?
+derivative finds ?
+exit

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Scanner | v3 Cognitive Loop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar / Chat Area -->
+        <div id="chat-panel" class="glass-panel">
+            <div class="header">
+                <h2>Brain Console</h2>
+                <div class="status">
+                    <span id="connection-status" class="indicator disconnected"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+            </div>
+            
+            <div id="chat-history">
+                <div class="message system">Brain v3 Cognitive Loop is online! Try asking 'apple isa ?' or 'dog isa ?'</div>
+            </div>
+            
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="Enter text or query..." autocomplete="off">
+                <button id="send-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualization Area -->
+        <div id="viz-panel" class="glass-panel">
+            <h2>Neural Scanner</h2>
+            
+            <div class="top-row">
+                <!-- SOM Grid -->
+                <div class="som-container module">
+                    <h3>SOM Activation Map</h3>
+                    <div id="som-grid"></div>
+                </div>
+
+                <!-- Working Memory -->
+                <div class="wm-container module">
+                    <h3>Working Memory</h3>
+                    <div class="slots">
+                        <div class="slot">
+                            <span class="label">Subject</span>
+                            <span class="value" id="slot-subject">--</span>
+                        </div>
+                        <div class="slot">
+                            <span class="label">Relation</span>
+                            <span class="value" id="slot-relation">--</span>
+                        </div>
+                        <div class="slot">
+                            <span class="label">Object</span>
+                            <span class="value" id="slot-object">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-row">
+                <!-- Emotion Gauges -->
+                <div class="emotion-container module">
+                    <h3>Emotion Drives</h3>
+                    <div class="gauge">
+                        <span class="label">Arousal / Curiosity</span>
+                        <div class="bar-bg">
+                            <div class="bar-fill" id="bar-arousal" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="gauge">
+                        <span class="label">Valence</span>
+                        <div class="bar-bg">
+                            <div class="bar-fill" id="bar-valence" style="width: 50%; background: linear-gradient(90deg, #ff4b4b, #4bff8e)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

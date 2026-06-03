@@ -1,0 +1,101 @@
+how are you?
+describe you
+describe dog
+describe cat
+describe earth
+describe sun
+describe apple
+apple isa ?
+dog can ?
+sun emits ?
+bird has ?
+pranay is ?
+you are ?
+what is your state?
+2 x + 4 = 10
+5 y + 10 = 20
+apple taste ?
+sun isa ?
+describe sun
+cat isa ?
+how are you?
+describe pizza
+bird color ?
+dog color ?
+bird has ?
+describe pranay
+cat can ?
+describe you
+earth can ?
+describe apple
+earth can ?
+describe pranay
+describe you
+cat color ?
+dog isa ?
+how are you?
+describe earth
+how are you?
+describe earth
+describe sun
+describe dog
+describe fish
+apple color ?
+dog color ?
+cat has ?
+apple has ?
+how are you?
+how are you?
+sun color ?
+how are you?
+describe apple
+how are you?
+how are you?
+how are you?
+how are you?
+describe apple
+how are you?
+how are you?
+sun can ?
+dog isa ?
+how are you?
+describe pizza
+bird color ?
+how are you?
+describe apple
+how are you?
+bird can ?
+describe dog
+bird isa ?
+how are you?
+describe bird
+describe pranay
+describe fish
+describe fish
+how are you?
+earth color ?
+describe apple
+describe cat
+how are you?
+describe bird
+how are you?
+dog isa ?
+earth color ?
+sun has ?
+how are you?
+describe sun
+describe pranay
+describe pizza
+cat color ?
+describe cat
+describe pizza
+describe fish
+how are you?
+describe earth
+apple isa ?
+sun can ?
+how are you?
+how are you?
+describe sun
+how are you?
+quit

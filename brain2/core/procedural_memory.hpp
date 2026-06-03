@@ -41,6 +41,7 @@ struct ProceduralMemory {
         // Update existing procedure if context is very similar
         for (auto& p : procedures_) {
             if (cos_sim(p.trigger_embedding, context) > 0.9f) {
+                p.steps = ops;  // overwrite the sequence with the new one
                 p.success_rate = 0.9f * p.success_rate + 0.1f * 1.0f;
                 p.use_count++;
                 return;

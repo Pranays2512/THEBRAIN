@@ -38,6 +38,16 @@ struct ScratchSlot {
     static constexpr int            MAX_HISTORY = 8;
 };
 
+// Tree node for heuristic possibility planning (means-ends analysis)
+struct PossibilityNode {
+    int                 id;
+    int                 parent_id;
+    std::vector<float>  state;
+    float               h_cost; // Heuristic cost (distance to goal). Lower is better.
+    std::vector<int>    children;
+};
+
+
 class Scratchpad {
 public:
     int n_dims;
@@ -46,6 +56,12 @@ private:
     std::unordered_map<std::string, ScratchSlot> slots_;
     std::vector<std::vector<float>>              stack_;  // push/pop stack
     std::vector<std::string>                     write_order_; // insertion order
+    
+    // Possibility Tree
+    std::unordered_map<int, PossibilityNode>     tree_;
+    int                                          current_node_id_ = -1;
+    int                                          next_node_id_ = 0;
+    
     std::unique_ptr<std::mutex>                  mtx_;
 
     static float cosine(const std::vector<float>& a,
@@ -67,8 +83,32 @@ public:
 
     Scratchpad(Scratchpad&&)            = default;
     Scratchpad& operator=(Scratchpad&&) = default;
-    Scratchpad(const Scratchpad&)       = delete;
-    Scratchpad& operator=(const Scratchpad&) = delete;
+
+    // Enable Copying for Branch Simulation (Means-Ends Analysis)
+    Scratchpad(const Scratchpad& other) : n_dims(other.n_dims), mtx_(std::make_unique<std::mutex>()) {
+        std::lock_guard<std::mutex> lock(*other.mtx_);
+        slots_ = other.slots_;
+        stack_ = other.stack_;
+        write_order_ = other.write_order_;
+        tree_ = other.tree_;
+        current_node_id_ = other.current_node_id_;
+        next_node_id_ = other.next_node_id_;
+    }
+
+    Scratchpad& operator=(const Scratchpad& other) {
+        if (this != &other) {
+            std::lock_guard<std::mutex> lock1(*mtx_);
+            std::lock_guard<std::mutex> lock2(*other.mtx_);
+            n_dims = other.n_dims;
+            slots_ = other.slots_;
+            stack_ = other.stack_;
+            write_order_ = other.write_order_;
+            tree_ = other.tree_;
+            current_node_id_ = other.current_node_id_;
+            next_node_id_ = other.next_node_id_;
+        }
+        return *this;
+    }
 
     // Write concept vector to named slot
     void write(const std::string& name,
@@ -209,6 +249,95 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         auto it = slots_.find(name);
         return it == slots_.end() ? 0 : it->second.write_count;
+    }
+
+    // ---------------------------------------------------------
+    // Possibility Tree Operations
+    // ---------------------------------------------------------
+
+    // Start a new planning tree with an initial root state
+    int start_tree(const std::vector<float>& initial_state) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        tree_.clear();
+        next_node_id_ = 0;
+        PossibilityNode root = {next_node_id_++, -1, initial_state, 0.f, {}};
+        tree_[root.id] = root;
+        current_node_id_ = root.id;
+        return current_node_id_;
+    }
+
+    // Expand the current node with a new branch
+    // h_cost: Heuristic cost. Lower = closer to goal.
+    int branch(const std::vector<float>& state, float h_cost) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.empty() || current_node_id_ == -1) return -1;
+        
+        PossibilityNode child = {next_node_id_++, current_node_id_, state, h_cost, {}};
+        tree_[child.id] = child;
+        tree_[current_node_id_].children.push_back(child.id);
+        return child.id;
+    }
+
+    // Explicitly navigate to a specific node (backtracking)
+    void move_to(int node_id) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.count(node_id)) {
+            current_node_id_ = node_id;
+        }
+    }
+
+    // Move to the child branch that has the lowest h_cost (closest to goal)
+    int move_to_best_child() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.empty() || current_node_id_ == -1) return -1;
+        
+        const auto& children = tree_[current_node_id_].children;
+        if (children.empty()) return current_node_id_; // Nowhere to go
+
+        int best_id = children[0];
+        float best_cost = tree_[best_id].h_cost;
+
+        for (size_t i = 1; i < children.size(); i++) {
+            float cost = tree_[children[i]].h_cost;
+            if (cost < best_cost) {
+                best_cost = cost;
+                best_id = children[i];
+            }
+        }
+        current_node_id_ = best_id;
+        return current_node_id_;
+    }
+
+    // Get the state of the currently active tree branch
+    std::vector<float> current_tree_state() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.empty() || current_node_id_ == -1) return std::vector<float>(n_dims, 0.f);
+        return tree_.at(current_node_id_).state;
+    }
+    
+    // Clear the planning tree entirely
+    void clear_tree() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        tree_.clear();
+        current_node_id_ = -1;
+        next_node_id_ = 0;
+    }
+    
+    // Get all nodes in the tree
+    std::vector<PossibilityNode> get_tree() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        std::vector<PossibilityNode> nodes;
+        for (const auto& kv : tree_) {
+            nodes.push_back(kv.second);
+        }
+        return nodes;
+    }
+    
+    // Get current node ID
+
+    int current_node() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return current_node_id_;
     }
 };
 

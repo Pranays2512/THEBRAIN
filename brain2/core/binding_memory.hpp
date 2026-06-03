@@ -81,6 +81,19 @@ struct BindingMemory {
         return {want_object ? best_bnd->object : best_bnd->relation, best};
     }
 
+    // Query all: given (subj) → returns list of [relation1, object1, relation2, object2, ...]
+    std::vector<std::vector<float>> query_all(const std::vector<float>& a, float threshold = 0.5f) const {
+        std::vector<std::vector<float>> results;
+        for (const auto& bnd : bindings_) {
+            float sa = cos_sim(a, bnd.subject);
+            if (sa > threshold) {
+                results.push_back(bnd.relation);
+                results.push_back(bnd.object);
+            }
+        }
+        return results;
+    }
+
     int size() const { return (int)bindings_.size(); }
 
     void save(const std::string& path) const {

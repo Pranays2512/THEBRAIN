@@ -116,11 +116,20 @@ public:
     }
 
     // Encode: word → concept vector
-    // Returns zero vector if unknown word
-    std::vector<float> encode(const std::string& word) const {
+    // Dynamically auto-assigns a vector if the word is unknown.
+    std::vector<float> encode(const std::string& word) {
         std::lock_guard<std::mutex> lock(*mtx_);
         auto it = words_.find(word);
-        if (it == words_.end()) return std::vector<float>(n_dims, 0.f);
+        if (it == words_.end()) {
+            WordEntry e;
+            std::mt19937 rng(std::hash<std::string>{}(word));
+            e.vec = random_vec(rng);
+            e.frequency    = 0;
+            e.familiarity  = 0.f;
+            words_[word]   = e;
+            vocab_.push_back(word);
+            return e.vec;
+        }
         return it->second.vec;
     }
 

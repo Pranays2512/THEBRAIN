@@ -151,7 +151,7 @@ PYBIND11_MODULE(brain2, m) {
             em.observe(to_vec(arr));
           },
           "Add activation frame to current building episode")
-      .def("commit", &EpisodicMemory::commit, py::arg("prediction_error"),
+      .def("commit", &EpisodicMemory::commit, py::arg("prediction_error"), py::arg("payload") = std::vector<float>{},
            "Commit episode if error > threshold. Returns True if stored.")
       .def(
           "retrieve",
@@ -257,7 +257,7 @@ PYBIND11_MODULE(brain2, m) {
                       vec_obj.cast<py::array_t<float, py::array::c_style>>()));
           },
           py::arg("word"), py::arg("initial_vec") = py::none())
-      .def("encode", [](const Language &l,
+      .def("encode", [](Language &l,
                         const std::string &w) { return to_np(l.encode(w)); })
       .def(
           "decode",
@@ -314,6 +314,7 @@ PYBIND11_MODULE(brain2, m) {
 
   // ── Imagination ──────────────────────────────────────────────────
   py::class_<Imagination>(m, "Imagination")
+
       .def(py::init([](Predictor *p, int max_steps) {
              return std::make_unique<Imagination>(p, max_steps);
            }),
@@ -568,22 +569,28 @@ PYBIND11_MODULE(brain2, m) {
            py::arg("som_path"), py::arg("episodic_path"),
            py::arg("emotion_path"), py::arg("self_path"),
            py::arg("symbolic_path"),
-           // V3 optional
+           // V3 & V4 optional
            py::arg("binding_path") = "", py::arg("bg_path") = "",
-           py::arg("procedures_path") = "", py::arg("hpred_path") = "")
+           py::arg("procedures_path") = "", py::arg("hpred_path") = "",
+           py::arg("decoder_path") = "")
+      .def("save_components", &Brain::save_components, py::arg("directory"))
+      .def("load_bg", &Brain::load_bg, py::arg("path"))
+      .def("save_bg", &Brain::save_bg, py::arg("path"))
       .def("think", &Brain::think, py::arg("steps") = 5)
-      .def(
-          "speak",
-          [](Brain &b, py::list concepts, float min_sim) {
-            std::vector<std::vector<float>> cv;
-            for (auto &item : concepts)
-              cv.push_back(
-                  to_vec(item.cast<py::array_t<float, py::array::c_style>>()));
-            return b.speak(cv, min_sim);
+      .def("reason", &Brain::reason, py::arg("goal_word"), py::arg("max_steps") = 10, py::arg("epsilon") = 0.0f)
+      .def("start_reasoning", &Brain::start_reasoning)
+      .def("force_reason_step", &Brain::force_reason_step, py::arg("op_idx"), py::arg("goal_word"))
+      .def("reason_step", &Brain::reason_step, py::arg("goal_word"), py::arg("epsilon") = 0.0f)
+      .def("direct_reason_step", &Brain::direct_reason_step, py::arg("goal_word"))
+      .def("cognitive_step", &Brain::cognitive_step, py::arg("input_text"))
+      .def("speak",
+          [](Brain &b, std::vector<std::vector<float>> concepts, float min_sim) {
+            return b.speak(concepts, min_sim);
           },
           py::arg("concepts"), py::arg("min_sim") = 0.f)
       .def("dream", &Brain::dream, py::arg("n_dreams") = 20,
            py::arg("steps_per_dream") = 15)
+      .def("daydream", &Brain::daydream, "Run unsupervised predictive coding on imagination")
       .def(
           "imagine_goal",
           [](Brain &b, py::array_t<float, py::array::c_style> start,
@@ -591,9 +598,24 @@ PYBIND11_MODULE(brain2, m) {
             return b.imagine_goal(to_vec(start), to_vec(goal), steps);
           },
           py::arg("start"), py::arg("goal"), py::arg("steps") = 20)
+      .def("commit_episode", [](Brain &b, float err, const std::vector<float>& payload) {
+              return b.commit_episode(err, payload);
+          }, py::arg("err"), py::arg("payload") = std::vector<float>{})
+      .def("get_last_episode", [](Brain &b) -> std::vector<float> {
+              // Retrieve the most recent episode from EpisodicMemory
+              return b.episodic.get_last_episode();
+          })
+      .def("get_spoken_words", &Brain::get_spoken_words)
+      .def("clear_spoken_words", &Brain::clear_spoken_words)
       .def(
           "symbol",
           [](Brain &b, const std::string &sym) { return to_np(b.symbol(sym)); })
+      .def("learn_word",
+           [](Brain &b, const std::string &word) {
+               b.language.register_word(word);
+               b.symbolic.bind(word);
+           },
+           "Manually register a new word into language and symbolic tables")
       .def("symbolic_op",
            [](Brain &b, const std::string &op,
               py::array_t<float, py::array::c_style> a,
@@ -650,8 +672,8 @@ PYBIND11_MODULE(brain2, m) {
           [](Brain &b, py::array_t<float, py::array::c_style> subj,
              py::array_t<float, py::array::c_style> rel, bool want_object,
              float threshold) {
-            auto [vec, conf] = b.binding_query(to_vec(subj), to_vec(rel), want_object, threshold);
-            return py::make_tuple(to_np(vec), conf);
+            auto result = b.binding_query(to_vec(subj), to_vec(rel), want_object, threshold);
+            return py::make_tuple(to_np(result.first), result.second);
           },
           py::arg("subj"), py::arg("rel"), py::arg("want_object") = true,
           py::arg("threshold") = 0.5f)
@@ -667,10 +689,7 @@ PYBIND11_MODULE(brain2, m) {
            "Reinforce last BG op-chain using TD(lambda)")
       .def(
           "consolidate_procedure",
-          [](Brain &b, py::list ops_list, const std::string &name) {
-            std::vector<int> ops;
-            for (auto &item : ops_list)
-              ops.push_back(item.cast<int>());
+          [](Brain &b, std::vector<int> ops, const std::string &name) {
             b.consolidate_procedure(ops, name);
           },
           py::arg("ops"), py::arg("name") = "")
@@ -693,6 +712,15 @@ PYBIND11_MODULE(brain2, m) {
       .def_property_readonly("step", &Brain::step)
       .def_property_readonly("initialized", &Brain::initialized);
 
+  // ── PossibilityNode ──────────────────────────────────────────────
+  py::class_<PossibilityNode>(m, "PossibilityNode")
+      .def_readonly("id", &PossibilityNode::id)
+      .def_readonly("parent_id", &PossibilityNode::parent_id)
+      .def_readonly("h_cost", &PossibilityNode::h_cost)
+      .def_readonly("children", &PossibilityNode::children)
+      .def_property_readonly("state", [](const PossibilityNode &node) {
+          return to_np(node.state);
+      });
 
   // ── Scratchpad ───────────────────────────────────────────────────
   py::class_<Scratchpad>(m, "Scratchpad")
@@ -733,7 +761,22 @@ PYBIND11_MODULE(brain2, m) {
       .def_property_readonly("slot_count", &Scratchpad::slot_count)
       .def_property_readonly("stack_size", &Scratchpad::stack_size)
       .def_property_readonly("n_dims",
-                             [](const Scratchpad &s) { return s.n_dims; });
+                             [](const Scratchpad &s) { return s.n_dims; })
+      // Tree Methods
+      .def("start_tree", [](Scratchpad &s, py::array_t<float, py::array::c_style> arr) {
+          return s.start_tree(to_vec(arr));
+      })
+      .def("branch", [](Scratchpad &s, py::array_t<float, py::array::c_style> arr, float h_cost) {
+          return s.branch(to_vec(arr), h_cost);
+      })
+      .def("move_to", &Scratchpad::move_to)
+      .def("move_to_best_child", &Scratchpad::move_to_best_child)
+      .def("current_tree_state", [](const Scratchpad &s) {
+          return to_np(s.current_tree_state());
+      })
+      .def("clear_tree", &Scratchpad::clear_tree)
+      .def("get_tree", &Scratchpad::get_tree)
+      .def("current_node", &Scratchpad::current_node);
 
   // ── ReasoningStep struct ─────────────────────────────────────────
   py::class_<ReasoningStep>(m, "ReasoningStep")
@@ -848,6 +891,18 @@ PYBIND11_MODULE(brain2, m) {
             return py::make_tuple(to_np(vec), conf);
           },
           py::arg("a"), py::arg("b"), py::arg("want_object") = true)
+      .def(
+          "query_all",
+          [](BindingMemory &bm, py::array_t<float, py::array::c_style> a, float threshold) {
+              auto res = bm.query_all(to_vec(a), threshold);
+              // convert std::vector<std::vector<float>> to list of numpy arrays
+              py::list py_res;
+              for (const auto& v : res) {
+                  py_res.append(to_np(v));
+              }
+              return py_res;
+          },
+          py::arg("a"), py::arg("threshold") = 0.5f)
       .def("save", &BindingMemory::save)
       .def_static("load",
                   [](const std::string &p) { return BindingMemory::load(p); })
@@ -871,7 +926,8 @@ PYBIND11_MODULE(brain2, m) {
   py::enum_<Op>(m, "Op")
       .value("READ", Op::READ)
       .value("WRITE", Op::WRITE)
-      .value("APPLY", Op::APPLY)
+      .value("MATH_SUB", Op::MATH_SUB)
+      .value("MATH_DIV", Op::MATH_DIV)
       .value("COMPARE", Op::COMPARE)
       .value("BIND_QUERY", Op::BIND_QUERY)
       .value("RETRIEVE", Op::RETRIEVE)
@@ -892,6 +948,7 @@ PYBIND11_MODULE(brain2, m) {
           },
           py::arg("ctx"), py::arg("goal"), py::arg("greedy") = false)
       .def("reinforce", &BasalGanglia::reinforce, py::arg("final_reward"), py::arg("gamma") = 0.99f, py::arg("lambda_") = 0.95f)
+      .def("clear_traces", &BasalGanglia::clear_traces)
       .def("save", &BasalGanglia::save)
       .def_static("load",
                   [](const std::string &p) { return BasalGanglia::load(p); });
@@ -899,7 +956,15 @@ PYBIND11_MODULE(brain2, m) {
   // ── ProceduralMemory (V3) ────────────────────────────────────────
   py::class_<ProceduralMemory>(m, "ProceduralMemory")
       .def("size", &ProceduralMemory::size)
-      .def("save", &ProceduralMemory::save);
+      .def("save", &ProceduralMemory::save)
+      .def("retrieve", [](ProceduralMemory& pm, py::array_t<float, py::array::c_style> context) {
+          auto* p = pm.retrieve(to_vec(context));
+          py::list py_ops;
+          if (p) {
+              for (auto op : p->steps) py_ops.append((int)op);
+          }
+          return py_ops;
+      }, py::arg("context"));
 
   // ── HierarchicalPredictor (V3) ───────────────────────────────────
   py::class_<HierarchicalPredictor>(m, "HierarchicalPredictor")
