@@ -583,6 +583,8 @@ PYBIND11_MODULE(brain2, m) {
       .def("reason_step", &Brain::reason_step, py::arg("goal_word"), py::arg("epsilon") = 0.0f)
       .def("direct_reason_step", &Brain::direct_reason_step, py::arg("goal_word"))
       .def("cognitive_step", &Brain::cognitive_step, py::arg("input_text"))
+      .def("expand_dims", &Brain::expand_dims, py::arg("new_dims"))
+      .def_readonly("n_dims", &Brain::n_dims)
       .def("speak",
           [](Brain &b, std::vector<std::vector<float>> concepts, float min_sim) {
             return b.speak(concepts, min_sim);
@@ -607,6 +609,16 @@ PYBIND11_MODULE(brain2, m) {
           })
       .def("get_spoken_words", &Brain::get_spoken_words)
       .def("clear_spoken_words", &Brain::clear_spoken_words)
+      .def("get_last_confidence",
+           [](Brain& b) -> float {
+               // Reads the confidence float written by BIND_QUERY / CHAIN_FOLLOW
+               if (b.scratchpad.has("confidence")) {
+                   auto cv = b.scratchpad.read("confidence");
+                   return cv.empty() ? 0.f : cv[0];
+               }
+               return 0.f;
+           },
+           "Return the confidence score from the last BIND_QUERY or CHAIN_FOLLOW op")
       .def(
           "symbol",
           [](Brain &b, const std::string &sym) { return to_np(b.symbol(sym)); })

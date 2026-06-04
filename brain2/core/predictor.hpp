@@ -480,6 +480,21 @@ struct LSTMLayer {
     l.has_fwd = false;
     return l;
   }
+
+  void expand_input_dim(int new_in) {
+      if (new_in <= input_dim) return;
+      int H = hidden_dim;
+      std::vector<float> new_Wx(4 * H * new_in, 0.f);
+      for (int i = 0; i < 4 * H; i++) {
+          for (int j = 0; j < input_dim; j++) {
+              new_Wx[i * new_in + j] = Wx[i * input_dim + j];
+          }
+      }
+      Wx = std::move(new_Wx);
+      fwd_x.resize(new_in, 0.f);
+      for (auto& snap : history_) snap.x.resize(new_in, 0.f);
+      input_dim = new_in;
+  }
 };
 
 // ── Output Projection ─────────────────────────────────────────────────
@@ -529,6 +544,20 @@ struct OutputLayer {
     rv(l.W);
     rv(l.b);
     return l;
+  }
+
+  void expand_output_dim(int new_out) {
+      if (new_out <= output_dim) return;
+      int H = input_dim;
+      std::vector<float> new_W(new_out * H, 0.f);
+      for (int i = 0; i < output_dim; i++) {
+          for (int j = 0; j < H; j++) {
+              new_W[i * H + j] = W[i * H + j];
+          }
+      }
+      W = std::move(new_W);
+      b.resize(new_out, 0.f);
+      output_dim = new_out;
   }
 };
 
@@ -751,6 +780,15 @@ public:
     p.out_ = OutputLayer::load(f);
     p.mtx_ = std::make_unique<std::mutex>();
     return p;
+  }
+
+  void expand_dims(int new_dims) {
+      std::lock_guard<std::mutex> lock(*mtx_);
+      if (new_dims <= input_dim) return;
+      lstm1_.expand_input_dim(new_dims);
+      out_.expand_output_dim(new_dims);
+      input_dim = new_dims;
+      output_dim = new_dims;
   }
 };
 

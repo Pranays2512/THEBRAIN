@@ -263,6 +263,15 @@ public:
         }
         return l;
     }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        for (auto& [w, e] : words_) {
+            e.vec.resize(new_dims, 0.f);
+        }
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

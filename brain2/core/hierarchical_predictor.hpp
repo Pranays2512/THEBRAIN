@@ -150,6 +150,29 @@ struct MiniLSTM {
         f.read((char*)Wo.data(), Wo.size()*sizeof(float));
         f.read((char*)bo.data(), bo.size()*sizeof(float));
     }
+
+    void expand_in_dim(int new_in) {
+        if (new_in <= in_dim) return;
+        int H = h_dim;
+        std::vector<float> new_Wx(4 * H * new_in, 0.f);
+        for (int i = 0; i < 4 * H; i++) {
+            for (int j = 0; j < in_dim; j++) {
+                new_Wx[i * new_in + j] = Wx[i * in_dim + j];
+            }
+        }
+        Wx = std::move(new_Wx);
+        
+        std::vector<float> new_Wo(new_in * H, 0.f);
+        for (int i = 0; i < in_dim; i++) {
+            for (int j = 0; j < H; j++) {
+                new_Wo[i * H + j] = Wo[i * H + j];
+            }
+        }
+        Wo = std::move(new_Wo);
+        bo.resize(new_in, 0.f);
+        x_prev.resize(new_in, 0.f);
+        in_dim = new_in;
+    }
 };
 
 struct HierarchicalPredictor {
@@ -277,6 +300,21 @@ struct HierarchicalPredictor {
         hp.chunk.load(f);
         hp.episode.load(f);
         return hp;
+    }
+
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        chunk.expand_in_dim(new_dims);
+        episode.expand_in_dim(new_dims);
+        
+        chunk_acc_.resize(new_dims, 0.f);
+        episode_acc_.resize(new_dims, 0.f);
+        prev_chunk_summary_.resize(new_dims, 0.f);
+        prev_ep_summary_.resize(new_dims, 0.f);
+        current_chunk_pred_.resize(new_dims, 0.f);
+        current_ep_pred_.resize(new_dims, 0.f);
+        
+        n_dims = new_dims;
     }
 };
 

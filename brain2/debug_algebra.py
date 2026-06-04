@@ -1,18 +1,20 @@
-from tests.run_hardened_suite import load_brain, run_test
+import brain2
+import re
 
-b = load_brain()
-failures = 0
-for i in range(10):
-    import random
-    a = random.randint(1, 10)
-    b_val = random.randint(0, 50)
-    c = random.randint(10, 100)
-    ans = (c - b_val) / a
-    q = f"{a} x + {b_val} = {c}"
-    exp = f"x = {ans:.2f}"
+def test_algebra(line):
+    b = brain2.Brain(8, 8, 16)
+    b.symbolic_table.seed_math_symbols()
+    for i in range(100): b.symbolic_table.bind(str(i))
     
-    a_w, b_w, c_w = str(a), str(b_val), str(c)
-    b.reset_sequence()
+    parts = line.split("|")
+    cat = parts[0].strip()
+    q = parts[2].strip()
+    exp = parts[3].strip()
+    
+    words = q.split()
+    for w in words: b.language.register_word(w)
+    
+    a_w, b_w, c_w = words[0], words[3], words[5]
     b.scratchpad.write("subject",  b.language.encode(c_w), "context")
     b.scratchpad.write("relation", b.language.encode(a_w), "context")
     b.scratchpad.write("object",   b.language.encode(b_w), "context")
@@ -20,11 +22,16 @@ for i in range(10):
     b.force_reason_step(3,  "solve")
     b.force_reason_step(15, "solve")
     spoken = b.get_spoken_words()
-    b.clear_spoken_words()
-    # Parse float
     ans_raw = spoken[-1] if spoken else "0"
     try:
-        ans_str = f"x = {float(ans_raw):.2f}"
+        ans = f"x = {float(ans_raw):.2f}"
     except:
-        ans_str = f"x = {ans_raw}"
-    print(f"Eq: {q} -> Expected: {exp}, Got: {ans_str}")
+        ans = f"x = {ans_raw}"
+    
+    if ans.strip() != exp.strip():
+        print(f"FAILED: {q} => expected {exp}, got {ans}")
+
+with open("tests/test_hardened_1100.txt", "r") as f:
+    lines = [x.strip() for x in f if "algebra" in x]
+    
+for l in lines: test_algebra(l)

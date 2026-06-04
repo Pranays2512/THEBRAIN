@@ -2,7 +2,7 @@ import brain2
 import os
 
 print("Initializing Brain v3...")
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 ckpt_dir = "checkpoints/stage4_parsing"
 b.load_components(
     predictor_path=f"{ckpt_dir}/predictor.bin",
@@ -38,7 +38,7 @@ for i in range(1001):
             # Symbolic has a ZERO vector for this word! This is bad.
             # We must generate a new valid vector and force it into both!
             # We can do this by using a temporary Brain instance just to get a good seed!
-            b_temp = brain2.Brain(som_rows=1, som_cols=1, n_dims=16)
+            b_temp = brain2.Brain(som_rows=1, som_cols=1, n_dims=32)
             b_temp.learn_word(word)
             new_vec = b_temp.symbolic_table.lookup(word)
             

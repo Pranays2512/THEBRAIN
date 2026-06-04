@@ -1,5 +1,5 @@
 import brain2
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 ckpt_dir = "checkpoints/stage4_parsing"
 b.load_components(
     predictor_path=f"{ckpt_dir}/predictor.bin",

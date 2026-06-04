@@ -288,6 +288,16 @@ public:
         s.mtx_ = std::make_unique<std::mutex>();
         return s;
     }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        
+        for (auto& [sym, e] : table_) {
+            e.vec.resize(new_dims, 0.f);
+        }
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

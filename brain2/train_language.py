@@ -86,6 +86,39 @@ def main():
     elapsed = time.time() - start_time
     print(f"Language training completed in {elapsed:.2f}s.")
     
+    # ── Procedural Reasoning Bootstrap ────────────────────────────────────────
+    # Teach the brain the goal→opseq associations so downstream math training
+    # doesn't start from scratch. This seeds BG memory with the correct procedures.
+    print("Bootstrapping procedural reasoning pathways...", flush=True)
+    
+    # Op codes (must match basal_ganglia.hpp enum values)
+    OP_MATH_SUB = 2;  OP_MATH_DIV = 3;  OP_HALT = 8
+    OP_SPEAK = 15;    OP_MUL = 21;      OP_PERM_N = 22; OP_PERM_K = 23
+    OP_POWER = 24;    OP_DIV_FLOAT = 26
+    
+    for goal_word in ["solve", "permute", "probability", "area", "power", "remember"]:
+        brain.language.register_word(goal_word)
+        brain.symbolic_table.bind(goal_word)
+    
+    # Goal → procedure map
+    PROCEDURES = {
+        "solve":       [OP_MATH_SUB, OP_MATH_DIV, OP_SPEAK, OP_HALT],
+        "permute":     [OP_MATH_SUB, OP_PERM_N,   OP_PERM_K, OP_MATH_DIV, OP_SPEAK, OP_HALT],
+        "probability": [OP_DIV_FLOAT, OP_SPEAK,   OP_HALT],
+        "area":        [OP_MUL, OP_SPEAK, OP_HALT],
+        "power":       [OP_POWER, OP_SPEAK, OP_HALT],
+    }
+    
+    for goal_word, op_seq in PROCEDURES.items():
+        goal_vec = np.array(brain.language.encode(goal_word), dtype=np.float32)
+        brain.scratchpad.write("goal", goal_vec, "goal")
+        brain.start_reasoning()
+        for op in op_seq:
+            brain.force_reason_step(op, goal_word)
+            brain.reinforce_bg(1.0)
+    
+    print("Procedural pathway bootstrap complete.")
+    
     # ── Save Checkpoint ────────────────────────────────────────────────────
     stage1_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "stage1_language")
     os.makedirs(stage1_dir, exist_ok=True)

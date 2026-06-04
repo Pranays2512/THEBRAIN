@@ -242,6 +242,12 @@ public:
 
     bool has_symbolic() const noexcept { return symbolic_ != nullptr; }
     bool has_predictor() const noexcept { return predictor_ != nullptr; }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

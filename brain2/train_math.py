@@ -1,7 +1,7 @@
 import brain2
 import os
 
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 checkpoint_dir = "checkpoints/stage4_parsing"
 if os.path.exists(checkpoint_dir):
     b.load_components(

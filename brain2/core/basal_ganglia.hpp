@@ -38,7 +38,9 @@ enum class Op : int {
     MATH_POW   = 24,
     STORE_TMP  = 25,
     MATH_DIV_FLOAT = 26,
-    N_OPS      = 27
+    PREDICT_WM = 27,
+    CHAIN_FOLLOW = 28,   // iterative BFS along a relation (multi-hop causal)
+    N_OPS      = 29
 };
 
 struct BGAction {
@@ -60,6 +62,29 @@ struct BasalGanglia {
 
     float lr_   = 0.001f;
     int   step_ = 0;
+
+    // ── Experience Replay Buffer (prevents catastrophic forgetting) ───────────
+    struct Experience {
+        std::vector<float> ctx;   // scratchpad context at decision time
+        std::vector<float> goal;  // goal vector
+        int                op;    // chosen op
+        float              reward;
+    };
+    static constexpr int REPLAY_CAPACITY = 500;
+    static constexpr int REPLAY_BATCH    = 8;
+    std::vector<Experience> replay_buffer_;
+    int                     replay_head_ = 0;  // ring-buffer write pointer
+
+    void push_experience(const std::vector<float>& ctx,
+                         const std::vector<float>& goal,
+                         int op, float reward) {
+        if ((int)replay_buffer_.size() < REPLAY_CAPACITY) {
+            replay_buffer_.push_back({ctx, goal, op, reward});
+        } else {
+            replay_buffer_[replay_head_] = {ctx, goal, op, reward};
+            replay_head_ = (replay_head_ + 1) % REPLAY_CAPACITY;
+        }
+    }
 
     struct Trace { int op_idx; std::vector<float> h1; std::vector<float> inp; float value; };
     std::vector<Trace> traces_;
@@ -185,47 +210,75 @@ struct BasalGanglia {
         return act;
     }
 
-    // TD(λ) backward pass
+    // TD(λ) backward pass + experience replay
     void reinforce(float final_reward, float gamma = 0.99f, float lambda = 0.95f) {
         if (traces_.empty()) return;
-        
-        float g_lambda = final_reward;
+
+        // Store this experience for future replay
+        if (!traces_.empty()) {
+            auto& t0 = traces_[0];
+            push_experience(t0.inp, t0.inp, t0.op_idx, final_reward);
+        }
+
         int in = 2 * n_dims;
+        float g_lambda = final_reward;
 
-        for (int i = (int)traces_.size() - 1; i >= 0; i--) {
-            auto& t = traces_[i];
-            float td_error = g_lambda - t.value;
-
-            // Critic Update
+        auto do_update = [&](int op_idx, const std::vector<float>& h1,
+                             const std::vector<float>& inp, float td_error) {
+            // Critic
             b_v[0] += lr_ * td_error;
-            for (int j = 0; j < hidden; j++) {
-                W_v[j] += lr_ * td_error * t.h1[j];
-            }
-
-            // Actor Update
-            float* row2 = W2.data() + t.op_idx * hidden;
             for (int j = 0; j < hidden; j++)
-                row2[j] += lr_ * td_error * t.h1[j]; // PG with advantage
-            b2[t.op_idx] += lr_ * td_error;
-
-            // Backprop through tanh into W1 and b1 (Actor + Critic)
+                W_v[j] += lr_ * td_error * h1[j];
+            // Actor
+            float* row2 = W2.data() + op_idx * hidden;
+            for (int j = 0; j < hidden; j++)
+                row2[j] += lr_ * td_error * h1[j];
+            b2[op_idx] += lr_ * td_error;
+            // W1 backprop
             for (int j = 0; j < hidden; j++) {
-                float d_act = td_error * W2[t.op_idx * hidden + j];
+                float d_act  = td_error * W2[op_idx * hidden + j];
                 float d_crit = td_error * W_v[j];
-                float d = (d_act + d_crit) * (1.f - t.h1[j] * t.h1[j]);
-                
+                float d = (d_act + d_crit) * (1.f - h1[j] * h1[j]);
                 b1[j] += lr_ * d;
                 float* row1 = W1.data() + j * in;
                 for (int k = 0; k < in; k++)
-                    row1[k] += lr_ * d * t.inp[k];
+                    row1[k] += lr_ * d * inp[k];
             }
+        };
 
-            // Bootstrap next step
-            if (i > 0) {
-                g_lambda = 0.f + gamma * ((1.f - lambda) * t.value + lambda * g_lambda);
-            }
+        // On-policy trace update
+        for (int i = (int)traces_.size() - 1; i >= 0; i--) {
+            auto& t = traces_[i];
+            float td = g_lambda - t.value;
+            do_update(t.op_idx, t.h1, t.inp, td);
+            if (i > 0)
+                g_lambda = gamma * ((1.f - lambda) * t.value + lambda * g_lambda);
         }
         traces_.clear();
+
+        // ── Replay: sample REPLAY_BATCH old experiences to fight forgetting ──
+        if ((int)replay_buffer_.size() >= REPLAY_BATCH * 2) {
+            std::uniform_int_distribution<int> pick(0, (int)replay_buffer_.size() - 1);
+            for (int s = 0; s < REPLAY_BATCH; s++) {
+                auto& exp = replay_buffer_[pick(rng_)];
+                // Recompute h for this experience
+                std::vector<float> h_r(hidden, 0.f);
+                for (int i = 0; i < hidden; i++) {
+                    float sv = b1[i];
+                    const float* row = W1.data() + i * in;
+                    for (int k = 0; k < in; k++) sv += row[k] * exp.ctx[k];
+                    h_r[i] = std::tanh(sv);
+                }
+                float val_r = b_v[0];
+                for (int j = 0; j < hidden; j++) val_r += W_v[j] * h_r[j];
+                float td_r = exp.reward - val_r;
+                // Use smaller lr for replay to avoid overwriting current policy
+                float saved_lr = lr_;
+                lr_ *= 0.3f;
+                do_update(exp.op, h_r, exp.ctx, td_r);
+                lr_ = saved_lr;
+            }
+        }
     }
 
     void clear_traces() { 
@@ -294,6 +347,44 @@ struct BasalGanglia {
         }
         
         return bg;
+    }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*cache_mtx_);
+        if (new_dims <= n_dims) return;
+        
+        int old_in = 2 * n_dims;
+        int new_in = 2 * new_dims;
+        std::vector<float> new_W1(hidden * new_in, 0.f);
+        
+        for (int i = 0; i < hidden; i++) {
+            // Context part
+            for (int j = 0; j < n_dims; j++) {
+                new_W1[i * new_in + j] = W1[i * old_in + j];
+            }
+            // Goal part
+            for (int j = 0; j < n_dims; j++) {
+                new_W1[i * new_in + new_dims + j] = W1[i * old_in + n_dims + j];
+            }
+        }
+        W1 = std::move(new_W1);
+        
+        for (auto& exp : replay_buffer_) {
+            exp.ctx.resize(new_dims, 0.f);
+            exp.goal.resize(new_dims, 0.f);
+        }
+        
+        for (auto& tr : traces_) {
+            std::vector<float> new_inp(new_in, 0.f);
+            for (int j = 0; j < n_dims; j++) {
+                new_inp[j] = tr.inp[j];
+                new_inp[new_dims + j] = tr.inp[n_dims + j];
+            }
+            tr.inp = std::move(new_inp);
+        }
+        
+        cache_.clear();
+        n_dims = new_dims;
     }
 };
 

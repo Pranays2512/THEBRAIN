@@ -51,6 +51,12 @@ struct GlobalWorkspace {
 
     const std::vector<float>& broadcast() const { return broadcast_; }
     int winner_id() const { return winner_id_; }
+
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        broadcast_.resize(new_dims, 0.f);
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

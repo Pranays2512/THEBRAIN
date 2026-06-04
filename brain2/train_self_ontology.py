@@ -2,7 +2,7 @@ import brain2
 import os
 
 print("Initializing Brain v3 for Self Ontology...")
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 
 ckpt_dir = "checkpoints/stage5_math"
 try:

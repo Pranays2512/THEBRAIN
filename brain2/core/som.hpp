@@ -349,6 +349,19 @@ public:
         s.update_mtx_ = std::make_unique<std::mutex>();
         return s;
     }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*update_mtx_);
+        if (new_dims <= n_dims) return;
+        std::vector<float> new_weights(size_t(n_neurons) * new_dims, 0.f);
+        for (int i = 0; i < n_neurons; i++) {
+            for (int d = 0; d < n_dims; d++) {
+                new_weights[size_t(i) * new_dims + d] = weights_[size_t(i) * n_dims + d];
+            }
+        }
+        weights_ = std::move(new_weights);
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

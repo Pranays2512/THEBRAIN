@@ -3,7 +3,7 @@ import os
 import re
 
 def load_brain():
-    b = brain2.Brain(8, 8, 16)
+    b = brain2.Brain(10, 10, 32)
     checkpoint_dir = "checkpoints/stage5_math"
     b.load_components(
         predictor_path=os.path.join(checkpoint_dir, "predictor.bin"),
@@ -152,6 +152,8 @@ def run_suite():
         if passed:
             results_p1[cat]["pass"] += 1
         else:
+            if cat in ["algebra", "probability"]:
+                print(f"FAILED {cat} (Phase 1): {q} => expected {exp}")
             results_p1[cat]["fail"] += 1
         if idx % 100 == 0:
             print(f"Progress Phase 1: {idx}/{len(lines)}")
@@ -175,6 +177,8 @@ def run_suite():
         if passed:
             results_p2[cat]["pass"] += 1
         else:
+            if cat in ["algebra", "probability"]:
+                print(f"FAILED {cat}: {q} => expected {exp}")
             results_p2[cat]["fail"] += 1
         if idx % 100 == 0:
             print(f"Progress Phase 2: {idx}/{len(lines)}")

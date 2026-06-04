@@ -34,7 +34,7 @@ def clean_text(text):
 def train_large_corpus():
     # Initialize a slightly larger brain for the large vocabulary
     # 8x8 SOM gives 64 clusters, which is fine for abstract grouping
-    b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16, episodic_max=10000)
+    b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32, episodic_max=10000)
     
     corpus_path = os.path.join(os.path.dirname(__file__), "data", "alice.txt")
     if not os.path.exists(corpus_path):

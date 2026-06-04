@@ -118,6 +118,14 @@ struct ProceduralMemory {
         }
         return pm;
     }
+
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        for (auto& p : procedures_) {
+            p.trigger_embedding.resize(new_dims, 0.f);
+        }
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

@@ -13,6 +13,7 @@
 #include "core/working_mem.hpp"
 #include "core/analogy.hpp"
 #include "core/memoization.hpp"
+#include "core/predictive_coding.hpp"
 
 namespace brain2 {
 
@@ -27,13 +28,14 @@ public:
     WorkingMemory& working_mem;
     AnalogyEngine& analogy;
     MemoizationCache& memo_cache;
+    PredictiveCodingLayer& pc_wm;
     std::vector<std::string>& spoken_words;
 
     LogicEngine(int n, Language& lang, Symbolic& sym, BindingMemory& bind, 
                 EpisodicMemory& epi, SOM& som_ref, WorkingMemory& wm, 
-                AnalogyEngine& ana, MemoizationCache& cache, std::vector<std::string>& spoken)
+                AnalogyEngine& ana, MemoizationCache& cache, PredictiveCodingLayer& pc, std::vector<std::string>& spoken)
         : n_dims(n), language(lang), symbolic(sym), binding(bind), episodic(epi), 
-          som(som_ref), working_mem(wm), analogy(ana), memo_cache(cache), spoken_words(spoken) {}
+          som(som_ref), working_mem(wm), analogy(ana), memo_cache(cache), pc_wm(pc), spoken_words(spoken) {}
 
     // Cosine similarity helper
     float cosine(const std::vector<float>& a, const std::vector<float>& b) {
@@ -111,8 +113,9 @@ public:
                         try {
                             int d_val = std::stoi(d_sym);
                             if (d_val != 0) {
-                                int fin = std::stoi(r_sym) / d_val;
-                                std::string fin_sym = std::to_string(fin);
+                                float f_q = std::stoi(r_sym) / (float)d_val;
+                                int q = (int)std::floor(f_q);
+                                std::string fin_sym = std::to_string(q);
                                 if (!language.knows(fin_sym)) {
                                     language.register_word(fin_sym);
                                     symbolic.bind(fin_sym);
@@ -253,9 +256,11 @@ public:
                         try {
                             float denom = std::stof(o_sym);
                             if (std::abs(denom) > 1e-6f) {
-                                float val = std::stof(s_sym) / denom;
+                                double val_d = std::stod(s_sym) / std::stod(o_sym);
+                                // Use round-half-to-even (banker's rounding) to match Python's round()
+                                double rounded = std::rint(val_d * 100.0) / 100.0;
                                 char buf[32];
-                                std::snprintf(buf, sizeof(buf), "%.2f", val);
+                                std::snprintf(buf, sizeof(buf), "%.2f", rounded);
                                 std::string res_sym(buf);
                                 if (!language.knows(res_sym)) {
                                     language.register_word(res_sym);
@@ -291,13 +296,19 @@ public:
                 auto subj = pad.read("subject");
                 auto rel  = pad.read("relation");
                 if (!subj.empty() && !rel.empty()) {
-                    auto [ans, conf] = binding.query(subj, rel, true);
-                    if (conf > 0.5f) {
+                    auto [ans, conf] = binding.query(subj, rel, true, 0.3f, 4);
+                    // Always write confidence so callers can gate on it
+                    pad.write("confidence", std::vector<float>{conf}, "query");
+                    if (conf >= 0.25f) {
+                        // Known answer — write result
                         pad.write("result", ans, "binding");
                         std::string s_sym = language.best_word(subj);
                         std::string r_sym = language.best_word(rel);
                         std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "__" + r_sym + "_";
                         memo_cache.put_vec(key, ans);
+                    } else {
+                        // Unknown — write zero vector ("I don't know")
+                        pad.write("result", std::vector<float>(n_dims, 0.f), "query");
                     }
                 }
                 break;
@@ -421,6 +432,36 @@ public:
                 }
                 break;
             }
+            case Op::PREDICT_WM: {
+                if (!pc_wm.prediction.empty()) {
+                    pad.write("result", pc_wm.prediction, "prediction");
+                }
+                break;
+            }
+            case Op::CHAIN_FOLLOW: {
+                // Iterative multi-hop traversal along a relation (e.g. "causes").
+                // Avoids O(n^depth) blowup of recursive query by using BFS one step at a time.
+                // Max 10 hops; stops on low confidence or cycle.
+                auto current = pad.read("subject");
+                auto rel     = pad.read("relation");
+                if (!current.empty() && !rel.empty()) {
+                    auto start   = current;
+                    float threshold = 0.3f;
+                    int   max_hops  = 10;
+                    float best_conf = 0.f;
+                    for (int hop = 0; hop < max_hops; hop++) {
+                        auto [next, conf] = binding.query(current, rel, true, threshold);
+                        if (conf < threshold || next.empty()) break;
+                        // Cycle guard: stop if next is similar to start
+                        if (cosine(next, start) > 0.92f) break;
+                        current   = next;
+                        best_conf = conf;
+                    }
+                    pad.write("result",     current,                       "chain");
+                    pad.write("confidence", std::vector<float>{best_conf}, "chain");
+                }
+                break;
+            }
             case Op::HALT:
             default:
                 break;
@@ -452,6 +493,12 @@ private:
             for (float& x : ctx) x /= norm_val;
         }
         return ctx;
+    }
+
+public:
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        n_dims = new_dims;
     }
 };
 

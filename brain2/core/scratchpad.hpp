@@ -339,6 +339,26 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         return current_node_id_;
     }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        
+        for (auto& [name, slot] : slots_) {
+            slot.value.resize(new_dims, 0.f);
+            for (auto& h : slot.history) h.resize(new_dims, 0.f);
+        }
+        
+        for (auto& v : stack_) {
+            v.resize(new_dims, 0.f);
+        }
+        
+        for (auto& [id, node] : tree_) {
+            node.state.resize(new_dims, 0.f);
+        }
+        
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

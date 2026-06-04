@@ -189,14 +189,14 @@ public:
           // V3 & V4 components
           pc_som(som_rows * som_cols, 0.05f, 0.01f),
           pc_hpred(som_rows * som_cols, 0.05f, 0.01f),
-          pc_wm(som_rows * som_cols, 0.05f, 0.01f),
-          pc_bg(som_rows * som_cols, 0.05f, 0.01f),
+          pc_wm(som_rows * som_cols, 0.001f, 0.1f),
+          pc_bg(som_rows * som_cols, 0.001f, 0.1f),
           binding(som_rows * som_cols, 2000),
           analogy(&binding),
           global_ws(som_rows * som_cols),
           bg_controller(som_rows * som_cols, 0.001f, seed),
           procedures(som_rows * som_cols),
-          logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, memo_cache, spoken_words),
+          logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, memo_cache, pc_wm, spoken_words),
           h_predictor(som_rows * som_cols, 128, 64, seed),
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
@@ -550,6 +550,51 @@ public:
 
     void start_reasoning() {
         bg_controller.clear_traces();
+
+        // ── PC Warm-up ────────────────────────────────────────────────────────
+        // pc_wm and pc_bg need working_mem.context() to be non-zero to produce
+        // meaningful error signals. On a freshly-loaded checkpoint the WM is
+        // cold until perceive() is called.
+        //
+        // Strategy: blend any written scratchpad slots into a prime vector,
+        // then (a) directly propagate it through pc_wm/pc_bg, AND
+        //      (b) gate it into WM with voltage above LIF threshold so the LIF
+        //          fires immediately and context() becomes non-zero.
+        {
+            std::vector<float> prime(som.n_neurons, 0.f);
+            bool any = false;
+            for (const char* slot : {"subject", "relation", "object", "goal"}) {
+                if (scratchpad.has(slot)) {
+                    auto v = scratchpad.read(slot);
+                    size_t lim = std::min(v.size(), prime.size());
+                    for (size_t i = 0; i < lim; i++) prime[i] += v[i];
+                    any = true;
+                }
+            }
+            if (any) {
+                // Normalise
+                float norm = 0.f;
+                for (float x : prime) norm += x * x;
+                if (norm > 1e-8f) {
+                    norm = std::sqrt(norm);
+                    for (float& x : prime) x /= norm;
+                }
+
+                // (a) Direct PC propagation — bypasses WM LIF threshold
+                pc_wm.propagate(prime);
+                pc_wm.update();
+                pc_bg.propagate(prime);
+                pc_bg.update();
+
+                // (b) Gate into WM with voltage = 1.5 × values (above threshold=1.0)
+                //     so the LIF fires on tick() and spike_trace gets populated.
+                std::vector<float> boosted(prime.size());
+                for (size_t i = 0; i < prime.size(); i++) boosted[i] = prime[i] * 1.5f;
+                working_mem.gate(boosted, 0.8f);
+                working_mem.tick();   // fires LIF → spike_trace → context() non-zero
+            }
+        }
+
         std::vector<float> initial_ctx = simulate_op(Op::HALT, scratchpad);
         scratchpad.start_tree(initial_ctx);
     }
@@ -857,6 +902,34 @@ public:
 
     int  step()        const noexcept { return step_; }
     bool initialized() const noexcept { return n_dims > 0; }
+
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        
+        som.expand_dims(new_dims);
+        predictor.expand_dims(new_dims);
+        episodic.expand_dims(new_dims);
+        working_mem.expand_dims(new_dims);
+        language.expand_dims(new_dims);
+        imagination.expand_dims(new_dims);
+        symbolic.expand_dims(new_dims);
+        scratchpad.expand_dims(new_dims);
+        reasoning.expand_dims(new_dims);
+        
+        pc_som.expand_dims(new_dims);
+        pc_hpred.expand_dims(new_dims);
+        pc_wm.expand_dims(new_dims);
+        pc_bg.expand_dims(new_dims);
+        binding.expand_dims(new_dims);
+        global_ws.expand_dims(new_dims);
+        bg_controller.expand_dims(new_dims);
+        procedures.expand_dims(new_dims);
+        h_predictor.expand_dims(new_dims);
+        memo_cache.expand_dims(new_dims);
+        logic_engine.expand_dims(new_dims);
+        
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

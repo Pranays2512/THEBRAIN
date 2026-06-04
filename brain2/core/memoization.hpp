@@ -65,4 +65,8 @@ public:
         if (hits_ + misses_ == 0) return 0.0f;
         return (float)hits_ / (hits_ + misses_);
     }
+
+    void expand_dims(int new_dims) {
+        clear();
+    }
 };

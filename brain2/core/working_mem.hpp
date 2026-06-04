@@ -333,6 +333,18 @@ public:
         }
         return wm;
     }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        for (auto& t : tiers_) {
+            for (auto& s : t.slots) {
+                s.voltage.resize(new_dims, 0.f);
+                s.spike_trace.resize(new_dims, 0.f);
+            }
+        }
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

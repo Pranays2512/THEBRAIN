@@ -33,7 +33,11 @@ def generate():
     for i in range(100):
         n = random.randint(1, 50)
         d = random.randint(n, 100)
-        cases.append(f"probability | | probability of {n} out of {d} | {n/d:.2f}")
+        # Use round-half-away-from-zero to match C++ snprintf %.2f
+        import math as _math
+        raw = n / d
+        ans = _math.floor(raw * 100 + 0.5) / 100
+        cases.append(f"probability | | probability of {n} out of {d} | {ans:.2f}")
 
     # 6. Area (100)
     for i in range(100):

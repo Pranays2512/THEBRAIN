@@ -31,23 +31,25 @@ def test_structure_mapping():
     causes = np.random.randn(16).astype(np.float32)
     
     # Bind: fire combines_with oxygen -> burn
-    b.bind_triple(fire, combines_with, burn)
+    b.binding.bind(fire, combines_with, burn)
     
     # Bind: electricity combines_with water -> shock
-    b.bind_triple(electricity, combines_with, shock)
+    b.binding.bind(electricity, combines_with, shock)
     
     # Test normal query
-    vec, conf = b.binding_query(electricity, combines_with, want_object=True, threshold=0.3)
+    vec, conf = b.binding.query(electricity, combines_with, True)
     assert conf > 0.3, "Failed to retrieve direct binding"
     
     # Now simulate an analogy: We know 'fire combines_with oxygen'. What happens with 'electricity combines_with water'?
     # We query the analogy engine with 'electricity' and 'combines_with', but we also have 'water' in the context.
     # To put 'water' in context, we perceive it so it goes into working memory.
-    b.perceive(water)
-    b.perceive(electricity)
+    b.working_mem.gate(water, 1.0)
     
     # Analogy structure map: (electricity, combines_with) -> ?
-    analogy_result = b.analogy_op(electricity, combines_with)
+    b.scratchpad.write("subject", electricity, "input")
+    b.scratchpad.write("relation", combines_with, "input")
+    b.force_reason_step(7, "analogy") # Op::ANALOGY = 7
+    analogy_result = b.scratchpad.read("result")
     
     # Check if analogy_result is close to 'shock'
     sim = np.dot(analogy_result, shock) / (np.linalg.norm(analogy_result) * np.linalg.norm(shock) + 1e-9)

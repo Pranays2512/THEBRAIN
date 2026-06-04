@@ -6,7 +6,7 @@ import brain2
 import os
 
 print("Loading Brain...")
-b = brain2.Brain(8, 8, 16)
+b = brain2.Brain(10, 10, 32)
 checkpoint_dir = "checkpoints/stage5_math"
 
 b.load_components(

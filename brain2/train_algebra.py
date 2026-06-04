@@ -30,7 +30,7 @@ OP_COMPARE = 4; OP_BIND_QUERY = 5; OP_RETRIEVE = 6; OP_ANALOGY = 7
 OP_HALT = 8; OP_STORE_SUBJ = 9; OP_STORE_REL = 10; OP_STORE_OBJ = 11
 OP_NOT = 12; OP_BIND_ISA = 13; OP_ASK_USER = 14; OP_SPEAK = 15; OP_ATTEND = 16
 
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 
 def load_all():
     if os.path.exists(CHECKPOINT_DIR):

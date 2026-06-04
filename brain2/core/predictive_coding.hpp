@@ -34,10 +34,7 @@ struct PredictiveCodingLayer {
     // Returns error vector if surprise is high enough, else returns zeros.
     const std::vector<float>& propagate(const std::vector<float>& actual) {
         compute(actual);
-        if (!should_propagate()) {
-            std::fill(error.begin(), error.end(), 0.f);
-            error_norm = 0.f;
-        }
+        // We ALWAYS return the error for now to ensure learning happens at all scales
         return error;
     }
 
@@ -48,6 +45,13 @@ struct PredictiveCodingLayer {
     }
 
     bool should_propagate() const { return error_norm > threshold; }
+
+    void expand_dims(int new_dims) {
+        if (new_dims <= n_dims) return;
+        prediction.resize(new_dims, 0.f);
+        error.resize(new_dims, 0.f);
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

@@ -333,6 +333,34 @@ public:
         read_episodes(m.prototypes_);
         return m;
     }
+
+    void expand_node(EpisodeNode& node, int new_dims) {
+        node.summary_spike.resize(new_dims, false);
+        for (auto& child : node.children) {
+            expand_node(child, new_dims);
+        }
+    }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        
+        auto expand_episodes = [&](auto& eps) {
+            for (auto& ep : eps) {
+                expand_node(ep.root, new_dims);
+                ep.payload.resize(new_dims, 0.f);
+            }
+        };
+        
+        expand_episodes(episodes_);
+        expand_episodes(prototypes_);
+        
+        for (auto& frame : current_ep_) {
+            frame.resize(new_dims, false);
+        }
+        
+        n_dims = new_dims;
+    }
 };
 
 } // namespace brain2

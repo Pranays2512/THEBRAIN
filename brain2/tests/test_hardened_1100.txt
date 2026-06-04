@@ -198,506 +198,506 @@ describe | car96 has wheels96 ; car96 has doors96 | describe car96 | car96 has w
 describe | car97 has wheels97 ; car97 has doors97 | describe car97 | car97 has wheels97. car97 has doors97.
 describe | car98 has wheels98 ; car98 has doors98 | describe car98 | car98 has wheels98. car98 has doors98.
 describe | car99 has wheels99 ; car99 has doors99 | describe car99 | car99 has wheels99. car99 has doors99.
-algebra | | 5 x + 28 = 28 | x = 0.00
-algebra | | 3 x + 48 = 20 | x = -10.00
-algebra | | 3 x + 39 = 56 | x = 5.00
-algebra | | 3 x + 44 = 66 | x = 7.00
-algebra | | 6 x + 43 = 83 | x = 6.00
-algebra | | 3 x + 15 = 88 | x = 24.00
-algebra | | 10 x + 32 = 28 | x = -1.00
-algebra | | 1 x + 10 = 38 | x = 28.00
-algebra | | 6 x + 37 = 58 | x = 3.00
-algebra | | 1 x + 28 = 16 | x = -12.00
-algebra | | 5 x + 9 = 94 | x = 17.00
-algebra | | 4 x + 36 = 48 | x = 3.00
-algebra | | 7 x + 23 = 90 | x = 9.00
-algebra | | 4 x + 27 = 26 | x = -1.00
-algebra | | 10 x + 15 = 81 | x = 6.00
-algebra | | 10 x + 8 = 69 | x = 6.00
-algebra | | 5 x + 21 = 98 | x = 15.00
-algebra | | 2 x + 34 = 30 | x = -2.00
-algebra | | 8 x + 39 = 62 | x = 2.00
-algebra | | 8 x + 39 = 59 | x = 2.00
-algebra | | 4 x + 7 = 12 | x = 1.00
-algebra | | 6 x + 44 = 67 | x = 3.00
-algebra | | 1 x + 43 = 68 | x = 25.00
-algebra | | 8 x + 7 = 71 | x = 8.00
-algebra | | 6 x + 49 = 50 | x = 0.00
-algebra | | 9 x + 21 = 87 | x = 7.00
-algebra | | 4 x + 19 = 83 | x = 16.00
-algebra | | 10 x + 33 = 25 | x = -1.00
-algebra | | 9 x + 28 = 14 | x = -2.00
-algebra | | 7 x + 50 = 100 | x = 7.00
-algebra | | 2 x + 21 = 13 | x = -4.00
-algebra | | 6 x + 45 = 24 | x = -4.00
-algebra | | 5 x + 38 = 24 | x = -3.00
-algebra | | 10 x + 13 = 65 | x = 5.00
-algebra | | 7 x + 22 = 25 | x = 0.00
-algebra | | 3 x + 23 = 83 | x = 20.00
-algebra | | 3 x + 16 = 92 | x = 25.00
-algebra | | 4 x + 35 = 90 | x = 13.00
-algebra | | 4 x + 32 = 80 | x = 12.00
-algebra | | 2 x + 0 = 36 | x = 18.00
-algebra | | 6 x + 36 = 26 | x = -2.00
-algebra | | 8 x + 37 = 92 | x = 6.00
-algebra | | 3 x + 41 = 40 | x = -1.00
-algebra | | 3 x + 40 = 46 | x = 2.00
-algebra | | 2 x + 39 = 70 | x = 15.00
-algebra | | 10 x + 7 = 32 | x = 2.00
-algebra | | 6 x + 32 = 17 | x = -3.00
-algebra | | 2 x + 28 = 67 | x = 19.00
-algebra | | 8 x + 23 = 92 | x = 8.00
-algebra | | 10 x + 50 = 65 | x = 1.00
-algebra | | 1 x + 3 = 14 | x = 11.00
-algebra | | 2 x + 44 = 28 | x = -8.00
-algebra | | 4 x + 12 = 70 | x = 14.00
-algebra | | 4 x + 41 = 24 | x = -5.00
-algebra | | 9 x + 3 = 29 | x = 2.00
-algebra | | 8 x + 38 = 49 | x = 1.00
-algebra | | 3 x + 33 = 53 | x = 6.00
-algebra | | 9 x + 27 = 65 | x = 4.00
-algebra | | 3 x + 25 = 75 | x = 16.00
-algebra | | 9 x + 16 = 22 | x = 0.00
-algebra | | 5 x + 35 = 50 | x = 3.00
-algebra | | 5 x + 40 = 77 | x = 7.00
-algebra | | 1 x + 35 = 10 | x = -25.00
-algebra | | 2 x + 40 = 38 | x = -1.00
-algebra | | 7 x + 27 = 42 | x = 2.00
-algebra | | 6 x + 36 = 74 | x = 6.00
-algebra | | 4 x + 28 = 39 | x = 2.00
-algebra | | 2 x + 7 = 45 | x = 19.00
-algebra | | 7 x + 46 = 23 | x = -4.00
-algebra | | 10 x + 19 = 49 | x = 3.00
-algebra | | 1 x + 33 = 60 | x = 27.00
-algebra | | 9 x + 32 = 27 | x = -1.00
-algebra | | 2 x + 32 = 22 | x = -5.00
-algebra | | 2 x + 37 = 52 | x = 7.00
-algebra | | 6 x + 46 = 59 | x = 2.00
-algebra | | 9 x + 33 = 47 | x = 1.00
-algebra | | 9 x + 11 = 62 | x = 5.00
-algebra | | 1 x + 43 = 92 | x = 49.00
-algebra | | 2 x + 17 = 71 | x = 27.00
-algebra | | 7 x + 3 = 58 | x = 7.00
-algebra | | 3 x + 46 = 36 | x = -4.00
-algebra | | 9 x + 37 = 54 | x = 1.00
-algebra | | 3 x + 36 = 25 | x = -4.00
-algebra | | 4 x + 4 = 82 | x = 19.00
-algebra | | 9 x + 22 = 65 | x = 4.00
-algebra | | 7 x + 1 = 90 | x = 12.00
-algebra | | 8 x + 16 = 47 | x = 3.00
-algebra | | 1 x + 30 = 16 | x = -14.00
-algebra | | 5 x + 4 = 79 | x = 15.00
-algebra | | 4 x + 13 = 88 | x = 18.00
-algebra | | 10 x + 18 = 84 | x = 6.00
-algebra | | 2 x + 49 = 20 | x = -15.00
-algebra | | 7 x + 50 = 20 | x = -5.00
-algebra | | 2 x + 22 = 55 | x = 16.00
-algebra | | 6 x + 10 = 45 | x = 5.00
-algebra | | 5 x + 6 = 52 | x = 9.00
-algebra | | 9 x + 32 = 95 | x = 7.00
-algebra | | 6 x + 9 = 14 | x = 0.00
-algebra | | 7 x + 37 = 99 | x = 8.00
-algebra | | 8 x + 23 = 34 | x = 1.00
-permute | | 5 permute 2 | 20
-permute | | 4 permute 2 | 12
-permute | | 5 permute 1 | 5
-permute | | 5 permute 2 | 20
-permute | | 5 permute 5 | 120
-permute | | 6 permute 6 | 720
+algebra | | 4 x + 10 = 81 | x = 17.00
+algebra | | 1 x + 43 = 90 | x = 47.00
+algebra | | 6 x + 13 = 84 | x = 11.00
+algebra | | 2 x + 22 = 39 | x = 8.00
+algebra | | 4 x + 13 = 65 | x = 13.00
+algebra | | 2 x + 16 = 79 | x = 31.00
+algebra | | 8 x + 16 = 79 | x = 7.00
+algebra | | 1 x + 30 = 97 | x = 67.00
+algebra | | 7 x + 50 = 77 | x = 3.00
+algebra | | 6 x + 48 = 58 | x = 1.00
+algebra | | 7 x + 44 = 49 | x = 0.00
+algebra | | 5 x + 13 = 82 | x = 13.00
+algebra | | 2 x + 14 = 27 | x = 6.00
+algebra | | 6 x + 5 = 80 | x = 12.00
+algebra | | 4 x + 9 = 28 | x = 4.00
+algebra | | 5 x + 41 = 95 | x = 10.00
+algebra | | 8 x + 28 = 44 | x = 2.00
+algebra | | 6 x + 1 = 75 | x = 12.00
+algebra | | 8 x + 38 = 60 | x = 2.00
+algebra | | 3 x + 20 = 50 | x = 10.00
+algebra | | 7 x + 22 = 88 | x = 9.00
+algebra | | 7 x + 26 = 85 | x = 8.00
+algebra | | 5 x + 49 = 67 | x = 3.00
+algebra | | 10 x + 20 = 77 | x = 5.00
+algebra | | 1 x + 6 = 89 | x = 83.00
+algebra | | 6 x + 39 = 29 | x = -2.00
+algebra | | 9 x + 0 = 29 | x = 3.00
+algebra | | 8 x + 20 = 92 | x = 9.00
+algebra | | 9 x + 13 = 71 | x = 6.00
+algebra | | 10 x + 9 = 37 | x = 2.00
+algebra | | 10 x + 36 = 68 | x = 3.00
+algebra | | 4 x + 2 = 10 | x = 2.00
+algebra | | 9 x + 9 = 39 | x = 3.00
+algebra | | 5 x + 7 = 46 | x = 7.00
+algebra | | 6 x + 39 = 92 | x = 8.00
+algebra | | 1 x + 20 = 46 | x = 26.00
+algebra | | 3 x + 22 = 79 | x = 19.00
+algebra | | 2 x + 44 = 50 | x = 3.00
+algebra | | 8 x + 0 = 14 | x = 1.00
+algebra | | 4 x + 36 = 61 | x = 6.00
+algebra | | 8 x + 48 = 20 | x = -4.00
+algebra | | 2 x + 40 = 11 | x = -15.00
+algebra | | 5 x + 34 = 56 | x = 4.00
+algebra | | 6 x + 5 = 72 | x = 11.00
+algebra | | 5 x + 49 = 91 | x = 8.00
+algebra | | 4 x + 22 = 48 | x = 6.00
+algebra | | 5 x + 3 = 79 | x = 15.00
+algebra | | 10 x + 42 = 27 | x = -2.00
+algebra | | 6 x + 48 = 24 | x = -4.00
+algebra | | 5 x + 4 = 72 | x = 13.00
+algebra | | 7 x + 3 = 48 | x = 6.00
+algebra | | 5 x + 11 = 98 | x = 17.00
+algebra | | 9 x + 37 = 76 | x = 4.00
+algebra | | 9 x + 6 = 78 | x = 8.00
+algebra | | 10 x + 23 = 84 | x = 6.00
+algebra | | 1 x + 49 = 45 | x = -4.00
+algebra | | 7 x + 19 = 11 | x = -2.00
+algebra | | 10 x + 4 = 66 | x = 6.00
+algebra | | 9 x + 27 = 74 | x = 5.00
+algebra | | 2 x + 5 = 28 | x = 11.00
+algebra | | 1 x + 38 = 96 | x = 58.00
+algebra | | 10 x + 11 = 39 | x = 2.00
+algebra | | 10 x + 43 = 52 | x = 0.00
+algebra | | 2 x + 3 = 10 | x = 3.00
+algebra | | 9 x + 15 = 22 | x = 0.00
+algebra | | 4 x + 44 = 83 | x = 9.00
+algebra | | 8 x + 3 = 59 | x = 7.00
+algebra | | 9 x + 9 = 50 | x = 4.00
+algebra | | 2 x + 28 = 88 | x = 30.00
+algebra | | 8 x + 49 = 52 | x = 0.00
+algebra | | 9 x + 44 = 25 | x = -3.00
+algebra | | 10 x + 36 = 96 | x = 6.00
+algebra | | 8 x + 21 = 79 | x = 7.00
+algebra | | 10 x + 11 = 22 | x = 1.00
+algebra | | 2 x + 12 = 54 | x = 21.00
+algebra | | 8 x + 42 = 62 | x = 2.00
+algebra | | 1 x + 43 = 46 | x = 3.00
+algebra | | 9 x + 39 = 12 | x = -3.00
+algebra | | 6 x + 44 = 39 | x = -1.00
+algebra | | 4 x + 5 = 59 | x = 13.00
+algebra | | 7 x + 37 = 100 | x = 9.00
+algebra | | 4 x + 29 = 10 | x = -5.00
+algebra | | 2 x + 31 = 13 | x = -9.00
+algebra | | 8 x + 48 = 85 | x = 4.00
+algebra | | 7 x + 37 = 10 | x = -4.00
+algebra | | 8 x + 9 = 87 | x = 9.00
+algebra | | 2 x + 22 = 23 | x = 0.00
+algebra | | 9 x + 25 = 44 | x = 2.00
+algebra | | 6 x + 38 = 68 | x = 5.00
+algebra | | 1 x + 2 = 84 | x = 82.00
+algebra | | 5 x + 3 = 77 | x = 14.00
+algebra | | 6 x + 28 = 62 | x = 5.00
+algebra | | 4 x + 27 = 21 | x = -2.00
+algebra | | 9 x + 9 = 93 | x = 9.00
+algebra | | 4 x + 2 = 79 | x = 19.00
+algebra | | 9 x + 16 = 67 | x = 5.00
+algebra | | 1 x + 49 = 26 | x = -23.00
+algebra | | 5 x + 14 = 36 | x = 4.00
+algebra | | 8 x + 10 = 37 | x = 3.00
+algebra | | 5 x + 17 = 54 | x = 7.00
 permute | | 3 permute 3 | 6
-permute | | 3 permute 2 | 6
+permute | | 6 permute 6 | 720
 permute | | 4 permute 1 | 4
-permute | | 3 permute 1 | 3
-permute | | 5 permute 2 | 20
-permute | | 3 permute 2 | 6
-permute | | 7 permute 6 | 5040
-permute | | 3 permute 3 | 6
-permute | | 3 permute 3 | 6
-permute | | 5 permute 4 | 120
-permute | | 3 permute 3 | 6
-permute | | 6 permute 6 | 720
-permute | | 4 permute 3 | 24
+permute | | 4 permute 2 | 12
+permute | | 4 permute 4 | 24
+permute | | 6 permute 2 | 30
+permute | | 4 permute 2 | 12
+permute | | 4 permute 4 | 24
 permute | | 7 permute 4 | 840
-permute | | 7 permute 2 | 42
-permute | | 4 permute 3 | 24
-permute | | 7 permute 6 | 5040
-permute | | 3 permute 1 | 3
-permute | | 3 permute 3 | 6
-permute | | 5 permute 2 | 20
-permute | | 3 permute 3 | 6
-permute | | 7 permute 6 | 5040
-permute | | 5 permute 2 | 20
-permute | | 7 permute 2 | 42
-permute | | 7 permute 3 | 210
+permute | | 5 permute 3 | 60
 permute | | 4 permute 1 | 4
-permute | | 4 permute 4 | 24
+permute | | 3 permute 3 | 6
+permute | | 3 permute 3 | 6
+permute | | 7 permute 7 | 5040
+permute | | 4 permute 2 | 12
+permute | | 4 permute 2 | 12
+permute | | 3 permute 1 | 3
+permute | | 6 permute 2 | 30
+permute | | 5 permute 2 | 20
+permute | | 5 permute 1 | 5
+permute | | 6 permute 4 | 360
+permute | | 3 permute 1 | 3
+permute | | 5 permute 1 | 5
+permute | | 6 permute 6 | 720
+permute | | 6 permute 6 | 720
+permute | | 7 permute 6 | 5040
+permute | | 7 permute 2 | 42
+permute | | 3 permute 2 | 6
+permute | | 4 permute 2 | 12
+permute | | 3 permute 2 | 6
+permute | | 7 permute 5 | 2520
+permute | | 4 permute 3 | 24
+permute | | 3 permute 3 | 6
+permute | | 3 permute 3 | 6
+permute | | 4 permute 2 | 12
+permute | | 6 permute 4 | 360
+permute | | 5 permute 3 | 60
+permute | | 4 permute 2 | 12
+permute | | 7 permute 2 | 42
+permute | | 7 permute 2 | 42
+permute | | 6 permute 5 | 720
+permute | | 5 permute 3 | 60
+permute | | 6 permute 4 | 360
+permute | | 3 permute 3 | 6
+permute | | 4 permute 2 | 12
+permute | | 5 permute 4 | 120
+permute | | 7 permute 5 | 2520
 permute | | 7 permute 5 | 2520
 permute | | 6 permute 5 | 720
-permute | | 7 permute 6 | 5040
 permute | | 6 permute 2 | 30
-permute | | 6 permute 5 | 720
-permute | | 7 permute 6 | 5040
-permute | | 5 permute 2 | 20
-permute | | 7 permute 3 | 210
-permute | | 6 permute 4 | 360
-permute | | 5 permute 1 | 5
-permute | | 7 permute 7 | 5040
-permute | | 6 permute 4 | 360
-permute | | 7 permute 6 | 5040
-permute | | 7 permute 7 | 5040
-permute | | 4 permute 3 | 24
-permute | | 5 permute 2 | 20
-permute | | 3 permute 1 | 3
-permute | | 6 permute 2 | 30
-permute | | 3 permute 2 | 6
-permute | | 6 permute 1 | 6
-permute | | 4 permute 2 | 12
-permute | | 7 permute 1 | 7
-permute | | 3 permute 1 | 3
-permute | | 3 permute 3 | 6
-permute | | 4 permute 3 | 24
-permute | | 4 permute 3 | 24
-permute | | 7 permute 7 | 5040
-permute | | 3 permute 2 | 6
-permute | | 4 permute 4 | 24
-permute | | 7 permute 1 | 7
-permute | | 7 permute 1 | 7
-permute | | 3 permute 1 | 3
-permute | | 4 permute 3 | 24
-permute | | 5 permute 5 | 120
-permute | | 4 permute 3 | 24
-permute | | 6 permute 5 | 720
-permute | | 4 permute 2 | 12
-permute | | 5 permute 1 | 5
-permute | | 6 permute 2 | 30
-permute | | 5 permute 1 | 5
 permute | | 5 permute 4 | 120
-permute | | 5 permute 5 | 120
-permute | | 5 permute 2 | 20
-permute | | 5 permute 5 | 120
-permute | | 7 permute 3 | 210
-permute | | 4 permute 3 | 24
-permute | | 5 permute 5 | 120
-permute | | 6 permute 1 | 6
-permute | | 7 permute 7 | 5040
-permute | | 6 permute 1 | 6
-permute | | 6 permute 3 | 120
-permute | | 3 permute 1 | 3
-permute | | 7 permute 6 | 5040
-permute | | 6 permute 1 | 6
-permute | | 6 permute 3 | 120
-permute | | 6 permute 3 | 120
-permute | | 6 permute 6 | 720
-permute | | 7 permute 7 | 5040
-permute | | 6 permute 6 | 720
-permute | | 5 permute 5 | 120
+permute | | 4 permute 2 | 12
 permute | | 4 permute 1 | 4
-permute | | 7 permute 5 | 2520
-permute | | 5 permute 4 | 120
-permute | | 7 permute 6 | 5040
-permute | | 6 permute 6 | 720
+permute | | 5 permute 1 | 5
+permute | | 5 permute 2 | 20
+permute | | 5 permute 2 | 20
+permute | | 4 permute 3 | 24
+permute | | 4 permute 1 | 4
+permute | | 4 permute 1 | 4
+permute | | 6 permute 1 | 6
+permute | | 6 permute 2 | 30
+permute | | 6 permute 5 | 720
+permute | | 6 permute 1 | 6
+permute | | 3 permute 3 | 6
+permute | | 6 permute 4 | 360
+permute | | 7 permute 1 | 7
+permute | | 6 permute 4 | 360
+permute | | 5 permute 5 | 120
+permute | | 5 permute 3 | 60
+permute | | 5 permute 3 | 60
+permute | | 4 permute 1 | 4
+permute | | 5 permute 1 | 5
+permute | | 5 permute 2 | 20
+permute | | 6 permute 1 | 6
+permute | | 4 permute 4 | 24
+permute | | 6 permute 1 | 6
+permute | | 6 permute 4 | 360
+permute | | 4 permute 4 | 24
+permute | | 5 permute 5 | 120
+permute | | 3 permute 1 | 3
+permute | | 7 permute 1 | 7
+permute | | 4 permute 2 | 12
+permute | | 3 permute 2 | 6
+permute | | 5 permute 5 | 120
+permute | | 3 permute 1 | 3
+permute | | 4 permute 1 | 4
+permute | | 7 permute 2 | 42
+permute | | 5 permute 2 | 20
+permute | | 7 permute 1 | 7
+permute | | 5 permute 2 | 20
+permute | | 6 permute 4 | 360
+permute | | 4 permute 2 | 12
+permute | | 4 permute 1 | 4
 permute | | 5 permute 5 | 120
 permute | | 4 permute 4 | 24
-probability | | probability of 19 out of 83 | 0.23
-probability | | probability of 5 out of 59 | 0.08
-probability | | probability of 40 out of 52 | 0.77
-probability | | probability of 31 out of 79 | 0.39
+permute | | 4 permute 4 | 24
+permute | | 5 permute 2 | 20
+permute | | 4 permute 3 | 24
+permute | | 4 permute 1 | 4
+permute | | 7 permute 3 | 210
+probability | | probability of 18 out of 31 | 0.58
+probability | | probability of 45 out of 79 | 0.57
+probability | | probability of 18 out of 58 | 0.31
+probability | | probability of 7 out of 37 | 0.19
+probability | | probability of 8 out of 91 | 0.09
+probability | | probability of 17 out of 51 | 0.33
+probability | | probability of 29 out of 98 | 0.30
+probability | | probability of 5 out of 70 | 0.07
+probability | | probability of 33 out of 84 | 0.39
+probability | | probability of 11 out of 68 | 0.16
+probability | | probability of 26 out of 49 | 0.53
+probability | | probability of 7 out of 90 | 0.08
+probability | | probability of 31 out of 58 | 0.53
+probability | | probability of 38 out of 41 | 0.93
+probability | | probability of 10 out of 70 | 0.14
+probability | | probability of 22 out of 45 | 0.49
+probability | | probability of 33 out of 45 | 0.73
+probability | | probability of 28 out of 40 | 0.70
+probability | | probability of 4 out of 32 | 0.13
+probability | | probability of 21 out of 85 | 0.25
+probability | | probability of 37 out of 87 | 0.43
+probability | | probability of 1 out of 20 | 0.05
+probability | | probability of 49 out of 89 | 0.55
+probability | | probability of 22 out of 44 | 0.50
+probability | | probability of 28 out of 61 | 0.46
+probability | | probability of 27 out of 37 | 0.73
+probability | | probability of 21 out of 83 | 0.25
+probability | | probability of 43 out of 90 | 0.48
+probability | | probability of 35 out of 63 | 0.56
+probability | | probability of 40 out of 88 | 0.45
+probability | | probability of 3 out of 60 | 0.05
+probability | | probability of 47 out of 96 | 0.49
+probability | | probability of 38 out of 91 | 0.42
+probability | | probability of 40 out of 57 | 0.70
+probability | | probability of 19 out of 71 | 0.27
+probability | | probability of 20 out of 64 | 0.31
+probability | | probability of 48 out of 66 | 0.73
+probability | | probability of 16 out of 69 | 0.23
+probability | | probability of 34 out of 94 | 0.36
+probability | | probability of 37 out of 68 | 0.54
+probability | | probability of 23 out of 28 | 0.82
+probability | | probability of 37 out of 66 | 0.56
 probability | | probability of 10 out of 10 | 1.00
-probability | | probability of 38 out of 43 | 0.88
-probability | | probability of 43 out of 84 | 0.51
-probability | | probability of 29 out of 69 | 0.42
-probability | | probability of 39 out of 90 | 0.43
-probability | | probability of 40 out of 80 | 0.50
-probability | | probability of 32 out of 99 | 0.32
-probability | | probability of 11 out of 22 | 0.50
-probability | | probability of 36 out of 47 | 0.77
-probability | | probability of 39 out of 83 | 0.47
-probability | | probability of 1 out of 41 | 0.02
-probability | | probability of 33 out of 77 | 0.43
-probability | | probability of 29 out of 54 | 0.54
-probability | | probability of 43 out of 73 | 0.59
-probability | | probability of 26 out of 64 | 0.41
-probability | | probability of 24 out of 76 | 0.32
-probability | | probability of 38 out of 83 | 0.46
-probability | | probability of 12 out of 50 | 0.24
-probability | | probability of 23 out of 54 | 0.43
-probability | | probability of 40 out of 86 | 0.47
-probability | | probability of 11 out of 66 | 0.17
-probability | | probability of 1 out of 8 | 0.12
-probability | | probability of 15 out of 95 | 0.16
-probability | | probability of 6 out of 35 | 0.17
-probability | | probability of 9 out of 100 | 0.09
-probability | | probability of 5 out of 74 | 0.07
-probability | | probability of 16 out of 84 | 0.19
-probability | | probability of 22 out of 82 | 0.27
-probability | | probability of 10 out of 88 | 0.11
-probability | | probability of 4 out of 19 | 0.21
-probability | | probability of 42 out of 97 | 0.43
-probability | | probability of 40 out of 54 | 0.74
-probability | | probability of 22 out of 66 | 0.33
-probability | | probability of 33 out of 38 | 0.87
-probability | | probability of 35 out of 46 | 0.76
-probability | | probability of 31 out of 100 | 0.31
-probability | | probability of 3 out of 82 | 0.04
-probability | | probability of 14 out of 53 | 0.26
-probability | | probability of 8 out of 39 | 0.21
-probability | | probability of 22 out of 59 | 0.37
-probability | | probability of 3 out of 53 | 0.06
-probability | | probability of 7 out of 78 | 0.09
-probability | | probability of 33 out of 53 | 0.62
-probability | | probability of 35 out of 49 | 0.71
-probability | | probability of 3 out of 76 | 0.04
-probability | | probability of 5 out of 80 | 0.06
-probability | | probability of 23 out of 26 | 0.88
-probability | | probability of 38 out of 90 | 0.42
-probability | | probability of 40 out of 64 | 0.62
-probability | | probability of 30 out of 55 | 0.55
-probability | | probability of 9 out of 25 | 0.36
-probability | | probability of 34 out of 90 | 0.38
-probability | | probability of 27 out of 76 | 0.36
-probability | | probability of 17 out of 40 | 0.42
-probability | | probability of 39 out of 52 | 0.75
-probability | | probability of 29 out of 72 | 0.40
-probability | | probability of 41 out of 87 | 0.47
-probability | | probability of 36 out of 59 | 0.61
-probability | | probability of 14 out of 77 | 0.18
-probability | | probability of 46 out of 50 | 0.92
-probability | | probability of 37 out of 62 | 0.60
-probability | | probability of 21 out of 77 | 0.27
-probability | | probability of 39 out of 57 | 0.68
-probability | | probability of 13 out of 76 | 0.17
-probability | | probability of 35 out of 81 | 0.43
-probability | | probability of 26 out of 47 | 0.55
-probability | | probability of 41 out of 46 | 0.89
-probability | | probability of 41 out of 77 | 0.53
-probability | | probability of 28 out of 63 | 0.44
-probability | | probability of 32 out of 50 | 0.64
-probability | | probability of 47 out of 74 | 0.64
-probability | | probability of 1 out of 75 | 0.01
-probability | | probability of 6 out of 93 | 0.06
-probability | | probability of 24 out of 25 | 0.96
-probability | | probability of 42 out of 98 | 0.43
-probability | | probability of 14 out of 49 | 0.29
-probability | | probability of 46 out of 78 | 0.59
-probability | | probability of 29 out of 81 | 0.36
-probability | | probability of 20 out of 99 | 0.20
-probability | | probability of 1 out of 32 | 0.03
-probability | | probability of 21 out of 84 | 0.25
-probability | | probability of 44 out of 76 | 0.58
-probability | | probability of 48 out of 59 | 0.81
-probability | | probability of 10 out of 45 | 0.22
-probability | | probability of 6 out of 16 | 0.38
-probability | | probability of 28 out of 30 | 0.93
-probability | | probability of 40 out of 92 | 0.43
-probability | | probability of 7 out of 100 | 0.07
+probability | | probability of 47 out of 73 | 0.64
+probability | | probability of 46 out of 98 | 0.47
+probability | | probability of 41 out of 66 | 0.62
+probability | | probability of 37 out of 83 | 0.45
+probability | | probability of 4 out of 51 | 0.08
+probability | | probability of 16 out of 74 | 0.22
+probability | | probability of 45 out of 90 | 0.50
+probability | | probability of 28 out of 92 | 0.30
+probability | | probability of 45 out of 50 | 0.90
+probability | | probability of 20 out of 83 | 0.24
+probability | | probability of 7 out of 13 | 0.54
+probability | | probability of 12 out of 39 | 0.31
+probability | | probability of 2 out of 99 | 0.02
+probability | | probability of 41 out of 84 | 0.49
+probability | | probability of 49 out of 85 | 0.58
+probability | | probability of 43 out of 49 | 0.88
+probability | | probability of 43 out of 88 | 0.49
+probability | | probability of 5 out of 50 | 0.10
+probability | | probability of 48 out of 49 | 0.98
+probability | | probability of 8 out of 83 | 0.10
+probability | | probability of 4 out of 86 | 0.05
+probability | | probability of 8 out of 53 | 0.15
+probability | | probability of 34 out of 72 | 0.47
+probability | | probability of 49 out of 62 | 0.79
+probability | | probability of 35 out of 54 | 0.65
+probability | | probability of 7 out of 53 | 0.13
+probability | | probability of 3 out of 78 | 0.04
+probability | | probability of 25 out of 48 | 0.52
+probability | | probability of 25 out of 50 | 0.50
 probability | | probability of 5 out of 98 | 0.05
-probability | | probability of 6 out of 24 | 0.25
-probability | | probability of 9 out of 92 | 0.10
-probability | | probability of 44 out of 93 | 0.47
-probability | | probability of 1 out of 42 | 0.02
-probability | | probability of 6 out of 33 | 0.18
-probability | | probability of 38 out of 70 | 0.54
-probability | | probability of 26 out of 62 | 0.42
-area | | area of 16 and 5 | 80
-area | | area of 91 and 49 | 4459
-area | | area of 77 and 8 | 616
-area | | area of 17 and 64 | 1088
-area | | area of 55 and 13 | 715
-area | | area of 29 and 95 | 2755
-area | | area of 56 and 65 | 3640
-area | | area of 76 and 69 | 5244
-area | | area of 78 and 49 | 3822
-area | | area of 100 and 87 | 8700
-area | | area of 95 and 72 | 6840
-area | | area of 5 and 68 | 340
-area | | area of 60 and 67 | 4020
-area | | area of 92 and 100 | 9200
-area | | area of 15 and 8 | 120
-area | | area of 3 and 75 | 225
-area | | area of 94 and 96 | 9024
-area | | area of 30 and 29 | 870
+probability | | probability of 24 out of 53 | 0.45
+probability | | probability of 32 out of 35 | 0.91
+probability | | probability of 4 out of 13 | 0.31
+probability | | probability of 42 out of 43 | 0.98
+probability | | probability of 45 out of 83 | 0.54
+probability | | probability of 26 out of 27 | 0.96
+probability | | probability of 50 out of 56 | 0.89
+probability | | probability of 43 out of 50 | 0.86
+probability | | probability of 12 out of 98 | 0.12
+probability | | probability of 17 out of 20 | 0.85
+probability | | probability of 18 out of 41 | 0.44
+probability | | probability of 17 out of 57 | 0.30
+probability | | probability of 38 out of 39 | 0.97
+probability | | probability of 38 out of 83 | 0.46
+probability | | probability of 3 out of 25 | 0.12
+probability | | probability of 40 out of 88 | 0.45
+probability | | probability of 27 out of 66 | 0.41
+probability | | probability of 49 out of 60 | 0.82
+probability | | probability of 7 out of 69 | 0.10
+probability | | probability of 31 out of 60 | 0.52
+probability | | probability of 24 out of 51 | 0.47
+probability | | probability of 3 out of 75 | 0.04
+probability | | probability of 42 out of 72 | 0.58
+probability | | probability of 31 out of 97 | 0.32
+probability | | probability of 8 out of 9 | 0.89
+probability | | probability of 20 out of 90 | 0.22
+probability | | probability of 46 out of 79 | 0.58
+area | | area of 13 and 80 | 1040
+area | | area of 92 and 99 | 9108
+area | | area of 80 and 69 | 5520
+area | | area of 85 and 79 | 6715
+area | | area of 41 and 81 | 3321
+area | | area of 62 and 17 | 1054
+area | | area of 64 and 68 | 4352
+area | | area of 59 and 14 | 826
+area | | area of 37 and 81 | 2997
+area | | area of 10 and 68 | 680
+area | | area of 80 and 87 | 6960
+area | | area of 86 and 86 | 7396
+area | | area of 1 and 20 | 20
+area | | area of 76 and 28 | 2128
+area | | area of 19 and 86 | 1634
+area | | area of 39 and 34 | 1326
+area | | area of 36 and 22 | 792
+area | | area of 67 and 97 | 6499
+area | | area of 26 and 73 | 1898
+area | | area of 45 and 45 | 2025
+area | | area of 9 and 46 | 414
+area | | area of 24 and 47 | 1128
+area | | area of 26 and 53 | 1378
+area | | area of 98 and 84 | 8232
+area | | area of 65 and 85 | 5525
+area | | area of 95 and 82 | 7790
+area | | area of 93 and 67 | 6231
+area | | area of 33 and 55 | 1815
+area | | area of 1 and 61 | 61
+area | | area of 80 and 85 | 6800
+area | | area of 54 and 6 | 324
+area | | area of 50 and 50 | 2500
+area | | area of 13 and 95 | 1235
+area | | area of 20 and 60 | 1200
+area | | area of 80 and 61 | 4880
+area | | area of 61 and 70 | 4270
+area | | area of 35 and 67 | 2345
+area | | area of 27 and 97 | 2619
+area | | area of 93 and 47 | 4371
+area | | area of 55 and 82 | 4510
+area | | area of 87 and 86 | 7482
+area | | area of 64 and 100 | 6400
+area | | area of 59 and 68 | 4012
+area | | area of 95 and 11 | 1045
+area | | area of 95 and 7 | 665
+area | | area of 10 and 38 | 380
+area | | area of 100 and 99 | 9900
+area | | area of 68 and 2 | 136
+area | | area of 96 and 25 | 2400
+area | | area of 4 and 56 | 224
+area | | area of 18 and 2 | 36
+area | | area of 88 and 38 | 3344
+area | | area of 80 and 53 | 4240
+area | | area of 23 and 25 | 575
+area | | area of 54 and 97 | 5238
+area | | area of 36 and 38 | 1368
+area | | area of 92 and 30 | 2760
+area | | area of 5 and 42 | 210
+area | | area of 55 and 72 | 3960
+area | | area of 72 and 7 | 504
+area | | area of 87 and 48 | 4176
+area | | area of 58 and 45 | 2610
+area | | area of 41 and 91 | 3731
+area | | area of 79 and 26 | 2054
+area | | area of 30 and 38 | 1140
+area | | area of 59 and 43 | 2537
+area | | area of 81 and 39 | 3159
+area | | area of 95 and 75 | 7125
+area | | area of 35 and 40 | 1400
 area | | area of 44 and 78 | 3432
-area | | area of 9 and 68 | 612
-area | | area of 26 and 8 | 208
-area | | area of 84 and 25 | 2100
-area | | area of 44 and 44 | 1936
-area | | area of 18 and 5 | 90
-area | | area of 54 and 29 | 1566
-area | | area of 21 and 76 | 1596
-area | | area of 48 and 70 | 3360
-area | | area of 98 and 62 | 6076
-area | | area of 49 and 59 | 2891
-area | | area of 66 and 62 | 4092
-area | | area of 35 and 91 | 3185
-area | | area of 64 and 100 | 6400
-area | | area of 5 and 77 | 385
-area | | area of 38 and 26 | 988
-area | | area of 48 and 25 | 1200
-area | | area of 68 and 60 | 4080
-area | | area of 90 and 99 | 8910
-area | | area of 22 and 42 | 924
-area | | area of 36 and 48 | 1728
-area | | area of 51 and 52 | 2652
-area | | area of 96 and 3 | 288
-area | | area of 53 and 80 | 4240
-area | | area of 45 and 20 | 900
-area | | area of 66 and 59 | 3894
-area | | area of 59 and 75 | 4425
-area | | area of 90 and 74 | 6660
-area | | area of 56 and 21 | 1176
-area | | area of 3 and 78 | 234
-area | | area of 81 and 81 | 6561
-area | | area of 73 and 42 | 3066
-area | | area of 71 and 3 | 213
-area | | area of 85 and 66 | 5610
-area | | area of 2 and 29 | 58
-area | | area of 66 and 58 | 3828
-area | | area of 48 and 96 | 4608
-area | | area of 47 and 11 | 517
-area | | area of 1 and 52 | 52
-area | | area of 63 and 20 | 1260
-area | | area of 50 and 79 | 3950
-area | | area of 92 and 22 | 2024
-area | | area of 92 and 80 | 7360
-area | | area of 33 and 100 | 3300
-area | | area of 43 and 59 | 2537
-area | | area of 56 and 54 | 3024
-area | | area of 95 and 60 | 5700
-area | | area of 82 and 97 | 7954
-area | | area of 44 and 11 | 484
-area | | area of 90 and 47 | 4230
-area | | area of 35 and 70 | 2450
-area | | area of 27 and 94 | 2538
-area | | area of 32 and 22 | 704
-area | | area of 82 and 59 | 4838
-area | | area of 19 and 99 | 1881
-area | | area of 6 and 46 | 276
-area | | area of 24 and 50 | 1200
-area | | area of 51 and 90 | 4590
-area | | area of 97 and 13 | 1261
-area | | area of 86 and 85 | 7310
-area | | area of 12 and 76 | 912
-area | | area of 21 and 20 | 420
-area | | area of 71 and 7 | 497
-area | | area of 62 and 87 | 5394
-area | | area of 51 and 5 | 255
-area | | area of 61 and 90 | 5490
-area | | area of 85 and 45 | 3825
-area | | area of 100 and 1 | 100
-area | | area of 62 and 78 | 4836
-area | | area of 51 and 13 | 663
-area | | area of 54 and 5 | 270
-area | | area of 30 and 67 | 2010
-area | | area of 20 and 95 | 1900
-area | | area of 20 and 86 | 1720
-area | | area of 49 and 92 | 4508
-area | | area of 7 and 51 | 357
-area | | area of 64 and 100 | 6400
-area | | area of 30 and 88 | 2640
-area | | area of 50 and 62 | 3100
-area | | area of 76 and 67 | 5092
-area | | area of 19 and 87 | 1653
-area | | area of 50 and 65 | 3250
-power | | 9 power 1 | 9
-power | | 10 power 2 | 100
-power | | 7 power 2 | 49
-power | | 8 power 4 | 4096
-power | | 3 power 1 | 3
-power | | 8 power 4 | 4096
-power | | 4 power 4 | 256
-power | | 6 power 4 | 1296
-power | | 3 power 2 | 9
-power | | 1 power 3 | 1
-power | | 3 power 1 | 3
-power | | 3 power 3 | 27
-power | | 10 power 1 | 10
-power | | 5 power 2 | 25
-power | | 1 power 2 | 1
-power | | 8 power 3 | 512
-power | | 9 power 3 | 729
-power | | 3 power 4 | 81
-power | | 5 power 4 | 625
-power | | 2 power 2 | 4
-power | | 7 power 1 | 7
-power | | 5 power 1 | 5
-power | | 2 power 2 | 4
-power | | 1 power 2 | 1
-power | | 5 power 2 | 25
-power | | 5 power 1 | 5
-power | | 1 power 0 | 1
-power | | 3 power 3 | 27
-power | | 6 power 4 | 1296
-power | | 6 power 0 | 1
-power | | 9 power 0 | 1
-power | | 4 power 3 | 64
-power | | 10 power 0 | 1
-power | | 9 power 1 | 9
-power | | 1 power 1 | 1
-power | | 10 power 2 | 100
-power | | 1 power 0 | 1
-power | | 10 power 2 | 100
-power | | 2 power 1 | 2
-power | | 10 power 1 | 10
-power | | 4 power 4 | 256
-power | | 3 power 3 | 27
-power | | 2 power 4 | 16
-power | | 6 power 4 | 1296
-power | | 7 power 1 | 7
-power | | 5 power 1 | 5
-power | | 4 power 2 | 16
-power | | 2 power 0 | 1
-power | | 4 power 2 | 16
-power | | 8 power 1 | 8
-power | | 10 power 2 | 100
-power | | 10 power 4 | 10000
-power | | 1 power 2 | 1
-power | | 2 power 3 | 8
-power | | 5 power 4 | 625
-power | | 2 power 1 | 2
-power | | 2 power 1 | 2
-power | | 2 power 3 | 8
-power | | 9 power 0 | 1
-power | | 9 power 4 | 6561
-power | | 6 power 3 | 216
-power | | 3 power 1 | 3
-power | | 9 power 4 | 6561
-power | | 8 power 3 | 512
-power | | 2 power 3 | 8
-power | | 9 power 2 | 81
-power | | 6 power 4 | 1296
-power | | 3 power 1 | 3
-power | | 7 power 2 | 49
-power | | 10 power 1 | 10
-power | | 8 power 3 | 512
-power | | 8 power 1 | 8
-power | | 5 power 4 | 625
-power | | 2 power 4 | 16
-power | | 6 power 2 | 36
-power | | 1 power 3 | 1
-power | | 9 power 4 | 6561
-power | | 6 power 0 | 1
-power | | 2 power 0 | 1
-power | | 6 power 3 | 216
-power | | 3 power 1 | 3
-power | | 7 power 3 | 343
-power | | 5 power 0 | 1
-power | | 8 power 2 | 64
-power | | 7 power 3 | 343
-power | | 10 power 1 | 10
-power | | 4 power 4 | 256
-power | | 4 power 1 | 4
-power | | 9 power 2 | 81
-power | | 8 power 2 | 64
-power | | 10 power 1 | 10
-power | | 2 power 3 | 8
+area | | area of 4 and 83 | 332
+area | | area of 10 and 4 | 40
+area | | area of 5 and 60 | 300
+area | | area of 87 and 20 | 1740
+area | | area of 9 and 66 | 594
+area | | area of 70 and 97 | 6790
+area | | area of 63 and 89 | 5607
+area | | area of 89 and 6 | 534
+area | | area of 3 and 7 | 21
+area | | area of 5 and 86 | 430
+area | | area of 51 and 70 | 3570
+area | | area of 59 and 54 | 3186
+area | | area of 68 and 66 | 4488
+area | | area of 75 and 75 | 5625
+area | | area of 58 and 41 | 2378
+area | | area of 40 and 93 | 3720
+area | | area of 59 and 71 | 4189
+area | | area of 36 and 69 | 2484
+area | | area of 96 and 68 | 6528
+area | | area of 29 and 77 | 2233
+area | | area of 68 and 13 | 884
+area | | area of 35 and 37 | 1295
+area | | area of 43 and 82 | 3526
+area | | area of 79 and 52 | 4108
+area | | area of 45 and 91 | 4095
+area | | area of 97 and 47 | 4559
+area | | area of 49 and 19 | 931
+area | | area of 28 and 28 | 784
+area | | area of 92 and 93 | 8556
+area | | area of 33 and 34 | 1122
 power | | 3 power 0 | 1
-power | | 6 power 3 | 216
-power | | 3 power 3 | 27
+power | | 10 power 4 | 10000
+power | | 7 power 0 | 1
+power | | 1 power 3 | 1
+power | | 9 power 2 | 81
+power | | 1 power 4 | 1
+power | | 4 power 0 | 1
+power | | 5 power 3 | 125
+power | | 9 power 1 | 9
+power | | 8 power 3 | 512
+power | | 7 power 3 | 343
 power | | 1 power 0 | 1
-power | | 6 power 3 | 216
-power | | 7 power 4 | 2401
-power | | 7 power 2 | 49
+power | | 1 power 1 | 1
+power | | 4 power 4 | 256
+power | | 9 power 1 | 9
 power | | 9 power 4 | 6561
+power | | 4 power 1 | 4
+power | | 1 power 0 | 1
+power | | 9 power 2 | 81
+power | | 10 power 1 | 10
+power | | 6 power 4 | 1296
+power | | 2 power 1 | 2
+power | | 10 power 4 | 10000
+power | | 5 power 0 | 1
+power | | 7 power 0 | 1
+power | | 1 power 3 | 1
+power | | 7 power 0 | 1
+power | | 2 power 4 | 16
+power | | 1 power 0 | 1
+power | | 10 power 3 | 1000
+power | | 2 power 4 | 16
+power | | 5 power 1 | 5
+power | | 5 power 3 | 125
+power | | 5 power 4 | 625
+power | | 3 power 2 | 9
+power | | 5 power 1 | 5
+power | | 3 power 2 | 9
+power | | 10 power 2 | 100
+power | | 2 power 3 | 8
+power | | 1 power 3 | 1
+power | | 10 power 1 | 10
+power | | 1 power 0 | 1
+power | | 7 power 4 | 2401
+power | | 10 power 1 | 10
+power | | 2 power 1 | 2
+power | | 6 power 0 | 1
+power | | 7 power 0 | 1
+power | | 4 power 2 | 16
+power | | 3 power 3 | 27
+power | | 6 power 0 | 1
+power | | 3 power 4 | 81
+power | | 8 power 1 | 8
+power | | 3 power 4 | 81
+power | | 7 power 4 | 2401
+power | | 3 power 3 | 27
+power | | 10 power 0 | 1
+power | | 7 power 0 | 1
+power | | 7 power 4 | 2401
+power | | 6 power 2 | 36
+power | | 6 power 0 | 1
+power | | 5 power 0 | 1
+power | | 3 power 1 | 3
+power | | 7 power 3 | 343
+power | | 8 power 3 | 512
+power | | 3 power 0 | 1
+power | | 5 power 0 | 1
+power | | 2 power 2 | 4
+power | | 3 power 1 | 3
+power | | 10 power 1 | 10
+power | | 8 power 4 | 4096
+power | | 7 power 0 | 1
+power | | 6 power 1 | 6
+power | | 9 power 4 | 6561
+power | | 4 power 1 | 4
+power | | 2 power 4 | 16
+power | | 8 power 4 | 4096
+power | | 2 power 4 | 16
+power | | 3 power 2 | 9
+power | | 3 power 2 | 9
+power | | 10 power 4 | 10000
+power | | 2 power 1 | 2
+power | | 5 power 4 | 625
+power | | 6 power 2 | 36
+power | | 2 power 3 | 8
+power | | 8 power 3 | 512
+power | | 6 power 0 | 1
+power | | 7 power 0 | 1
+power | | 5 power 0 | 1
+power | | 3 power 1 | 3
+power | | 2 power 4 | 16
+power | | 1 power 1 | 1
+power | | 9 power 2 | 81
+power | | 4 power 0 | 1
+power | | 1 power 0 | 1
+power | | 1 power 3 | 1
+power | | 3 power 0 | 1
+power | | 1 power 3 | 1
+power | | 1 power 1 | 1
+power | | 8 power 3 | 512
+power | | 1 power 4 | 1
 grammar | apple0 isa fruit0 | what isa apple0 | fruit0
 grammar | apple1 isa fruit1 | what isa apple1 | fruit1
 grammar | apple2 isa fruit2 | what isa apple2 | fruit2

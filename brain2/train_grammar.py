@@ -8,7 +8,7 @@ OP_SPEAK = 15
 OP_SPEAK_SUBJ = 17
 OP_SPEAK_REL = 18
 
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
+b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
 
 ckpt_dir = "checkpoints/stage5_math"
 try:
