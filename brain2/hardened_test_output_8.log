@@ -1,0 +1,51 @@
+Loaded 1100 cases.
+
+--- PHASE 1: INDIVIDUAL TESTS ---
+Progress Phase 1: 0/1100
+Progress Phase 1: 100/1100
+Progress Phase 1: 200/1100
+Progress Phase 1: 300/1100
+Progress Phase 1: 400/1100
+Progress Phase 1: 500/1100
+Progress Phase 1: 600/1100
+Progress Phase 1: 700/1100
+Progress Phase 1: 800/1100
+Progress Phase 1: 900/1100
+Progress Phase 1: 1000/1100
+Phase 1 Results:
+semantic: 100/100
+describe: 100/100
+algebra: 83/100
+permute: 100/100
+probability: 99/100
+area: 100/100
+power: 100/100
+grammar: 100/100
+self: 100/100
+episodic: 100/100
+causal: 100/100
+
+--- PHASE 2: CONTINUOUS LIFESPAN ---
+Progress Phase 2: 0/1100
+Progress Phase 2: 100/1100
+Progress Phase 2: 200/1100
+Progress Phase 2: 300/1100
+Progress Phase 2: 400/1100
+Progress Phase 2: 500/1100
+Progress Phase 2: 600/1100
+Progress Phase 2: 700/1100
+Progress Phase 2: 800/1100
+Progress Phase 2: 900/1100
+Progress Phase 2: 1000/1100
+Phase 2 Results:
+semantic: 100/100
+describe: 100/100
+algebra: 83/100
+permute: 100/100
+probability: 99/100
+area: 100/100
+power: 100/100
+grammar: 100/100
+self: 100/100
+episodic: 100/100
+causal: 100/100

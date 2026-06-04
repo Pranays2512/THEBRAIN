@@ -96,10 +96,15 @@ struct BindingMemory {
             }
         }
 
-        // Sort branches by confidence descending
-        std::sort(branches.begin(), branches.end(), [](const auto& x, const auto& y) {
-            return x.first > y.first;
-        });
+        if (!branches.empty()) {
+            float mean_conf = 0.f;
+            for (const auto& br : branches) mean_conf += br.first;
+            mean_conf /= branches.size();
+            
+            // Sort branches descending
+            std::sort(branches.begin(), branches.end(),
+                      [](const auto& x, const auto& y) { return x.first > y.first; });
+        }
 
         float global_best_conf = -1.f;
         std::vector<float> global_best_res(n_dims, 0.f);
@@ -109,6 +114,13 @@ struct BindingMemory {
         for (int i = 0; i < max_branches; i++) {
             float direct_conf = branches[i].first;
             const auto& direct_res = branches[i].second;
+
+            // Quantum Zeno Pruning: Observe state early and collapse branches
+            // If the absolute best theoretical probability of this branch is already worse
+            // than the found global best, we prune the search tree immediately.
+            if (global_best_conf > 0.0f && direct_conf < global_best_conf * 0.9f) {
+                break; // Since sorted descending, all remaining branches will also fail
+            }
 
             // Track direct hit
             if (direct_conf > global_best_conf) {
@@ -121,7 +133,7 @@ struct BindingMemory {
                 auto trans_res = query_recursive(direct_res, b, true, threshold, depth - 1, visited);
                 float path_conf = direct_conf * trans_res.second;
                 
-                if (trans_res.second >= threshold && path_conf >= global_best_conf) {
+                if (trans_res.second >= threshold && path_conf >= global_best_conf - 1e-4f) {
                     global_best_conf = path_conf;
                     global_best_res = trans_res.first;
                 }

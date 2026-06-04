@@ -47,7 +47,9 @@ def run_test(b, category, context, query, expected):
                 subj = b.language.encode(words[0])
                 # Emulate Phase 5 Episodic Commit
                 b.scratchpad.write("subject", subj, "context")
-                b.commit_episode(1.0, b.som.activation_map(subj))
+                b.episodic.observe(b.som.activation_map(subj))
+                b.episodic.observe(b.som.activation_map(subj))
+                b.commit_episode(1.0, subj)
 
     # Query processing
     words = query.split()
