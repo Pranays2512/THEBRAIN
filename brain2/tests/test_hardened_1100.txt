@@ -1,0 +1,1100 @@
+semantic | bird0 isa animal0 | bird0 isa ? | animal0
+semantic | bird1 isa animal1 | bird1 isa ? | animal1
+semantic | bird2 isa animal2 | bird2 isa ? | animal2
+semantic | bird3 isa animal3 | bird3 isa ? | animal3
+semantic | bird4 isa animal4 | bird4 isa ? | animal4
+semantic | bird5 isa animal5 | bird5 isa ? | animal5
+semantic | bird6 isa animal6 | bird6 isa ? | animal6
+semantic | bird7 isa animal7 | bird7 isa ? | animal7
+semantic | bird8 isa animal8 | bird8 isa ? | animal8
+semantic | bird9 isa animal9 | bird9 isa ? | animal9
+semantic | bird10 isa animal10 | bird10 isa ? | animal10
+semantic | bird11 isa animal11 | bird11 isa ? | animal11
+semantic | bird12 isa animal12 | bird12 isa ? | animal12
+semantic | bird13 isa animal13 | bird13 isa ? | animal13
+semantic | bird14 isa animal14 | bird14 isa ? | animal14
+semantic | bird15 isa animal15 | bird15 isa ? | animal15
+semantic | bird16 isa animal16 | bird16 isa ? | animal16
+semantic | bird17 isa animal17 | bird17 isa ? | animal17
+semantic | bird18 isa animal18 | bird18 isa ? | animal18
+semantic | bird19 isa animal19 | bird19 isa ? | animal19
+semantic | bird20 isa animal20 | bird20 isa ? | animal20
+semantic | bird21 isa animal21 | bird21 isa ? | animal21
+semantic | bird22 isa animal22 | bird22 isa ? | animal22
+semantic | bird23 isa animal23 | bird23 isa ? | animal23
+semantic | bird24 isa animal24 | bird24 isa ? | animal24
+semantic | bird25 isa animal25 | bird25 isa ? | animal25
+semantic | bird26 isa animal26 | bird26 isa ? | animal26
+semantic | bird27 isa animal27 | bird27 isa ? | animal27
+semantic | bird28 isa animal28 | bird28 isa ? | animal28
+semantic | bird29 isa animal29 | bird29 isa ? | animal29
+semantic | bird30 isa animal30 | bird30 isa ? | animal30
+semantic | bird31 isa animal31 | bird31 isa ? | animal31
+semantic | bird32 isa animal32 | bird32 isa ? | animal32
+semantic | bird33 isa animal33 | bird33 isa ? | animal33
+semantic | bird34 isa animal34 | bird34 isa ? | animal34
+semantic | bird35 isa animal35 | bird35 isa ? | animal35
+semantic | bird36 isa animal36 | bird36 isa ? | animal36
+semantic | bird37 isa animal37 | bird37 isa ? | animal37
+semantic | bird38 isa animal38 | bird38 isa ? | animal38
+semantic | bird39 isa animal39 | bird39 isa ? | animal39
+semantic | bird40 isa animal40 | bird40 isa ? | animal40
+semantic | bird41 isa animal41 | bird41 isa ? | animal41
+semantic | bird42 isa animal42 | bird42 isa ? | animal42
+semantic | bird43 isa animal43 | bird43 isa ? | animal43
+semantic | bird44 isa animal44 | bird44 isa ? | animal44
+semantic | bird45 isa animal45 | bird45 isa ? | animal45
+semantic | bird46 isa animal46 | bird46 isa ? | animal46
+semantic | bird47 isa animal47 | bird47 isa ? | animal47
+semantic | bird48 isa animal48 | bird48 isa ? | animal48
+semantic | bird49 isa animal49 | bird49 isa ? | animal49
+semantic | bird50 isa animal50 | bird50 isa ? | animal50
+semantic | bird51 isa animal51 | bird51 isa ? | animal51
+semantic | bird52 isa animal52 | bird52 isa ? | animal52
+semantic | bird53 isa animal53 | bird53 isa ? | animal53
+semantic | bird54 isa animal54 | bird54 isa ? | animal54
+semantic | bird55 isa animal55 | bird55 isa ? | animal55
+semantic | bird56 isa animal56 | bird56 isa ? | animal56
+semantic | bird57 isa animal57 | bird57 isa ? | animal57
+semantic | bird58 isa animal58 | bird58 isa ? | animal58
+semantic | bird59 isa animal59 | bird59 isa ? | animal59
+semantic | bird60 isa animal60 | bird60 isa ? | animal60
+semantic | bird61 isa animal61 | bird61 isa ? | animal61
+semantic | bird62 isa animal62 | bird62 isa ? | animal62
+semantic | bird63 isa animal63 | bird63 isa ? | animal63
+semantic | bird64 isa animal64 | bird64 isa ? | animal64
+semantic | bird65 isa animal65 | bird65 isa ? | animal65
+semantic | bird66 isa animal66 | bird66 isa ? | animal66
+semantic | bird67 isa animal67 | bird67 isa ? | animal67
+semantic | bird68 isa animal68 | bird68 isa ? | animal68
+semantic | bird69 isa animal69 | bird69 isa ? | animal69
+semantic | bird70 isa animal70 | bird70 isa ? | animal70
+semantic | bird71 isa animal71 | bird71 isa ? | animal71
+semantic | bird72 isa animal72 | bird72 isa ? | animal72
+semantic | bird73 isa animal73 | bird73 isa ? | animal73
+semantic | bird74 isa animal74 | bird74 isa ? | animal74
+semantic | bird75 isa animal75 | bird75 isa ? | animal75
+semantic | bird76 isa animal76 | bird76 isa ? | animal76
+semantic | bird77 isa animal77 | bird77 isa ? | animal77
+semantic | bird78 isa animal78 | bird78 isa ? | animal78
+semantic | bird79 isa animal79 | bird79 isa ? | animal79
+semantic | bird80 isa animal80 | bird80 isa ? | animal80
+semantic | bird81 isa animal81 | bird81 isa ? | animal81
+semantic | bird82 isa animal82 | bird82 isa ? | animal82
+semantic | bird83 isa animal83 | bird83 isa ? | animal83
+semantic | bird84 isa animal84 | bird84 isa ? | animal84
+semantic | bird85 isa animal85 | bird85 isa ? | animal85
+semantic | bird86 isa animal86 | bird86 isa ? | animal86
+semantic | bird87 isa animal87 | bird87 isa ? | animal87
+semantic | bird88 isa animal88 | bird88 isa ? | animal88
+semantic | bird89 isa animal89 | bird89 isa ? | animal89
+semantic | bird90 isa animal90 | bird90 isa ? | animal90
+semantic | bird91 isa animal91 | bird91 isa ? | animal91
+semantic | bird92 isa animal92 | bird92 isa ? | animal92
+semantic | bird93 isa animal93 | bird93 isa ? | animal93
+semantic | bird94 isa animal94 | bird94 isa ? | animal94
+semantic | bird95 isa animal95 | bird95 isa ? | animal95
+semantic | bird96 isa animal96 | bird96 isa ? | animal96
+semantic | bird97 isa animal97 | bird97 isa ? | animal97
+semantic | bird98 isa animal98 | bird98 isa ? | animal98
+semantic | bird99 isa animal99 | bird99 isa ? | animal99
+describe | car0 has wheels0 ; car0 has doors0 | describe car0 | car0 has wheels0. car0 has doors0.
+describe | car1 has wheels1 ; car1 has doors1 | describe car1 | car1 has wheels1. car1 has doors1.
+describe | car2 has wheels2 ; car2 has doors2 | describe car2 | car2 has wheels2. car2 has doors2.
+describe | car3 has wheels3 ; car3 has doors3 | describe car3 | car3 has wheels3. car3 has doors3.
+describe | car4 has wheels4 ; car4 has doors4 | describe car4 | car4 has wheels4. car4 has doors4.
+describe | car5 has wheels5 ; car5 has doors5 | describe car5 | car5 has wheels5. car5 has doors5.
+describe | car6 has wheels6 ; car6 has doors6 | describe car6 | car6 has wheels6. car6 has doors6.
+describe | car7 has wheels7 ; car7 has doors7 | describe car7 | car7 has wheels7. car7 has doors7.
+describe | car8 has wheels8 ; car8 has doors8 | describe car8 | car8 has wheels8. car8 has doors8.
+describe | car9 has wheels9 ; car9 has doors9 | describe car9 | car9 has wheels9. car9 has doors9.
+describe | car10 has wheels10 ; car10 has doors10 | describe car10 | car10 has wheels10. car10 has doors10.
+describe | car11 has wheels11 ; car11 has doors11 | describe car11 | car11 has wheels11. car11 has doors11.
+describe | car12 has wheels12 ; car12 has doors12 | describe car12 | car12 has wheels12. car12 has doors12.
+describe | car13 has wheels13 ; car13 has doors13 | describe car13 | car13 has wheels13. car13 has doors13.
+describe | car14 has wheels14 ; car14 has doors14 | describe car14 | car14 has wheels14. car14 has doors14.
+describe | car15 has wheels15 ; car15 has doors15 | describe car15 | car15 has wheels15. car15 has doors15.
+describe | car16 has wheels16 ; car16 has doors16 | describe car16 | car16 has wheels16. car16 has doors16.
+describe | car17 has wheels17 ; car17 has doors17 | describe car17 | car17 has wheels17. car17 has doors17.
+describe | car18 has wheels18 ; car18 has doors18 | describe car18 | car18 has wheels18. car18 has doors18.
+describe | car19 has wheels19 ; car19 has doors19 | describe car19 | car19 has wheels19. car19 has doors19.
+describe | car20 has wheels20 ; car20 has doors20 | describe car20 | car20 has wheels20. car20 has doors20.
+describe | car21 has wheels21 ; car21 has doors21 | describe car21 | car21 has wheels21. car21 has doors21.
+describe | car22 has wheels22 ; car22 has doors22 | describe car22 | car22 has wheels22. car22 has doors22.
+describe | car23 has wheels23 ; car23 has doors23 | describe car23 | car23 has wheels23. car23 has doors23.
+describe | car24 has wheels24 ; car24 has doors24 | describe car24 | car24 has wheels24. car24 has doors24.
+describe | car25 has wheels25 ; car25 has doors25 | describe car25 | car25 has wheels25. car25 has doors25.
+describe | car26 has wheels26 ; car26 has doors26 | describe car26 | car26 has wheels26. car26 has doors26.
+describe | car27 has wheels27 ; car27 has doors27 | describe car27 | car27 has wheels27. car27 has doors27.
+describe | car28 has wheels28 ; car28 has doors28 | describe car28 | car28 has wheels28. car28 has doors28.
+describe | car29 has wheels29 ; car29 has doors29 | describe car29 | car29 has wheels29. car29 has doors29.
+describe | car30 has wheels30 ; car30 has doors30 | describe car30 | car30 has wheels30. car30 has doors30.
+describe | car31 has wheels31 ; car31 has doors31 | describe car31 | car31 has wheels31. car31 has doors31.
+describe | car32 has wheels32 ; car32 has doors32 | describe car32 | car32 has wheels32. car32 has doors32.
+describe | car33 has wheels33 ; car33 has doors33 | describe car33 | car33 has wheels33. car33 has doors33.
+describe | car34 has wheels34 ; car34 has doors34 | describe car34 | car34 has wheels34. car34 has doors34.
+describe | car35 has wheels35 ; car35 has doors35 | describe car35 | car35 has wheels35. car35 has doors35.
+describe | car36 has wheels36 ; car36 has doors36 | describe car36 | car36 has wheels36. car36 has doors36.
+describe | car37 has wheels37 ; car37 has doors37 | describe car37 | car37 has wheels37. car37 has doors37.
+describe | car38 has wheels38 ; car38 has doors38 | describe car38 | car38 has wheels38. car38 has doors38.
+describe | car39 has wheels39 ; car39 has doors39 | describe car39 | car39 has wheels39. car39 has doors39.
+describe | car40 has wheels40 ; car40 has doors40 | describe car40 | car40 has wheels40. car40 has doors40.
+describe | car41 has wheels41 ; car41 has doors41 | describe car41 | car41 has wheels41. car41 has doors41.
+describe | car42 has wheels42 ; car42 has doors42 | describe car42 | car42 has wheels42. car42 has doors42.
+describe | car43 has wheels43 ; car43 has doors43 | describe car43 | car43 has wheels43. car43 has doors43.
+describe | car44 has wheels44 ; car44 has doors44 | describe car44 | car44 has wheels44. car44 has doors44.
+describe | car45 has wheels45 ; car45 has doors45 | describe car45 | car45 has wheels45. car45 has doors45.
+describe | car46 has wheels46 ; car46 has doors46 | describe car46 | car46 has wheels46. car46 has doors46.
+describe | car47 has wheels47 ; car47 has doors47 | describe car47 | car47 has wheels47. car47 has doors47.
+describe | car48 has wheels48 ; car48 has doors48 | describe car48 | car48 has wheels48. car48 has doors48.
+describe | car49 has wheels49 ; car49 has doors49 | describe car49 | car49 has wheels49. car49 has doors49.
+describe | car50 has wheels50 ; car50 has doors50 | describe car50 | car50 has wheels50. car50 has doors50.
+describe | car51 has wheels51 ; car51 has doors51 | describe car51 | car51 has wheels51. car51 has doors51.
+describe | car52 has wheels52 ; car52 has doors52 | describe car52 | car52 has wheels52. car52 has doors52.
+describe | car53 has wheels53 ; car53 has doors53 | describe car53 | car53 has wheels53. car53 has doors53.
+describe | car54 has wheels54 ; car54 has doors54 | describe car54 | car54 has wheels54. car54 has doors54.
+describe | car55 has wheels55 ; car55 has doors55 | describe car55 | car55 has wheels55. car55 has doors55.
+describe | car56 has wheels56 ; car56 has doors56 | describe car56 | car56 has wheels56. car56 has doors56.
+describe | car57 has wheels57 ; car57 has doors57 | describe car57 | car57 has wheels57. car57 has doors57.
+describe | car58 has wheels58 ; car58 has doors58 | describe car58 | car58 has wheels58. car58 has doors58.
+describe | car59 has wheels59 ; car59 has doors59 | describe car59 | car59 has wheels59. car59 has doors59.
+describe | car60 has wheels60 ; car60 has doors60 | describe car60 | car60 has wheels60. car60 has doors60.
+describe | car61 has wheels61 ; car61 has doors61 | describe car61 | car61 has wheels61. car61 has doors61.
+describe | car62 has wheels62 ; car62 has doors62 | describe car62 | car62 has wheels62. car62 has doors62.
+describe | car63 has wheels63 ; car63 has doors63 | describe car63 | car63 has wheels63. car63 has doors63.
+describe | car64 has wheels64 ; car64 has doors64 | describe car64 | car64 has wheels64. car64 has doors64.
+describe | car65 has wheels65 ; car65 has doors65 | describe car65 | car65 has wheels65. car65 has doors65.
+describe | car66 has wheels66 ; car66 has doors66 | describe car66 | car66 has wheels66. car66 has doors66.
+describe | car67 has wheels67 ; car67 has doors67 | describe car67 | car67 has wheels67. car67 has doors67.
+describe | car68 has wheels68 ; car68 has doors68 | describe car68 | car68 has wheels68. car68 has doors68.
+describe | car69 has wheels69 ; car69 has doors69 | describe car69 | car69 has wheels69. car69 has doors69.
+describe | car70 has wheels70 ; car70 has doors70 | describe car70 | car70 has wheels70. car70 has doors70.
+describe | car71 has wheels71 ; car71 has doors71 | describe car71 | car71 has wheels71. car71 has doors71.
+describe | car72 has wheels72 ; car72 has doors72 | describe car72 | car72 has wheels72. car72 has doors72.
+describe | car73 has wheels73 ; car73 has doors73 | describe car73 | car73 has wheels73. car73 has doors73.
+describe | car74 has wheels74 ; car74 has doors74 | describe car74 | car74 has wheels74. car74 has doors74.
+describe | car75 has wheels75 ; car75 has doors75 | describe car75 | car75 has wheels75. car75 has doors75.
+describe | car76 has wheels76 ; car76 has doors76 | describe car76 | car76 has wheels76. car76 has doors76.
+describe | car77 has wheels77 ; car77 has doors77 | describe car77 | car77 has wheels77. car77 has doors77.
+describe | car78 has wheels78 ; car78 has doors78 | describe car78 | car78 has wheels78. car78 has doors78.
+describe | car79 has wheels79 ; car79 has doors79 | describe car79 | car79 has wheels79. car79 has doors79.
+describe | car80 has wheels80 ; car80 has doors80 | describe car80 | car80 has wheels80. car80 has doors80.
+describe | car81 has wheels81 ; car81 has doors81 | describe car81 | car81 has wheels81. car81 has doors81.
+describe | car82 has wheels82 ; car82 has doors82 | describe car82 | car82 has wheels82. car82 has doors82.
+describe | car83 has wheels83 ; car83 has doors83 | describe car83 | car83 has wheels83. car83 has doors83.
+describe | car84 has wheels84 ; car84 has doors84 | describe car84 | car84 has wheels84. car84 has doors84.
+describe | car85 has wheels85 ; car85 has doors85 | describe car85 | car85 has wheels85. car85 has doors85.
+describe | car86 has wheels86 ; car86 has doors86 | describe car86 | car86 has wheels86. car86 has doors86.
+describe | car87 has wheels87 ; car87 has doors87 | describe car87 | car87 has wheels87. car87 has doors87.
+describe | car88 has wheels88 ; car88 has doors88 | describe car88 | car88 has wheels88. car88 has doors88.
+describe | car89 has wheels89 ; car89 has doors89 | describe car89 | car89 has wheels89. car89 has doors89.
+describe | car90 has wheels90 ; car90 has doors90 | describe car90 | car90 has wheels90. car90 has doors90.
+describe | car91 has wheels91 ; car91 has doors91 | describe car91 | car91 has wheels91. car91 has doors91.
+describe | car92 has wheels92 ; car92 has doors92 | describe car92 | car92 has wheels92. car92 has doors92.
+describe | car93 has wheels93 ; car93 has doors93 | describe car93 | car93 has wheels93. car93 has doors93.
+describe | car94 has wheels94 ; car94 has doors94 | describe car94 | car94 has wheels94. car94 has doors94.
+describe | car95 has wheels95 ; car95 has doors95 | describe car95 | car95 has wheels95. car95 has doors95.
+describe | car96 has wheels96 ; car96 has doors96 | describe car96 | car96 has wheels96. car96 has doors96.
+describe | car97 has wheels97 ; car97 has doors97 | describe car97 | car97 has wheels97. car97 has doors97.
+describe | car98 has wheels98 ; car98 has doors98 | describe car98 | car98 has wheels98. car98 has doors98.
+describe | car99 has wheels99 ; car99 has doors99 | describe car99 | car99 has wheels99. car99 has doors99.
+algebra | | 5 x + 28 = 28 | x = 0.00
+algebra | | 3 x + 48 = 20 | x = -10.00
+algebra | | 3 x + 39 = 56 | x = 5.00
+algebra | | 3 x + 44 = 66 | x = 7.00
+algebra | | 6 x + 43 = 83 | x = 6.00
+algebra | | 3 x + 15 = 88 | x = 24.00
+algebra | | 10 x + 32 = 28 | x = -1.00
+algebra | | 1 x + 10 = 38 | x = 28.00
+algebra | | 6 x + 37 = 58 | x = 3.00
+algebra | | 1 x + 28 = 16 | x = -12.00
+algebra | | 5 x + 9 = 94 | x = 17.00
+algebra | | 4 x + 36 = 48 | x = 3.00
+algebra | | 7 x + 23 = 90 | x = 9.00
+algebra | | 4 x + 27 = 26 | x = -1.00
+algebra | | 10 x + 15 = 81 | x = 6.00
+algebra | | 10 x + 8 = 69 | x = 6.00
+algebra | | 5 x + 21 = 98 | x = 15.00
+algebra | | 2 x + 34 = 30 | x = -2.00
+algebra | | 8 x + 39 = 62 | x = 2.00
+algebra | | 8 x + 39 = 59 | x = 2.00
+algebra | | 4 x + 7 = 12 | x = 1.00
+algebra | | 6 x + 44 = 67 | x = 3.00
+algebra | | 1 x + 43 = 68 | x = 25.00
+algebra | | 8 x + 7 = 71 | x = 8.00
+algebra | | 6 x + 49 = 50 | x = 0.00
+algebra | | 9 x + 21 = 87 | x = 7.00
+algebra | | 4 x + 19 = 83 | x = 16.00
+algebra | | 10 x + 33 = 25 | x = -1.00
+algebra | | 9 x + 28 = 14 | x = -2.00
+algebra | | 7 x + 50 = 100 | x = 7.00
+algebra | | 2 x + 21 = 13 | x = -4.00
+algebra | | 6 x + 45 = 24 | x = -4.00
+algebra | | 5 x + 38 = 24 | x = -3.00
+algebra | | 10 x + 13 = 65 | x = 5.00
+algebra | | 7 x + 22 = 25 | x = 0.00
+algebra | | 3 x + 23 = 83 | x = 20.00
+algebra | | 3 x + 16 = 92 | x = 25.00
+algebra | | 4 x + 35 = 90 | x = 13.00
+algebra | | 4 x + 32 = 80 | x = 12.00
+algebra | | 2 x + 0 = 36 | x = 18.00
+algebra | | 6 x + 36 = 26 | x = -2.00
+algebra | | 8 x + 37 = 92 | x = 6.00
+algebra | | 3 x + 41 = 40 | x = -1.00
+algebra | | 3 x + 40 = 46 | x = 2.00
+algebra | | 2 x + 39 = 70 | x = 15.00
+algebra | | 10 x + 7 = 32 | x = 2.00
+algebra | | 6 x + 32 = 17 | x = -3.00
+algebra | | 2 x + 28 = 67 | x = 19.00
+algebra | | 8 x + 23 = 92 | x = 8.00
+algebra | | 10 x + 50 = 65 | x = 1.00
+algebra | | 1 x + 3 = 14 | x = 11.00
+algebra | | 2 x + 44 = 28 | x = -8.00
+algebra | | 4 x + 12 = 70 | x = 14.00
+algebra | | 4 x + 41 = 24 | x = -5.00
+algebra | | 9 x + 3 = 29 | x = 2.00
+algebra | | 8 x + 38 = 49 | x = 1.00
+algebra | | 3 x + 33 = 53 | x = 6.00
+algebra | | 9 x + 27 = 65 | x = 4.00
+algebra | | 3 x + 25 = 75 | x = 16.00
+algebra | | 9 x + 16 = 22 | x = 0.00
+algebra | | 5 x + 35 = 50 | x = 3.00
+algebra | | 5 x + 40 = 77 | x = 7.00
+algebra | | 1 x + 35 = 10 | x = -25.00
+algebra | | 2 x + 40 = 38 | x = -1.00
+algebra | | 7 x + 27 = 42 | x = 2.00
+algebra | | 6 x + 36 = 74 | x = 6.00
+algebra | | 4 x + 28 = 39 | x = 2.00
+algebra | | 2 x + 7 = 45 | x = 19.00
+algebra | | 7 x + 46 = 23 | x = -4.00
+algebra | | 10 x + 19 = 49 | x = 3.00
+algebra | | 1 x + 33 = 60 | x = 27.00
+algebra | | 9 x + 32 = 27 | x = -1.00
+algebra | | 2 x + 32 = 22 | x = -5.00
+algebra | | 2 x + 37 = 52 | x = 7.00
+algebra | | 6 x + 46 = 59 | x = 2.00
+algebra | | 9 x + 33 = 47 | x = 1.00
+algebra | | 9 x + 11 = 62 | x = 5.00
+algebra | | 1 x + 43 = 92 | x = 49.00
+algebra | | 2 x + 17 = 71 | x = 27.00
+algebra | | 7 x + 3 = 58 | x = 7.00
+algebra | | 3 x + 46 = 36 | x = -4.00
+algebra | | 9 x + 37 = 54 | x = 1.00
+algebra | | 3 x + 36 = 25 | x = -4.00
+algebra | | 4 x + 4 = 82 | x = 19.00
+algebra | | 9 x + 22 = 65 | x = 4.00
+algebra | | 7 x + 1 = 90 | x = 12.00
+algebra | | 8 x + 16 = 47 | x = 3.00
+algebra | | 1 x + 30 = 16 | x = -14.00
+algebra | | 5 x + 4 = 79 | x = 15.00
+algebra | | 4 x + 13 = 88 | x = 18.00
+algebra | | 10 x + 18 = 84 | x = 6.00
+algebra | | 2 x + 49 = 20 | x = -15.00
+algebra | | 7 x + 50 = 20 | x = -5.00
+algebra | | 2 x + 22 = 55 | x = 16.00
+algebra | | 6 x + 10 = 45 | x = 5.00
+algebra | | 5 x + 6 = 52 | x = 9.00
+algebra | | 9 x + 32 = 95 | x = 7.00
+algebra | | 6 x + 9 = 14 | x = 0.00
+algebra | | 7 x + 37 = 99 | x = 8.00
+algebra | | 8 x + 23 = 34 | x = 1.00
+permute | | 5 permute 2 | 20
+permute | | 4 permute 2 | 12
+permute | | 5 permute 1 | 5
+permute | | 5 permute 2 | 20
+permute | | 5 permute 5 | 120
+permute | | 6 permute 6 | 720
+permute | | 3 permute 3 | 6
+permute | | 3 permute 2 | 6
+permute | | 4 permute 1 | 4
+permute | | 3 permute 1 | 3
+permute | | 5 permute 2 | 20
+permute | | 3 permute 2 | 6
+permute | | 7 permute 6 | 5040
+permute | | 3 permute 3 | 6
+permute | | 3 permute 3 | 6
+permute | | 5 permute 4 | 120
+permute | | 3 permute 3 | 6
+permute | | 6 permute 6 | 720
+permute | | 4 permute 3 | 24
+permute | | 7 permute 4 | 840
+permute | | 7 permute 2 | 42
+permute | | 4 permute 3 | 24
+permute | | 7 permute 6 | 5040
+permute | | 3 permute 1 | 3
+permute | | 3 permute 3 | 6
+permute | | 5 permute 2 | 20
+permute | | 3 permute 3 | 6
+permute | | 7 permute 6 | 5040
+permute | | 5 permute 2 | 20
+permute | | 7 permute 2 | 42
+permute | | 7 permute 3 | 210
+permute | | 4 permute 1 | 4
+permute | | 4 permute 4 | 24
+permute | | 7 permute 5 | 2520
+permute | | 6 permute 5 | 720
+permute | | 7 permute 6 | 5040
+permute | | 6 permute 2 | 30
+permute | | 6 permute 5 | 720
+permute | | 7 permute 6 | 5040
+permute | | 5 permute 2 | 20
+permute | | 7 permute 3 | 210
+permute | | 6 permute 4 | 360
+permute | | 5 permute 1 | 5
+permute | | 7 permute 7 | 5040
+permute | | 6 permute 4 | 360
+permute | | 7 permute 6 | 5040
+permute | | 7 permute 7 | 5040
+permute | | 4 permute 3 | 24
+permute | | 5 permute 2 | 20
+permute | | 3 permute 1 | 3
+permute | | 6 permute 2 | 30
+permute | | 3 permute 2 | 6
+permute | | 6 permute 1 | 6
+permute | | 4 permute 2 | 12
+permute | | 7 permute 1 | 7
+permute | | 3 permute 1 | 3
+permute | | 3 permute 3 | 6
+permute | | 4 permute 3 | 24
+permute | | 4 permute 3 | 24
+permute | | 7 permute 7 | 5040
+permute | | 3 permute 2 | 6
+permute | | 4 permute 4 | 24
+permute | | 7 permute 1 | 7
+permute | | 7 permute 1 | 7
+permute | | 3 permute 1 | 3
+permute | | 4 permute 3 | 24
+permute | | 5 permute 5 | 120
+permute | | 4 permute 3 | 24
+permute | | 6 permute 5 | 720
+permute | | 4 permute 2 | 12
+permute | | 5 permute 1 | 5
+permute | | 6 permute 2 | 30
+permute | | 5 permute 1 | 5
+permute | | 5 permute 4 | 120
+permute | | 5 permute 5 | 120
+permute | | 5 permute 2 | 20
+permute | | 5 permute 5 | 120
+permute | | 7 permute 3 | 210
+permute | | 4 permute 3 | 24
+permute | | 5 permute 5 | 120
+permute | | 6 permute 1 | 6
+permute | | 7 permute 7 | 5040
+permute | | 6 permute 1 | 6
+permute | | 6 permute 3 | 120
+permute | | 3 permute 1 | 3
+permute | | 7 permute 6 | 5040
+permute | | 6 permute 1 | 6
+permute | | 6 permute 3 | 120
+permute | | 6 permute 3 | 120
+permute | | 6 permute 6 | 720
+permute | | 7 permute 7 | 5040
+permute | | 6 permute 6 | 720
+permute | | 5 permute 5 | 120
+permute | | 4 permute 1 | 4
+permute | | 7 permute 5 | 2520
+permute | | 5 permute 4 | 120
+permute | | 7 permute 6 | 5040
+permute | | 6 permute 6 | 720
+permute | | 5 permute 5 | 120
+permute | | 4 permute 4 | 24
+probability | | probability of 19 out of 83 | 0.23
+probability | | probability of 5 out of 59 | 0.08
+probability | | probability of 40 out of 52 | 0.77
+probability | | probability of 31 out of 79 | 0.39
+probability | | probability of 10 out of 10 | 1.00
+probability | | probability of 38 out of 43 | 0.88
+probability | | probability of 43 out of 84 | 0.51
+probability | | probability of 29 out of 69 | 0.42
+probability | | probability of 39 out of 90 | 0.43
+probability | | probability of 40 out of 80 | 0.50
+probability | | probability of 32 out of 99 | 0.32
+probability | | probability of 11 out of 22 | 0.50
+probability | | probability of 36 out of 47 | 0.77
+probability | | probability of 39 out of 83 | 0.47
+probability | | probability of 1 out of 41 | 0.02
+probability | | probability of 33 out of 77 | 0.43
+probability | | probability of 29 out of 54 | 0.54
+probability | | probability of 43 out of 73 | 0.59
+probability | | probability of 26 out of 64 | 0.41
+probability | | probability of 24 out of 76 | 0.32
+probability | | probability of 38 out of 83 | 0.46
+probability | | probability of 12 out of 50 | 0.24
+probability | | probability of 23 out of 54 | 0.43
+probability | | probability of 40 out of 86 | 0.47
+probability | | probability of 11 out of 66 | 0.17
+probability | | probability of 1 out of 8 | 0.12
+probability | | probability of 15 out of 95 | 0.16
+probability | | probability of 6 out of 35 | 0.17
+probability | | probability of 9 out of 100 | 0.09
+probability | | probability of 5 out of 74 | 0.07
+probability | | probability of 16 out of 84 | 0.19
+probability | | probability of 22 out of 82 | 0.27
+probability | | probability of 10 out of 88 | 0.11
+probability | | probability of 4 out of 19 | 0.21
+probability | | probability of 42 out of 97 | 0.43
+probability | | probability of 40 out of 54 | 0.74
+probability | | probability of 22 out of 66 | 0.33
+probability | | probability of 33 out of 38 | 0.87
+probability | | probability of 35 out of 46 | 0.76
+probability | | probability of 31 out of 100 | 0.31
+probability | | probability of 3 out of 82 | 0.04
+probability | | probability of 14 out of 53 | 0.26
+probability | | probability of 8 out of 39 | 0.21
+probability | | probability of 22 out of 59 | 0.37
+probability | | probability of 3 out of 53 | 0.06
+probability | | probability of 7 out of 78 | 0.09
+probability | | probability of 33 out of 53 | 0.62
+probability | | probability of 35 out of 49 | 0.71
+probability | | probability of 3 out of 76 | 0.04
+probability | | probability of 5 out of 80 | 0.06
+probability | | probability of 23 out of 26 | 0.88
+probability | | probability of 38 out of 90 | 0.42
+probability | | probability of 40 out of 64 | 0.62
+probability | | probability of 30 out of 55 | 0.55
+probability | | probability of 9 out of 25 | 0.36
+probability | | probability of 34 out of 90 | 0.38
+probability | | probability of 27 out of 76 | 0.36
+probability | | probability of 17 out of 40 | 0.42
+probability | | probability of 39 out of 52 | 0.75
+probability | | probability of 29 out of 72 | 0.40
+probability | | probability of 41 out of 87 | 0.47
+probability | | probability of 36 out of 59 | 0.61
+probability | | probability of 14 out of 77 | 0.18
+probability | | probability of 46 out of 50 | 0.92
+probability | | probability of 37 out of 62 | 0.60
+probability | | probability of 21 out of 77 | 0.27
+probability | | probability of 39 out of 57 | 0.68
+probability | | probability of 13 out of 76 | 0.17
+probability | | probability of 35 out of 81 | 0.43
+probability | | probability of 26 out of 47 | 0.55
+probability | | probability of 41 out of 46 | 0.89
+probability | | probability of 41 out of 77 | 0.53
+probability | | probability of 28 out of 63 | 0.44
+probability | | probability of 32 out of 50 | 0.64
+probability | | probability of 47 out of 74 | 0.64
+probability | | probability of 1 out of 75 | 0.01
+probability | | probability of 6 out of 93 | 0.06
+probability | | probability of 24 out of 25 | 0.96
+probability | | probability of 42 out of 98 | 0.43
+probability | | probability of 14 out of 49 | 0.29
+probability | | probability of 46 out of 78 | 0.59
+probability | | probability of 29 out of 81 | 0.36
+probability | | probability of 20 out of 99 | 0.20
+probability | | probability of 1 out of 32 | 0.03
+probability | | probability of 21 out of 84 | 0.25
+probability | | probability of 44 out of 76 | 0.58
+probability | | probability of 48 out of 59 | 0.81
+probability | | probability of 10 out of 45 | 0.22
+probability | | probability of 6 out of 16 | 0.38
+probability | | probability of 28 out of 30 | 0.93
+probability | | probability of 40 out of 92 | 0.43
+probability | | probability of 7 out of 100 | 0.07
+probability | | probability of 5 out of 98 | 0.05
+probability | | probability of 6 out of 24 | 0.25
+probability | | probability of 9 out of 92 | 0.10
+probability | | probability of 44 out of 93 | 0.47
+probability | | probability of 1 out of 42 | 0.02
+probability | | probability of 6 out of 33 | 0.18
+probability | | probability of 38 out of 70 | 0.54
+probability | | probability of 26 out of 62 | 0.42
+area | | area of 16 and 5 | 80
+area | | area of 91 and 49 | 4459
+area | | area of 77 and 8 | 616
+area | | area of 17 and 64 | 1088
+area | | area of 55 and 13 | 715
+area | | area of 29 and 95 | 2755
+area | | area of 56 and 65 | 3640
+area | | area of 76 and 69 | 5244
+area | | area of 78 and 49 | 3822
+area | | area of 100 and 87 | 8700
+area | | area of 95 and 72 | 6840
+area | | area of 5 and 68 | 340
+area | | area of 60 and 67 | 4020
+area | | area of 92 and 100 | 9200
+area | | area of 15 and 8 | 120
+area | | area of 3 and 75 | 225
+area | | area of 94 and 96 | 9024
+area | | area of 30 and 29 | 870
+area | | area of 44 and 78 | 3432
+area | | area of 9 and 68 | 612
+area | | area of 26 and 8 | 208
+area | | area of 84 and 25 | 2100
+area | | area of 44 and 44 | 1936
+area | | area of 18 and 5 | 90
+area | | area of 54 and 29 | 1566
+area | | area of 21 and 76 | 1596
+area | | area of 48 and 70 | 3360
+area | | area of 98 and 62 | 6076
+area | | area of 49 and 59 | 2891
+area | | area of 66 and 62 | 4092
+area | | area of 35 and 91 | 3185
+area | | area of 64 and 100 | 6400
+area | | area of 5 and 77 | 385
+area | | area of 38 and 26 | 988
+area | | area of 48 and 25 | 1200
+area | | area of 68 and 60 | 4080
+area | | area of 90 and 99 | 8910
+area | | area of 22 and 42 | 924
+area | | area of 36 and 48 | 1728
+area | | area of 51 and 52 | 2652
+area | | area of 96 and 3 | 288
+area | | area of 53 and 80 | 4240
+area | | area of 45 and 20 | 900
+area | | area of 66 and 59 | 3894
+area | | area of 59 and 75 | 4425
+area | | area of 90 and 74 | 6660
+area | | area of 56 and 21 | 1176
+area | | area of 3 and 78 | 234
+area | | area of 81 and 81 | 6561
+area | | area of 73 and 42 | 3066
+area | | area of 71 and 3 | 213
+area | | area of 85 and 66 | 5610
+area | | area of 2 and 29 | 58
+area | | area of 66 and 58 | 3828
+area | | area of 48 and 96 | 4608
+area | | area of 47 and 11 | 517
+area | | area of 1 and 52 | 52
+area | | area of 63 and 20 | 1260
+area | | area of 50 and 79 | 3950
+area | | area of 92 and 22 | 2024
+area | | area of 92 and 80 | 7360
+area | | area of 33 and 100 | 3300
+area | | area of 43 and 59 | 2537
+area | | area of 56 and 54 | 3024
+area | | area of 95 and 60 | 5700
+area | | area of 82 and 97 | 7954
+area | | area of 44 and 11 | 484
+area | | area of 90 and 47 | 4230
+area | | area of 35 and 70 | 2450
+area | | area of 27 and 94 | 2538
+area | | area of 32 and 22 | 704
+area | | area of 82 and 59 | 4838
+area | | area of 19 and 99 | 1881
+area | | area of 6 and 46 | 276
+area | | area of 24 and 50 | 1200
+area | | area of 51 and 90 | 4590
+area | | area of 97 and 13 | 1261
+area | | area of 86 and 85 | 7310
+area | | area of 12 and 76 | 912
+area | | area of 21 and 20 | 420
+area | | area of 71 and 7 | 497
+area | | area of 62 and 87 | 5394
+area | | area of 51 and 5 | 255
+area | | area of 61 and 90 | 5490
+area | | area of 85 and 45 | 3825
+area | | area of 100 and 1 | 100
+area | | area of 62 and 78 | 4836
+area | | area of 51 and 13 | 663
+area | | area of 54 and 5 | 270
+area | | area of 30 and 67 | 2010
+area | | area of 20 and 95 | 1900
+area | | area of 20 and 86 | 1720
+area | | area of 49 and 92 | 4508
+area | | area of 7 and 51 | 357
+area | | area of 64 and 100 | 6400
+area | | area of 30 and 88 | 2640
+area | | area of 50 and 62 | 3100
+area | | area of 76 and 67 | 5092
+area | | area of 19 and 87 | 1653
+area | | area of 50 and 65 | 3250
+power | | 9 power 1 | 9
+power | | 10 power 2 | 100
+power | | 7 power 2 | 49
+power | | 8 power 4 | 4096
+power | | 3 power 1 | 3
+power | | 8 power 4 | 4096
+power | | 4 power 4 | 256
+power | | 6 power 4 | 1296
+power | | 3 power 2 | 9
+power | | 1 power 3 | 1
+power | | 3 power 1 | 3
+power | | 3 power 3 | 27
+power | | 10 power 1 | 10
+power | | 5 power 2 | 25
+power | | 1 power 2 | 1
+power | | 8 power 3 | 512
+power | | 9 power 3 | 729
+power | | 3 power 4 | 81
+power | | 5 power 4 | 625
+power | | 2 power 2 | 4
+power | | 7 power 1 | 7
+power | | 5 power 1 | 5
+power | | 2 power 2 | 4
+power | | 1 power 2 | 1
+power | | 5 power 2 | 25
+power | | 5 power 1 | 5
+power | | 1 power 0 | 1
+power | | 3 power 3 | 27
+power | | 6 power 4 | 1296
+power | | 6 power 0 | 1
+power | | 9 power 0 | 1
+power | | 4 power 3 | 64
+power | | 10 power 0 | 1
+power | | 9 power 1 | 9
+power | | 1 power 1 | 1
+power | | 10 power 2 | 100
+power | | 1 power 0 | 1
+power | | 10 power 2 | 100
+power | | 2 power 1 | 2
+power | | 10 power 1 | 10
+power | | 4 power 4 | 256
+power | | 3 power 3 | 27
+power | | 2 power 4 | 16
+power | | 6 power 4 | 1296
+power | | 7 power 1 | 7
+power | | 5 power 1 | 5
+power | | 4 power 2 | 16
+power | | 2 power 0 | 1
+power | | 4 power 2 | 16
+power | | 8 power 1 | 8
+power | | 10 power 2 | 100
+power | | 10 power 4 | 10000
+power | | 1 power 2 | 1
+power | | 2 power 3 | 8
+power | | 5 power 4 | 625
+power | | 2 power 1 | 2
+power | | 2 power 1 | 2
+power | | 2 power 3 | 8
+power | | 9 power 0 | 1
+power | | 9 power 4 | 6561
+power | | 6 power 3 | 216
+power | | 3 power 1 | 3
+power | | 9 power 4 | 6561
+power | | 8 power 3 | 512
+power | | 2 power 3 | 8
+power | | 9 power 2 | 81
+power | | 6 power 4 | 1296
+power | | 3 power 1 | 3
+power | | 7 power 2 | 49
+power | | 10 power 1 | 10
+power | | 8 power 3 | 512
+power | | 8 power 1 | 8
+power | | 5 power 4 | 625
+power | | 2 power 4 | 16
+power | | 6 power 2 | 36
+power | | 1 power 3 | 1
+power | | 9 power 4 | 6561
+power | | 6 power 0 | 1
+power | | 2 power 0 | 1
+power | | 6 power 3 | 216
+power | | 3 power 1 | 3
+power | | 7 power 3 | 343
+power | | 5 power 0 | 1
+power | | 8 power 2 | 64
+power | | 7 power 3 | 343
+power | | 10 power 1 | 10
+power | | 4 power 4 | 256
+power | | 4 power 1 | 4
+power | | 9 power 2 | 81
+power | | 8 power 2 | 64
+power | | 10 power 1 | 10
+power | | 2 power 3 | 8
+power | | 3 power 0 | 1
+power | | 6 power 3 | 216
+power | | 3 power 3 | 27
+power | | 1 power 0 | 1
+power | | 6 power 3 | 216
+power | | 7 power 4 | 2401
+power | | 7 power 2 | 49
+power | | 9 power 4 | 6561
+grammar | apple0 isa fruit0 | what isa apple0 | fruit0
+grammar | apple1 isa fruit1 | what isa apple1 | fruit1
+grammar | apple2 isa fruit2 | what isa apple2 | fruit2
+grammar | apple3 isa fruit3 | what isa apple3 | fruit3
+grammar | apple4 isa fruit4 | what isa apple4 | fruit4
+grammar | apple5 isa fruit5 | what isa apple5 | fruit5
+grammar | apple6 isa fruit6 | what isa apple6 | fruit6
+grammar | apple7 isa fruit7 | what isa apple7 | fruit7
+grammar | apple8 isa fruit8 | what isa apple8 | fruit8
+grammar | apple9 isa fruit9 | what isa apple9 | fruit9
+grammar | apple10 isa fruit10 | what isa apple10 | fruit10
+grammar | apple11 isa fruit11 | what isa apple11 | fruit11
+grammar | apple12 isa fruit12 | what isa apple12 | fruit12
+grammar | apple13 isa fruit13 | what isa apple13 | fruit13
+grammar | apple14 isa fruit14 | what isa apple14 | fruit14
+grammar | apple15 isa fruit15 | what isa apple15 | fruit15
+grammar | apple16 isa fruit16 | what isa apple16 | fruit16
+grammar | apple17 isa fruit17 | what isa apple17 | fruit17
+grammar | apple18 isa fruit18 | what isa apple18 | fruit18
+grammar | apple19 isa fruit19 | what isa apple19 | fruit19
+grammar | apple20 isa fruit20 | what isa apple20 | fruit20
+grammar | apple21 isa fruit21 | what isa apple21 | fruit21
+grammar | apple22 isa fruit22 | what isa apple22 | fruit22
+grammar | apple23 isa fruit23 | what isa apple23 | fruit23
+grammar | apple24 isa fruit24 | what isa apple24 | fruit24
+grammar | apple25 isa fruit25 | what isa apple25 | fruit25
+grammar | apple26 isa fruit26 | what isa apple26 | fruit26
+grammar | apple27 isa fruit27 | what isa apple27 | fruit27
+grammar | apple28 isa fruit28 | what isa apple28 | fruit28
+grammar | apple29 isa fruit29 | what isa apple29 | fruit29
+grammar | apple30 isa fruit30 | what isa apple30 | fruit30
+grammar | apple31 isa fruit31 | what isa apple31 | fruit31
+grammar | apple32 isa fruit32 | what isa apple32 | fruit32
+grammar | apple33 isa fruit33 | what isa apple33 | fruit33
+grammar | apple34 isa fruit34 | what isa apple34 | fruit34
+grammar | apple35 isa fruit35 | what isa apple35 | fruit35
+grammar | apple36 isa fruit36 | what isa apple36 | fruit36
+grammar | apple37 isa fruit37 | what isa apple37 | fruit37
+grammar | apple38 isa fruit38 | what isa apple38 | fruit38
+grammar | apple39 isa fruit39 | what isa apple39 | fruit39
+grammar | apple40 isa fruit40 | what isa apple40 | fruit40
+grammar | apple41 isa fruit41 | what isa apple41 | fruit41
+grammar | apple42 isa fruit42 | what isa apple42 | fruit42
+grammar | apple43 isa fruit43 | what isa apple43 | fruit43
+grammar | apple44 isa fruit44 | what isa apple44 | fruit44
+grammar | apple45 isa fruit45 | what isa apple45 | fruit45
+grammar | apple46 isa fruit46 | what isa apple46 | fruit46
+grammar | apple47 isa fruit47 | what isa apple47 | fruit47
+grammar | apple48 isa fruit48 | what isa apple48 | fruit48
+grammar | apple49 isa fruit49 | what isa apple49 | fruit49
+grammar | apple50 isa fruit50 | what isa apple50 | fruit50
+grammar | apple51 isa fruit51 | what isa apple51 | fruit51
+grammar | apple52 isa fruit52 | what isa apple52 | fruit52
+grammar | apple53 isa fruit53 | what isa apple53 | fruit53
+grammar | apple54 isa fruit54 | what isa apple54 | fruit54
+grammar | apple55 isa fruit55 | what isa apple55 | fruit55
+grammar | apple56 isa fruit56 | what isa apple56 | fruit56
+grammar | apple57 isa fruit57 | what isa apple57 | fruit57
+grammar | apple58 isa fruit58 | what isa apple58 | fruit58
+grammar | apple59 isa fruit59 | what isa apple59 | fruit59
+grammar | apple60 isa fruit60 | what isa apple60 | fruit60
+grammar | apple61 isa fruit61 | what isa apple61 | fruit61
+grammar | apple62 isa fruit62 | what isa apple62 | fruit62
+grammar | apple63 isa fruit63 | what isa apple63 | fruit63
+grammar | apple64 isa fruit64 | what isa apple64 | fruit64
+grammar | apple65 isa fruit65 | what isa apple65 | fruit65
+grammar | apple66 isa fruit66 | what isa apple66 | fruit66
+grammar | apple67 isa fruit67 | what isa apple67 | fruit67
+grammar | apple68 isa fruit68 | what isa apple68 | fruit68
+grammar | apple69 isa fruit69 | what isa apple69 | fruit69
+grammar | apple70 isa fruit70 | what isa apple70 | fruit70
+grammar | apple71 isa fruit71 | what isa apple71 | fruit71
+grammar | apple72 isa fruit72 | what isa apple72 | fruit72
+grammar | apple73 isa fruit73 | what isa apple73 | fruit73
+grammar | apple74 isa fruit74 | what isa apple74 | fruit74
+grammar | apple75 isa fruit75 | what isa apple75 | fruit75
+grammar | apple76 isa fruit76 | what isa apple76 | fruit76
+grammar | apple77 isa fruit77 | what isa apple77 | fruit77
+grammar | apple78 isa fruit78 | what isa apple78 | fruit78
+grammar | apple79 isa fruit79 | what isa apple79 | fruit79
+grammar | apple80 isa fruit80 | what isa apple80 | fruit80
+grammar | apple81 isa fruit81 | what isa apple81 | fruit81
+grammar | apple82 isa fruit82 | what isa apple82 | fruit82
+grammar | apple83 isa fruit83 | what isa apple83 | fruit83
+grammar | apple84 isa fruit84 | what isa apple84 | fruit84
+grammar | apple85 isa fruit85 | what isa apple85 | fruit85
+grammar | apple86 isa fruit86 | what isa apple86 | fruit86
+grammar | apple87 isa fruit87 | what isa apple87 | fruit87
+grammar | apple88 isa fruit88 | what isa apple88 | fruit88
+grammar | apple89 isa fruit89 | what isa apple89 | fruit89
+grammar | apple90 isa fruit90 | what isa apple90 | fruit90
+grammar | apple91 isa fruit91 | what isa apple91 | fruit91
+grammar | apple92 isa fruit92 | what isa apple92 | fruit92
+grammar | apple93 isa fruit93 | what isa apple93 | fruit93
+grammar | apple94 isa fruit94 | what isa apple94 | fruit94
+grammar | apple95 isa fruit95 | what isa apple95 | fruit95
+grammar | apple96 isa fruit96 | what isa apple96 | fruit96
+grammar | apple97 isa fruit97 | what isa apple97 | fruit97
+grammar | apple98 isa fruit98 | what isa apple98 | fruit98
+grammar | apple99 isa fruit99 | what isa apple99 | fruit99
+self | pranay0 is creator0 | who is pranay0 | creator0
+self | pranay1 is creator1 | who is pranay1 | creator1
+self | pranay2 is creator2 | who is pranay2 | creator2
+self | pranay3 is creator3 | who is pranay3 | creator3
+self | pranay4 is creator4 | who is pranay4 | creator4
+self | pranay5 is creator5 | who is pranay5 | creator5
+self | pranay6 is creator6 | who is pranay6 | creator6
+self | pranay7 is creator7 | who is pranay7 | creator7
+self | pranay8 is creator8 | who is pranay8 | creator8
+self | pranay9 is creator9 | who is pranay9 | creator9
+self | pranay10 is creator10 | who is pranay10 | creator10
+self | pranay11 is creator11 | who is pranay11 | creator11
+self | pranay12 is creator12 | who is pranay12 | creator12
+self | pranay13 is creator13 | who is pranay13 | creator13
+self | pranay14 is creator14 | who is pranay14 | creator14
+self | pranay15 is creator15 | who is pranay15 | creator15
+self | pranay16 is creator16 | who is pranay16 | creator16
+self | pranay17 is creator17 | who is pranay17 | creator17
+self | pranay18 is creator18 | who is pranay18 | creator18
+self | pranay19 is creator19 | who is pranay19 | creator19
+self | pranay20 is creator20 | who is pranay20 | creator20
+self | pranay21 is creator21 | who is pranay21 | creator21
+self | pranay22 is creator22 | who is pranay22 | creator22
+self | pranay23 is creator23 | who is pranay23 | creator23
+self | pranay24 is creator24 | who is pranay24 | creator24
+self | pranay25 is creator25 | who is pranay25 | creator25
+self | pranay26 is creator26 | who is pranay26 | creator26
+self | pranay27 is creator27 | who is pranay27 | creator27
+self | pranay28 is creator28 | who is pranay28 | creator28
+self | pranay29 is creator29 | who is pranay29 | creator29
+self | pranay30 is creator30 | who is pranay30 | creator30
+self | pranay31 is creator31 | who is pranay31 | creator31
+self | pranay32 is creator32 | who is pranay32 | creator32
+self | pranay33 is creator33 | who is pranay33 | creator33
+self | pranay34 is creator34 | who is pranay34 | creator34
+self | pranay35 is creator35 | who is pranay35 | creator35
+self | pranay36 is creator36 | who is pranay36 | creator36
+self | pranay37 is creator37 | who is pranay37 | creator37
+self | pranay38 is creator38 | who is pranay38 | creator38
+self | pranay39 is creator39 | who is pranay39 | creator39
+self | pranay40 is creator40 | who is pranay40 | creator40
+self | pranay41 is creator41 | who is pranay41 | creator41
+self | pranay42 is creator42 | who is pranay42 | creator42
+self | pranay43 is creator43 | who is pranay43 | creator43
+self | pranay44 is creator44 | who is pranay44 | creator44
+self | pranay45 is creator45 | who is pranay45 | creator45
+self | pranay46 is creator46 | who is pranay46 | creator46
+self | pranay47 is creator47 | who is pranay47 | creator47
+self | pranay48 is creator48 | who is pranay48 | creator48
+self | pranay49 is creator49 | who is pranay49 | creator49
+self | pranay50 is creator50 | who is pranay50 | creator50
+self | pranay51 is creator51 | who is pranay51 | creator51
+self | pranay52 is creator52 | who is pranay52 | creator52
+self | pranay53 is creator53 | who is pranay53 | creator53
+self | pranay54 is creator54 | who is pranay54 | creator54
+self | pranay55 is creator55 | who is pranay55 | creator55
+self | pranay56 is creator56 | who is pranay56 | creator56
+self | pranay57 is creator57 | who is pranay57 | creator57
+self | pranay58 is creator58 | who is pranay58 | creator58
+self | pranay59 is creator59 | who is pranay59 | creator59
+self | pranay60 is creator60 | who is pranay60 | creator60
+self | pranay61 is creator61 | who is pranay61 | creator61
+self | pranay62 is creator62 | who is pranay62 | creator62
+self | pranay63 is creator63 | who is pranay63 | creator63
+self | pranay64 is creator64 | who is pranay64 | creator64
+self | pranay65 is creator65 | who is pranay65 | creator65
+self | pranay66 is creator66 | who is pranay66 | creator66
+self | pranay67 is creator67 | who is pranay67 | creator67
+self | pranay68 is creator68 | who is pranay68 | creator68
+self | pranay69 is creator69 | who is pranay69 | creator69
+self | pranay70 is creator70 | who is pranay70 | creator70
+self | pranay71 is creator71 | who is pranay71 | creator71
+self | pranay72 is creator72 | who is pranay72 | creator72
+self | pranay73 is creator73 | who is pranay73 | creator73
+self | pranay74 is creator74 | who is pranay74 | creator74
+self | pranay75 is creator75 | who is pranay75 | creator75
+self | pranay76 is creator76 | who is pranay76 | creator76
+self | pranay77 is creator77 | who is pranay77 | creator77
+self | pranay78 is creator78 | who is pranay78 | creator78
+self | pranay79 is creator79 | who is pranay79 | creator79
+self | pranay80 is creator80 | who is pranay80 | creator80
+self | pranay81 is creator81 | who is pranay81 | creator81
+self | pranay82 is creator82 | who is pranay82 | creator82
+self | pranay83 is creator83 | who is pranay83 | creator83
+self | pranay84 is creator84 | who is pranay84 | creator84
+self | pranay85 is creator85 | who is pranay85 | creator85
+self | pranay86 is creator86 | who is pranay86 | creator86
+self | pranay87 is creator87 | who is pranay87 | creator87
+self | pranay88 is creator88 | who is pranay88 | creator88
+self | pranay89 is creator89 | who is pranay89 | creator89
+self | pranay90 is creator90 | who is pranay90 | creator90
+self | pranay91 is creator91 | who is pranay91 | creator91
+self | pranay92 is creator92 | who is pranay92 | creator92
+self | pranay93 is creator93 | who is pranay93 | creator93
+self | pranay94 is creator94 | who is pranay94 | creator94
+self | pranay95 is creator95 | who is pranay95 | creator95
+self | pranay96 is creator96 | who is pranay96 | creator96
+self | pranay97 is creator97 | who is pranay97 | creator97
+self | pranay98 is creator98 | who is pranay98 | creator98
+self | pranay99 is creator99 | who is pranay99 | creator99
+episodic | obj0 | obj0 | obj0
+episodic | obj1 | obj1 | obj1
+episodic | obj2 | obj2 | obj2
+episodic | obj3 | obj3 | obj3
+episodic | obj4 | obj4 | obj4
+episodic | obj5 | obj5 | obj5
+episodic | obj6 | obj6 | obj6
+episodic | obj7 | obj7 | obj7
+episodic | obj8 | obj8 | obj8
+episodic | obj9 | obj9 | obj9
+episodic | obj10 | obj10 | obj10
+episodic | obj11 | obj11 | obj11
+episodic | obj12 | obj12 | obj12
+episodic | obj13 | obj13 | obj13
+episodic | obj14 | obj14 | obj14
+episodic | obj15 | obj15 | obj15
+episodic | obj16 | obj16 | obj16
+episodic | obj17 | obj17 | obj17
+episodic | obj18 | obj18 | obj18
+episodic | obj19 | obj19 | obj19
+episodic | obj20 | obj20 | obj20
+episodic | obj21 | obj21 | obj21
+episodic | obj22 | obj22 | obj22
+episodic | obj23 | obj23 | obj23
+episodic | obj24 | obj24 | obj24
+episodic | obj25 | obj25 | obj25
+episodic | obj26 | obj26 | obj26
+episodic | obj27 | obj27 | obj27
+episodic | obj28 | obj28 | obj28
+episodic | obj29 | obj29 | obj29
+episodic | obj30 | obj30 | obj30
+episodic | obj31 | obj31 | obj31
+episodic | obj32 | obj32 | obj32
+episodic | obj33 | obj33 | obj33
+episodic | obj34 | obj34 | obj34
+episodic | obj35 | obj35 | obj35
+episodic | obj36 | obj36 | obj36
+episodic | obj37 | obj37 | obj37
+episodic | obj38 | obj38 | obj38
+episodic | obj39 | obj39 | obj39
+episodic | obj40 | obj40 | obj40
+episodic | obj41 | obj41 | obj41
+episodic | obj42 | obj42 | obj42
+episodic | obj43 | obj43 | obj43
+episodic | obj44 | obj44 | obj44
+episodic | obj45 | obj45 | obj45
+episodic | obj46 | obj46 | obj46
+episodic | obj47 | obj47 | obj47
+episodic | obj48 | obj48 | obj48
+episodic | obj49 | obj49 | obj49
+episodic | obj50 | obj50 | obj50
+episodic | obj51 | obj51 | obj51
+episodic | obj52 | obj52 | obj52
+episodic | obj53 | obj53 | obj53
+episodic | obj54 | obj54 | obj54
+episodic | obj55 | obj55 | obj55
+episodic | obj56 | obj56 | obj56
+episodic | obj57 | obj57 | obj57
+episodic | obj58 | obj58 | obj58
+episodic | obj59 | obj59 | obj59
+episodic | obj60 | obj60 | obj60
+episodic | obj61 | obj61 | obj61
+episodic | obj62 | obj62 | obj62
+episodic | obj63 | obj63 | obj63
+episodic | obj64 | obj64 | obj64
+episodic | obj65 | obj65 | obj65
+episodic | obj66 | obj66 | obj66
+episodic | obj67 | obj67 | obj67
+episodic | obj68 | obj68 | obj68
+episodic | obj69 | obj69 | obj69
+episodic | obj70 | obj70 | obj70
+episodic | obj71 | obj71 | obj71
+episodic | obj72 | obj72 | obj72
+episodic | obj73 | obj73 | obj73
+episodic | obj74 | obj74 | obj74
+episodic | obj75 | obj75 | obj75
+episodic | obj76 | obj76 | obj76
+episodic | obj77 | obj77 | obj77
+episodic | obj78 | obj78 | obj78
+episodic | obj79 | obj79 | obj79
+episodic | obj80 | obj80 | obj80
+episodic | obj81 | obj81 | obj81
+episodic | obj82 | obj82 | obj82
+episodic | obj83 | obj83 | obj83
+episodic | obj84 | obj84 | obj84
+episodic | obj85 | obj85 | obj85
+episodic | obj86 | obj86 | obj86
+episodic | obj87 | obj87 | obj87
+episodic | obj88 | obj88 | obj88
+episodic | obj89 | obj89 | obj89
+episodic | obj90 | obj90 | obj90
+episodic | obj91 | obj91 | obj91
+episodic | obj92 | obj92 | obj92
+episodic | obj93 | obj93 | obj93
+episodic | obj94 | obj94 | obj94
+episodic | obj95 | obj95 | obj95
+episodic | obj96 | obj96 | obj96
+episodic | obj97 | obj97 | obj97
+episodic | obj98 | obj98 | obj98
+episodic | obj99 | obj99 | obj99
+causal | nodeA0 causes nodeB0 ; nodeB0 causes nodeC0 ; nodeC0 causes nodeD0 | nodeA0 causes ? | nodeD0
+causal | nodeA1 causes nodeB1 ; nodeB1 causes nodeC1 ; nodeC1 causes nodeD1 | nodeA1 causes ? | nodeD1
+causal | nodeA2 causes nodeB2 ; nodeB2 causes nodeC2 ; nodeC2 causes nodeD2 | nodeA2 causes ? | nodeD2
+causal | nodeA3 causes nodeB3 ; nodeB3 causes nodeC3 ; nodeC3 causes nodeD3 | nodeA3 causes ? | nodeD3
+causal | nodeA4 causes nodeB4 ; nodeB4 causes nodeC4 ; nodeC4 causes nodeD4 | nodeA4 causes ? | nodeD4
+causal | nodeA5 causes nodeB5 ; nodeB5 causes nodeC5 ; nodeC5 causes nodeD5 | nodeA5 causes ? | nodeD5
+causal | nodeA6 causes nodeB6 ; nodeB6 causes nodeC6 ; nodeC6 causes nodeD6 | nodeA6 causes ? | nodeD6
+causal | nodeA7 causes nodeB7 ; nodeB7 causes nodeC7 ; nodeC7 causes nodeD7 | nodeA7 causes ? | nodeD7
+causal | nodeA8 causes nodeB8 ; nodeB8 causes nodeC8 ; nodeC8 causes nodeD8 | nodeA8 causes ? | nodeD8
+causal | nodeA9 causes nodeB9 ; nodeB9 causes nodeC9 ; nodeC9 causes nodeD9 | nodeA9 causes ? | nodeD9
+causal | nodeA10 causes nodeB10 ; nodeB10 causes nodeC10 ; nodeC10 causes nodeD10 | nodeA10 causes ? | nodeD10
+causal | nodeA11 causes nodeB11 ; nodeB11 causes nodeC11 ; nodeC11 causes nodeD11 | nodeA11 causes ? | nodeD11
+causal | nodeA12 causes nodeB12 ; nodeB12 causes nodeC12 ; nodeC12 causes nodeD12 | nodeA12 causes ? | nodeD12
+causal | nodeA13 causes nodeB13 ; nodeB13 causes nodeC13 ; nodeC13 causes nodeD13 | nodeA13 causes ? | nodeD13
+causal | nodeA14 causes nodeB14 ; nodeB14 causes nodeC14 ; nodeC14 causes nodeD14 | nodeA14 causes ? | nodeD14
+causal | nodeA15 causes nodeB15 ; nodeB15 causes nodeC15 ; nodeC15 causes nodeD15 | nodeA15 causes ? | nodeD15
+causal | nodeA16 causes nodeB16 ; nodeB16 causes nodeC16 ; nodeC16 causes nodeD16 | nodeA16 causes ? | nodeD16
+causal | nodeA17 causes nodeB17 ; nodeB17 causes nodeC17 ; nodeC17 causes nodeD17 | nodeA17 causes ? | nodeD17
+causal | nodeA18 causes nodeB18 ; nodeB18 causes nodeC18 ; nodeC18 causes nodeD18 | nodeA18 causes ? | nodeD18
+causal | nodeA19 causes nodeB19 ; nodeB19 causes nodeC19 ; nodeC19 causes nodeD19 | nodeA19 causes ? | nodeD19
+causal | nodeA20 causes nodeB20 ; nodeB20 causes nodeC20 ; nodeC20 causes nodeD20 | nodeA20 causes ? | nodeD20
+causal | nodeA21 causes nodeB21 ; nodeB21 causes nodeC21 ; nodeC21 causes nodeD21 | nodeA21 causes ? | nodeD21
+causal | nodeA22 causes nodeB22 ; nodeB22 causes nodeC22 ; nodeC22 causes nodeD22 | nodeA22 causes ? | nodeD22
+causal | nodeA23 causes nodeB23 ; nodeB23 causes nodeC23 ; nodeC23 causes nodeD23 | nodeA23 causes ? | nodeD23
+causal | nodeA24 causes nodeB24 ; nodeB24 causes nodeC24 ; nodeC24 causes nodeD24 | nodeA24 causes ? | nodeD24
+causal | nodeA25 causes nodeB25 ; nodeB25 causes nodeC25 ; nodeC25 causes nodeD25 | nodeA25 causes ? | nodeD25
+causal | nodeA26 causes nodeB26 ; nodeB26 causes nodeC26 ; nodeC26 causes nodeD26 | nodeA26 causes ? | nodeD26
+causal | nodeA27 causes nodeB27 ; nodeB27 causes nodeC27 ; nodeC27 causes nodeD27 | nodeA27 causes ? | nodeD27
+causal | nodeA28 causes nodeB28 ; nodeB28 causes nodeC28 ; nodeC28 causes nodeD28 | nodeA28 causes ? | nodeD28
+causal | nodeA29 causes nodeB29 ; nodeB29 causes nodeC29 ; nodeC29 causes nodeD29 | nodeA29 causes ? | nodeD29
+causal | nodeA30 causes nodeB30 ; nodeB30 causes nodeC30 ; nodeC30 causes nodeD30 | nodeA30 causes ? | nodeD30
+causal | nodeA31 causes nodeB31 ; nodeB31 causes nodeC31 ; nodeC31 causes nodeD31 | nodeA31 causes ? | nodeD31
+causal | nodeA32 causes nodeB32 ; nodeB32 causes nodeC32 ; nodeC32 causes nodeD32 | nodeA32 causes ? | nodeD32
+causal | nodeA33 causes nodeB33 ; nodeB33 causes nodeC33 ; nodeC33 causes nodeD33 | nodeA33 causes ? | nodeD33
+causal | nodeA34 causes nodeB34 ; nodeB34 causes nodeC34 ; nodeC34 causes nodeD34 | nodeA34 causes ? | nodeD34
+causal | nodeA35 causes nodeB35 ; nodeB35 causes nodeC35 ; nodeC35 causes nodeD35 | nodeA35 causes ? | nodeD35
+causal | nodeA36 causes nodeB36 ; nodeB36 causes nodeC36 ; nodeC36 causes nodeD36 | nodeA36 causes ? | nodeD36
+causal | nodeA37 causes nodeB37 ; nodeB37 causes nodeC37 ; nodeC37 causes nodeD37 | nodeA37 causes ? | nodeD37
+causal | nodeA38 causes nodeB38 ; nodeB38 causes nodeC38 ; nodeC38 causes nodeD38 | nodeA38 causes ? | nodeD38
+causal | nodeA39 causes nodeB39 ; nodeB39 causes nodeC39 ; nodeC39 causes nodeD39 | nodeA39 causes ? | nodeD39
+causal | nodeA40 causes nodeB40 ; nodeB40 causes nodeC40 ; nodeC40 causes nodeD40 | nodeA40 causes ? | nodeD40
+causal | nodeA41 causes nodeB41 ; nodeB41 causes nodeC41 ; nodeC41 causes nodeD41 | nodeA41 causes ? | nodeD41
+causal | nodeA42 causes nodeB42 ; nodeB42 causes nodeC42 ; nodeC42 causes nodeD42 | nodeA42 causes ? | nodeD42
+causal | nodeA43 causes nodeB43 ; nodeB43 causes nodeC43 ; nodeC43 causes nodeD43 | nodeA43 causes ? | nodeD43
+causal | nodeA44 causes nodeB44 ; nodeB44 causes nodeC44 ; nodeC44 causes nodeD44 | nodeA44 causes ? | nodeD44
+causal | nodeA45 causes nodeB45 ; nodeB45 causes nodeC45 ; nodeC45 causes nodeD45 | nodeA45 causes ? | nodeD45
+causal | nodeA46 causes nodeB46 ; nodeB46 causes nodeC46 ; nodeC46 causes nodeD46 | nodeA46 causes ? | nodeD46
+causal | nodeA47 causes nodeB47 ; nodeB47 causes nodeC47 ; nodeC47 causes nodeD47 | nodeA47 causes ? | nodeD47
+causal | nodeA48 causes nodeB48 ; nodeB48 causes nodeC48 ; nodeC48 causes nodeD48 | nodeA48 causes ? | nodeD48
+causal | nodeA49 causes nodeB49 ; nodeB49 causes nodeC49 ; nodeC49 causes nodeD49 | nodeA49 causes ? | nodeD49
+causal | nodeA50 causes nodeB50 ; nodeB50 causes nodeC50 ; nodeC50 causes nodeD50 | nodeA50 causes ? | nodeD50
+causal | nodeA51 causes nodeB51 ; nodeB51 causes nodeC51 ; nodeC51 causes nodeD51 | nodeA51 causes ? | nodeD51
+causal | nodeA52 causes nodeB52 ; nodeB52 causes nodeC52 ; nodeC52 causes nodeD52 | nodeA52 causes ? | nodeD52
+causal | nodeA53 causes nodeB53 ; nodeB53 causes nodeC53 ; nodeC53 causes nodeD53 | nodeA53 causes ? | nodeD53
+causal | nodeA54 causes nodeB54 ; nodeB54 causes nodeC54 ; nodeC54 causes nodeD54 | nodeA54 causes ? | nodeD54
+causal | nodeA55 causes nodeB55 ; nodeB55 causes nodeC55 ; nodeC55 causes nodeD55 | nodeA55 causes ? | nodeD55
+causal | nodeA56 causes nodeB56 ; nodeB56 causes nodeC56 ; nodeC56 causes nodeD56 | nodeA56 causes ? | nodeD56
+causal | nodeA57 causes nodeB57 ; nodeB57 causes nodeC57 ; nodeC57 causes nodeD57 | nodeA57 causes ? | nodeD57
+causal | nodeA58 causes nodeB58 ; nodeB58 causes nodeC58 ; nodeC58 causes nodeD58 | nodeA58 causes ? | nodeD58
+causal | nodeA59 causes nodeB59 ; nodeB59 causes nodeC59 ; nodeC59 causes nodeD59 | nodeA59 causes ? | nodeD59
+causal | nodeA60 causes nodeB60 ; nodeB60 causes nodeC60 ; nodeC60 causes nodeD60 | nodeA60 causes ? | nodeD60
+causal | nodeA61 causes nodeB61 ; nodeB61 causes nodeC61 ; nodeC61 causes nodeD61 | nodeA61 causes ? | nodeD61
+causal | nodeA62 causes nodeB62 ; nodeB62 causes nodeC62 ; nodeC62 causes nodeD62 | nodeA62 causes ? | nodeD62
+causal | nodeA63 causes nodeB63 ; nodeB63 causes nodeC63 ; nodeC63 causes nodeD63 | nodeA63 causes ? | nodeD63
+causal | nodeA64 causes nodeB64 ; nodeB64 causes nodeC64 ; nodeC64 causes nodeD64 | nodeA64 causes ? | nodeD64
+causal | nodeA65 causes nodeB65 ; nodeB65 causes nodeC65 ; nodeC65 causes nodeD65 | nodeA65 causes ? | nodeD65
+causal | nodeA66 causes nodeB66 ; nodeB66 causes nodeC66 ; nodeC66 causes nodeD66 | nodeA66 causes ? | nodeD66
+causal | nodeA67 causes nodeB67 ; nodeB67 causes nodeC67 ; nodeC67 causes nodeD67 | nodeA67 causes ? | nodeD67
+causal | nodeA68 causes nodeB68 ; nodeB68 causes nodeC68 ; nodeC68 causes nodeD68 | nodeA68 causes ? | nodeD68
+causal | nodeA69 causes nodeB69 ; nodeB69 causes nodeC69 ; nodeC69 causes nodeD69 | nodeA69 causes ? | nodeD69
+causal | nodeA70 causes nodeB70 ; nodeB70 causes nodeC70 ; nodeC70 causes nodeD70 | nodeA70 causes ? | nodeD70
+causal | nodeA71 causes nodeB71 ; nodeB71 causes nodeC71 ; nodeC71 causes nodeD71 | nodeA71 causes ? | nodeD71
+causal | nodeA72 causes nodeB72 ; nodeB72 causes nodeC72 ; nodeC72 causes nodeD72 | nodeA72 causes ? | nodeD72
+causal | nodeA73 causes nodeB73 ; nodeB73 causes nodeC73 ; nodeC73 causes nodeD73 | nodeA73 causes ? | nodeD73
+causal | nodeA74 causes nodeB74 ; nodeB74 causes nodeC74 ; nodeC74 causes nodeD74 | nodeA74 causes ? | nodeD74
+causal | nodeA75 causes nodeB75 ; nodeB75 causes nodeC75 ; nodeC75 causes nodeD75 | nodeA75 causes ? | nodeD75
+causal | nodeA76 causes nodeB76 ; nodeB76 causes nodeC76 ; nodeC76 causes nodeD76 | nodeA76 causes ? | nodeD76
+causal | nodeA77 causes nodeB77 ; nodeB77 causes nodeC77 ; nodeC77 causes nodeD77 | nodeA77 causes ? | nodeD77
+causal | nodeA78 causes nodeB78 ; nodeB78 causes nodeC78 ; nodeC78 causes nodeD78 | nodeA78 causes ? | nodeD78
+causal | nodeA79 causes nodeB79 ; nodeB79 causes nodeC79 ; nodeC79 causes nodeD79 | nodeA79 causes ? | nodeD79
+causal | nodeA80 causes nodeB80 ; nodeB80 causes nodeC80 ; nodeC80 causes nodeD80 | nodeA80 causes ? | nodeD80
+causal | nodeA81 causes nodeB81 ; nodeB81 causes nodeC81 ; nodeC81 causes nodeD81 | nodeA81 causes ? | nodeD81
+causal | nodeA82 causes nodeB82 ; nodeB82 causes nodeC82 ; nodeC82 causes nodeD82 | nodeA82 causes ? | nodeD82
+causal | nodeA83 causes nodeB83 ; nodeB83 causes nodeC83 ; nodeC83 causes nodeD83 | nodeA83 causes ? | nodeD83
+causal | nodeA84 causes nodeB84 ; nodeB84 causes nodeC84 ; nodeC84 causes nodeD84 | nodeA84 causes ? | nodeD84
+causal | nodeA85 causes nodeB85 ; nodeB85 causes nodeC85 ; nodeC85 causes nodeD85 | nodeA85 causes ? | nodeD85
+causal | nodeA86 causes nodeB86 ; nodeB86 causes nodeC86 ; nodeC86 causes nodeD86 | nodeA86 causes ? | nodeD86
+causal | nodeA87 causes nodeB87 ; nodeB87 causes nodeC87 ; nodeC87 causes nodeD87 | nodeA87 causes ? | nodeD87
+causal | nodeA88 causes nodeB88 ; nodeB88 causes nodeC88 ; nodeC88 causes nodeD88 | nodeA88 causes ? | nodeD88
+causal | nodeA89 causes nodeB89 ; nodeB89 causes nodeC89 ; nodeC89 causes nodeD89 | nodeA89 causes ? | nodeD89
+causal | nodeA90 causes nodeB90 ; nodeB90 causes nodeC90 ; nodeC90 causes nodeD90 | nodeA90 causes ? | nodeD90
+causal | nodeA91 causes nodeB91 ; nodeB91 causes nodeC91 ; nodeC91 causes nodeD91 | nodeA91 causes ? | nodeD91
+causal | nodeA92 causes nodeB92 ; nodeB92 causes nodeC92 ; nodeC92 causes nodeD92 | nodeA92 causes ? | nodeD92
+causal | nodeA93 causes nodeB93 ; nodeB93 causes nodeC93 ; nodeC93 causes nodeD93 | nodeA93 causes ? | nodeD93
+causal | nodeA94 causes nodeB94 ; nodeB94 causes nodeC94 ; nodeC94 causes nodeD94 | nodeA94 causes ? | nodeD94
+causal | nodeA95 causes nodeB95 ; nodeB95 causes nodeC95 ; nodeC95 causes nodeD95 | nodeA95 causes ? | nodeD95
+causal | nodeA96 causes nodeB96 ; nodeB96 causes nodeC96 ; nodeC96 causes nodeD96 | nodeA96 causes ? | nodeD96
+causal | nodeA97 causes nodeB97 ; nodeB97 causes nodeC97 ; nodeC97 causes nodeD97 | nodeA97 causes ? | nodeD97
+causal | nodeA98 causes nodeB98 ; nodeB98 causes nodeC98 ; nodeC98 causes nodeD98 | nodeA98 causes ? | nodeD98
+causal | nodeA99 causes nodeB99 ; nodeB99 causes nodeC99 ; nodeC99 causes nodeD99 | nodeA99 causes ? | nodeD99

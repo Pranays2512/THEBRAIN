@@ -1,42 +1,30 @@
-import brain2
-b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
-ckpt_dir = "checkpoints/stage4_parsing"
-b.load_components(
-    predictor_path=f"{ckpt_dir}/predictor.bin",
-    language_path=f"{ckpt_dir}/language.bin",
-    som_path=f"{ckpt_dir}/som.bin",
-    episodic_path=f"{ckpt_dir}/episodic.bin",
-    emotion_path=f"{ckpt_dir}/emotion.bin",
-    self_path=f"{ckpt_dir}/self.bin",
-    symbolic_path=f"{ckpt_dir}/symbolic.bin",
-    binding_path=f"{ckpt_dir}/binding.bin",
-    bg_path=f"{ckpt_dir}/bg.bin",
-    procedures_path=f"{ckpt_dir}/procedures.bin",
-    hpred_path=f"{ckpt_dir}/hpred.bin"
-)
+from tests.run_hardened_suite import load_brain, run_test
 
-# Test 10 - 4
-s = b.symbolic_table.lookup("10")
-o = b.symbolic_table.lookup("4")
-res_sub = b.symbolic_table.apply("-", s, o)
-
-# In OP_MATH_SUB, it does:
-# s_sym = symbolic.nearest_symbol(subj)
-# o_sym = symbolic.nearest_symbol(obj)
-# res = stoi(s_sym) - stoi(o_sym)
-# res_sym = to_string(res)
-# pad.write("result", symbolic.lookup(res_sym))
-
-s_sym = b.symbolic_table.nearest_symbol(s)
-o_sym = b.symbolic_table.nearest_symbol(o)
-print(f"s_sym: {s_sym}, o_sym: {o_sym}")
-
-try:
-    res = int(s_sym) - int(o_sym)
-    res_sym = str(res)
-    print(f"res_sym: {res_sym}")
-    vec_res = b.symbolic_table.lookup(res_sym)
-    print("Language best word for res:", b.language.best_word(vec_res))
-except Exception as e:
-    print("Error:", e)
-
+b = load_brain()
+failures = 0
+for i in range(10):
+    import random
+    a = random.randint(1, 10)
+    b_val = random.randint(0, 50)
+    c = random.randint(10, 100)
+    ans = (c - b_val) / a
+    q = f"{a} x + {b_val} = {c}"
+    exp = f"x = {ans:.2f}"
+    
+    a_w, b_w, c_w = str(a), str(b_val), str(c)
+    b.reset_sequence()
+    b.scratchpad.write("subject",  b.language.encode(c_w), "context")
+    b.scratchpad.write("relation", b.language.encode(a_w), "context")
+    b.scratchpad.write("object",   b.language.encode(b_w), "context")
+    b.force_reason_step(2,  "solve")
+    b.force_reason_step(3,  "solve")
+    b.force_reason_step(15, "solve")
+    spoken = b.get_spoken_words()
+    b.clear_spoken_words()
+    # Parse float
+    ans_raw = spoken[-1] if spoken else "0"
+    try:
+        ans_str = f"x = {float(ans_raw):.2f}"
+    except:
+        ans_str = f"x = {ans_raw}"
+    print(f"Eq: {q} -> Expected: {exp}, Got: {ans_str}")
