@@ -68,17 +68,68 @@ struct BindingMemory {
     std::pair<std::vector<float>, float> query(const std::vector<float>& a,
                                                const std::vector<float>& b,
                                                bool want_object = true,
-                                               float threshold = 0.3f) const {
-        float best = -1.f;
-        const Binding* best_bnd = nullptr;
+                                               float threshold = 0.3f,
+                                               int depth = 3) const {
+        std::vector<std::vector<float>> visited;
+        return query_recursive(a, b, want_object, threshold, depth, visited);
+    }
+
+    std::pair<std::vector<float>, float> query_recursive(const std::vector<float>& a,
+                                                         const std::vector<float>& b,
+                                                         bool want_object,
+                                                         float threshold,
+                                                         int depth,
+                                                         std::vector<std::vector<float>>& visited) const {
+        // Cycle detection
+        for (const auto& v : visited) {
+            if (cos_sim(a, v) > 0.95f) return {std::vector<float>(n_dims, 0.f), 0.f};
+        }
+        visited.push_back(a);
+
+        std::vector<std::pair<float, std::vector<float>>> branches;
         for (const auto& bnd : bindings_) {
             float sa = cos_sim(a, bnd.subject);
             float sb = want_object ? cos_sim(b, bnd.relation) : cos_sim(b, bnd.object);
-            float s  = (sa + sb) * 0.5f; 
-            if (s > best) { best = s; best_bnd = &bnd; }
+            float direct_conf = (sa + sb) * 0.5f; 
+            if (direct_conf >= threshold) {
+                branches.push_back({direct_conf, want_object ? bnd.object : bnd.relation});
+            }
         }
-        if (!best_bnd || best < threshold) return {std::vector<float>(n_dims, 0.f), best};
-        return {want_object ? best_bnd->object : best_bnd->relation, best};
+
+        // Sort branches by confidence descending
+        std::sort(branches.begin(), branches.end(), [](const auto& x, const auto& y) {
+            return x.first > y.first;
+        });
+
+        float global_best_conf = -1.f;
+        std::vector<float> global_best_res(n_dims, 0.f);
+
+        // Limit spreading activation to top 3 strongest associations to prevent explosion
+        int max_branches = std::min(3, (int)branches.size());
+        for (int i = 0; i < max_branches; i++) {
+            float direct_conf = branches[i].first;
+            const auto& direct_res = branches[i].second;
+
+            // Track direct hit
+            if (direct_conf > global_best_conf) {
+                global_best_conf = direct_conf;
+                global_best_res = direct_res;
+            }
+
+            // If depth allows and we are looking for objects, explore transitively
+            if (want_object && depth > 1) {
+                auto trans_res = query_recursive(direct_res, b, true, threshold, depth - 1, visited);
+                float path_conf = direct_conf * trans_res.second;
+                
+                if (trans_res.second >= threshold && path_conf >= global_best_conf) {
+                    global_best_conf = path_conf;
+                    global_best_res = trans_res.first;
+                }
+            }
+        }
+
+        visited.pop_back(); // Backtrack
+        return {global_best_res, global_best_conf};
     }
 
     // Query all: given (subj) → returns list of [relation1, object1, relation2, object2, ...]

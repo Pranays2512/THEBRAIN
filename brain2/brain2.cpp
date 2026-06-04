@@ -886,11 +886,11 @@ PYBIND11_MODULE(brain2, m) {
       .def(
           "query",
           [](BindingMemory &bm, py::array_t<float, py::array::c_style> a,
-             py::array_t<float, py::array::c_style> b, bool want_object) {
-            auto [vec, conf] = bm.query(to_vec(a), to_vec(b), want_object);
+             py::array_t<float, py::array::c_style> b, bool want_object, float threshold, int depth) {
+            auto [vec, conf] = bm.query(to_vec(a), to_vec(b), want_object, threshold, depth);
             return py::make_tuple(to_np(vec), conf);
           },
-          py::arg("a"), py::arg("b"), py::arg("want_object") = true)
+          py::arg("a"), py::arg("b"), py::arg("want_object") = true, py::arg("threshold") = 0.3f, py::arg("depth") = 3)
       .def(
           "query_all",
           [](BindingMemory &bm, py::array_t<float, py::array::c_style> a, float threshold) {

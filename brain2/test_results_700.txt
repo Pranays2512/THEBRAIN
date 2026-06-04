@@ -41,7 +41,7 @@
 [semantic_query] Q: dog has ? | A: fur
 [semantic_query] Q: lion has ? | A: mane
 [semantic_query] Q: tiger can ? | A: roar
-[semantic_query] Q: bear has ? | A: wings
+[semantic_query] Q: bear has ? | A: beak
 [semantic_query] Q: bird can ? | A: fly
 [semantic_query] Q: elephant isa ? | A: animal
 [semantic_query] Q: dog can ? | A: run
