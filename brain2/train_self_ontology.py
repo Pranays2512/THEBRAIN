@@ -4,7 +4,7 @@ import os
 print("Initializing Brain v3 for Self Ontology...")
 b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
 
-ckpt_dir = "checkpoints/stage4_parsing"
+ckpt_dir = "checkpoints/stage5_math"
 try:
     b.load_components(
         predictor_path=f"{ckpt_dir}/predictor.bin",

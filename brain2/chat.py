@@ -322,14 +322,25 @@ def main():
             else:
                 # Full autonomy
                 b.clear_spoken_words()
-                b.scratchpad.write("goal", b.language.encode("reply"), "goal")
+                goal_vec = b.language.encode("reply")
+                b.scratchpad.write("goal", goal_vec, "goal")
                 
                 if is_query:
-                    b.force_reason_step(5, "reply")  # BIND_QUERY
-                    b.force_reason_step(17, "reply") # SPEAK_SUBJ
-                    b.force_reason_step(18, "reply") # SPEAK_REL
-                    b.force_reason_step(15, "reply") # SPEAK (result)
-                    b.force_reason_step(8, "reply")  # HALT
+                    seq = b.procedures.retrieve(goal_vec)
+                    if not seq:
+                        bmu = b.som.activation_map(goal_vec)
+                        b.working_mem.gate(bmu * 10.0, 1.0)
+                        b.working_mem.tick()
+                        ctx = b.working_mem.context()
+                        seq = b.procedures.retrieve(ctx)
+                    
+                    if seq:
+                        for op in seq:
+                            b.force_reason_step(op, "reply")
+                    else:
+                        print("Brain: I don't know how to reply to that.")
+                        continue
+                        
                     spoken = b.get_spoken_words()
                     if spoken:
                         reply = " ".join(spoken) + "."

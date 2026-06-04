@@ -10,7 +10,7 @@ OP_SPEAK_REL = 18
 
 b = brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
 
-ckpt_dir = "checkpoints/stage4_parsing"
+ckpt_dir = "checkpoints/stage5_math"
 try:
     b.load_components(
         predictor_path=f"{ckpt_dir}/predictor.bin",
@@ -55,23 +55,38 @@ for epoch in range(epochs):
     if (epoch + 1) % 200 == 0:
         print(f"Epoch {epoch + 1}/{epochs} complete.")
 
-print("Testing Grammar sequence...")
+# CONSOLIDATE THE PROCEDURE
+print("Consolidating 'reply' procedure to Procedural Memory...")
+b.reset_sequence()
+bmu = b.som.activation_map(b.language.encode("reply"))
+b.working_mem.gate(bmu * 10.0, 1.0)
+b.working_mem.tick()
+b.consolidate_procedure(grammar_ops, "reply")
+
+print("Testing Grammar sequence via Procedural Memory...")
 b.scratchpad.clear()
 b.scratchpad.write("subject", b.language.encode("apple"), "context")
 b.scratchpad.write("relation", b.language.encode("isa"), "context")
 b.scratchpad.write("object", b.language.encode("?"), "context")
-b.scratchpad.write("goal", b.language.encode("reply"), "goal")
+goal_vec = b.language.encode("reply")
+b.scratchpad.write("goal", goal_vec, "goal")
 
-b.start_reasoning()
 b.clear_spoken_words()
-ops_taken = []
-for step in range(10):
-    op = b.reason_step("reply", 0.0) # Greedy inference
-    ops_taken.append(op)
-    if op == OP_HALT:
-        break
+seq = b.procedures.retrieve(goal_vec)
+if not seq:
+    bmu = b.som.activation_map(goal_vec)
+    b.working_mem.gate(bmu * 10.0, 1.0)
+    b.working_mem.tick()
+    ctx = b.working_mem.context()
+    seq = b.procedures.retrieve(ctx)
 
-print("Ops taken:", ops_taken)
+if seq:
+    print("Successfully retrieved procedure from neural memory.")
+    for op in seq:
+        b.force_reason_step(op, "reply")
+else:
+    print("Failed to retrieve procedure.")
+
 print("Spoken words:", b.get_spoken_words())
 
 b.save_components(ckpt_dir)

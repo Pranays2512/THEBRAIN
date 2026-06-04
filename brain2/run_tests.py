@@ -41,15 +41,38 @@ def vec_norm(v):
     return float(np.sum(np.abs(np.asarray(v, dtype=np.float32))))
 
 def run_semantic_query(words):
-    """dog isa ? → looks up (dog, isa) → object"""
+    """dog isa ? → looks up via 'reply' procedure"""
     subj = words[0]
     rel  = words[1]
-    subj_vec = b.language.encode(subj)
-    rel_vec  = b.language.encode(rel)
-    # query returns (vector, confidence) tuple
-    ans_vec, confidence = b.binding.query(subj_vec, rel_vec)
-    if confidence > 0.3 and vec_norm(ans_vec) > 0.05:
-        return b.language.best_word(ans_vec)
+    
+    b.reset_sequence()
+    b.scratchpad.write("subject", b.language.encode(subj), "context")
+    b.scratchpad.write("relation", b.language.encode(rel), "context")
+    b.scratchpad.write("object", b.language.encode("?"), "context")
+    goal_vec = b.language.encode("reply")
+    b.scratchpad.write("goal", goal_vec, "goal")
+
+    seq = b.procedures.retrieve(goal_vec)
+    if not seq:
+        bmu = b.som.activation_map(goal_vec)
+        b.working_mem.gate(bmu * 10.0, 1.0)
+        b.working_mem.tick()
+        ctx = b.working_mem.context()
+        seq = b.procedures.retrieve(ctx)
+
+    if not seq:
+        return "I don't know."
+
+    for op in seq:
+        b.force_reason_step(op, "reply")
+
+    spoken = b.get_spoken_words()
+    b.clear_spoken_words()
+    # If the output is "dog isa animal", we just return the final word for the test
+    if len(spoken) >= 3:
+        return spoken[-1]
+    elif len(spoken) == 1:
+        return spoken[0]
     return "I don't know."
 
 def run_describe(words):
