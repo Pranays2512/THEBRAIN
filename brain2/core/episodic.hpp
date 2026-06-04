@@ -37,7 +37,8 @@ struct EpisodeNode {
         }
         
         if (first_ones == 0 || query_ones == 0) return 0.f;
-        return (float)matches / std::sqrt((float)first_ones * (float)query_ones);
+        // Inclusion metric: what fraction of the query is in the episode?
+        return (float)matches / (float)query_ones;
     }
 };
 
@@ -74,7 +75,7 @@ private:
             }
         }
         std::vector<bool> out(counts.size(), false);
-        int threshold = vecs.size() / 2;
+        int threshold = 0; // Union of all spikes in the episode chunk
         for (size_t i = 0; i < counts.size(); i++) {
             out[i] = (counts[i] > threshold);
         }
@@ -188,7 +189,10 @@ public:
         std::partial_sort(sims.begin(),
                           sims.begin() + std::min(k, (int)sims.size()),
                           sims.end(),
-                          [](const auto& a, const auto& b){ return a.first > b.first; });
+                          [](const auto& a, const auto& b){ 
+                              if (std::abs(a.first - b.first) > 1e-5f) return a.first > b.first; 
+                              return a.second > b.second; // More recent wins
+                          });
         if ((int)sims.size() > k) sims.resize(k);
         return sims;
     }

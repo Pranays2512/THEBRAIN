@@ -313,10 +313,36 @@ def main():
             if curiosity_triggered:
                 reply = f"What is {curiosity_triggered}?"
             elif "say" in words or "remember" in words or "history" in words:
-                last_payload = b.get_last_episode()
-                if len(last_payload) > 0:
-                    topic = b.language.best_word(last_payload)
-                    reply = f"(retrieving from episodic memory...) you were talking about '{topic}'."
+                b.clear_spoken_words()
+                goal_vec = b.language.encode("remember")
+                b.scratchpad.write("goal", goal_vec, "goal")
+                
+                # To trigger neural retrieval, we must put something in 'focus'.
+                # We extract the object (e.g. 'pranay' from 'what did I say about pranay?')
+                # and map it to a 64-dim SOM spike vector because episodic memory stores spikes!
+                query_vec = b.scratchpad.read("object")
+                if len(query_vec) == 0 or sum(abs(x) for x in query_vec) < 1e-6:
+                    # Generic query if no specific object was asked
+                    focus_spike = [1.0] * 64 
+                else:
+                    focus_spike = b.som.activation_map(query_vec)
+                    
+                b.scratchpad.write("focus", focus_spike, "curiosity")
+                
+                seq = b.procedures.retrieve(goal_vec)
+                if not seq:
+                    bmu = b.som.activation_map(goal_vec)
+                    b.working_mem.gate(bmu * 10.0, 1.0)
+                    b.working_mem.tick()
+                    seq = b.procedures.retrieve(b.working_mem.context())
+                
+                if seq:
+                    for op in seq:
+                        b.force_reason_step(op, "remember")
+                
+                spoken = b.get_spoken_words()
+                if spoken:
+                    reply = f"(neural recall) you were talking about '{spoken[-1]}'."
                 else:
                     reply = "I don't remember anything yet."
             else:
@@ -362,9 +388,11 @@ def main():
             print(f"Brain: {reply}")
             
             # Phase 5: Commit the conversation turn into Episodic Memory
-            subj_vec = b.scratchpad.read("subject")
-            if len(subj_vec) > 0 and sum(abs(x) for x in subj_vec) > 1e-6:
-                b.commit_episode(1.0, subj_vec[:16])
+            # We don't commit questions/queries as statements of fact to avoid polluting recall.
+            if not is_query and not ("say" in words or "remember" in words):
+                subj_vec = b.scratchpad.read("subject")
+                if len(subj_vec) > 0 and sum(abs(x) for x in subj_vec) > 1e-6:
+                    b.commit_episode(1.0, subj_vec[:16])
             
         except (KeyboardInterrupt, EOFError):
             break

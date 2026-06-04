@@ -16,54 +16,43 @@ def train():
     print("Initializing Brain for Episodic Training...")
     b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS, n_dims=N_DIMS)
     
-    stage3_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "stage3_conversation")
-    if os.path.exists(stage3_dir):
-        print(f"Loading Stage 3 Conversation components from {stage3_dir}...")
+    stage_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "stage5_math")
+    if os.path.exists(stage_dir):
+        print(f"Loading Stage 5 Math components from {stage_dir}...")
         b.load_components(
-            predictor_path=os.path.join(stage3_dir, "predictor.bin"),
-            language_path=os.path.join(stage3_dir, "language.bin"),
-            som_path=os.path.join(stage3_dir, "som.bin"),
-            episodic_path=os.path.join(stage3_dir, "episodic.bin"),
-            emotion_path=os.path.join(stage3_dir, "emotion.bin"),
-            self_path=os.path.join(stage3_dir, "self.bin"),
-            symbolic_path=os.path.join(stage3_dir, "symbolic.bin"),
-            binding_path=os.path.join(stage3_dir, "binding.bin"),
-            bg_path=os.path.join(stage3_dir, "bg.bin"),
-            procedures_path=os.path.join(stage3_dir, "procedures.bin"),
-            hpred_path=os.path.join(stage3_dir, "hpred.bin")
+            predictor_path=os.path.join(stage_dir, "predictor.bin"),
+            language_path=os.path.join(stage_dir, "language.bin"),
+            som_path=os.path.join(stage_dir, "som.bin"),
+            episodic_path=os.path.join(stage_dir, "episodic.bin"),
+            emotion_path=os.path.join(stage_dir, "emotion.bin"),
+            self_path=os.path.join(stage_dir, "self.bin"),
+            symbolic_path=os.path.join(stage_dir, "symbolic.bin"),
+            binding_path=os.path.join(stage_dir, "binding.bin"),
+            bg_path=os.path.join(stage_dir, "bg.bin"),
+            procedures_path=os.path.join(stage_dir, "procedures.bin"),
+            hpred_path=os.path.join(stage_dir, "hpred.bin")
         )
         
-    for w in ["i", "say", "reply", "focus"]:
+    for w in ["i", "say", "remember", "focus"]:
         if not b.symbolic_table.knows(w):
             b.symbolic_table.bind(w)
             b.language.register_word(w)
 
-    for episode in range(1, N_EPISODES + 1):
-        # We simulate the user saying a subject, e.g. "apple"
-        topics = ["apple", "car", "dog", "chair", "doctor"]
-        for t in topics:
-            if not b.symbolic_table.knows(t):
-                b.symbolic_table.bind(t)
-                b.language.register_word(t)
-                
-        topic = random.choice(topics)
-        topic_vec = b.language.encode(topic)
-        
-        # We store it into episodic memory using the payload
-        b.commit_episode(1.0, topic_vec)
-        
-        # Now the query: "what did I say?" -> focus is empty or recent context. 
-        # Actually, if we just prime the scratchpad with "i say ?"
-        b.scratchpad.clear()
-        b.scratchpad.write("subject", np.array(b.language.encode("i"), dtype=np.float32), "context")
-        b.scratchpad.write("relation", np.array(b.language.encode("say"), dtype=np.float32), "context")
-        
-        # We put something in focus to trigger retrieve? 
-        # Wait, Op::RETRIEVE searches EpisodicMemory using 'focus'.
-        # If we just put the "i" or "say" in focus, it might not match the episode (which has "apple" as payload).
-        # Ah! EpisodicMemory searches by comparing the query against `summary_spike` (the SOM state).
-        # We just committed the episode WITHOUT observing anything! So the summary_spike is empty!
-        # If summary_spike is empty, get_sim returns 0.
-        # It's better to just skip BG training for this specific feature in the prototype and wire it up in chat.py to save time, because the Episodic memory search needs real HPRED observations to work biologically.
+    print("Training 'remember' procedure...")
+    remember_ops = [6, 15, 8]  # RETRIEVE, SPEAK, HALT
+    
+    # We consolidate the procedure so it is locked in neural memory
+    b.reset_sequence()
+    goal_vec = b.language.encode("remember")
+    bmu = b.som.activation_map(goal_vec)
+    b.working_mem.gate(bmu * 10.0, 1.0)
+    b.working_mem.tick()
+    
+    b.consolidate_procedure(remember_ops, "remember")
+    print("Consolidated 'remember' procedure.")
+    
+    b.save_components(stage_dir)
+    print("Done. Saved to stage5_math.")
 
-train()
+if __name__ == "__main__":
+    train()
