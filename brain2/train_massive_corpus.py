@@ -41,6 +41,20 @@ def train():
     print(f"Initializing Brain (Dims: {N_DIMS}, SOM: {SOM_ROWS}x{SOM_COLS}, Hidden: {HIDDEN_DIM})...")
     b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS, n_dims=N_DIMS, hidden_dim=HIDDEN_DIM)
     
+    glove_txt = os.path.join(os.path.dirname(__file__), "glove.6B.50d.txt")
+    if os.path.exists(glove_txt):
+        print("Loading GloVe Semantic Embeddings...")
+        import numpy as np
+        with open(glove_txt, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.split()
+                word = parts[0]
+                if not word.isalpha(): continue
+                vec50 = np.array([float(x) for x in parts[1:]], dtype=np.float32)
+                vec512 = np.zeros(512, dtype=np.float32)
+                vec512[:50] = vec50
+                b.language.register_word(word, vec512)
+    
     # Freeze vocabulary to prevent semantic drift/catastrophic forgetting
     b.language.freeze_vocabulary()
     print("Vocabulary frozen.")
