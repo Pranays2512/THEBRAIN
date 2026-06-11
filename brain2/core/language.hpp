@@ -27,9 +27,11 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <map>
 #include <mutex>
 #include <fstream>
 #include <stdexcept>
@@ -51,8 +53,12 @@ public:
 
 private:
     std::unordered_map<std::string, WordEntry> words_;
+    std::map<std::vector<float>, std::string>  reverse_map_;
     std::vector<std::string>                   vocab_;   // ordered list for indexing
+    std::vector<float>                         flat_embeddings_; // contiguous matrix for ultra-fast sim
     std::unique_ptr<std::mutex>                mtx_;
+    bool                                       frozen_ = false;
+    mutable std::mt19937                       rng_;
 
     // L2 squared distance
     static float l2sq(const std::vector<float>& a,
@@ -75,21 +81,25 @@ private:
         return dot / (std::sqrt(na) * std::sqrt(nb));
     }
 
-    // Initialize new word with small random vector
+    // Initialize new word with small random vector restricted to the Left Hemisphere (Language)
     std::vector<float> random_vec(std::mt19937& rng) const {
         std::normal_distribution<float> dist(0.f, 0.1f);
-        std::vector<float> v(n_dims);
-        for (auto& x : v) x = dist(rng);
+        std::vector<float> v(n_dims, 0.f);
+        // Language only lives in the first half of the brain
+        int half = n_dims / 2;
+        for (int i = 0; i < half; i++) {
+            v[i] = dist(rng);
+        }
         return v;
     }
 
 public:
     Language() : n_dims(0), lr(0.05f),
-                 mtx_(std::make_unique<std::mutex>()) {}
+                 mtx_(std::make_unique<std::mutex>()), rng_(1337) {}
 
     Language(int n_dims, float lr = 0.05f)
         : n_dims(n_dims), lr(lr),
-          mtx_(std::make_unique<std::mutex>()) {}
+          mtx_(std::make_unique<std::mutex>()), rng_(1337) {}
 
     Language(Language&&)            = default;
     Language& operator=(Language&&) = default;
@@ -101,18 +111,13 @@ public:
     void register_word(const std::string& word,
                        const std::vector<float>& initial_vec = {}) {
         std::lock_guard<std::mutex> lock(*mtx_);
-        if (words_.count(word)) return;
-        WordEntry e;
-        if ((int)initial_vec.size() == n_dims) {
-            e.vec = initial_vec;
-        } else {
-            std::mt19937 rng(std::hash<std::string>{}(word));
-            e.vec = random_vec(rng);
+        if (words_.find(word) == words_.end()) {
+            std::vector<float> v = initial_vec.size() == n_dims ? initial_vec : random_vec(rng_);
+            words_[word] = {v, 1, 0.01f};
+            vocab_.push_back(word);
+            flat_embeddings_.insert(flat_embeddings_.end(), v.begin(), v.end());
+            reverse_map_[v] = word;
         }
-        e.frequency    = 0;
-        e.familiarity  = 0.f;
-        words_[word]   = std::move(e);
-        vocab_.push_back(word);
     }
 
     // Encode: word → concept vector
@@ -121,41 +126,100 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         auto it = words_.find(word);
         if (it == words_.end()) {
-            WordEntry e;
-            std::mt19937 rng(std::hash<std::string>{}(word));
-            e.vec = random_vec(rng);
-            e.frequency    = 0;
-            e.familiarity  = 0.f;
-            words_[word]   = e;
+            if (frozen_) return std::vector<float>(n_dims, 0.f);
+            
+            // Deterministic pseudo-random generation based on the word itself
+            // Ensures OOV words always get the exact same representation across runs
+            size_t h = std::hash<std::string>{}(word);
+            std::mt19937 local_rng(h);
+            std::vector<float> v = random_vec(local_rng);
+            
+            words_[word] = {v, 1, 0.01f};
             vocab_.push_back(word);
-            return e.vec;
+            flat_embeddings_.insert(flat_embeddings_.end(), v.begin(), v.end());
+            reverse_map_[v] = word;
+            return v;
         }
         return it->second.vec;
     }
 
     // Decode: concept vector → top-k words with similarity scores
-    std::vector<std::pair<std::string, float>>
-    decode(const std::vector<float>& concept_vec, int k = 5) const {
+    std::vector<std::pair<std::string, float>> decode(const std::vector<float>& vec, int k = 5,
+                                                      const std::vector<std::string>& penalize = {},
+                                                      int max_scan = -1) const {
         std::lock_guard<std::mutex> lock(*mtx_);
-        std::vector<std::pair<float, std::string>> sims;
-        sims.reserve(words_.size());
-        for (const auto& [w, e] : words_)
-            sims.push_back({cosine(e.vec, concept_vec), w});
+        
+        // Pre-compute query norm for super fast SIMD cosine sim
+        float na = 0.f;
+        for (int i = 0; i < n_dims; i++) na += vec[i] * vec[i];
+        float inv_na = (na < 1e-8f) ? 0.f : 1.0f / std::sqrt(na);
 
-        int kk = std::min(k, (int)sims.size());
-        std::partial_sort(sims.begin(), sims.begin() + kk, sims.end(),
-            [](const auto& a, const auto& b){ return a.first > b.first; });
+        if (k == 1) {
+            std::string best_w;
+            float best_score = -2.f;
+            int count = 0;
+            int n_words = vocab_.size();
+            for (int i = 0; i < n_words; i++) {
+                if (max_scan > 0 && count++ >= max_scan) break;
+                if (!penalize.empty() && std::find(penalize.begin(), penalize.end(), vocab_[i]) != penalize.end()) continue;
+                
+                // Fast contiguous dot product
+                float dot = 0.f, nb = 0.f;
+                int offset = i * n_dims;
+                for (int d = 0; d < n_dims; d++) {
+                    float b_val = flat_embeddings_[offset + d];
+                    dot += vec[d] * b_val;
+                    nb += b_val * b_val;
+                }
+                float s = 0.f;
+                if (nb >= 1e-8f && inv_na > 0.f) s = dot * inv_na / std::sqrt(nb);
+                
+                if (s > best_score) { best_score = s; best_w = vocab_[i]; }
+            }
+            if (best_w.empty()) return {};
+            return {{best_w, best_score}};
+        }
 
-        std::vector<std::pair<std::string, float>> result;
-        result.reserve(kk);
-        for (int i = 0; i < kk; i++)
-            result.push_back({sims[i].second, sims[i].first});
-        return result;
+        std::vector<std::pair<std::string, float>> scores;
+        int count = 0;
+        int n_words = vocab_.size();
+        for (int i = 0; i < n_words; i++) {
+            if (max_scan > 0 && count++ >= max_scan) break;
+            if (!penalize.empty() && std::find(penalize.begin(), penalize.end(), vocab_[i]) != penalize.end()) continue;
+            
+            float dot = 0.f, nb = 0.f;
+            int offset = i * n_dims;
+            for (int d = 0; d < n_dims; d++) {
+                float b_val = flat_embeddings_[offset + d];
+                dot += vec[d] * b_val;
+                nb += b_val * b_val;
+            }
+            float s = 0.f;
+            if (nb >= 1e-8f && inv_na > 0.f) s = dot * inv_na / std::sqrt(nb);
+            
+            scores.push_back({vocab_[i], s});
+        }
+        int sort_len = std::min(k, (int)scores.size());
+        if (sort_len > 0) {
+            std::partial_sort(scores.begin(), scores.begin() + sort_len, scores.end(),
+                              [](const auto& a, const auto& b) { return a.second > b.second; });
+            scores.resize(sort_len);
+        }
+        return scores;
     }
 
-    // Best single word for a concept vector
-    std::string best_word(const std::vector<float>& concept_vec) const {
-        auto top = decode(concept_vec, 1);
+    // Best single word for a concept vector, with optional repetition penalty
+    std::string best_word(const std::vector<float>& concept_vec, const std::vector<std::string>& penalize_words = {}, int max_scan = -1) const {
+        {
+            std::lock_guard<std::mutex> lock(*mtx_);
+            auto it = reverse_map_.find(concept_vec);
+            if (it != reverse_map_.end()) {
+                if (std::find(penalize_words.begin(), penalize_words.end(), it->second) == penalize_words.end()) {
+                    return it->second;
+                }
+            }
+        }
+        auto top = decode(concept_vec, 1, penalize_words, max_scan);
         return top.empty() ? "" : top[0].first;
     }
 
@@ -173,6 +237,7 @@ public:
             e.familiarity = 0.f;
             words_[word]  = std::move(e);
             vocab_.push_back(word);
+            flat_embeddings_.insert(flat_embeddings_.end(), som_activation.begin(), som_activation.end());
             it = words_.find(word);
         }
         auto& e = it->second;
@@ -180,9 +245,17 @@ public:
         e.familiarity = 0.9f * e.familiarity + 0.1f;  // smoothed
 
         // Move embedding toward current activation (Hebbian)
-        if ((int)som_activation.size() == n_dims) {
-            for (int i = 0; i < n_dims; i++)
-                e.vec[i] += lr * (som_activation[i] - e.vec[i]);
+        if (!frozen_ && (int)som_activation.size() == n_dims) {
+            auto it_v = std::find(vocab_.begin(), vocab_.end(), word);
+            if (it_v != vocab_.end()) {
+                int idx = std::distance(vocab_.begin(), it_v);
+                int offset = idx * n_dims;
+                for (int i = 0; i < n_dims; i++) {
+                    float delta = lr * (som_activation[i] - e.vec[i]);
+                    e.vec[i] += delta;
+                    flat_embeddings_[offset + i] += delta;
+                }
+            }
         }
     }
 
@@ -201,6 +274,49 @@ public:
     }
 
     int   vocab_size()          const noexcept { return (int)words_.size(); }
+    
+    void freeze_vocabulary(bool freeze = true) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        frozen_ = freeze;
+    }
+    void set_frozen(bool frozen) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        frozen_ = frozen;
+    }
+    bool is_frozen() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return frozen_;
+    }
+
+    void load_semantics(const std::string& filepath) {
+        std::ifstream f(filepath, std::ios::binary);
+        if (!f) throw std::runtime_error("Language::load_semantics: cannot open " + filepath);
+        
+        int vocab_size = 0, dim = 0;
+        f.read((char*)&vocab_size, sizeof(int));
+        f.read((char*)&dim, sizeof(int));
+        
+        if (dim != n_dims) {
+            throw std::runtime_error("Language::load_semantics: dim mismatch. Expected " + std::to_string(n_dims) + " got " + std::to_string(dim));
+        }
+
+        std::lock_guard<std::mutex> lock(*mtx_);
+        for (int i = 0; i < vocab_size; i++) {
+            std::string word;
+            char c;
+            while (f.get(c) && c != '\0') {
+                word += c;
+            }
+            std::vector<float> vec(n_dims);
+            f.read((char*)vec.data(), n_dims * sizeof(float));
+            
+            words_[word] = {vec, 1, 0.01f};
+            vocab_.push_back(word);
+            flat_embeddings_.insert(flat_embeddings_.end(), vec.begin(), vec.end());
+            reverse_map_[vec] = word;
+        }
+    }
+
     bool  knows(const std::string& w) const {
         std::lock_guard<std::mutex> lock(*mtx_);
         return words_.count(w) > 0;
@@ -226,9 +342,21 @@ public:
         if (!f) throw std::runtime_error("Language::save: cannot open " + path);
         f.write((const char*)&n_dims, sizeof(int));
         f.write((const char*)&lr,     sizeof(float));
-        int n = (int)vocab_.size();
-        f.write((const char*)&n, sizeof(int));
+        f.write((const char*)&frozen_,sizeof(bool));
+        std::vector<std::string> unique_valid_words;
+        std::unordered_set<std::string> seen;
         for (const auto& w : vocab_) {
+            if (seen.count(w) == 0 && words_.find(w) != words_.end()) {
+                seen.insert(w);
+                unique_valid_words.push_back(w);
+            }
+        }
+        
+        int n = (int)unique_valid_words.size();
+        f.write((const char*)&n, sizeof(int));
+        
+        for (const auto& w : unique_valid_words) {
+            
             const auto& e = words_.at(w);
             int wlen = (int)w.size();
             f.write((const char*)&wlen, sizeof(int));
@@ -246,6 +374,7 @@ public:
         Language l;
         f.read((char*)&l.n_dims, sizeof(int));
         f.read((char*)&l.lr,     sizeof(float));
+        f.read((char*)&l.frozen_,sizeof(bool));
         l.mtx_ = std::make_unique<std::mutex>();
         int n; f.read((char*)&n, sizeof(int));
         for (int i = 0; i < n; i++) {
@@ -260,6 +389,7 @@ public:
             f.read((char*)&e.familiarity, sizeof(float));
             l.words_[w] = std::move(e);
             l.vocab_.push_back(w);
+            l.flat_embeddings_.insert(l.flat_embeddings_.end(), l.words_[w].vec.begin(), l.words_[w].vec.end());
         }
         return l;
     }

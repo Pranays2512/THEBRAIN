@@ -55,9 +55,35 @@ public:
     int   n_dims;
     float threshold;  // LIF firing threshold
 
-private:
-    std::vector<Tier>           tiers_;
     std::unique_ptr<std::mutex> mtx_;
+
+    // ── Causal Disruption (Anti-Hebbian Learning) ─────────────
+    // When Predictive Coding registers a massive error (surprise),
+    // we violently decay the working memory states that caused the bad prediction.
+    void disrupt_by_error(const std::vector<float>& error_vec) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        float err_norm = norm(error_vec);
+        if (err_norm < 0.1f) return; // Only disrupt on significant surprise
+        
+        for (auto& tier : tiers_) {
+            for (auto& s : tier.slots) {
+                // How much did this slot contribute to the error direction?
+                float correlation = cosine(s.voltage, error_vec);
+                if (correlation > 0.2f) { // If it's highly correlated with the error
+                    // Violent Hebbian un-learning
+                    for (int i = 0; i < n_dims; i++) {
+                        s.voltage[i] -= 0.5f * correlation * error_vec[i];
+                        s.spike_trace[i] *= 0.5f; // suppress its activity
+                    }
+                    s.activity *= 0.5f;
+                    s.salience *= 0.5f;
+                }
+            }
+        }
+    }
+
+private:
+    std::vector<Tier> tiers_;
 
     static float dot(const std::vector<float>& a, const std::vector<float>& b) noexcept {
         float s = 0.f;
@@ -87,7 +113,6 @@ private:
         }
         return idx;
     }
-
     // Internal gate to a specific tier
     bool gate_tier(int t_idx, const std::vector<float>& activation, float salience, bool is_promotion = false) {
         if (t_idx >= (int)tiers_.size()) return false;

@@ -1,6 +1,10 @@
-import os
-import sys
-import time
+#!/usr/bin/env python3
+"""
+train_massive_corpus.py — Unsupervised Predictor Training on Massive SQuAD corpus
+"""
+
+import os, sys, time, json, gc
+import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 try:
@@ -9,96 +13,111 @@ except ImportError as e:
     print(f"Error importing brain2: {e}")
     sys.exit(1)
 
-def word_generator(filepath, chunk_size=1024*1024):
-    """Generator to read a massive file chunk-by-chunk and yield words."""
-    with open(filepath, 'r', encoding='utf-8') as f:
-        tail = ""
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                if tail:
-                    yield tail
-                break
-            
-            # Combine previous tail with new chunk
-            text = tail + chunk
-            words = text.split()
-            
-            # If the chunk didn't end with whitespace, the last word might be cut off
-            if not chunk[-1].isspace():
-                tail = words.pop() if words else ""
-            else:
-                tail = ""
-                
-            for w in words:
-                yield w
+# Training Hyperparameters
+N_DIMS = 512
+SOM_ROWS = 512
+SOM_COLS = 512
+HIDDEN_DIM = 512
+EPOCHS = 1
+SAVE_INTERVAL = 10000 # Save every 10,000 QA pairs
 
-def train_massive_corpus():
-    # Massive Brain Initialization:
-    # 32x32 SOM = 1024 distinct concept clusters for the vast vocabulary
-    print("Initializing Brain V4 (Massive Configuration)...")
-    b = brain2.Brain(som_rows=32, som_cols=32, n_dims=16, episodic_max=50000)
-    
-    corpus_path = os.path.join(os.path.dirname(__file__), "data", "text8")
+def safe_register_word(b, word):
+    """Register word if out-of-vocabulary."""
+    if not b.language.knows(word):
+        b.language.register_word(word)
+        b.symbolic_table.bind(word)
+
+def train():
+    corpus_path = os.path.join(os.path.dirname(__file__), "data", "squad_qa.json")
     if not os.path.exists(corpus_path):
-        print(f"Corpus not found at {corpus_path}. Please download it first.")
+        print(f"Error: {corpus_path} not found.")
         return
         
-    print(f"Starting stream from {corpus_path}...")
+    print(f"Loading corpus from {corpus_path}...")
+    with open(corpus_path, "r") as f:
+        corpus = json.load(f)
+    print(f"Loaded {len(corpus)} Q&A pairs.")
     
-    DREAM_INTERVAL = 10000  # Dream every 10k words
-    PRINT_INTERVAL = 10000  # Print progress every 10k words
+    print(f"Initializing Brain (Dims: {N_DIMS}, SOM: {SOM_ROWS}x{SOM_COLS}, Hidden: {HIDDEN_DIM})...")
+    b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS, n_dims=N_DIMS, hidden_dim=HIDDEN_DIM)
+    
+    # Freeze vocabulary to prevent semantic drift/catastrophic forgetting
+    b.language.freeze_vocabulary()
+    print("Vocabulary frozen.")
+    
+    ckpt_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "executive_brain")
+    os.makedirs(ckpt_dir, exist_ok=True)
     
     start_time = time.time()
-    total_error = 0.0
-    interval_error = 0.0
-    word_count = 0
+    total_processed = 0
+    start_epoch = 1
     
-    for word in word_generator(corpus_path):
-        word_count += 1
-        
-        # We don't have punctuation in text8 (it's strictly lowercase letters and spaces),
-        # so we just feed a continuous stream of text.
-        
-        if not b.language.knows(word):
-            b.language.register_word(word)
-            
-        word_vec = b.language.encode(word)
-        res = b.perceive(word_vec)
-        b.hear(word)
-        
-        b.reinforce_bg(0.0)
-        
-        error = res.prediction_error
-        total_error += error
-        interval_error += error
-        
-        # Periodic Dreaming for episodic consolidation
-        if word_count % DREAM_INTERVAL == 0:
-            b.dream(n_dreams=5, steps_per_dream=10)
-            
-        # Periodic Progress Output
-        if word_count % PRINT_INTERVAL == 0:
-            avg_interval_error = interval_error / PRINT_INTERVAL
-            elapsed = time.time() - start_time
-            speed = word_count / elapsed
-            vocab_size = b.language.vocab_size
-            
-            print(f"Words: {word_count:,} | "
-                  f"Speed: {speed:,.1f} w/s | "
-                  f"Avg Err: {avg_interval_error:.4f} | "
-                  f"Vocab: {vocab_size:,} | "
-                  f"Eps: {b.episodic.episode_count:,} / Protos: {b.episodic.prototype_count:,}", flush=True)
-                  
-            interval_error = 0.0
-            
-            # Since this takes hours, we can gracefully exit or just let it run.
-            # We'll just let it run. User can kill it whenever.
+    state_path = os.path.join(ckpt_dir, "training_state.json")
+    if os.path.exists(os.path.join(ckpt_dir, "predictor.bin")):
+        print(f"Loading existing checkpoints from {ckpt_dir}...")
+        try:
+            b.load_components(
+                predictor_path=os.path.join(ckpt_dir, "predictor.bin"),
+                language_path=os.path.join(ckpt_dir, "language.bin"),
+                som_path=os.path.join(ckpt_dir, "som.bin"),
+                episodic_path=os.path.join(ckpt_dir, "episodic.bin"),
+                emotion_path=os.path.join(ckpt_dir, "emotion.bin"),
+                self_path=os.path.join(ckpt_dir, "self.bin"),
+                symbolic_path=os.path.join(ckpt_dir, "symbolic.bin"),
+                binding_path=os.path.join(ckpt_dir, "binding.bin"),
+                bg_path=os.path.join(ckpt_dir, "bg.bin"),
+                procedures_path=os.path.join(ckpt_dir, "procedures.bin"),
+                hpred_path=os.path.join(ckpt_dir, "hpred.bin")
+            )
+            if os.path.exists(state_path):
+                with open(state_path, "r") as f:
+                    state = json.load(f)
+                    total_processed = state.get("total_processed", 0)
+                    start_epoch = state.get("epoch", 1)
+                print(f"Resuming from Epoch {start_epoch}, Total Processed: {total_processed}")
+        except Exception as e:
+            print(f"Failed to load checkpoints: {e}")
 
-    print("\nTraining Complete!")
-    total_time = time.time() - start_time
-    print(f"Processed {word_count:,} words in {total_time:,.2f} seconds ({word_count/total_time:,.1f} words/sec).")
-    print(f"Final Global Avg Error: {total_error / max(1, word_count):.4f}")
+    for epoch in range(start_epoch, EPOCHS + 1):
+        print(f"\n--- EPOCH {epoch}/{EPOCHS} ---")
+        
+        for i, pair in enumerate(corpus):
+            b.reset_sequence()
+            
+            # Process input question
+            b.perceive_text(pair["input"])
+            
+            # Answer sequence
+            b.perceive_text(pair["target"])
+            
+            total_processed += 1
+            
+            if total_processed % 50 == 0:
+                elapsed = time.time() - start_time
+                print(f"Processed {total_processed} pairs | Elapsed: {elapsed:.1f}s | Dict Size: {b.language.vocab_size}", flush=True)
+                print(f"Predictor Spatial Error (L2): {b.predictor.last_error:.6f}", flush=True)
+                print(b.get_profiling_report(), flush=True)
+            if total_processed % 1000 == 0:
+                b.som.prune_dead_branches(10000)
+                
+            if total_processed > 0 and total_processed % SAVE_INTERVAL == 0:
+                print(f"Saving checkpoint to {ckpt_dir}...", flush=True)
+                b.save_components(ckpt_dir)
+                with open(state_path, "w") as f:
+                    json.dump({"epoch": epoch, "total_processed": total_processed}, f)
+                gc.collect() # Force garbage collection to prevent memory ballooning
+                
+                # Run a quick generation test
+                b.reset_sequence()
+                test_prompt = "what is the capital of"
+                for tw in test_prompt.split():
+                    if b.language.knows(tw):
+                        b.perceive(b.language.encode(tw))
+                res = b.think(4)
+                print(f"  Test [{test_prompt}] -> {' '.join([w for w in res.words if w])}")
 
-if __name__ == '__main__':
-    train_massive_corpus()
+    b.save_components(ckpt_dir)
+    print("Massive Training Complete.")
+
+if __name__ == "__main__":
+    train()

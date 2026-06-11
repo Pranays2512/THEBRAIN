@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-train_math.py — Train the Brain exclusively on mathematical equations and deterministic logic.
+train_conversational.py — Train the Brain exclusively on massive conversational data to achieve true language mastery.
 """
 
 import os, sys, json, time, random
@@ -21,8 +21,6 @@ def initialize_vocab(b, corpus):
     
     for word in sorted(words):
         b.language.register_word(word)
-        # We bind all mathematical operands and conversational words.
-        # Note: operators (+, -, =) will be overwritten/frozen by seed_math_symbols
         b.symbolic_table.bind(word)
 
 def train():
@@ -30,15 +28,15 @@ def train():
     SOM_ROWS = 256
     SOM_COLS = 256
     HIDDEN_DIM = 256
-    EPOCHS = 3
+    EPOCHS = 1
 
     print(f"Initializing Brain (Dims: {N_DIMS}, SOM: {SOM_ROWS}x{SOM_COLS}, Hidden: {HIDDEN_DIM})...")
     b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS, n_dims=N_DIMS, hidden_dim=HIDDEN_DIM)
     
-    # Load fully fluent weights as the base
-    base_ckpt = os.path.join(os.path.dirname(__file__), "checkpoints", "fluent_brain")
+    # Load massive squad weights as the base
+    base_ckpt = os.path.join(os.path.dirname(__file__), "checkpoints", "massive_squad")
     if os.path.exists(base_ckpt):
-        print(f"Loading fluent checkpoints from {base_ckpt}...")
+        print(f"Loading base checkpoints from {base_ckpt}...")
         try:
             b.load_components(
                 predictor_path=os.path.join(base_ckpt, "predictor.bin"),
@@ -61,32 +59,23 @@ def train():
         return
 
     # Load datasets
-    print("Loading Math corpus...")
-    with open(os.path.join(os.path.dirname(__file__), "data", "math_corpus.json"), "r") as f:
-        math_corpus = json.load(f)
+    print("Loading Conversational Massive dataset...")
+    with open(os.path.join(os.path.dirname(__file__), "data", "conversational_massive.json"), "r") as f:
+        conv_corpus = json.load(f)
         
-    print(f"Math corpus size: {len(math_corpus)}")
+    print(f"Conversational corpus size: {len(conv_corpus)}")
     
-    initialize_vocab(b, math_corpus)
+    initialize_vocab(b, conv_corpus)
     
-    # Freeze the mathematical operators and variables!
-    print("Freezing mathematical operators into the Symbolic Module...")
-    b.symbolic_table.seed_math_symbols()
-    
-    # Also freeze common polynomial symbols
-    b.symbolic_table.bind("x", None, brain2.SymbolOp.NONE, "variable")
-    b.symbolic_table.bind("eval", None, brain2.SymbolOp.SEQUENCE, "instruction")
-    b.symbolic_table.bind("roots", None, brain2.SymbolOp.SEQUENCE, "instruction")
-    
-    print("\nStarting Mathematical Training...")
+    print("\nStarting Fluent Conversational Training...")
     start_time = time.time()
     
     for epoch in range(1, EPOCHS + 1):
         print(f"\n--- EPOCH {epoch}/{EPOCHS} ---")
-        random.shuffle(math_corpus)
+        random.shuffle(conv_corpus)
         
         total_processed = 0
-        for pair in math_corpus:
+        for pair in conv_corpus:
             b.reset_sequence()
             seq = pair["input"].split() + pair["target"].split()
             for word in seq:
@@ -94,13 +83,21 @@ def train():
                 b.perceive(vec)
             
             total_processed += 1
-            if total_processed % 1000 == 0:
+            if total_processed % 2000 == 0:
                 elapsed = time.time() - start_time
                 print(f"Processed {total_processed} pairs | Elapsed: {elapsed:.1f}s | Dict Size: {b.language.vocab_size}")
                 print(f"Predictor Spatial Error (L2): {b.predictor.last_error:.6f}")
+                
+            if total_processed > 0 and total_processed % 10000 == 0:
+                ckpt_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "fluent_brain")
+                os.makedirs(ckpt_dir, exist_ok=True)
+                print(f"Auto-saving checkpoint to {ckpt_dir}...", flush=True)
+                b.save_components(ckpt_dir)
+                import gc
+                gc.collect()
 
         # Run quick generation test
-        for test_prompt in ["2 + 2", "5 - 3", "eval 2 x ^ 2 + 3 x + 1 for x = 2", "roots of x ^ 2 - 4 = 0", "what do you think of music"]:
+        for test_prompt in ["what is your name", "how are you doing", "what do you think of music"]:
             b.reset_sequence()
             for tw in test_prompt.split():
                 if b.language.knows(tw):
@@ -109,7 +106,7 @@ def train():
             print(f"  Test [{test_prompt}] -> {' '.join([w for w in res.words if w])}")
 
     # Checkpoint
-    ckpt_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "math_brain")
+    ckpt_dir = os.path.join(os.path.dirname(__file__), "checkpoints", "fluent_brain")
     os.makedirs(ckpt_dir, exist_ok=True)
     b.save_components(ckpt_dir)
     print(f"\nTraining Complete. Saved to {ckpt_dir}")

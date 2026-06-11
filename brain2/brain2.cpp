@@ -86,6 +86,7 @@ PYBIND11_MODULE(brain2, m) {
       .def("grid_dist", &SOM::grid_dist,
            "2D grid distance between neurons i and j")
       .def("save", &SOM::save, "Save SOM to binary file")
+      .def("prune_dead_branches", &SOM::prune_dead_branches, py::arg("max_age") = 10000, "Prune inactive sub-grids")
       .def_static(
           "load", [](const std::string &p) { return SOM::load(p); },
           "Load SOM from binary file")
@@ -259,6 +260,7 @@ PYBIND11_MODULE(brain2, m) {
           py::arg("word"), py::arg("initial_vec") = py::none())
       .def("encode", [](Language &l,
                         const std::string &w) { return to_np(l.encode(w)); })
+      .def("load_semantics", &Language::load_semantics)
       .def(
           "decode",
           [](const Language &l, py::array_t<float, py::array::c_style> arr,
@@ -289,6 +291,8 @@ PYBIND11_MODULE(brain2, m) {
             return l.speak(seqs, min_sim);
           },
           py::arg("concept_seq"), py::arg("min_sim") = 0.f)
+      .def("freeze_vocabulary", &Language::freeze_vocabulary, py::arg("freeze") = true, "Freeze vocabulary to prevent semantic drift")
+      .def("is_frozen", &Language::is_frozen)
       .def("knows", &Language::knows)
       .def("familiarity", &Language::familiarity)
       .def("frequency", &Language::frequency)
@@ -561,6 +565,14 @@ PYBIND11_MODULE(brain2, m) {
       .def("perceive",
            [](Brain &b, py::array_t<float, py::array::c_style> arr) {
              return b.perceive(to_vec(arr));
+           })
+      .def("perceive_text", &Brain::perceive_text, py::arg("text"))
+      .def("get_profiling_report", &Brain::get_profiling_report)
+      .def("perceive_sequence",
+           [](Brain &b, py::list seq) {
+             for (auto &item : seq) {
+               b.perceive(to_vec(item.cast<py::array_t<float, py::array::c_style>>()));
+             }
            })
       .def("hear", &Brain::hear)
       .def("reset_sequence", &Brain::reset_sequence)

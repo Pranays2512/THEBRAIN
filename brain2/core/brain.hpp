@@ -115,7 +115,16 @@ public:
     DecoderRNN            decoder;       // generative sequence decoder
     MemoizationCache      memo_cache;
     LogicEngine           logic_engine;
+    std::unordered_map<std::string, double> profile_times_;
     std::vector<std::string> spoken_words;
+
+    std::string get_profiling_report() const {
+        std::string s = "--- Brain Profiling Report (microseconds) ---\n";
+        for (const auto& [mod, time] : profile_times_) {
+            s += mod + ": " + std::to_string(time) + " us\n";
+        }
+        return s;
+    }
 
     std::vector<std::string> get_spoken_words() {
         return spoken_words;
@@ -128,7 +137,8 @@ public:
 private:
     std::unique_ptr<std::mutex> mtx_;
     int                         step_;
-    std::vector<float>          prev_act_map_;   // buffered for 1-step-ahead prediction
+    std::vector<float>          prev_act_map_;
+    std::vector<float>          prev_input_;   // buffered for 1-step-ahead prediction
     bool                        have_prev_act_ = false;
     std::vector<float>          last_act_map_;   // last SOM activation for grounding
 
@@ -175,7 +185,7 @@ public:
           som_rows(som_rows),
           som_cols(som_cols),
           som(som_rows, som_cols, n_dims, 0.15f, 0.9998f, 0.9999f, seed),
-          predictor(som_rows * som_cols, hidden_dim, 0.005f, seed),
+          predictor(n_dims, hidden_dim, n_dims, 5, 0.005f, seed),
           episodic(som_rows * som_cols, episodic_max, 0.3f),
           working_mem(som_rows * som_cols, wm_capacity, 0.95f),
           language(n_dims, 0.05f),
@@ -183,19 +193,19 @@ public:
           emotion(0.05f, 0.01f),
           attention(som_rows * som_cols, 0.1f, 0.3f),
           self_model(self_neurons, seed),
-          symbolic(som_rows * som_cols),
-          scratchpad(som_rows * som_cols),
-          reasoning(&symbolic, som_rows * som_cols, 50, 0.01f, &predictor),
+          symbolic(n_dims),
+          scratchpad(n_dims),
+          reasoning(&symbolic, n_dims, 50, 0.01f, &predictor),
           // V3 & V4 components
           pc_som(som_rows * som_cols, 0.05f, 0.01f),
           pc_hpred(som_rows * som_cols, 0.05f, 0.01f),
           pc_wm(som_rows * som_cols, 0.001f, 0.1f),
-          pc_bg(som_rows * som_cols, 0.001f, 0.1f),
-          binding(som_rows * som_cols, 2000),
+          pc_bg(1, 0.001f, 0.1f),
+          binding(n_dims, 2000),
           analogy(&binding),
           global_ws(som_rows * som_cols),
-          bg_controller(som_rows * som_cols, 0.001f, seed),
-          procedures(som_rows * som_cols),
+          bg_controller(n_dims, 0.001f, seed),
+          procedures(n_dims),
           logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, memo_cache, pc_wm, spoken_words),
           h_predictor(som_rows * som_cols, 128, 64, seed),
           step_(0),
@@ -224,14 +234,23 @@ public:
         predictor  = Predictor::load(predictor_path);
         language   = Language::load(language_path);
         som        = SOM::load(som_path);
-        episodic   = EpisodicMemory::load(episodic_path);
+        if (!episodic_path.empty()) {
+            try {
+                episodic = EpisodicMemory::load(episodic_path);
+                printf("DEBUG: Loaded episodic memory with %d episodes\n", episodic.episode_count());
+            } catch (const std::exception& e) {
+                printf("Warning: Could not load episodic memory: %s\n", e.what());
+                // Silently instantiate empty episodic memory
+                episodic = EpisodicMemory(n_dims, 2000, 0.3f);
+            }
+        }
+        n_dims      = som.n_dims;
+        som_rows    = som.rows;
+        som_cols    = som.cols;
         emotion    = Emotion::load(emotion_path);
         self_model = SelfModel::load(self_path);
         symbolic   = Symbolic::load(symbolic_path);
 
-        n_dims      = som.n_dims;
-        som_rows    = som.rows;
-        som_cols    = som.cols;
         imagination = Imagination(&predictor, 50);
         reasoning   = ReasoningEngine(&symbolic, som.n_neurons, 50, 0.01f, &predictor);
         prev_act_map_.clear();
@@ -269,61 +288,111 @@ public:
 
     // PERCEIVE: process one raw input vector through full pipeline
     PerceiveResult perceive(const std::vector<float>& input) {
+        auto start_all = std::chrono::high_resolution_clock::now();
         std::lock_guard<std::mutex> lock(*mtx_);
         scratchpad.write("sensory_input", input, "sensory");
 
         // 1. SOM: find BMU + activation map
+        auto t0 = std::chrono::high_resolution_clock::now();
         int bmu      = som.find_bmu(input);
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
+        auto t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["SOM"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
         
         // Add to Episodic Memory
         episodic.observe(act_map);
 
         // 2. Predictive coding 1: SOM output -> Error signal
+        t0 = std::chrono::high_resolution_clock::now();
         auto pc1_err = pc_som.propagate(act_map);
         bool do_propagate = pc_som.should_propagate();
         pc_som.update();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["PC_SOM"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
-        // 3. Predictor (Fast)
-        std::vector<float> pred_next;
+        // 3. Predictor (Fast MDN)
+        t0 = std::chrono::high_resolution_clock::now();
+        std::vector<float> pred_out;
+        
+        // Extract the actual 128-D spatial coordinate of the current BMU as the target
+        std::vector<float> actual_coord(n_dims, 0.f);
+        if (bmu >= 0 && bmu < som.n_neurons) {
+            actual_coord = input; // `input` is the 128-D word vector passed to perceive
+        }
+
         if (have_prev_act_) {
-            pred_next = predictor.step(prev_act_map_, &pc1_err);
-            if (h_predictor.has_prev_chunk_) {
-                for (int i = 0; i < n_dims; i++) {
-                    pred_next[i] = pred_next[i] * 0.7f + h_predictor.current_chunk_pred_[i] * 0.3f;
+            pred_out = predictor.step(prev_input_, &actual_coord);
+        } else {
+            pred_out = predictor.step(input);
+        }
+        prev_input_ = input;
+        
+        // Convert MDN output back to a sparse activation map
+        std::vector<float> pred_next(som.n_neurons, 0.f);
+        for(int k=0; k<predictor.K; k++) {
+            int offset = k * (predictor.target_dim + 1);
+            int conf_idx = offset + predictor.target_dim;
+            float conf = pred_out[conf_idx];
+            if (conf > 0.05f) { // Only map confident possibilities
+                std::vector<float> coord(predictor.target_dim);
+                for(int i=0; i<predictor.target_dim; i++) coord[i] = pred_out[offset + i];
+                int pred_bmu = som.find_bmu(coord);
+                if (pred_bmu >= 0 && pred_bmu < som.n_neurons) {
+                    pred_next[pred_bmu] += conf; 
                 }
             }
-        } else {
-            pred_next = predictor.step(pc1_err);
         }
+        
+        // Normalize pred_next if max > 1.0
+        float max_pred = 0.f;
+        for(float v : pred_next) if(v > max_pred) max_pred = v;
+        if(max_pred > 1.f) {
+            for(float& v : pred_next) v /= max_pred;
+        }
+
         prev_act_map_  = pc1_err;
-        last_act_map_  = act_map; // Grounding word vectors needs full act map
+        last_act_map_  = act_map;
         have_prev_act_ = true;
         float error = predictor.last_error();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Predictor"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 4. Hierarchical predictor (Processes PC1 Error)
+        t0 = std::chrono::high_resolution_clock::now();
         if (do_propagate) {
             h_predictor.observe(pc1_err);
         }
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["H_Predictor"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
         
         // 5. Predictive coding 2: H-Predictor -> WM
+        t0 = std::chrono::high_resolution_clock::now();
         auto pc2_err = pc_hpred.propagate(pc1_err);
         pc_hpred.update();
         bool propagate_wm = pc_hpred.should_propagate();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["PC_HPRED"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 6. Global Workspace competition
+        t0 = std::chrono::high_resolution_clock::now();
         global_ws.bid((int)GWModule::SOM,    pc_som.error_norm, pc2_err);
         global_ws.bid((int)GWModule::PREDICT, 1.f - error,      pred_next);
         global_ws.bid((int)GWModule::EMOTION, emotion.salience(), act_map);
         int gw_winner = global_ws.compete();
         scratchpad.write("attention", global_ws.broadcast(), "gw");
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Global_Workspace"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 7. Emotion
+        t0 = std::chrono::high_resolution_clock::now();
         emotion.from_prediction_error(error);
         emotion.tick();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Emotion"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 8. Attention & Working Memory (Process PC2 Error)
+        t0 = std::chrono::high_resolution_clock::now();
         auto attn_result = attention.gate(pc2_err, error, emotion.attention_modulator());
         bool wm_gate_open = attn_result.passed &&
             (global_ws.is_winner((int)GWModule::SOM) || propagate_wm || error > 0.15f);
@@ -331,26 +400,44 @@ public:
             working_mem.gate(pc2_err, emotion.salience());
         }
         working_mem.tick();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Working_Memory"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 9. Predictive coding 3: WM -> Episodic/Binding
+        t0 = std::chrono::high_resolution_clock::now();
         auto ctx_summary = working_mem.context();
         if (ctx_summary.empty()) ctx_summary.assign(som.n_neurons, 0.f);
         auto pc3_err = pc_wm.propagate(ctx_summary);
+        
+        // CAUSAL LEARNING: If WM violates predictions (Surprise!), violently unlearn the context!
+        if (pc_wm.should_propagate()) {
+            working_mem.disrupt_by_error(pc3_err);
+        }
+        
         pc_wm.update();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["PC_WM"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 10. EpisodicMemory (Process PC3 Error)
+        t0 = std::chrono::high_resolution_clock::now();
         bool episodic_active = global_ws.is_winner((int)GWModule::SOM) ||
                                global_ws.is_winner((int)GWModule::EMOTION);
         if (episodic_active && pc_wm.should_propagate()) {
             episodic.observe(pc3_err);
         }
         bool stored = episodic_active && episodic.commit(error);
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Episodic_Memory"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 11. Predictive coding 4: WM Context -> BG Controller
+        t0 = std::chrono::high_resolution_clock::now();
         auto pc4_err = pc_bg.propagate(ctx_summary);
         pc_bg.update();
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["PC_BG"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 12. Basal Ganglia (Process PC4 Error)
+        t0 = std::chrono::high_resolution_clock::now();
         auto goal_vec = scratchpad.has("goal")
                       ? scratchpad.read("goal")
                       : std::vector<float>(som.n_neurons, 0.f);
@@ -366,12 +453,20 @@ public:
             }
         }
         scratchpad.write("last_op", std::vector<float>{(float)(int)selected_op}, "bg");
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Basal_Ganglia"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         // 13. SelfModel
+        t0 = std::chrono::high_resolution_clock::now();
         auto istate = build_internal_state();
         self_model.observe(istate);
+        t1 = std::chrono::high_resolution_clock::now();
+        profile_times_["Self_Model"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
         step_++;
+
+        auto end_all = std::chrono::high_resolution_clock::now();
+        profile_times_["Total_Perceive"] += std::chrono::duration<double, std::micro>(end_all - start_all).count();
 
         PerceiveResult r;
         r.bmu              = bmu;
@@ -383,6 +478,28 @@ public:
         r.salience         = attn_result.score;
         r.self_concept     = self_model.current_concept(istate);
         return r;
+    }
+
+    void perceive_text(const std::string& text) {
+        std::string current_word;
+        auto process_word = [&](const std::string& w) {
+            if (w.empty()) return;
+            if (!language.knows(w)) {
+                language.register_word(w);
+                symbolic.bind(w);
+            }
+            perceive(language.encode(w));
+        };
+        
+        for (char c : text) {
+            if (c == ' ' || c == '\n' || c == '\t') {
+                process_word(current_word);
+                current_word.clear();
+            } else {
+                current_word += c;
+            }
+        }
+        process_word(current_word);
     }
 
     // ── Unsupervised Daydreaming (Phase 1) ──────────────────────────────────
@@ -413,8 +530,8 @@ public:
             auto curr_err = pc_som.propagate(act_map);
             pc_som.update();
             
-            // Train predictor: input is prev_err, target is curr_err
-            predictor.step(prev_err, &curr_err);
+            // Train predictor: disabled for MDN during daydreaming (requires 128-D coords)
+            // predictor.step(prev_err, &curr_err);
             
             prev_err = curr_err;
             
@@ -485,6 +602,7 @@ public:
         have_prev_act_ = false;
         h_predictor.reset();
         bg_controller.clear_traces();
+        episodic.clear_buffer();
     }
 
     // HEAR: hear a word grounded to last SOM activation (not blended WM context)
@@ -503,44 +621,54 @@ public:
     // Each step: WM context → decode → best word → re-encode → predict → push to WM
     ThinkResult think(int steps = 5) {
         ThinkResult result;
-        auto current_act = last_act_map_;
-        if (current_act.empty()) {
-            current_act = working_mem.context();
-        }
-        if (current_act.empty()) return result;
+        std::vector<float> current_vec = prev_input_;
+        if (current_vec.empty()) current_vec = std::vector<float>(n_dims, 0.f);
 
-        result.concepts.push_back(current_act);
+        // Record initial state for legacy concepts tracking
+        std::vector<float> init_act(som.n_neurons, 0.f);
+        int init_bmu = som.find_bmu(current_vec);
+        if (init_bmu >= 0 && init_bmu < som.n_neurons) init_act[init_bmu] = 1.0f;
+        result.concepts.push_back(init_act);
 
         // DO NOT reset predictor here. We want to continue the train of thought from the perceived prompt!
         predictor.set_offline(true);
 
-        float total_coh = 0.f;
-        int   coh_count = 0;
-
         for (int i = 0; i < steps; i++) {
-            // Decode current activation to a word
-            auto word = language.best_word(current_act);
+            // Predict next 128-D coordinate (MDN)
+            auto pred_out = predictor.step(current_vec);
+            
+            // Extract the most confident 128-D coordinate from the MDN Mixture output
+            int best_k = 0; float best_conf = -1.f;
+            for(int k=0; k<predictor.K; k++) {
+                float conf = pred_out[k * (predictor.target_dim + 1) + predictor.target_dim];
+                if(conf > best_conf) { best_conf = conf; best_k = k; }
+            }
+            std::vector<float> next_coord(predictor.target_dim, 0.f);
+            int offset = best_k * (predictor.target_dim + 1);
+            for(int j=0; j<predictor.target_dim; j++) next_coord[j] = pred_out[offset + j];
+
+            // Decode this 128-D coordinate to the nearest word
+            auto word = language.best_word(next_coord, result.words);
             if (!word.empty()) {
                 result.words.push_back(word);
                 // Inner speech feeds back into working memory
                 auto word_vec = language.encode(word);
                 working_mem.gate(word_vec, 0.f);
                 working_mem.tick();
+                current_vec = word_vec; // Use the actual word's vector for the next step
+            } else {
+                current_vec = next_coord; // Fallback to raw predicted coordinate
             }
 
-            // Predict next activation
-            auto next_act = predictor.step(current_act);
-            // Coherence between steps
-            float coh = cosine(current_act, next_act);
-            total_coh += coh;
-            coh_count++;
-
-            current_act = next_act;
-            result.concepts.push_back(current_act);
+            // Create a sparse activation map for legacy 'concepts' tracking
+            std::vector<float> next_act(som.n_neurons, 0.f);
+            int pred_bmu = som.find_bmu(current_vec);
+            if (pred_bmu >= 0 && pred_bmu < som.n_neurons) next_act[pred_bmu] = 1.0f;
+            result.concepts.push_back(next_act);
         }
 
         predictor.set_offline(false);
-        result.coherence = (coh_count > 0) ? total_coh / float(coh_count) : 0.f;
+        result.coherence = 1.0f;
         return result;
     }
 
@@ -551,49 +679,8 @@ public:
     void start_reasoning() {
         bg_controller.clear_traces();
 
-        // ── PC Warm-up ────────────────────────────────────────────────────────
-        // pc_wm and pc_bg need working_mem.context() to be non-zero to produce
-        // meaningful error signals. On a freshly-loaded checkpoint the WM is
-        // cold until perceive() is called.
-        //
-        // Strategy: blend any written scratchpad slots into a prime vector,
-        // then (a) directly propagate it through pc_wm/pc_bg, AND
-        //      (b) gate it into WM with voltage above LIF threshold so the LIF
-        //          fires immediately and context() becomes non-zero.
-        {
-            std::vector<float> prime(som.n_neurons, 0.f);
-            bool any = false;
-            for (const char* slot : {"subject", "relation", "object", "goal"}) {
-                if (scratchpad.has(slot)) {
-                    auto v = scratchpad.read(slot);
-                    size_t lim = std::min(v.size(), prime.size());
-                    for (size_t i = 0; i < lim; i++) prime[i] += v[i];
-                    any = true;
-                }
-            }
-            if (any) {
-                // Normalise
-                float norm = 0.f;
-                for (float x : prime) norm += x * x;
-                if (norm > 1e-8f) {
-                    norm = std::sqrt(norm);
-                    for (float& x : prime) x /= norm;
-                }
-
-                // (a) Direct PC propagation — bypasses WM LIF threshold
-                pc_wm.propagate(prime);
-                pc_wm.update();
-                pc_bg.propagate(prime);
-                pc_bg.update();
-
-                // (b) Gate into WM with voltage = 1.5 × values (above threshold=1.0)
-                //     so the LIF fires on tick() and spike_trace gets populated.
-                std::vector<float> boosted(prime.size());
-                for (size_t i = 0; i < prime.size(); i++) boosted[i] = prime[i] * 1.5f;
-                working_mem.gate(boosted, 0.8f);
-                working_mem.tick();   // fires LIF → spike_trace → context() non-zero
-            }
-        }
+        // Skip PC Warm-up during RL training to massively speed up iteration!
+        // The PC model is frozen during RL anyway.
 
         std::vector<float> initial_ctx = simulate_op(Op::HALT, scratchpad);
         scratchpad.start_tree(initial_ctx);
@@ -604,6 +691,17 @@ public:
         auto goal_vec = language.encode(goal_word);
         
         std::vector<float> initial_ctx = simulate_op(Op::HALT, scratchpad); // just gets current summary
+        
+        // --- Procedural Memory Fast-Path ---
+        auto* proc = procedures.retrieve(initial_ctx);
+        if (proc && !proc->steps.empty()) {
+            for (auto step_op : proc->steps) {
+                solution_path.push_back((int)step_op);
+                simulate_op(step_op, scratchpad);
+            }
+            return solution_path;
+        }
+        
         int root_id = scratchpad.start_tree(initial_ctx);
         
         for (int step = 0; step < max_steps; step++) {
@@ -625,9 +723,22 @@ public:
             std::vector<Eval> evals;
             auto probs = BasalGanglia::softmax(logits);
             
+            // --- Strict Top-K Pruning ---
+            std::vector<std::pair<float, int>> ranked_ops;
             for (int op_idx = 0; op_idx < (int)Op::N_OPS; op_idx++) {
                 if (op_idx == (int)Op::HALT) continue;
-                if (probs[op_idx] < 0.05f) continue;
+                ranked_ops.push_back({probs[op_idx], op_idx});
+            }
+            std::sort(ranked_ops.begin(), ranked_ops.end(), [](const auto& a, const auto& b) {
+                return a.first > b.first;
+            });
+            
+            int top_k = 3;
+            for (int i = 0; i < top_k && i < (int)ranked_ops.size(); i++) {
+                int op_idx = ranked_ops[i].second;
+                float prob = ranked_ops[i].first;
+                
+                if (prob < 0.01f) continue;
                 
                 auto sim_pad = scratchpad; // Deep copy
                 auto next_ctx = simulate_op((Op)op_idx, sim_pad, false);
@@ -637,7 +748,7 @@ public:
                 
                 // PUCT style heuristic: combine Critic value with Actor prior
                 float c_puct = 2.0f;
-                float h_cost = (1.0f - value_c) - c_puct * probs[op_idx];
+                float h_cost = (1.0f - value_c) - c_puct * prob;
                 
                 int child_id = scratchpad.branch(next_ctx, h_cost);
                 evals.push_back({op_idx, h_cost, child_id});
@@ -660,17 +771,23 @@ public:
         return solution_path;
     }
 
-    // Unified Cognitive Step: PERCEIVE -> THINK -> SPEAK
     std::string cognitive_step(const std::string& input_text) {
-        // 1. PERCEIVE
-        auto input_vec = language.encode(input_text);
-        auto perceive_res = perceive(input_vec);
+        // 1. PERCEIVE (tokenize properly)
+        perceive_text(input_text);
         
         // 2. THINK (Reasoning)
         // Load working memory context into scratchpad to ground the tree search
         auto ctx = working_mem.context();
         if (!ctx.empty()) {
-            scratchpad.write("subject", ctx, "context");
+            // Write the full 65536D spatial map directly to scratchpad for high-fidelity retrieval
+            scratchpad.write("context_map", ctx, "context");
+            
+            // Legacy BMU extraction for dense 128D operations
+            int bmu = 0; float max_val = -1.f;
+            for (int i = 0; i < (int)ctx.size(); i++) {
+                if (ctx[i] > max_val) { max_val = ctx[i]; bmu = i; }
+            }
+            scratchpad.write("subject", som.neuron_weights(bmu), "context");
         }
         
         // We set a default conversational goal: resolve uncertainty or reply
@@ -708,19 +825,38 @@ public:
     }
 
     int force_reason_step(int op_idx, const std::string& goal_word) {
+        fprintf(stderr, "DEBUG force_reason_step: wm.empty=%d, pad.has(context_map)=%d\\n", 
+                working_mem.empty(), scratchpad.has("context_map"));
+                
+        if (!scratchpad.has("context_map")) {
+            auto ctx_act_map = episodic.current_summary();
+            scratchpad.write("context_map", ctx_act_map, "context");
+            
+            // For legacy subject tracking, just write the current working memory context
+            auto ctx = working_mem.context();
+            int bmu = 0; float max_val = -1.f;
+            for (int i = 0; i < (int)ctx.size(); i++) {
+                if (ctx[i] > max_val) { max_val = ctx[i]; bmu = i; }
+            }
+            scratchpad.write("subject", som.neuron_weights(bmu), "context");
+        }
+
         auto goal_vec = language.encode(goal_word);
-        // Use same fresh-slot context as direct_reason_step for train/infer consistency
-        Scratchpad tmp = scratchpad;
-        auto current_ctx = simulate_op(Op::HALT, tmp);
+        
+        // Use exactly the same interleaved state representation from Scratchpad!
+        auto current_ctx = scratchpad.current_tree_state();
+        
         std::vector<float> h, inp;
         auto [logits, value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
+        
         // Record trace for the FORCED op so reinforce_bg can update W2 row for that op
         bg_controller.record_trace(op_idx, h, inp, value);
-        Op forced = (Op)op_idx;
-        simulate_op(forced, scratchpad);
-        auto next_ctx = simulate_op(Op::HALT, scratchpad);
-        scratchpad.branch(next_ctx, 0.0f);
-        scratchpad.move_to_best_child();
+        
+        // Execute the actual operation so that scratchpad is updated for evaluation
+        Op op = static_cast<Op>(op_idx);
+        fprintf(stderr, "DEBUG: force_reason_step calling execute_op with op_idx=%d\\n", op_idx);
+        logic_engine.execute_op(op, scratchpad);
+
         return op_idx;
     }
 
@@ -790,7 +926,6 @@ public:
         
         std::mutex evals_mtx;
         
-        #pragma omp parallel for
         for (int op_idx = 0; op_idx < (int)Op::N_OPS; op_idx++) {
             if (op_idx == (int)Op::HALT) continue;
             if (probs[op_idx] < 0.05f) continue;

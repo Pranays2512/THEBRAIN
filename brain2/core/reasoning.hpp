@@ -127,6 +127,8 @@ public:
         }
 
         // Optional: refine result through predictor (neural correction)
+        // Disabled temporarily due to MDN array output format mismatch
+        /*
         if (predictor_ && norm(result) > 1e-8f) {
             bool was_offline = predictor_->is_offline();
             predictor_->set_offline(true);
@@ -136,6 +138,7 @@ public:
                 result[i] = 0.7f * result[i] + 0.3f * refined[i];
             predictor_->set_offline(was_offline);
         }
+        */
 
         pad.write(step.output_slot, result, "result");
         return true;

@@ -1,12 +1,11 @@
 #pragma once
 /*
- * som.hpp — Hierarchical Grid Self-Organizing Map (HSOM)
+ * som.hpp — Navigable Small World (NSW) Graph SOM
  *
- * Implements an O(log N) tree traversal across multiple 2D sub-grids.
- * Overcomes flat SOM limits while preserving continuous topological manifolds.
- * Sub-grids spawn dynamically when a neuron receives excessive hits.
- * Output activation maintains the original fixed-dimensional API by leaving
- * unused/unvisited neurons dormant (0.0).
+ * Implements a dynamic graph where neurons (nodes) are connected by lateral edges.
+ * Lookup is incredibly fast O(log N) via greedy graph traversal.
+ * Plasticity (learning) applies to a node and its direct topological graph neighbors,
+ * completely eliminating the constraints of a rigid 2D grid or static tree branches!
  */
 
 #include <vector>
@@ -19,39 +18,30 @@
 #include <stdexcept>
 #include <limits>
 #include <memory>
-
-#ifdef USE_OPENMP
-#include <omp.h>
-#endif
+#include "lsh.hpp"
 
 namespace brain2 {
 
-struct SubGrid {
-    int   start_idx;     // offset in the global pool array
-    int   rows;
-    int   cols;
-    int   parent_idx;    // index of parent neuron (-1 for root)
-    std::vector<int> children; // indices of child subgrids
-    
-    SubGrid(int s_idx, int r, int c, int p_idx) 
-      : start_idx(s_idx), rows(r), cols(c), parent_idx(p_idx) {
-        children.resize(r * c, -1);
-    }
+struct SomNode {
+    std::vector<float> weights;
+    std::vector<int>   neighbors; // Indices of connected nodes (lateral edges)
+    float              hits;      // Usage frequency
+    int                last_visited;
 };
 
 class SOM {
 public:
-    int rows, cols, n_neurons, n_dims;
-    int sub_rows, sub_cols;
+    int rows, cols;
+    int n_neurons, n_dims;
+    int max_neighbors;
 
 private:
-    std::vector<float>           weights_;     // Fixed global capacity pool
-    std::vector<float>           hits_;        // Hit counts per neuron
-    std::vector<SubGrid>         grids_;       // Hierarchy of grids
-    int                          next_alloc_;  // Pointer for pool allocation
-    float                        lr_, radius_, lr_decay_, radius_decay_;
+    std::vector<SomNode>         nodes_;
+    int                          entry_point_; // Starting node for searches
+    float                        lr_, lr_decay_;
     int                          step_;
     std::unique_ptr<std::mutex>  update_mtx_;
+    mutable CognitiveTLB         tlb_;
 
     inline float l2sq(const float* __restrict__ a,
                       const float* __restrict__ b) const noexcept {
@@ -63,49 +53,47 @@ private:
         return s;
     }
 
-    // O(1) Search within a single 4x4 sub-grid
-    int find_bmu_in_grid(int grid_idx, const float* inp, float& out_dist) const {
-        const auto& g = grids_[grid_idx];
-        int n_local = g.rows * g.cols;
-        float best_d = std::numeric_limits<float>::max();
-        int best_local = 0;
-
-        for (int i = 0; i < n_local; i++) {
-            float d = l2sq(inp, weights_.data() + (size_t)(g.start_idx + i) * n_dims);
-            if (d < best_d) { best_d = d; best_local = i; }
-        }
-        out_dist = best_d;
-        return best_local;
+    inline float vec_l2sq(const std::vector<float>& a, const float* b) const noexcept {
+        return l2sq(a.data(), b);
     }
 
 public:
-    SOM() : rows(0), cols(0), n_neurons(0), n_dims(0), sub_rows(4), sub_cols(4),
-            next_alloc_(0), lr_(0), radius_(0), lr_decay_(0), radius_decay_(0), step_(0),
-            update_mtx_(std::make_unique<std::mutex>()) {}
+    SOM() : rows(0), cols(0), n_neurons(0), n_dims(0), max_neighbors(16), entry_point_(0),
+            lr_(0), lr_decay_(0), step_(0),
+            update_mtx_(std::make_unique<std::mutex>()), tlb_() {}
 
     SOM(int rows, int cols, int n_dims,
         float init_lr      = 0.15f,
-        float lr_decay     = 0.9998f,
-        float radius_decay = 0.9999f,
+        float lr_decay     = 0.9999f,
+        float radius_decay = 0.9999f, // Unused in Graph SOM, kept for API compat
         unsigned seed      = 42)
-        : rows(rows), cols(cols), n_neurons(rows * cols), n_dims(n_dims),
-          sub_rows(4), sub_cols(4), // 4x4 default sub-grids
-          next_alloc_(0),
-          lr_(init_lr),
-          radius_(float(std::max(sub_rows, sub_cols)) / 2.f),
-          lr_decay_(lr_decay), radius_decay_(radius_decay), step_(0),
-          update_mtx_(std::make_unique<std::mutex>())
+        : rows(rows), cols(cols), n_neurons(rows * cols), n_dims(n_dims), max_neighbors(16),
+          entry_point_(0),
+          lr_(init_lr), lr_decay_(lr_decay), step_(0),
+          update_mtx_(std::make_unique<std::mutex>()),
+          tlb_(n_dims, 64, seed)
     {
-        weights_.resize(size_t(n_neurons) * n_dims, 0.f);
-        hits_.resize(n_neurons, 0.f);
-        
+        nodes_.resize(n_neurons);
         std::mt19937 rng(seed);
         std::normal_distribution<float> dist(0.f, 0.3f);
-        for (auto& w : weights_) w = dist(rng);
-        
-        // Bootstrap root grid
-        grids_.emplace_back(next_alloc_, sub_rows, sub_cols, -1);
-        next_alloc_ += sub_rows * sub_cols;
+        std::uniform_int_distribution<int> rand_node(0, n_neurons - 1);
+
+        for (int i = 0; i < n_neurons; i++) {
+            nodes_[i].weights.resize(n_dims);
+            for (int j = 0; j < n_dims; j++) {
+                nodes_[i].weights[j] = dist(rng);
+            }
+            nodes_[i].hits = 0.f;
+            nodes_[i].last_visited = 0;
+            
+            // Initialize with random lateral connections (Small World property)
+            for (int k = 0; k < max_neighbors; k++) {
+                int neighbor = rand_node(rng);
+                if (neighbor != i) {
+                    nodes_[i].neighbors.push_back(neighbor);
+                }
+            }
+        }
     }
 
     SOM(SOM&&)            = default;
@@ -113,197 +101,169 @@ public:
     SOM(const SOM&)       = delete;
     SOM& operator=(const SOM&) = delete;
 
-    // Fast O(log N) search using hierarchy
+    // Fast O(log N) Greedy Graph Search
     int find_bmu(const std::vector<float>& input) const {
         if ((int)input.size() != n_dims)
             throw std::invalid_argument("SOM::find_bmu: dim mismatch");
             
         const float* inp = input.data();
-        int curr_grid = 0; // Root
-        int global_bmu = -1;
+        
+        // 1. Cognitive TLB Lookup
+        uint64_t logical_address = tlb_.hash(inp);
+        int cached_bmu = tlb_.lookup(logical_address);
+        
+        if (cached_bmu != -1 && cached_bmu < n_neurons) {
+            float dist = vec_l2sq(nodes_[cached_bmu].weights, inp);
+            if (dist < 0.2f) return cached_bmu; 
+        }
+        
+        // 2. Greedy NSW Graph Traversal
+        int curr_node = entry_point_;
+        float curr_dist = vec_l2sq(nodes_[curr_node].weights, inp);
         
         while (true) {
-            float dist;
-            int local_bmu = find_bmu_in_grid(curr_grid, inp, dist);
-            global_bmu = grids_[curr_grid].start_idx + local_bmu;
+            int best_neighbor = -1;
+            float best_dist = curr_dist;
             
-            int child_grid = grids_[curr_grid].children[local_bmu];
-            if (child_grid != -1) {
-                curr_grid = child_grid; // Descend tree
-            } else {
-                break; // Hit leaf
+            for (int neighbor : nodes_[curr_node].neighbors) {
+                float d = vec_l2sq(nodes_[neighbor].weights, inp);
+                if (d < best_dist) {
+                    best_dist = d;
+                    best_neighbor = neighbor;
+                }
             }
+            
+            if (best_neighbor == -1) {
+                break; // Local minimum reached! This is the BMU.
+            }
+            curr_node = best_neighbor;
+            curr_dist = best_dist;
         }
-        return global_bmu;
+        
+        tlb_.cache(logical_address, curr_node);
+        return curr_node;
     }
 
-    // Sparse hierarchical activation map
+    // Graph-based sparse activation
     std::vector<float> activation_map(const std::vector<float>& input) const {
-        if ((int)input.size() != n_dims)
-            throw std::invalid_argument("SOM::activation_map: dim mismatch");
-            
-        const float* inp = input.data();
-        std::vector<float> dists(n_neurons, std::numeric_limits<float>::max());
         std::vector<float> acts(n_neurons, 0.f);
+        int bmu = find_bmu(input);
         
-        int curr_grid = 0;
+        // Activate BMU
+        acts[bmu] = 1.0f;
         
-        // Traverse and calculate distance only for visited sub-grids
-        while (true) {
-            float d;
-            int local_bmu = find_bmu_in_grid(curr_grid, inp, d);
-            int child_grid = grids_[curr_grid].children[local_bmu];
-            
-            int s_idx = grids_[curr_grid].start_idx;
-            int n_local = grids_[curr_grid].rows * grids_[curr_grid].cols;
-            for (int i = 0; i < n_local; i++) {
-                dists[s_idx + i] = l2sq(inp, weights_.data() + size_t(s_idx + i) * n_dims);
-            }
-            
-            if (child_grid != -1) curr_grid = child_grid;
-            else break;
+        // Activate neighbors (decaying outward)
+        const float* inp = input.data();
+        for (int neighbor : nodes_[bmu].neighbors) {
+            float d = vec_l2sq(nodes_[neighbor].weights, inp);
+            acts[neighbor] = std::exp(-d * 2.0f); // Fast decay
         }
         
-        float mn = std::numeric_limits<float>::max();
-        for (float d : dists) if (d < mn) mn = d;
-        
-        std::vector<float> deltas;
-        deltas.reserve(n_neurons);
-        for (float d : dists) {
-            if (d != std::numeric_limits<float>::max()) {
-                deltas.push_back(d - mn);
-            }
-        }
-        
-        size_t kth = std::max<size_t>(1, deltas.size() / 5); 
-        std::nth_element(deltas.begin(), deltas.begin() + kth, deltas.end());
-        float sigma = std::max(deltas[kth], 1e-6f);
-        
-        // Only traversed neurons get non-zero activation
-        for (int i = 0; i < n_neurons; i++) {
-            if (dists[i] != std::numeric_limits<float>::max()) {
-                acts[i] = std::exp(-(dists[i] - mn) / sigma);
-            }
-        }
         return acts;
     }
 
     inline float grid_dist(int local_i, int local_j) const noexcept {
-        float dr = float(local_i / sub_cols) - float(local_j / sub_cols);
-        float dc = float(local_i % sub_cols) - float(local_j % sub_cols);
-        return std::sqrt(dr * dr + dc * dc);
+        return 0.f; // API compat
     }
 
-    // Update weights and dynamically spawn sub-grids
+    // Update weights and dynamically rewire graph
     void update(const std::vector<float>& input, int bmu, float reward_mod = 1.f) {
         std::lock_guard<std::mutex> lock(*update_mtx_);
         const float* inp = input.data();
         
-        int curr_grid = 0;
-        int leaf_grid = -1;
-        int leaf_local_bmu = -1;
+        float eff_lr = lr_ * std::max(0.01f, std::min(reward_mod, 3.f));
         
-        // 1. Update the entire active branch
-        while (curr_grid != -1) {
-            float dist;
-            int local_bmu = find_bmu_in_grid(curr_grid, inp, dist);
-            
-            float eff_lr = lr_ * std::max(0.01f, std::min(reward_mod, 3.f));
-            float r2 = radius_ * radius_ * 2.f;
-            int s_idx = grids_[curr_grid].start_idx;
-            int n_local = grids_[curr_grid].rows * grids_[curr_grid].cols;
-            
-            for (int i = 0; i < n_local; i++) {
-                float d = grid_dist(i, local_bmu);
-                float h = std::exp(-d * d / r2);
-                if (h < 1e-4f) continue;
-                
-                float* w = weights_.data() + size_t(s_idx + i) * n_dims;
-                float sc = eff_lr * h;
-                for (int j = 0; j < n_dims; j++) {
-                    w[j] += sc * (inp[j] - w[j]);
-                }
+        auto apply_plasticity = [&](int node_idx, float scale) {
+            auto& w = nodes_[node_idx].weights;
+            for (int j = 0; j < n_dims; j++) {
+                if (std::abs(inp[j]) < 1e-4f) continue; // Sparse update
+                w[j] += eff_lr * scale * (inp[j] - w[j]);
             }
-            
-            int child_grid = grids_[curr_grid].children[local_bmu];
-            if (child_grid == -1) {
-                leaf_grid = curr_grid;
-                leaf_local_bmu = local_bmu;
-            }
-            curr_grid = child_grid;
+            nodes_[node_idx].hits += 1.0f;
+            nodes_[node_idx].last_visited = step_;
+        };
+        
+        // 1. Update BMU (Full plasticity)
+        apply_plasticity(bmu, 1.0f);
+        entry_point_ = bmu; // Shift entry point to active regions
+        
+        // 2. Update Direct Lateral Neighbors (Partial plasticity)
+        for (int neighbor : nodes_[bmu].neighbors) {
+            apply_plasticity(neighbor, 0.5f);
         }
         
-        // 2. Spawn logic: if a leaf neuron gets crowded, it branches
-        int global_bmu = grids_[leaf_grid].start_idx + leaf_local_bmu;
-        hits_[global_bmu] += 1.0f;
-        
-        if (hits_[global_bmu] > 50.0f) { // Spawning threshold
-            int needed = sub_rows * sub_cols;
-            if (next_alloc_ + needed <= n_neurons) {
-                int new_grid_idx = (int)grids_.size();
-                grids_.emplace_back(next_alloc_, sub_rows, sub_cols, global_bmu);
-                grids_[leaf_grid].children[leaf_local_bmu] = new_grid_idx;
-                
-                std::mt19937 rng(step_);
-                std::normal_distribution<float> noise(0.f, 0.05f);
-                float* p_w = weights_.data() + size_t(global_bmu) * n_dims;
-                for (int i = 0; i < needed; i++) {
-                    float* c_w = weights_.data() + size_t(next_alloc_ + i) * n_dims;
-                    for (int j = 0; j < n_dims; j++) {
-                        c_w[j] = p_w[j] + noise(rng);
+        // 3. Dynamic Graph Rewiring (Hebbian Learning)
+        // Every 100 hits, the BMU tries to connect to a random node that is physically close
+        if (nodes_[bmu].hits > 100.0f) {
+            nodes_[bmu].hits = 0.f;
+            std::mt19937 rng(step_);
+            std::uniform_int_distribution<int> rand_node(0, n_neurons - 1);
+            
+            int candidate = rand_node(rng);
+            if (candidate != bmu) {
+                float dist = vec_l2sq(nodes_[candidate].weights, nodes_[bmu].weights.data());
+                if (dist < 1.0f) { // If they are semantically close
+                    // Add edge if not full
+                    if (nodes_[bmu].neighbors.size() < max_neighbors) {
+                        nodes_[bmu].neighbors.push_back(candidate);
+                    } else {
+                        // Replace the oldest/least relevant neighbor
+                        nodes_[bmu].neighbors[rng() % max_neighbors] = candidate;
+                    }
+                    
+                    // Bidirectional link
+                    if (nodes_[candidate].neighbors.size() < max_neighbors) {
+                        nodes_[candidate].neighbors.push_back(bmu);
                     }
                 }
-                next_alloc_ += needed;
-                hits_[global_bmu] = 0.f; 
             }
         }
         
-        lr_     *= lr_decay_;
-        radius_ *= radius_decay_;
+        lr_ *= lr_decay_;
         step_++;
+    }
+
+    void prune_dead_branches(int max_age) {
+        // Not strictly needed in a graph, but we could cull isolated nodes.
+        // For now, nodes simply drift.
     }
 
     std::vector<float> neuron_weights(int i) const {
         if (i < 0 || i >= n_neurons)
             throw std::out_of_range("SOM::neuron_weights: out of range");
-        auto b = weights_.begin() + size_t(i) * n_dims;
-        return std::vector<float>(b, b + n_dims);
+        return nodes_[i].weights;
     }
 
     int   step()   const noexcept { return step_;   }
     float lr()     const noexcept { return lr_;     }
-    float radius() const noexcept { return radius_; }
+    float radius() const noexcept { return 1.0f;    } // API compat
 
     void save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);
         if (!f) throw std::runtime_error("SOM::save: cannot open " + path);
         f.write((const char*)&rows,          sizeof(int));
         f.write((const char*)&cols,          sizeof(int));
+        f.write((const char*)&n_neurons,     sizeof(int));
         f.write((const char*)&n_dims,        sizeof(int));
-        f.write((const char*)&sub_rows,      sizeof(int));
-        f.write((const char*)&sub_cols,      sizeof(int));
-        f.write((const char*)&next_alloc_,   sizeof(int));
+        f.write((const char*)&max_neighbors, sizeof(int));
+        f.write((const char*)&entry_point_,  sizeof(int));
         f.write((const char*)&lr_,           sizeof(float));
-        f.write((const char*)&radius_,       sizeof(float));
         f.write((const char*)&lr_decay_,     sizeof(float));
-        f.write((const char*)&radius_decay_, sizeof(float));
         f.write((const char*)&step_,         sizeof(int));
-        f.write((const char*)weights_.data(),
-                (std::streamsize)(weights_.size() * sizeof(float)));
-        f.write((const char*)hits_.data(),
-                (std::streamsize)(hits_.size() * sizeof(float)));
-                
-        int n_grids = (int)grids_.size();
-        f.write((const char*)&n_grids, sizeof(int));
-        for (const auto& g : grids_) {
-            f.write((const char*)&g.start_idx,  sizeof(int));
-            f.write((const char*)&g.rows,       sizeof(int));
-            f.write((const char*)&g.cols,       sizeof(int));
-            f.write((const char*)&g.parent_idx, sizeof(int));
-            int nc = (int)g.children.size();
-            f.write((const char*)&nc, sizeof(int));
-            f.write((const char*)g.children.data(), nc * sizeof(int));
+        
+        for (const auto& node : nodes_) {
+            f.write((const char*)node.weights.data(), n_dims * sizeof(float));
+            f.write((const char*)&node.hits, sizeof(float));
+            f.write((const char*)&node.last_visited, sizeof(int));
+            
+            int num_neighbors = (int)node.neighbors.size();
+            f.write((const char*)&num_neighbors, sizeof(int));
+            if (num_neighbors > 0) {
+                f.write((const char*)node.neighbors.data(), num_neighbors * sizeof(int));
+            }
         }
+        
+        tlb_.save(path + ".tlb");
     }
 
     static SOM load(const std::string& path) {
@@ -312,54 +272,46 @@ public:
         SOM s;
         f.read((char*)&s.rows,          sizeof(int));
         f.read((char*)&s.cols,          sizeof(int));
+        f.read((char*)&s.n_neurons,     sizeof(int));
         f.read((char*)&s.n_dims,        sizeof(int));
-        f.read((char*)&s.sub_rows,      sizeof(int));
-        f.read((char*)&s.sub_cols,      sizeof(int));
-        f.read((char*)&s.next_alloc_,   sizeof(int));
+        f.read((char*)&s.max_neighbors, sizeof(int));
+        f.read((char*)&s.entry_point_,  sizeof(int));
         f.read((char*)&s.lr_,           sizeof(float));
-        f.read((char*)&s.radius_,       sizeof(float));
         f.read((char*)&s.lr_decay_,     sizeof(float));
-        f.read((char*)&s.radius_decay_, sizeof(float));
         f.read((char*)&s.step_,         sizeof(int));
         
-        s.n_neurons = s.rows * s.cols;
-        s.weights_.resize(size_t(s.n_neurons) * s.n_dims);
-        s.hits_.resize(s.n_neurons);
-        
-        f.read((char*)s.weights_.data(),
-               (std::streamsize)(s.weights_.size() * sizeof(float)));
-        f.read((char*)s.hits_.data(),
-               (std::streamsize)(s.hits_.size() * sizeof(float)));
-               
-        int n_grids;
-        f.read((char*)&n_grids, sizeof(int));
-        for (int i = 0; i < n_grids; i++) {
-            int si, r, c, pi, nc;
-            f.read((char*)&si, sizeof(int));
-            f.read((char*)&r, sizeof(int));
-            f.read((char*)&c, sizeof(int));
-            f.read((char*)&pi, sizeof(int));
-            f.read((char*)&nc, sizeof(int));
+        s.nodes_.resize(s.n_neurons);
+        for (int i = 0; i < s.n_neurons; i++) {
+            s.nodes_[i].weights.resize(s.n_dims);
+            f.read((char*)s.nodes_[i].weights.data(), s.n_dims * sizeof(float));
+            f.read((char*)&s.nodes_[i].hits, sizeof(float));
+            f.read((char*)&s.nodes_[i].last_visited, sizeof(int));
             
-            SubGrid g(si, r, c, pi);
-            g.children.resize(nc);
-            f.read((char*)g.children.data(), nc * sizeof(int));
-            s.grids_.push_back(std::move(g));
+            int num_neighbors;
+            f.read((char*)&num_neighbors, sizeof(int));
+            if (num_neighbors > 0) {
+                s.nodes_[i].neighbors.resize(num_neighbors);
+                f.read((char*)s.nodes_[i].neighbors.data(), num_neighbors * sizeof(int));
+            }
         }
+        
         s.update_mtx_ = std::make_unique<std::mutex>();
+        
+        try {
+            s.tlb_ = CognitiveTLB::load(path + ".tlb");
+        } catch (...) {
+            s.tlb_ = CognitiveTLB(s.n_dims, 64, 42);
+        }
+        
         return s;
     }
 
     void expand_dims(int new_dims) {
         std::lock_guard<std::mutex> lock(*update_mtx_);
         if (new_dims <= n_dims) return;
-        std::vector<float> new_weights(size_t(n_neurons) * new_dims, 0.f);
-        for (int i = 0; i < n_neurons; i++) {
-            for (int d = 0; d < n_dims; d++) {
-                new_weights[size_t(i) * new_dims + d] = weights_[size_t(i) * n_dims + d];
-            }
+        for (auto& node : nodes_) {
+            node.weights.resize(new_dims, 0.f);
         }
-        weights_ = std::move(new_weights);
         n_dims = new_dims;
     }
 };

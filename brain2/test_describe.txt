@@ -1,5 +1,0 @@
-describe dog
-describe earth
-describe bird
-describe sun
-exit

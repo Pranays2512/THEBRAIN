@@ -27,12 +27,13 @@
 #include <memory>
 #include <fstream>
 #include <stdexcept>
+#include "sparse_tensor.hpp"
 
 namespace brain2 {
 
 struct ScratchSlot {
-    std::vector<float>              value;      // current value
-    std::deque<std::vector<float>>  history;    // last N values
+    SparseVector              value;      // current value
+    std::deque<SparseVector>  history;    // last N values
     std::string                     tag;        // "number", "result", "premise", etc.
     int                             write_count;
     static constexpr int            MAX_HISTORY = 8;
@@ -117,13 +118,13 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         auto& slot = slots_[name];
         if (slot.write_count == 0) write_order_.push_back(name);
-        // Save history before overwrite
         if (!slot.value.empty()) {
             slot.history.push_back(slot.value);
-            if ((int)slot.history.size() > ScratchSlot::MAX_HISTORY)
+            if ((int)slot.history.size() > ScratchSlot::MAX_HISTORY) {
                 slot.history.pop_front();
+            }
         }
-        slot.value = vec;
+        slot.value = SparseVector::from_dense(vec);
         if (!tag.empty()) slot.tag = tag;
         slot.write_count++;
     }
@@ -133,8 +134,8 @@ public:
     std::vector<float> read(const std::string& name) const {
         std::lock_guard<std::mutex> lock(*mtx_);
         auto it = slots_.find(name);
-        if (it == slots_.end()) return std::vector<float>(n_dims, 0.f);
-        return it->second.value;
+        if (it != slots_.end()) return it->second.value.to_dense();
+        return std::vector<float>(n_dims, 0.f);
     }
 
     // Check if slot exists and has a value
@@ -149,7 +150,7 @@ public:
         auto it = slots_.find(name);
         if (it == slots_.end() || it->second.history.empty())
             return std::vector<float>(n_dims, 0.f);
-        return it->second.history.back();
+        return it->second.history.back().to_dense();
     }
 
     // How similar are two slots? (for convergence check)
@@ -158,7 +159,7 @@ public:
         auto ia = slots_.find(a);
         auto ib = slots_.find(b);
         if (ia == slots_.end() || ib == slots_.end()) return 0.f;
-        return cosine(ia->second.value, ib->second.value);
+        return cosine(ia->second.value.to_dense(), ib->second.value.to_dense());
     }
 
     // How much did slot change on last write? (convergence signal)
@@ -166,7 +167,7 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         auto it = slots_.find(name);
         if (it == slots_.end() || it->second.history.empty()) return 1.f;
-        return 1.f - cosine(it->second.value, it->second.history.back());
+        return 1.f - cosine(it->second.value.to_dense(), it->second.history.back().to_dense());
     }
 
     // Stack operations (for recursive reasoning)
@@ -308,11 +309,33 @@ public:
         return current_node_id_;
     }
 
-    // Get the state of the currently active tree branch
+    // Get the state of the currently active tree branch (now includes interleaved slots!)
     std::vector<float> current_tree_state() const {
         std::lock_guard<std::mutex> lock(*mtx_);
-        if (tree_.empty() || current_node_id_ == -1) return std::vector<float>(n_dims, 0.f);
-        return tree_.at(current_node_id_).state;
+        std::vector<float> state(n_dims, 0.f);
+        
+        // Interleave 4 primary math/reasoning slots to preserve positional orthogonality
+        int chunk_size = n_dims / 4; 
+        std::vector<std::string> keys = {"subject", "object", "a_operator", "focus"};
+        
+        for (int k = 0; k < 4; k++) {
+            auto it = slots_.find(keys[k]);
+            if (it != slots_.end() && !it->second.value.empty()) {
+                auto dense_val = it->second.value.to_dense();
+                for (int i = 0; i < chunk_size && i < (int)dense_val.size(); i++) {
+                    state[k * chunk_size + i] = dense_val[i];
+                }
+            }
+        }
+        
+        // Add the base tree context lightly
+        if (!tree_.empty() && current_node_id_ != -1) {
+            auto& base = tree_.at(current_node_id_).state;
+            for (int i = 0; i < n_dims && i < (int)base.size(); i++) {
+                state[i] += base[i] * 0.1f;
+            }
+        }
+        return state;
     }
     
     // Clear the planning tree entirely
@@ -345,8 +368,8 @@ public:
         if (new_dims <= n_dims) return;
         
         for (auto& [name, slot] : slots_) {
-            slot.value.resize(new_dims, 0.f);
-            for (auto& h : slot.history) h.resize(new_dims, 0.f);
+            slot.value.size_ = new_dims;
+            for (auto& h : slot.history) h.size_ = new_dims;
         }
         
         for (auto& v : stack_) {

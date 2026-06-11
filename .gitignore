@@ -1,40 +1,60 @@
-# Environments
-venv/
-env/
-.env/
-.venv/
-
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.pytest_cache/
-.coverage
-htmlcov/
-build/
-dist/
+*.pyd
+*.pyo
 *.egg-info/
+*.egg
+dist/
+build/
+*.whl
+venv/
+venv2/
+.env
 
-# Project Specific
+# C/C++ build artifacts
+*.o
+*.a
+*.so
+*.dylib
 build_cpp/
-.claude/
-.remember/
-brain2/checkpoints/
-brain2/.cache/
-brain2/train/*.gz
-brain2/train/*.csv
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Models & large data
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.gguf
+*.npz
+*.npy
+models/
 checkpoints/
 
-# Data / Save files
-*.pkl
-.*_cache*.pkl
-*.bin
+# Logs
+*.log
+logs/
 
-# Editor / OS
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
 *.swp
-*.swo
+*~
+
+# Large data files (too big for git)
+brain2/data/text8
+brain2/data/text8.zip
+brain2/data/train-v2.0.json
+brain2/data/squad_qa.json
+brain2_512D_baseline_backup/train/conceptnet-assertions-5.7.0.csv.gz
+*.csv.gz
+.git.bak/

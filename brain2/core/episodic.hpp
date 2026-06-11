@@ -26,19 +26,24 @@ struct EpisodeNode {
 
     // Similarity between query and this node's summary
     float sparse_sim(const std::vector<float>& query) const {
-        if (summary_spike.empty()) return 0.f;
-        int matches = 0, query_ones = 0, first_ones = 0;
+        if (query.empty() || summary_spike.empty()) return 0.f;
+        
+        float dot_product = 0.f;
+        int target_ones = 0;
+        int query_ones = 0;
         
         for (size_t i = 0; i < summary_spike.size() && i < query.size(); i++) {
-            bool q_bit = query[i] > 0.1f;
-            if (summary_spike[i]) first_ones++;
-            if (q_bit) query_ones++;
-            if (summary_spike[i] && q_bit) matches++;
+            if (query[i] > 0.0f) query_ones++;
+            if (summary_spike[i]) {
+                target_ones++;
+                // Accumulate continuous working memory activation strength
+                dot_product += query[i]; 
+            }
         }
         
-        if (first_ones == 0 || query_ones == 0) return 0.f;
-        // Inclusion metric: what fraction of the query is in the episode?
-        return (float)matches / (float)query_ones;
+        // Return the average continuous activation strength of the memory's constituent neurons
+        if (target_ones == 0) return 0.f;
+        return dot_product / (float)target_ones;
     }
 };
 
@@ -132,6 +137,11 @@ public:
         step_++;
     }
 
+    void clear_buffer() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        current_ep_.clear();
+    }
+
     bool commit(float prediction_error, const std::vector<float>& payload = {}) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if (current_ep_.size() < 2) return false;
@@ -173,6 +183,16 @@ public:
     const Episode* get_episode(int idx) const {
         if (idx >= 0 && idx < (int)episodes_.size()) return &episodes_[idx];
         return nullptr;
+    }
+
+    std::vector<float> current_summary() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto bits = centroid(current_ep_);
+        std::vector<float> res(bits.size(), 0.f);
+        for(size_t i = 0; i < bits.size(); i++) {
+            if(bits[i]) res[i] = 1.0f;
+        }
+        return res;
     }
 
     std::vector<float> get_last_episode() const {
@@ -284,6 +304,11 @@ public:
                 save_node(f, ep.root);
                 f.write((const char*)&ep.surprise,  sizeof(float));
                 f.write((const char*)&ep.timestamp, sizeof(int));
+                int ps = (int)ep.payload.size();
+                f.write((const char*)&ps, sizeof(int));
+                if (ps > 0) {
+                    f.write((const char*)ep.payload.data(), ps * sizeof(float));
+                }
             }
         };
         write_episodes(episodes_);
@@ -326,6 +351,11 @@ public:
                 ep.root = load_node(f);
                 f.read((char*)&ep.surprise,  sizeof(float));
                 f.read((char*)&ep.timestamp, sizeof(int));
+                int ps; f.read((char*)&ps, sizeof(int));
+                if (ps > 0) {
+                    ep.payload.resize(ps);
+                    f.read((char*)ep.payload.data(), ps * sizeof(float));
+                }
                 eps.push_back(std::move(ep));
             }
         };

@@ -86,11 +86,22 @@ private:
     }
 
     // Deterministic unique vector from symbol string
-    std::vector<float> seed_vec(const std::string& sym) const {
+    std::vector<float> seed_vec(const std::string& sym, const std::string& category) const {
         std::mt19937 rng(std::hash<std::string>{}(sym) ^ 0xDEADBEEF);
         std::normal_distribution<float> dist(0.f, 1.f);
-        std::vector<float> v(n_dims);
-        for (auto& x : v) x = dist(rng);
+        std::vector<float> v(n_dims, 0.f);
+        
+        bool is_math = (category == "math" || category == "number" || category == "logic" || category == "relation" || category == "constant" || category == "instruction" || category == "variable");
+        int half = n_dims / 2;
+        
+        if (is_math) {
+            // Right Hemisphere (Math/Logic)
+            for (int i = half; i < n_dims; i++) v[i] = dist(rng);
+        } else {
+            // Left Hemisphere (General Symbolic)
+            for (int i = 0; i < half; i++) v[i] = dist(rng);
+        }
+        
         return normalize(v);
     }
 
@@ -114,7 +125,7 @@ public:
         std::lock_guard<std::mutex> lock(*mtx_);
         if (table_.count(symbol)) return;  // stable — don't overwrite
         SymbolEntry e;
-        e.vec = ((int)vec.size() == n_dims) ? vec : seed_vec(symbol);
+        e.vec = ((int)vec.size() == n_dims) ? vec : seed_vec(symbol, category);
         e.op         = op;
         e.category   = category;
         e.use_count  = 0;

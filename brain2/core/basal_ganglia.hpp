@@ -40,7 +40,9 @@ enum class Op : int {
     MATH_DIV_FLOAT = 26,
     PREDICT_WM = 27,
     CHAIN_FOLLOW = 28,   // iterative BFS along a relation (multi-hop causal)
-    N_OPS      = 29
+    MATH_POLY  = 29,     // evaluate polynomial
+    MATH_QUAD  = 30,     // find roots of quadratic equation
+    N_OPS      = 31
 };
 
 struct BGAction {
@@ -71,7 +73,7 @@ struct BasalGanglia {
         float              reward;
     };
     static constexpr int REPLAY_CAPACITY = 500;
-    static constexpr int REPLAY_BATCH    = 8;
+    static constexpr int REPLAY_BATCH    = 2;
     std::vector<Experience> replay_buffer_;
     int                     replay_head_ = 0;  // ring-buffer write pointer
 
@@ -107,7 +109,7 @@ struct BasalGanglia {
     BasalGanglia() : rng_(42), cache_mtx_(std::make_unique<std::mutex>()) {}
     BasalGanglia(int n_dims, float lr = 0.001f, unsigned seed = 42)
         : n_dims(n_dims), lr_(lr), rng_(seed), cache_mtx_(std::make_unique<std::mutex>()) {
-        int in = 2 * n_dims;
+        int in = 5 * n_dims;
         std::normal_distribution<float> nd(0.f, 0.02f);
         W1.resize(hidden * in);   for (auto& w : W1) w = nd(rng_);
         b1.resize(hidden, 0.f);
@@ -128,29 +130,29 @@ struct BasalGanglia {
             auto it = cache_.find(ctx);
             if (it != cache_.end()) {
                 // Must reconstruct inp_out and h_out because trace recording requires them!
-                inp_out.assign(2 * n_dims, 0.f);
-                for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp_out[i]          = ctx[i];
-                for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp_out[n_dims + i]  = goal[i];
+                inp_out.assign(5 * n_dims, 0.f);
+                for (int i = 0; i < 4 * n_dims && i < (int)ctx.size();  i++) inp_out[i]              = ctx[i];
+                for (int i = 0; i < n_dims && i < (int)goal.size();     i++) inp_out[4 * n_dims + i] = goal[i];
                 h_out.assign(hidden, 0.f);
                 for (int i = 0; i < hidden; i++) {
                     float s = b1[i];
-                    const float* row = W1.data() + i * 2 * n_dims;
-                    for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp_out[j];
+                    const float* row = W1.data() + i * 5 * n_dims;
+                    for (int j = 0; j < 5 * n_dims; j++) s += row[j] * inp_out[j];
                     h_out[i] = std::tanh(s);
                 }
                 return it->second;
             }
         }
 
-        inp_out.assign(2 * n_dims, 0.f);
-        for (int i = 0; i < n_dims && i < (int)ctx.size();  i++) inp_out[i]          = ctx[i];
-        for (int i = 0; i < n_dims && i < (int)goal.size(); i++) inp_out[n_dims + i]  = goal[i];
+        inp_out.assign(5 * n_dims, 0.f);
+        for (int i = 0; i < 4 * n_dims && i < (int)ctx.size();  i++) inp_out[i]              = ctx[i];
+        for (int i = 0; i < n_dims && i < (int)goal.size();     i++) inp_out[4 * n_dims + i] = goal[i];
 
         h_out.assign(hidden, 0.f);
         for (int i = 0; i < hidden; i++) {
             float s = b1[i];
-            const float* row = W1.data() + i * 2 * n_dims;
-            for (int j = 0; j < 2 * n_dims; j++) s += row[j] * inp_out[j];
+            const float* row = W1.data() + i * 5 * n_dims;
+            for (int j = 0; j < 5 * n_dims; j++) s += row[j] * inp_out[j];
             h_out[i] = std::tanh(s);
         }
 
@@ -217,22 +219,24 @@ struct BasalGanglia {
         // Store this experience for future replay
         if (!traces_.empty()) {
             auto& t0 = traces_[0];
-            push_experience(t0.inp, t0.inp, t0.op_idx, final_reward);
+            push_experience(t0.inp, {}, t0.op_idx, final_reward);
         }
 
-        int in = 2 * n_dims;
+        int in = 5 * n_dims;
         float g_lambda = final_reward;
 
         auto do_update = [&](int op_idx, const std::vector<float>& h1,
                              const std::vector<float>& inp, float td_error) {
             // Critic
             b_v[0] += lr_ * td_error;
-            for (int j = 0; j < hidden; j++)
-                W_v[j] += lr_ * td_error * h1[j];
+            for (int j = 0; j < hidden; j++) {
+                W_v[j] += lr_ * td_error * h1[j] - 0.05f * lr_ * W_v[j]; // L2
+            }
             // Actor
             float* row2 = W2.data() + op_idx * hidden;
-            for (int j = 0; j < hidden; j++)
-                row2[j] += lr_ * td_error * h1[j];
+            for (int j = 0; j < hidden; j++) {
+                row2[j] += lr_ * td_error * h1[j] - 0.05f * lr_ * row2[j]; // L2
+            }
             b2[op_idx] += lr_ * td_error;
             // W1 backprop
             for (int j = 0; j < hidden; j++) {
@@ -241,8 +245,9 @@ struct BasalGanglia {
                 float d = (d_act + d_crit) * (1.f - h1[j] * h1[j]);
                 b1[j] += lr_ * d;
                 float* row1 = W1.data() + j * in;
-                for (int k = 0; k < in; k++)
-                    row1[k] += lr_ * d * inp[k];
+                for (int k = 0; k < in; k++) {
+                    row1[k] += lr_ * d * inp[k] - 0.05f * lr_ * row1[k]; // L2
+                }
             }
         };
 
@@ -308,7 +313,7 @@ struct BasalGanglia {
         f.read((char*)&bg.n_dims, sizeof(int));
         f.read((char*)&bg.hidden, sizeof(int));
         f.read((char*)&bg.n_ops,  sizeof(int));
-        bg.W1.resize(bg.hidden * 2 * bg.n_dims);
+        bg.W1.resize(bg.hidden * 5 * bg.n_dims);
         bg.b1.resize(bg.hidden);
         bg.W2.resize(bg.n_ops * bg.hidden);
         bg.b2.resize(bg.n_ops);
@@ -353,8 +358,8 @@ struct BasalGanglia {
         std::lock_guard<std::mutex> lock(*cache_mtx_);
         if (new_dims <= n_dims) return;
         
-        int old_in = 2 * n_dims;
-        int new_in = 2 * new_dims;
+        int old_in = 5 * n_dims;
+        int new_in = 5 * new_dims;
         std::vector<float> new_W1(hidden * new_in, 0.f);
         
         for (int i = 0; i < hidden; i++) {

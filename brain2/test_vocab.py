@@ -1,16 +1,18 @@
-import chat
-b = chat.brain2.Brain(som_rows=8, som_cols=8, n_dims=16)
-b.learn_word("isa")
-b.learn_word("reply")
-
-words = ["blarg", "isa", "florp"]
-print("Before:", [b.symbolic_table.knows(w) for w in words])
-
-for w in words:
-    if not b.symbolic_table.knows(w):
-        b.learn_word(w)
-        print(f"Learned {w}")
-    vec = b.language.encode(w)
-    print(f"{w} vector len: {len(vec)}, sum_abs: {sum(abs(x) for x in vec)}")
-
-print("After:", [b.symbolic_table.knows(w) for w in words])
+import brain2
+b = brain2.Brain(n_dims=128, som_rows=1, som_cols=1, hidden_dim=256)
+b.load_components(
+        predictor_path="checkpoints/math_brain/predictor.bin",
+        language_path="checkpoints/math_brain/language.bin",
+        som_path="checkpoints/math_brain/som.bin",
+        episodic_path="checkpoints/math_brain/episodic.bin",
+        emotion_path="checkpoints/math_brain/emotion.bin",
+        self_path="checkpoints/math_brain/self.bin",
+        symbolic_path="checkpoints/math_brain/symbolic.bin",
+        binding_path="checkpoints/math_brain/binding.bin",
+        bg_path="checkpoints/math_brain/bg.bin",
+        procedures_path="checkpoints/math_brain/procedures.bin",
+        hpred_path="checkpoints/math_brain/hpred.bin"
+    )
+print("Episodic size:", b.episodic.size)
+print("Symbolic size:", b.symbolic.size)
+print("Binding size:", b.binding.size)

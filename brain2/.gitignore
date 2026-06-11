@@ -1,0 +1,105 @@
+# ============================
+# macOS
+# ============================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================
+# Editor / IDE Caches
+# ============================
+.cache/
+.clangd/
+.vscode/
+.idea/
+
+# ============================
+# Python
+# ============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.env
+.venv
+env/
+venv/
+*.cpython-*.so
+
+# ============================
+# C / C++ Build Artifacts
+# ============================
+*.o
+*.a
+*.out
+a.out
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.dSYM/
+*.d
+
+# Named compiled binaries
+brain2
+debug_brain
+debug_wm
+test_analogy
+test_math_logic
+test_snprintf
+clear_ep
+prof_stats
+restats
+
+# ============================
+# Large Data / Corpus Files
+# ============================
+data/
+train/
+*.txt
+*.log
+
+# Re-include small/essential text files if needed:
+!README.md
+!brain2_architecture.md
+
+# ============================
+# Test Output & Evaluation Logs
+# ============================
+100_answers*.log
+hardened_test_output*.log
+train_*.log
+final_eval_result.txt
+simulate_op.txt
+
+# ============================
+# Static / Web Assets (generated)
+# ============================
+static/
+
+# ============================
+# Misc
+# ============================
+scripts/
+tests/
+
+# ============================
+# Large Model Checkpoints & Binary Data
+# ============================
+checkpoints/
+*.bin
+*.gz
+*.zip
+*.npy
+*.npz
+*.h5
+*.pkl
+*.pt
+*.pth
+test_save.py

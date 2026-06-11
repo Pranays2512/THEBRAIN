@@ -10,26 +10,30 @@ Target Op Sequence:
 ATTEND -> BIND_QUERY -> SPEAK -> HALT
 """
 
-import os, sys, random, time
+import os, sys, random, time, json
 import numpy as np
 import brain2
 
 # Configuration
-N_EPISODES     = 50000
+N_DIMS         = 128
+SOM_ROWS       = 256
+SOM_COLS       = 256
+HIDDEN_DIM     = 256
+N_EPISODES     = 10000
 MAX_STEPS      = 6
-SAVE_INTERVAL  = 5000
-PRINT_INTERVAL = 1000
-CHECKPOINT_DIR = "checkpoints/stage4_parsing"
+SAVE_INTERVAL  = 500
+CHECKPOINT_DIR = "checkpoints/massive_squad"
 
 OP_READ = 0; OP_WRITE = 1; OP_MATH_SUB = 2; OP_MATH_DIV = 3
 OP_COMPARE = 4; OP_BIND_QUERY = 5; OP_RETRIEVE = 6; OP_ANALOGY = 7
 OP_HALT = 8; OP_STORE_SUBJ = 9; OP_STORE_REL = 10; OP_STORE_OBJ = 11
 OP_NOT = 12; OP_BIND_ISA = 13; OP_ASK_USER = 14; OP_SPEAK = 15; OP_ATTEND = 16
 
-b = brain2.Brain(som_rows=10, som_cols=10, n_dims=32)
+print(f"Initializing Brain (Dims: {N_DIMS}, SOM: {SOM_ROWS}x{SOM_COLS}, Hidden: {HIDDEN_DIM})...")
+b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS, n_dims=N_DIMS, hidden_dim=HIDDEN_DIM)
 
 def load_all():
-    if os.path.exists(CHECKPOINT_DIR):
+    if os.path.exists(f"{CHECKPOINT_DIR}/predictor.bin"):
         print(f"Loading Brain from {CHECKPOINT_DIR}...")
         b.load_components(
             predictor_path=f"{CHECKPOINT_DIR}/predictor.bin",
@@ -43,95 +47,79 @@ def load_all():
             procedures_path=f"{CHECKPOINT_DIR}/procedures.bin",
             hpred_path=f"{CHECKPOINT_DIR}/hpred.bin"
         )
+        if os.path.exists(f"{CHECKPOINT_DIR}/bg.bin"):
+            b.load_bg(f"{CHECKPOINT_DIR}/bg.bin")
     else:
-        print("Checkpoint not found!")
+        print("Checkpoint not found! Run train_massive_corpus.py first.")
         sys.exit(1)
 
-def run_episode(is_query=True):
-    b.scratchpad.clear()
+def run_episode(pair):
+    b.reset_sequence()
     b.clear_spoken_words()
 
-    if is_query:
-        q_word = "?"
-        rel_word = "isa"
-        obj_word = "apple"
-        
-        b.scratchpad.write("subject", b.language.encode(obj_word), "context")
-        b.scratchpad.write("relation", b.language.encode(rel_word), "context")
-        b.scratchpad.write("object", b.language.encode(q_word), "context")
-        b.scratchpad.write("goal", b.language.encode("reply"), "goal")
-        
-        b.start_reasoning()
-        b.force_reason_step(OP_BIND_QUERY, "reply")
-        b.reinforce_bg(1.0)
-        b.force_reason_step(OP_SPEAK, "reply")
-        b.reinforce_bg(1.0)
-        b.force_reason_step(OP_HALT, "reply")
-        b.reinforce_bg(1.0)
-    else:
-        # Fact: apple is fruit
-        subj_word = "apple"
-        rel_word = "isa"
-        obj_word = "fruit"
-        
-        b.scratchpad.write("subject", b.language.encode(subj_word), "context")
-        b.scratchpad.write("relation", b.language.encode(rel_word), "context")
-        b.scratchpad.write("object", b.language.encode(obj_word), "context")
-        b.scratchpad.write("goal", b.language.encode("reply"), "goal")
-        
-        b.start_reasoning()
-        b.force_reason_step(13, "reply") # OP_BIND_ISA
-        b.reinforce_bg(1.0)
-        
-        # When learning a fact, it might be polite to say "Got it." or just halt.
-        # Let's just HALT.
-        b.force_reason_step(OP_HALT, "reply")
-        b.reinforce_bg(1.0)
+    q_text = pair["input"]
+    a_text = pair["target"]
     
-    # Test Policy
-    b.scratchpad.clear()
-    if is_query:
-        b.scratchpad.write("subject", b.language.encode("apple"), "context")
-        b.scratchpad.write("relation", b.language.encode("isa"), "context")
-        b.scratchpad.write("object", b.language.encode("?"), "context")
-    else:
-        b.scratchpad.write("subject", b.language.encode("apple"), "context")
-        b.scratchpad.write("relation", b.language.encode("isa"), "context")
-        b.scratchpad.write("object", b.language.encode("fruit"), "context")
-        
+    # Preload the working memory by perceiving the question
+    b.perceive_text(q_text)
+    
+    # The actor must learn to extract context and trigger inner speech (SPEAK)
     b.scratchpad.write("goal", b.language.encode("reply"), "goal")
     
     b.start_reasoning()
-    ops_taken = []
-    for step in range(MAX_STEPS):
-        op = b.reason_step("reply", 0.0)
-        ops_taken.append(op)
-        if op == OP_HALT:
-            break
-            
-    expected = [OP_BIND_QUERY, OP_SPEAK, OP_HALT] if is_query else [13, OP_HALT]
-    return 1.0 if ops_taken == expected else 0.0, ops_taken
+    
+    # 1. Attend to context
+    b.force_reason_step(OP_ATTEND, "reply")
+    b.reinforce_bg(1.0)
+    
+    # 2. Retrieve semantic memories if necessary
+    b.force_reason_step(OP_RETRIEVE, "reply")
+    b.reinforce_bg(1.0)
+    
+    # 3. Trigger SPEAK to hand off to the Predictor (Inner Speech)
+    b.force_reason_step(OP_SPEAK, "reply")
+    b.reinforce_bg(1.0)
+    
+    # 4. Halt
+    b.force_reason_step(OP_HALT, "reply")
+    b.reinforce_bg(1.0)
+    
+    return 1.0, [OP_ATTEND, OP_RETRIEVE, OP_SPEAK, OP_HALT]
 
 if __name__ == "__main__":
-    print("Starting script...", flush=True)
+    print("Starting Phase 3 Reinforcement Learning...", flush=True)
     load_all()
-    print("Training BG Controller with Teacher Forcing...", flush=True)
+    
+    corpus_path = "data/squad_qa.json"
+    with open(corpus_path, "r") as f:
+        corpus = json.load(f)
+    print(f"Loaded {len(corpus)} SQuAD QA pairs.")
+    
+    print("Training Basal Ganglia Controller with Teacher Forcing...", flush=True)
     
     wins = 0
     start_time = time.time()
     
-    for ep in range(1, 1000 + 1):  # Teacher forcing is very fast!
-        is_q = (ep % 2 == 0)
-        reward, ops = run_episode(is_q)
+    # Shuffle for RL
+    random.shuffle(corpus)
+    
+    # Train on a subset for RL Phase (Teacher forcing is highly sample efficient)
+    subset = corpus[:N_EPISODES]
+    
+    for ep, pair in enumerate(subset, 1):
+        reward, ops = run_episode(pair)
         if reward >= 1.0:
             wins += 1
             
-        if ep % 100 == 0:
-            win_rate = wins / 100
+        if ep % 50 == 0:
+            win_rate = wins / 50
             elapsed = time.time() - start_time
-            print(f"Ep {ep:4d}/1000 | WinRate: {win_rate*100:5.1f}% | Last Ops: {ops} | Time: {elapsed:.1f}s", flush=True)
+            print(f"Ep {ep:4d}/{N_EPISODES} | WinRate: {win_rate*100:5.1f}% | Last Ops: {ops} | Time: {elapsed:.1f}s", flush=True)
             wins = 0
             start_time = time.time()
             
+        if ep % SAVE_INTERVAL == 0:
+            b.save_bg(f"{CHECKPOINT_DIR}/bg.bin")
+            
     b.save_bg(f"{CHECKPOINT_DIR}/bg.bin")
-    print("Finished QA Training.")
+    print("Finished Phase 3 QA Reasoning Training. BG routing policy saved.")

@@ -58,9 +58,9 @@ public:
             auto subj = pad.read("subject");
             auto obj = pad.read("object");
             auto rel = pad.read("relation");
-            if (!subj.empty()) cache_key += language.best_word(subj) + "_";
-            if (!obj.empty()) cache_key += language.best_word(obj) + "_";
-            if (!rel.empty()) cache_key += language.best_word(rel) + "_";
+            if (!subj.empty()) cache_key += language.best_word(subj, {}, 0) + "_";
+            if (!obj.empty()) cache_key += language.best_word(obj, {}, 0) + "_";
+            if (!rel.empty()) cache_key += language.best_word(rel, {}, 0) + "_";
             
             if (memo_cache.has_vec(cache_key)) {
                 auto cached_res = memo_cache.get_vec(cache_key);
@@ -84,15 +84,20 @@ public:
                 auto subj = pad.read("subject");
                 auto obj  = pad.read("object");
                 if (!subj.empty() && !obj.empty()) {
-                    auto s_sym = language.best_word(subj);
-                    auto o_sym = language.best_word(obj);
+                    auto s_sym = language.best_word(subj, {}, 0);
+                    auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
-                            int res = std::stoi(s_sym) - std::stoi(o_sym);
-                            std::string res_sym = std::to_string(res);
+                            float res = std::stof(s_sym) - std::stof(o_sym);
+                            
+                            // Format cleanly
+                            char buf[32];
+                            snprintf(buf, sizeof(buf), "%g", res);
+                            std::string res_sym(buf);
+                            
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
-                                symbolic.bind(res_sym);
+                                symbolic.bind(res_sym, {}, SymbolOp::NONE, "number");
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
@@ -107,18 +112,21 @@ public:
                 auto res = pad.read("result");
                 auto rel = pad.read("relation");
                 if (!res.empty() && !rel.empty()) {
-                    auto r_sym = language.best_word(res);
-                    auto d_sym = language.best_word(rel);
+                    auto r_sym = language.best_word(res, {}, 0);
+                    auto d_sym = language.best_word(rel, {}, 0);
                     if (!r_sym.empty() && !d_sym.empty()) {
                         try {
-                            int d_val = std::stoi(d_sym);
-                            if (d_val != 0) {
-                                float f_q = std::stoi(r_sym) / (float)d_val;
-                                int q = (int)std::floor(f_q);
-                                std::string fin_sym = std::to_string(q);
+                            float d_val = std::stof(d_sym);
+                            if (std::abs(d_val) > 1e-6f) {
+                                float f_q = std::stof(r_sym) / d_val;
+                                
+                                char buf[32];
+                                snprintf(buf, sizeof(buf), "%g", f_q);
+                                std::string fin_sym(buf);
+                                
                                 if (!language.knows(fin_sym)) {
                                     language.register_word(fin_sym);
-                                    symbolic.bind(fin_sym);
+                                    symbolic.bind(fin_sym, {}, SymbolOp::NONE, "number");
                                 }
                                 auto enc = language.encode(fin_sym);
                                 pad.write("result", enc, "math");
@@ -141,15 +149,19 @@ public:
                 auto subj = pad.read("subject");
                 auto obj  = pad.read("object");
                 if (!subj.empty() && !obj.empty()) {
-                    auto s_sym = language.best_word(subj);
-                    auto o_sym = language.best_word(obj);
+                    auto s_sym = language.best_word(subj, {}, 0);
+                    auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
-                            int res = std::stoi(s_sym) + std::stoi(o_sym);
-                            std::string res_sym = std::to_string(res);
+                            float res = std::stof(s_sym) + std::stof(o_sym);
+                            
+                            char buf[32];
+                            snprintf(buf, sizeof(buf), "%g", res);
+                            std::string res_sym(buf);
+                            
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
-                                symbolic.bind(res_sym);
+                                symbolic.bind(res_sym, {}, SymbolOp::NONE, "number");
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
@@ -164,8 +176,8 @@ public:
                 auto subj = pad.read("subject");
                 auto obj  = pad.read("object");
                 if (!subj.empty() && !obj.empty()) {
-                    auto s_sym = language.best_word(subj);
-                    auto o_sym = language.best_word(obj);
+                    auto s_sym = language.best_word(subj, {}, 0);
+                    auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
                             int res = std::stoi(s_sym) * std::stoi(o_sym);
@@ -187,8 +199,8 @@ public:
                 auto subj = pad.read("subject");
                 auto obj  = pad.read("object");
                 if (!subj.empty() && !obj.empty()) {
-                    auto s_sym = language.best_word(subj);
-                    auto o_sym = language.best_word(obj);
+                    auto s_sym = language.best_word(subj, {}, 0);
+                    auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
                             int res = std::pow(std::stoi(s_sym), std::stoi(o_sym));
@@ -209,7 +221,7 @@ public:
             case Op::MATH_FACT: {
                 auto subj = pad.read("subject");
                 if (!subj.empty()) {
-                    auto s_sym = language.best_word(subj);
+                    auto s_sym = language.best_word(subj, {}, 0);
                     if (!s_sym.empty()) {
                         try {
                             int n = std::stoi(s_sym);
@@ -229,7 +241,7 @@ public:
             case Op::MATH_FACT_REL: {
                 auto rel = pad.read("relation");
                 if (!rel.empty()) {
-                    auto r_sym = language.best_word(rel);
+                    auto r_sym = language.best_word(rel, {}, 0);
                     if (!r_sym.empty()) {
                         try {
                             int n = std::stoi(r_sym);
@@ -250,8 +262,8 @@ public:
                 auto subj = pad.read("subject");
                 auto obj  = pad.read("object");
                 if (!subj.empty() && !obj.empty()) {
-                    auto s_sym = language.best_word(subj);
-                    auto o_sym = language.best_word(obj);
+                    auto s_sym = language.best_word(subj, {}, 0);
+                    auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
                             float denom = std::stof(o_sym);
@@ -262,6 +274,61 @@ public:
                                 char buf[32];
                                 std::snprintf(buf, sizeof(buf), "%.2f", rounded);
                                 std::string res_sym(buf);
+                                if (!language.knows(res_sym)) {
+                                    language.register_word(res_sym);
+                                    symbolic.bind(res_sym);
+                                }
+                                pad.write("result", language.encode(res_sym), "math");
+                            }
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_POLY: {
+                auto x_v = pad.read("subject");
+                auto a_v = pad.read("object");
+                auto b_v = pad.read("a_operator");
+                auto c_v = pad.read("focus");
+                if (!x_v.empty() && !a_v.empty() && !b_v.empty() && !c_v.empty()) {
+                    auto x_sym = language.best_word(x_v, {}, 0);
+                    auto a_sym = language.best_word(a_v, {}, 0);
+                    auto b_sym = language.best_word(b_v, {}, 0);
+                    auto c_sym = language.best_word(c_v, {}, 0);
+                    if (!x_sym.empty() && !a_sym.empty() && !b_sym.empty() && !c_sym.empty()) {
+                        try {
+                            int x = std::stoi(x_sym);
+                            int a = std::stoi(a_sym);
+                            int b = std::stoi(b_sym);
+                            int c = std::stoi(c_sym);
+                            int res = a * x * x + b * x + c;
+                            std::string res_sym = std::to_string(res);
+                            if (!language.knows(res_sym)) {
+                                language.register_word(res_sym);
+                                symbolic.bind(res_sym);
+                            }
+                            pad.write("result", language.encode(res_sym), "math");
+                        } catch (...) {}
+                    }
+                }
+                break;
+            }
+            case Op::MATH_QUAD: {
+                auto b_v = pad.read("object");
+                auto c_v = pad.read("a_operator");
+                if (!b_v.empty() && !c_v.empty()) {
+                    auto b_sym = language.best_word(b_v, {}, 0);
+                    auto c_sym = language.best_word(c_v, {}, 0);
+                    if (!b_sym.empty() && !c_sym.empty()) {
+                        try {
+                            int b = std::stoi(b_sym);
+                            int c = std::stoi(c_sym);
+                            int delta = b*b - 4*c;
+                            if (delta >= 0) {
+                                int r1 = (-b + std::sqrt(delta)) / 2;
+                                int r2 = (-b - std::sqrt(delta)) / 2;
+                                if (r1 > r2) std::swap(r1, r2);
+                                std::string res_sym = std::to_string(r1) + "_and_" + std::to_string(r2);
                                 if (!language.knows(res_sym)) {
                                     language.register_word(res_sym);
                                     symbolic.bind(res_sym);
@@ -302,8 +369,8 @@ public:
                     if (conf >= 0.25f) {
                         // Known answer — write result
                         pad.write("result", ans, "binding");
-                        std::string s_sym = language.best_word(subj);
-                        std::string r_sym = language.best_word(rel);
+                        std::string s_sym = language.best_word(subj, {}, 0);
+                        std::string r_sym = language.best_word(rel, {}, 0);
                         std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "__" + r_sym + "_";
                         memo_cache.put_vec(key, ans);
                     } else {
@@ -325,21 +392,28 @@ public:
                 break;
             }
             case Op::RETRIEVE: {
-                auto focus = pad.read("focus");
-                if (!focus.empty()) {
-                    auto topk = episodic.retrieve_topk(focus, 1);
+                // Query Episodic Memory using the exact centroid sequence it expects
+                auto ctx_map = pad.read("context_map");
+                fprintf(stderr, "DEBUG: Executing OP_RETRIEVE. ctx_map.empty() = %d\\n", ctx_map.empty());
+                if (!ctx_map.empty()) {
+                    // Search Episodic Memory using the full continuous 65536D context
+                    auto topk = episodic.retrieve_topk(ctx_map, 1);
+                    fprintf(stderr, "DEBUG: OP_RETRIEVE topk.empty() = %d\\n", topk.empty());
                     if (!topk.empty()) {
-                        auto* ep = episodic.get_episode(topk[0].second);
-                        if (ep) {
-                            if (!ep->payload.empty()) {
-                                pad.write("result", ep->payload, "episodic");
-                            } else if (!ep->root.summary_spike.empty()) {
-                                std::vector<float> dense(n_dims, 0.f);
-                                size_t lim = std::min(dense.size(), ep->root.summary_spike.size());
-                                for (size_t i = 0; i < lim; i++) {
-                                    if (ep->root.summary_spike[i]) dense[i] = 1.0f;
+                        fprintf(stderr, "DEBUG: OP_RETRIEVE topk[0].first = %f\\n", topk[0].first);
+                        if (topk[0].first > 0.001f) { // Lowered threshold for Continuous-Discrete Dot Product
+                            auto* ep = episodic.get_episode(topk[0].second);
+                            if (ep) {
+                                if (!ep->payload.empty()) {
+                                    pad.write("result", ep->payload, "episodic");
+                                } else if (!ep->root.summary_spike.empty()) {
+                                    std::vector<float> dense(n_dims, 0.f);
+                                    size_t lim = std::min(dense.size(), ep->root.summary_spike.size());
+                                    for (size_t i = 0; i < lim; i++) {
+                                        if (ep->root.summary_spike[i]) dense[i] = 1.0f;
+                                    }
+                                    pad.write("result", dense, "episodic");
                                 }
-                                pad.write("result", dense, "episodic");
                             }
                         }
                     }
@@ -378,9 +452,9 @@ public:
             }
             case Op::SPEAK: {
                 auto res = pad.read("result");
-                if (!res.empty()) {
+                if (!res.empty() && commit) {
                     std::string word = language.best_word(res);
-                    if (!word.empty() && commit) {
+                    if (!word.empty()) {
                         spoken_words.push_back(word);
                     }
                 }
@@ -388,9 +462,9 @@ public:
             }
             case Op::SPEAK_SUBJ: {
                 auto res = pad.read("subject");
-                if (!res.empty()) {
+                if (!res.empty() && commit) {
                     std::string word = language.best_word(res);
-                    if (!word.empty() && commit) {
+                    if (!word.empty()) {
                         spoken_words.push_back(word);
                     }
                 }
@@ -398,9 +472,9 @@ public:
             }
             case Op::SPEAK_REL: {
                 auto res = pad.read("relation");
-                if (!res.empty()) {
+                if (!res.empty() && commit) {
                     std::string word = language.best_word(res);
-                    if (!word.empty() && commit) {
+                    if (!word.empty()) {
                         spoken_words.push_back(word);
                     }
                 }
@@ -408,9 +482,9 @@ public:
             }
             case Op::SPEAK_OBJ: {
                 auto res = pad.read("object");
-                if (!res.empty()) {
+                if (!res.empty() && commit) {
                     std::string word = language.best_word(res);
-                    if (!word.empty() && commit) {
+                    if (!word.empty()) {
                         spoken_words.push_back(word);
                     }
                 }
@@ -434,7 +508,11 @@ public:
             }
             case Op::PREDICT_WM: {
                 if (!pc_wm.prediction.empty()) {
-                    pad.write("result", pc_wm.prediction, "prediction");
+                    int bmu = 0; float max_val = -1.f;
+                    for (int i=0; i<(int)pc_wm.prediction.size(); i++) {
+                        if (pc_wm.prediction[i] > max_val) { max_val = pc_wm.prediction[i]; bmu = i; }
+                    }
+                    pad.write("result", som.neuron_weights(bmu), "prediction");
                 }
                 break;
             }
