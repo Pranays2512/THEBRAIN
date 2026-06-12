@@ -48,6 +48,7 @@ Makefile
 
 # Named compiled binaries
 brain2
+test_brain
 debug_brain
 debug_wm
 test_analogy
