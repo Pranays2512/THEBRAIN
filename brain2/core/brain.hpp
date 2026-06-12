@@ -51,7 +51,6 @@
 #include "procedural_memory.hpp"
 #include "hierarchical_predictor.hpp"
 #include "analogy.hpp"
-#include "memoization.hpp"
 #include "logic_engine.hpp"
 
 #include <vector>
@@ -69,6 +68,7 @@ struct PerceiveResult {
     int   bmu;                    // SOM best matching unit
     float prediction_error;       // predictor error
     bool  attention_passed;       // did it pass attention gate?
+    bool  wm_passed;              // did it pass working memory gate?
     bool  episodic_stored;        // was an episode committed?
     float valence;                // current emotion valence
     float arousal;                // current emotion arousal
@@ -113,7 +113,6 @@ public:
     ProceduralMemory      procedures;    // reusable strategies
     HierarchicalPredictor h_predictor;  // chunk + episode predictors
     DecoderRNN            decoder;       // generative sequence decoder
-    MemoizationCache      memo_cache;
     LogicEngine           logic_engine;
     std::unordered_map<std::string, double> profile_times_;
     std::vector<std::string> spoken_words;
@@ -141,6 +140,25 @@ private:
     std::vector<float>          prev_input_;   // buffered for 1-step-ahead prediction
     bool                        have_prev_act_ = false;
     std::vector<float>          last_act_map_;   // last SOM activation for grounding
+
+    // σ-gating: online EWMA of CE errors for self-calibrating thresholds
+    // WM gate fires at err > mu + 1*sigma (~16% rate), episodic at mu + 2*sigma (~2.5%)
+    float err_mu_  = 0.f;   // running mean of CE
+    float err_var_ = 1.f;   // running variance (initialized to 1 so sigma=1 early)
+    int   err_n_   = 0;     // count of CE samples seen
+
+public:
+    void update_error_stats(float err) noexcept {
+        // Welford online update with EWMA decay (alpha=0.01 per step)
+        err_n_++;
+        float alpha = (err_n_ < 100) ? (1.f / err_n_) : 0.01f;
+        float delta = err - err_mu_;
+        err_mu_ += alpha * delta;
+        err_var_ = (1.f - alpha) * (err_var_ + alpha * delta * delta);
+    }
+
+    float wm_threshold()       const noexcept { return err_mu_ + std::sqrt(std::max(0.f, err_var_)); }
+    float episodic_threshold() const noexcept { return err_mu_ + 2.f * std::sqrt(std::max(0.f, err_var_)); }
 
     static float cosine(const std::vector<float>& a,
                         const std::vector<float>& b) noexcept {
@@ -185,7 +203,9 @@ public:
           som_rows(som_rows),
           som_cols(som_cols),
           som(som_rows, som_cols, n_dims, 0.15f, 0.9998f, 0.9999f, seed),
-          predictor(n_dims, hidden_dim, n_dims, 5, 0.005f, seed),
+          // LSTM SGD lr: 0.001 measured stable; 0.005 oscillates once the
+          // Adam-trained LM head starts feeding real gradients down.
+          predictor(n_dims, hidden_dim, n_dims, 5, 0.001f, seed),
           episodic(som_rows * som_cols, episodic_max, 0.3f),
           working_mem(som_rows * som_cols, wm_capacity, 0.95f),
           language(n_dims, 0.05f),
@@ -206,7 +226,7 @@ public:
           global_ws(som_rows * som_cols),
           bg_controller(n_dims, 0.001f, seed),
           procedures(n_dims),
-          logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, memo_cache, pc_wm, spoken_words),
+          logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, pc_wm, spoken_words),
           h_predictor(som_rows * som_cols, 128, 64, seed),
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
@@ -214,7 +234,7 @@ public:
     }
 
     Brain(Brain&&)            = default;
-    Brain& operator=(Brain&&) = default;
+    Brain& operator=(Brain&&) = delete;
     Brain(const Brain&)       = delete;
     Brain& operator=(const Brain&) = delete;
 
@@ -286,8 +306,12 @@ public:
         return episodic.commit(err, payload);
     }
 
+    void set_active_vocab(const std::vector<int>& active_indices) {
+        predictor.set_active_vocab(language.flat_embeddings_ptr(), language.vocab_size(), active_indices, language.is_frozen_ptr());
+    }
+
     // PERCEIVE: process one raw input vector through full pipeline
-    PerceiveResult perceive(const std::vector<float>& input) {
+    PerceiveResult perceive(const std::vector<float>& input, int target_word_id = -1, ErrorMode error_mode = ErrorMode::FULL) {
         auto start_all = std::chrono::high_resolution_clock::now();
         std::lock_guard<std::mutex> lock(*mtx_);
         scratchpad.write("sensory_input", input, "sensory");
@@ -311,35 +335,28 @@ public:
         t1 = std::chrono::high_resolution_clock::now();
         profile_times_["PC_SOM"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
-        // 3. Predictor (Fast MDN)
+        // 3. Predictor (Softmax LM)
         t0 = std::chrono::high_resolution_clock::now();
-        std::vector<float> pred_out;
+        std::vector<std::pair<float, int>> pred_out;
         
-        // Extract the actual 128-D spatial coordinate of the current BMU as the target
-        std::vector<float> actual_coord(n_dims, 0.f);
-        if (bmu >= 0 && bmu < som.n_neurons) {
-            actual_coord = input; // `input` is the 128-D word vector passed to perceive
-        }
-
         if (have_prev_act_) {
-            pred_out = predictor.step(prev_input_, &actual_coord);
+            pred_out = predictor.step(prev_input_, target_word_id, error_mode);
         } else {
-            pred_out = predictor.step(input);
+            pred_out = predictor.step(input, -1);
         }
         prev_input_ = input;
         
-        // Convert MDN output back to a sparse activation map
+        // Convert LM output Top-K words back to a sparse SOM activation map
         std::vector<float> pred_next(som.n_neurons, 0.f);
-        for(int k=0; k<predictor.K; k++) {
-            int offset = k * (predictor.target_dim + 1);
-            int conf_idx = offset + predictor.target_dim;
-            float conf = pred_out[conf_idx];
-            if (conf > 0.05f) { // Only map confident possibilities
-                std::vector<float> coord(predictor.target_dim);
-                for(int i=0; i<predictor.target_dim; i++) coord[i] = pred_out[offset + i];
+        for(const auto& pair : pred_out) {
+            float prob = pair.first;
+            int wid = pair.second;
+            if (prob > 0.05f) { // Only map confident possibilities
+                const float* emb = language.flat_embeddings_ptr() + wid * predictor.target_dim;
+                std::vector<float> coord(emb, emb + predictor.target_dim);
                 int pred_bmu = som.find_bmu(coord);
                 if (pred_bmu >= 0 && pred_bmu < som.n_neurons) {
-                    pred_next[pred_bmu] += conf; 
+                    pred_next[pred_bmu] += prob; 
                 }
             }
         }
@@ -395,7 +412,7 @@ public:
         t0 = std::chrono::high_resolution_clock::now();
         auto attn_result = attention.gate(pc2_err, error, emotion.attention_modulator());
         bool wm_gate_open = attn_result.passed &&
-            (global_ws.is_winner((int)GWModule::SOM) || propagate_wm || error > 0.15f);
+            (global_ws.is_winner((int)GWModule::SOM) || propagate_wm || error > predictor.surprise_threshold());
         if (wm_gate_open) {
             working_mem.gate(pc2_err, emotion.salience());
         }
@@ -425,7 +442,21 @@ public:
         if (episodic_active && pc_wm.should_propagate()) {
             episodic.observe(pc3_err);
         }
+        episodic.surprise_threshold = episodic_threshold();
         bool stored = episodic_active && episodic.commit(error);
+        
+        static int word_count = 0;
+        static int wm_open_count = 0;
+        static int ep_commit_count = 0;
+        if (word_count < 500) {
+            word_count++;
+            if (wm_gate_open) wm_open_count++;
+            if (stored) ep_commit_count++;
+            if (word_count == 500) {
+                printf("[Instrumentation] First 500 words: WM gate opened %.1f%%, Episodic committed %.1f%%\n",
+                       (float)wm_open_count / 5.0f, (float)ep_commit_count / 5.0f);
+            }
+        }
         t1 = std::chrono::high_resolution_clock::now();
         profile_times_["Episodic_Memory"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
 
@@ -472,6 +503,7 @@ public:
         r.bmu              = bmu;
         r.prediction_error = error;
         r.attention_passed = attn_result.passed;
+        r.wm_passed        = wm_gate_open;
         r.episodic_stored  = stored;
         r.valence          = emotion.valence;
         r.arousal          = emotion.arousal;
@@ -480,7 +512,151 @@ public:
         return r;
     }
 
-    void perceive_text(const std::string& text) {
+    // Fast sequential LM batch training path
+    float train_lm_sequence(const std::string& text) {
+        std::istringstream iss(text);
+        std::string word;
+        std::vector<std::string> words;
+        while (iss >> word) words.push_back(word);
+
+        std::vector<std::vector<float>> inputs;
+        std::vector<int> targets;
+
+        for (size_t i = 0; i < words.size(); i++) {
+            if (language.knows(words[i])) {
+                inputs.push_back(language.encode(words[i]));
+                int target_id = -1;
+                if (i + 1 < words.size() && language.knows(words[i + 1])) {
+                    target_id = language.word_id(words[i + 1]);
+                }
+                targets.push_back(target_id);
+            }
+        }
+        
+        if (inputs.empty()) return 0.f;
+        return predictor.train_lm_sequence(inputs, targets);
+    }
+
+    // Fused LM training + cognitive perception in one pass per segment.
+    // - Runs train_lm_sequence_per_token to get real per-position CE (one LSTM forward+backward)
+    // - For each word feeds that real CE through the cognitive pipeline
+    // - Uses σ-gated thresholds (self-calibrating) instead of hardcoded magic numbers
+    // - One SOM scan per word (find_bmu_and_activate) instead of three separate scans
+    // Returns mean CE loss.
+    float train_lm_sequence_fused(const std::string& text) {
+        std::istringstream iss(text);
+        std::string word;
+        std::vector<std::string> words;
+        while (iss >> word) words.push_back(word);
+
+        std::vector<std::vector<float>> inputs;
+        std::vector<int> targets;
+        std::vector<int> word_indices; // maps inputs[i] → words[j]
+
+        for (size_t i = 0; i < words.size(); i++) {
+            if (language.knows(words[i])) {
+                inputs.push_back(language.encode(words[i]));
+                int target_id = -1;
+                if (i + 1 < words.size() && language.knows(words[i + 1]))
+                    target_id = language.word_id(words[i + 1]);
+                targets.push_back(target_id);
+                word_indices.push_back((int)i);
+            }
+        }
+
+        if (inputs.empty()) return 0.f;
+
+        // LM training pass — gets per-token CE for real
+        std::vector<float> ce_per_token;
+        float mean_ce = predictor.train_lm_sequence_per_token(inputs, targets, ce_per_token);
+
+        // Cognitive pass — one SOM scan per word, σ-gated
+        std::lock_guard<std::mutex> lock(*mtx_);
+        for (size_t i = 0; i < inputs.size(); i++) {
+            const auto& inp = inputs[i];
+            float ce = ce_per_token[i]; // -1 if no valid target
+            if (ce < 0.f) ce = err_mu_; // treat unknown-target words as average surprise
+
+            // Update σ-gating statistics
+            update_error_stats(ce);
+
+            // SOM: single distance scan for BMU + activation map
+            auto [bmu, act_map] = som.find_bmu_and_activate(inp);
+            som.update(inp, bmu, 1.f + emotion.lr_modulator() * 0.5f);
+
+            episodic.observe(act_map);
+
+            // Predictive coding on SOM
+            auto pc1_err = pc_som.propagate(act_map);
+            bool do_propagate = pc_som.should_propagate();
+            pc_som.update();
+
+            // H-Predictor
+            if (do_propagate) h_predictor.observe(pc1_err);
+            auto pc2_err = pc_hpred.propagate(pc1_err);
+            pc_hpred.update();
+            bool propagate_wm = pc_hpred.should_propagate();
+
+            // Global Workspace
+            global_ws.bid((int)GWModule::SOM,    pc_som.error_norm, pc2_err);
+            global_ws.bid((int)GWModule::PREDICT, 1.f - ce / (ce + 1.f), act_map);
+            global_ws.bid((int)GWModule::EMOTION, emotion.salience(), act_map);
+            int gw_winner = global_ws.compete();
+            (void)gw_winner;
+
+            // Emotion from real CE
+            emotion.from_prediction_error(ce);
+            emotion.tick();
+
+            // σ-gated WM: fires ~16% of words
+            float wm_thr = wm_threshold();
+            bool wm_gate_open = ce > wm_thr || propagate_wm ||
+                                global_ws.is_winner((int)GWModule::SOM);
+            if (wm_gate_open) working_mem.gate(pc2_err, emotion.salience());
+            working_mem.tick();
+
+            // PC3 on WM context
+            auto ctx_summary = working_mem.context();
+            if (ctx_summary.empty()) ctx_summary.assign(som.n_neurons, 0.f);
+            auto pc3_err = pc_wm.propagate(ctx_summary);
+            if (pc_wm.should_propagate()) working_mem.disrupt_by_error(pc3_err);
+            pc_wm.update();
+
+            // σ-gated Episodic: fires ~2.5% of words
+            float ep_thr = episodic_threshold();
+            bool episodic_active = global_ws.is_winner((int)GWModule::SOM) ||
+                                   global_ws.is_winner((int)GWModule::EMOTION);
+            if (episodic_active && pc_wm.should_propagate()) episodic.observe(pc3_err);
+            episodic.surprise_threshold = ep_thr;
+            bool stored = episodic_active && (ce > ep_thr) && episodic.commit(ce);
+
+            // Instrumentation (first 500 words)
+            static int word_count_f = 0;
+            static int wm_open_count_f = 0;
+            static int ep_commit_count_f = 0;
+            if (word_count_f < 500) {
+                word_count_f++;
+                if (wm_gate_open) wm_open_count_f++;
+                if (stored) ep_commit_count_f++;
+                if (word_count_f == 500) {
+                    printf("[Fused] First 500 words: WM gate %.1f%%, Episodic %.1f%%, "
+                           "CE_mu=%.2f, CE_sigma=%.2f, wm_thr=%.2f, ep_thr=%.2f\n",
+                           (float)wm_open_count_f / 5.f,
+                           (float)ep_commit_count_f / 5.f,
+                           err_mu_, std::sqrt(std::max(0.f, err_var_)),
+                           wm_threshold(), episodic_threshold());
+                }
+            }
+            (void)stored;
+
+            step_++;
+        }
+
+        have_prev_act_ = false; // reset sequence boundary
+        return mean_ce;
+    }
+
+    void perceive_text(const std::string& text, ErrorMode error_mode = ErrorMode::FULL) {
         std::string current_word;
         auto process_word = [&](const std::string& w) {
             if (w.empty()) return;
@@ -488,7 +664,8 @@ public:
                 language.register_word(w);
                 symbolic.bind(w);
             }
-            perceive(language.encode(w));
+            int wid = language.word_id(w);
+            perceive(language.encode(w), wid, error_mode);
         };
         
         for (char c : text) {
@@ -567,8 +744,8 @@ public:
     // Perform analogy
     std::vector<float> analogy_op(const std::vector<float>& a,
                                   const std::vector<float>& b) {
-        auto ctx = working_mem.context();
-        if (ctx.empty()) ctx = std::vector<float>(som.n_neurons, 0.f);
+        // Enforce dense embedding space; do not mix sparse SOM maps
+        auto ctx = std::vector<float>(n_dims, 0.f); 
         return analogy.structure_map(a, b, ctx);
     }
 
@@ -634,18 +811,10 @@ public:
         predictor.set_offline(true);
 
         for (int i = 0; i < steps; i++) {
-            // Predict next 128-D coordinate (MDN)
             auto pred_out = predictor.step(current_vec);
-            
-            // Extract the most confident 128-D coordinate from the MDN Mixture output
-            int best_k = 0; float best_conf = -1.f;
-            for(int k=0; k<predictor.K; k++) {
-                float conf = pred_out[k * (predictor.target_dim + 1) + predictor.target_dim];
-                if(conf > best_conf) { best_conf = conf; best_k = k; }
-            }
-            std::vector<float> next_coord(predictor.target_dim, 0.f);
-            int offset = best_k * (predictor.target_dim + 1);
-            for(int j=0; j<predictor.target_dim; j++) next_coord[j] = pred_out[offset + j];
+            if (pred_out.empty()) break;
+            int best_wid = pred_out[0].second;
+            std::vector<float> next_coord = predictor.get_embedding(best_wid);
 
             // Decode this 128-D coordinate to the nearest word
             auto word = language.best_word(next_coord, result.words);
@@ -1060,7 +1229,6 @@ public:
         bg_controller.expand_dims(new_dims);
         procedures.expand_dims(new_dims);
         h_predictor.expand_dims(new_dims);
-        memo_cache.expand_dims(new_dims);
         logic_engine.expand_dims(new_dims);
         
         n_dims = new_dims;

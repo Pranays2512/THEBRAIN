@@ -275,6 +275,17 @@ public:
 
     int   vocab_size()          const noexcept { return (int)words_.size(); }
     
+    int word_id(const std::string& w) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = std::find(vocab_.begin(), vocab_.end(), w);
+        if (it == vocab_.end()) return -1;
+        return std::distance(vocab_.begin(), it);
+    }
+    
+    const float* flat_embeddings_ptr() const { return flat_embeddings_.data(); }
+
+    const bool* is_frozen_ptr() const { return &frozen_; }
+    
     void freeze_vocabulary(bool freeze = true) {
         std::lock_guard<std::mutex> lock(*mtx_);
         frozen_ = freeze;

@@ -22,6 +22,7 @@ find_package(pybind11 REQUIRED CONFIG)
 # OpenMP
 if(APPLE)
     set(OpenMP_ROOT "/opt/homebrew/opt/libomp")
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
 endif()
 find_package(OpenMP)
 
@@ -45,9 +46,32 @@ else()
     message(STATUS "OpenMP: not found — single-threaded BMU search")
 endif()
 
+if(APPLE AND ACCELERATE_FRAMEWORK)
+    target_link_libraries(brain2 PRIVATE ${ACCELERATE_FRAMEWORK})
+    target_compile_definitions(brain2 PRIVATE ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+    message(STATUS "Accelerate: linked to brain2")
+endif()
+
 # Copy .so to brain2/ root after build so tests can import it directly
 add_custom_command(TARGET brain2 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:brain2>
             ${CMAKE_CURRENT_SOURCE_DIR}/$<TARGET_FILE_NAME:brain2>
     COMMENT "Copying brain2.so to source directory"
 )
+
+# Test Battery Executable
+add_executable(test_brain test_brain.cpp)
+target_include_directories(test_brain PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(APPLE AND ACCELERATE_FRAMEWORK)
+    target_link_libraries(test_brain PRIVATE ${ACCELERATE_FRAMEWORK})
+    target_compile_definitions(test_brain PRIVATE ACCELERATE_NEW_LAPACK ACCELERATE_LAPACK_ILP64)
+    message(STATUS "Accelerate: linked to test_brain")
+endif()
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(test_brain PRIVATE OpenMP::OpenMP_CXX)
+endif()
+if(USE_CUDA)
+    target_link_libraries(test_brain PRIVATE CUDA::cudart)
+endif()

@@ -12,7 +12,6 @@
 #include "core/som.hpp"
 #include "core/working_mem.hpp"
 #include "core/analogy.hpp"
-#include "core/memoization.hpp"
 #include "core/predictive_coding.hpp"
 
 namespace brain2 {
@@ -27,15 +26,14 @@ public:
     SOM& som;
     WorkingMemory& working_mem;
     AnalogyEngine& analogy;
-    MemoizationCache& memo_cache;
     PredictiveCodingLayer& pc_wm;
     std::vector<std::string>& spoken_words;
 
     LogicEngine(int n, Language& lang, Symbolic& sym, BindingMemory& bind, 
                 EpisodicMemory& epi, SOM& som_ref, WorkingMemory& wm, 
-                AnalogyEngine& ana, MemoizationCache& cache, PredictiveCodingLayer& pc, std::vector<std::string>& spoken)
+                AnalogyEngine& ana, PredictiveCodingLayer& pc, std::vector<std::string>& spoken)
         : n_dims(n), language(lang), symbolic(sym), binding(bind), episodic(epi), 
-          som(som_ref), working_mem(wm), analogy(ana), memo_cache(cache), pc_wm(pc), spoken_words(spoken) {}
+          som(som_ref), working_mem(wm), analogy(ana), pc_wm(pc), spoken_words(spoken) {}
 
     // Cosine similarity helper
     float cosine(const std::vector<float>& a, const std::vector<float>& b) {
@@ -52,23 +50,6 @@ public:
     }
 
     std::vector<float> execute_op(Op op, Scratchpad& pad, bool commit = true) {
-        // Fast path: Memoization Check (only for deterministic mathematical ops and complex binds)
-        if (op == Op::MATH_DIV || op == Op::MATH_SUB || op == Op::MATH_ADD || op == Op::MATH_MUL || op == Op::MATH_POW || op == Op::BIND_QUERY) {
-            std::string cache_key = "OP_" + std::to_string((int)op) + "_";
-            auto subj = pad.read("subject");
-            auto obj = pad.read("object");
-            auto rel = pad.read("relation");
-            if (!subj.empty()) cache_key += language.best_word(subj, {}, 0) + "_";
-            if (!obj.empty()) cache_key += language.best_word(obj, {}, 0) + "_";
-            if (!rel.empty()) cache_key += language.best_word(rel, {}, 0) + "_";
-            
-            if (memo_cache.has_vec(cache_key)) {
-                auto cached_res = memo_cache.get_vec(cache_key);
-                pad.write("result", cached_res, "memo");
-                return compute_context(pad);
-            }
-        }
-
         switch (op) {
             case Op::READ: {
                 auto res = pad.read("result");
@@ -101,8 +82,6 @@ public:
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
-                            std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "_" + o_sym + "__";
-                            memo_cache.put_vec(key, enc);
                         } catch (...) {}
                     }
                 }
@@ -130,8 +109,6 @@ public:
                                 }
                                 auto enc = language.encode(fin_sym);
                                 pad.write("result", enc, "math");
-                                std::string key = "OP_" + std::to_string((int)op) + "__" + r_sym + "_" + d_sym + "_";
-                                memo_cache.put_vec(key, enc);
                             }
                         } catch (...) {}
                     }
@@ -165,8 +142,6 @@ public:
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
-                            std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "_" + o_sym + "__";
-                            memo_cache.put_vec(key, enc);
                         } catch (...) {}
                     }
                 }
@@ -188,8 +163,6 @@ public:
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
-                            std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "_" + o_sym + "__";
-                            memo_cache.put_vec(key, enc);
                         } catch (...) {}
                     }
                 }
@@ -211,8 +184,6 @@ public:
                             }
                             auto enc = language.encode(res_sym);
                             pad.write("result", enc, "math");
-                            std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "_" + o_sym + "__";
-                            memo_cache.put_vec(key, enc);
                         } catch (...) {}
                     }
                 }
@@ -371,8 +342,6 @@ public:
                         pad.write("result", ans, "binding");
                         std::string s_sym = language.best_word(subj, {}, 0);
                         std::string r_sym = language.best_word(rel, {}, 0);
-                        std::string key = "OP_" + std::to_string((int)op) + "_" + s_sym + "__" + r_sym + "_";
-                        memo_cache.put_vec(key, ans);
                     } else {
                         // Unknown — write zero vector ("I don't know")
                         pad.write("result", std::vector<float>(n_dims, 0.f), "query");
@@ -423,9 +392,9 @@ public:
             case Op::ANALOGY: {
                 auto a   = pad.read("subject");
                 auto rel = pad.read("relation");
-                auto ctx = working_mem.context();
                 if (!a.empty() && !rel.empty()) {
-                    auto mapped = analogy.structure_map(a, rel, ctx.empty() ? std::vector<float>(n_dims, 0.f) : ctx);
+                    auto ctx = std::vector<float>(n_dims, 0.f); 
+                    auto mapped = analogy.structure_map(a, rel, ctx);
                     pad.write("result", mapped, "analogy");
                 }
                 break;

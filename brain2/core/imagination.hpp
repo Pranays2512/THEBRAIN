@@ -96,7 +96,9 @@ public:
 
         std::vector<float> current = start_state;
         for (int i = 0; i < n; i++) {
-            auto next = predictor_->step(current);
+            auto pred = predictor_->step(current);
+            if (pred.empty()) break;
+            auto next = predictor_->get_embedding(pred[0].second);
             sim.frames.push_back(next);
             current = next;
         }

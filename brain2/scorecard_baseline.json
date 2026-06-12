@@ -1,0 +1,15 @@
+{
+  "lm_eval_ce": 16.1181,
+  "lm_eval_ppl": 10000092.8,
+  "train_words_per_sec": 1933.0,
+  "fact_retrieval_acc": 1.0,
+  "peak_rss_mb": 140.0,
+  "config": {
+    "n_dims": 64,
+    "som": "128x128",
+    "hidden_dim": 512,
+    "n_words": 30000,
+    "vocab": 4368,
+    "seed": 42
+  }
+}

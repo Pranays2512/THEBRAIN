@@ -1,11 +1,6 @@
 #pragma once
 /*
  * som.hpp — Navigable Small World (NSW) Graph SOM
- *
- * Implements a dynamic graph where neurons (nodes) are connected by lateral edges.
- * Lookup is incredibly fast O(log N) via greedy graph traversal.
- * Plasticity (learning) applies to a node and its direct topological graph neighbors,
- * completely eliminating the constraints of a rigid 2D grid or static tree branches!
  */
 
 #include <vector>
@@ -22,13 +17,6 @@
 
 namespace brain2 {
 
-struct SomNode {
-    std::vector<float> weights;
-    std::vector<int>   neighbors; // Indices of connected nodes (lateral edges)
-    float              hits;      // Usage frequency
-    int                last_visited;
-};
-
 class SOM {
 public:
     int rows, cols;
@@ -36,7 +24,11 @@ public:
     int max_neighbors;
 
 private:
-    std::vector<SomNode>         nodes_;
+    std::vector<float> weights_;
+    std::vector<std::vector<int>> neighbors_;
+    std::vector<float> hits_;
+    std::vector<int> last_visited_;
+
     int                          entry_point_; // Starting node for searches
     float                        lr_, lr_decay_;
     int                          step_;
@@ -51,10 +43,6 @@ private:
             s += d * d;
         }
         return s;
-    }
-
-    inline float vec_l2sq(const std::vector<float>& a, const float* b) const noexcept {
-        return l2sq(a.data(), b);
     }
 
 public:
@@ -73,24 +61,23 @@ public:
           update_mtx_(std::make_unique<std::mutex>()),
           tlb_(n_dims, 64, seed)
     {
-        nodes_.resize(n_neurons);
+        weights_.resize(n_neurons * n_dims);
+        neighbors_.resize(n_neurons);
+        hits_.resize(n_neurons, 0.f);
+        last_visited_.resize(n_neurons, 0);
+
         std::mt19937 rng(seed);
         std::normal_distribution<float> dist(0.f, 0.3f);
         std::uniform_int_distribution<int> rand_node(0, n_neurons - 1);
 
         for (int i = 0; i < n_neurons; i++) {
-            nodes_[i].weights.resize(n_dims);
             for (int j = 0; j < n_dims; j++) {
-                nodes_[i].weights[j] = dist(rng);
+                weights_[i * n_dims + j] = dist(rng);
             }
-            nodes_[i].hits = 0.f;
-            nodes_[i].last_visited = 0;
-            
-            // Initialize with random lateral connections (Small World property)
             for (int k = 0; k < max_neighbors; k++) {
                 int neighbor = rand_node(rng);
                 if (neighbor != i) {
-                    nodes_[i].neighbors.push_back(neighbor);
+                    neighbors_[i].push_back(neighbor);
                 }
             }
         }
@@ -101,47 +88,49 @@ public:
     SOM(const SOM&)       = delete;
     SOM& operator=(const SOM&) = delete;
 
-    // Fast O(log N) Greedy Graph Search
+    // Fast O(log N) Greedy Graph Search -- SWAPPED TO BRUTE FORCE Linear Scan (Correctness first)
     int find_bmu(const std::vector<float>& input) const {
         if ((int)input.size() != n_dims)
             throw std::invalid_argument("SOM::find_bmu: dim mismatch");
             
         const float* inp = input.data();
+        int best_node = 0;
+        float best_dist = std::numeric_limits<float>::max();
         
-        // 1. Cognitive TLB Lookup
-        uint64_t logical_address = tlb_.hash(inp);
-        int cached_bmu = tlb_.lookup(logical_address);
-        
-        if (cached_bmu != -1 && cached_bmu < n_neurons) {
-            float dist = vec_l2sq(nodes_[cached_bmu].weights, inp);
-            if (dist < 0.2f) return cached_bmu; 
-        }
-        
-        // 2. Greedy NSW Graph Traversal
-        int curr_node = entry_point_;
-        float curr_dist = vec_l2sq(nodes_[curr_node].weights, inp);
-        
-        while (true) {
-            int best_neighbor = -1;
-            float best_dist = curr_dist;
+        #ifdef _OPENMP
+        #pragma omp parallel
+        {
+            int local_best_node = 0;
+            float local_best_dist = std::numeric_limits<float>::max();
             
-            for (int neighbor : nodes_[curr_node].neighbors) {
-                float d = vec_l2sq(nodes_[neighbor].weights, inp);
-                if (d < best_dist) {
-                    best_dist = d;
-                    best_neighbor = neighbor;
+            #pragma omp for nowait
+            for (int i = 0; i < n_neurons; i++) {
+                float d = l2sq(&weights_[i * n_dims], inp);
+                if (d < local_best_dist) {
+                    local_best_dist = d;
+                    local_best_node = i;
                 }
             }
             
-            if (best_neighbor == -1) {
-                break; // Local minimum reached! This is the BMU.
+            #pragma omp critical
+            {
+                if (local_best_dist < best_dist) {
+                    best_dist = local_best_dist;
+                    best_node = local_best_node;
+                }
             }
-            curr_node = best_neighbor;
-            curr_dist = best_dist;
         }
+        #else
+        for (int i = 0; i < n_neurons; i++) {
+            float d = l2sq(&weights_[i * n_dims], inp);
+            if (d < best_dist) {
+                best_dist = d;
+                best_node = i;
+            }
+        }
+        #endif
         
-        tlb_.cache(logical_address, curr_node);
-        return curr_node;
+        return best_node;
     }
 
     // Graph-based sparse activation
@@ -154,13 +143,44 @@ public:
         
         // Activate neighbors (decaying outward)
         const float* inp = input.data();
-        for (int neighbor : nodes_[bmu].neighbors) {
-            float d = vec_l2sq(nodes_[neighbor].weights, inp);
+        for (int neighbor : neighbors_[bmu]) {
+            float d = l2sq(&weights_[neighbor * n_dims], inp);
             acts[neighbor] = std::exp(-d * 2.0f); // Fast decay
         }
         
         return acts;
     }
+
+    // Single-pass: returns BMU and activation map using one distance scan.
+    // Eliminates the triple scan (find_bmu + activation_map + update each recompute distances).
+    std::pair<int, std::vector<float>> find_bmu_and_activate(const std::vector<float>& input) const {
+        if ((int)input.size() != n_dims)
+            throw std::invalid_argument("SOM::find_bmu_and_activate: dim mismatch");
+
+        const float* inp = input.data();
+        int best_node = 0;
+        float best_dist = std::numeric_limits<float>::max();
+
+        // One full distance scan — find BMU
+        for (int i = 0; i < n_neurons; i++) {
+            float d = l2sq(&weights_[i * n_dims], inp);
+            if (d < best_dist) {
+                best_dist = d;
+                best_node = i;
+            }
+        }
+
+        // Build activation map using BMU neighborhood (no second full scan)
+        std::vector<float> acts(n_neurons, 0.f);
+        acts[best_node] = 1.0f;
+        for (int neighbor : neighbors_[best_node]) {
+            float d = l2sq(&weights_[neighbor * n_dims], inp);
+            acts[neighbor] = std::exp(-d * 2.0f);
+        }
+
+        return {best_node, std::move(acts)};
+    }
+
 
     inline float grid_dist(int local_i, int local_j) const noexcept {
         return 0.f; // API compat
@@ -174,13 +194,13 @@ public:
         float eff_lr = lr_ * std::max(0.01f, std::min(reward_mod, 3.f));
         
         auto apply_plasticity = [&](int node_idx, float scale) {
-            auto& w = nodes_[node_idx].weights;
+            float* w = &weights_[node_idx * n_dims];
             for (int j = 0; j < n_dims; j++) {
                 if (std::abs(inp[j]) < 1e-4f) continue; // Sparse update
                 w[j] += eff_lr * scale * (inp[j] - w[j]);
             }
-            nodes_[node_idx].hits += 1.0f;
-            nodes_[node_idx].last_visited = step_;
+            hits_[node_idx] += 1.0f;
+            last_visited_[node_idx] = step_;
         };
         
         // 1. Update BMU (Full plasticity)
@@ -188,32 +208,32 @@ public:
         entry_point_ = bmu; // Shift entry point to active regions
         
         // 2. Update Direct Lateral Neighbors (Partial plasticity)
-        for (int neighbor : nodes_[bmu].neighbors) {
+        for (int neighbor : neighbors_[bmu]) {
             apply_plasticity(neighbor, 0.5f);
         }
         
         // 3. Dynamic Graph Rewiring (Hebbian Learning)
         // Every 100 hits, the BMU tries to connect to a random node that is physically close
-        if (nodes_[bmu].hits > 100.0f) {
-            nodes_[bmu].hits = 0.f;
+        if (hits_[bmu] > 100.0f) {
+            hits_[bmu] = 0.f;
             std::mt19937 rng(step_);
             std::uniform_int_distribution<int> rand_node(0, n_neurons - 1);
             
             int candidate = rand_node(rng);
             if (candidate != bmu) {
-                float dist = vec_l2sq(nodes_[candidate].weights, nodes_[bmu].weights.data());
+                float dist = l2sq(&weights_[candidate * n_dims], &weights_[bmu * n_dims]);
                 if (dist < 1.0f) { // If they are semantically close
                     // Add edge if not full
-                    if (nodes_[bmu].neighbors.size() < max_neighbors) {
-                        nodes_[bmu].neighbors.push_back(candidate);
+                    if (neighbors_[bmu].size() < (size_t)max_neighbors) {
+                        neighbors_[bmu].push_back(candidate);
                     } else {
                         // Replace the oldest/least relevant neighbor
-                        nodes_[bmu].neighbors[rng() % max_neighbors] = candidate;
+                        neighbors_[bmu][rng() % max_neighbors] = candidate;
                     }
                     
                     // Bidirectional link
-                    if (nodes_[candidate].neighbors.size() < max_neighbors) {
-                        nodes_[candidate].neighbors.push_back(bmu);
+                    if (neighbors_[candidate].size() < (size_t)max_neighbors) {
+                        neighbors_[candidate].push_back(bmu);
                     }
                 }
             }
@@ -231,7 +251,7 @@ public:
     std::vector<float> neuron_weights(int i) const {
         if (i < 0 || i >= n_neurons)
             throw std::out_of_range("SOM::neuron_weights: out of range");
-        return nodes_[i].weights;
+        return std::vector<float>(weights_.begin() + i * n_dims, weights_.begin() + (i + 1) * n_dims);
     }
 
     int   step()   const noexcept { return step_;   }
@@ -251,15 +271,15 @@ public:
         f.write((const char*)&lr_decay_,     sizeof(float));
         f.write((const char*)&step_,         sizeof(int));
         
-        for (const auto& node : nodes_) {
-            f.write((const char*)node.weights.data(), n_dims * sizeof(float));
-            f.write((const char*)&node.hits, sizeof(float));
-            f.write((const char*)&node.last_visited, sizeof(int));
-            
-            int num_neighbors = (int)node.neighbors.size();
+        f.write((const char*)weights_.data(), weights_.size() * sizeof(float));
+        f.write((const char*)hits_.data(), hits_.size() * sizeof(float));
+        f.write((const char*)last_visited_.data(), last_visited_.size() * sizeof(int));
+        
+        for (int i = 0; i < n_neurons; i++) {
+            int num_neighbors = (int)neighbors_[i].size();
             f.write((const char*)&num_neighbors, sizeof(int));
             if (num_neighbors > 0) {
-                f.write((const char*)node.neighbors.data(), num_neighbors * sizeof(int));
+                f.write((const char*)neighbors_[i].data(), num_neighbors * sizeof(int));
             }
         }
         
@@ -280,18 +300,22 @@ public:
         f.read((char*)&s.lr_decay_,     sizeof(float));
         f.read((char*)&s.step_,         sizeof(int));
         
-        s.nodes_.resize(s.n_neurons);
+        s.weights_.resize(s.n_neurons * s.n_dims);
+        f.read((char*)s.weights_.data(), s.weights_.size() * sizeof(float));
+        
+        s.hits_.resize(s.n_neurons);
+        f.read((char*)s.hits_.data(), s.hits_.size() * sizeof(float));
+        
+        s.last_visited_.resize(s.n_neurons);
+        f.read((char*)s.last_visited_.data(), s.last_visited_.size() * sizeof(int));
+        
+        s.neighbors_.resize(s.n_neurons);
         for (int i = 0; i < s.n_neurons; i++) {
-            s.nodes_[i].weights.resize(s.n_dims);
-            f.read((char*)s.nodes_[i].weights.data(), s.n_dims * sizeof(float));
-            f.read((char*)&s.nodes_[i].hits, sizeof(float));
-            f.read((char*)&s.nodes_[i].last_visited, sizeof(int));
-            
             int num_neighbors;
             f.read((char*)&num_neighbors, sizeof(int));
             if (num_neighbors > 0) {
-                s.nodes_[i].neighbors.resize(num_neighbors);
-                f.read((char*)s.nodes_[i].neighbors.data(), num_neighbors * sizeof(int));
+                s.neighbors_[i].resize(num_neighbors);
+                f.read((char*)s.neighbors_[i].data(), num_neighbors * sizeof(int));
             }
         }
         
@@ -309,9 +333,13 @@ public:
     void expand_dims(int new_dims) {
         std::lock_guard<std::mutex> lock(*update_mtx_);
         if (new_dims <= n_dims) return;
-        for (auto& node : nodes_) {
-            node.weights.resize(new_dims, 0.f);
+        std::vector<float> new_weights(n_neurons * new_dims, 0.f);
+        for (int i = 0; i < n_neurons; i++) {
+            for (int j = 0; j < n_dims; j++) {
+                new_weights[i * new_dims + j] = weights_[i * n_dims + j];
+            }
         }
+        weights_ = std::move(new_weights);
         n_dims = new_dims;
     }
 };

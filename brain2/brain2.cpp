@@ -53,6 +53,13 @@ static py::array_t<float> to_np(const std::vector<float> &v) {
 }
 
 PYBIND11_MODULE(brain2, m) {
+
+    py::enum_<brain2::ErrorMode>(m, "ErrorMode")
+        .value("FULL", brain2::ErrorMode::FULL)
+        .value("EMBED_PROXY", brain2::ErrorMode::EMBED_PROXY)
+        .value("SKIP", brain2::ErrorMode::SKIP)
+        .export_values();
+
   m.doc() = "Brain v2 — general neural brain, C++ core";
 
   // ── SOM ─────────────────────────────────────────────────────────
@@ -108,33 +115,11 @@ PYBIND11_MODULE(brain2, m) {
           "step",
           [](Predictor &p, py::array_t<float, py::array::c_style> inp,
              py::object actual_obj) -> py::array_t<float> {
-            auto x = to_vec(inp);
-            if (actual_obj.is_none()) {
-              return to_np(p.step(x, nullptr));
-            } else {
-              auto a = to_vec(
-                  actual_obj.cast<py::array_t<float, py::array::c_style>>());
-              return to_np(p.step(x, &a));
-            }
-          },
-          py::arg("input"), py::arg("actual") = py::none(),
-          "Predict next activation. If actual given: compute error + update.")
-      .def(
-          "train_sequence",
-          [](Predictor &p, const std::vector<std::vector<float>> &inputs,
-             const std::vector<float> &target,
-             int n_bptt) { return p.train_sequence(inputs, target, n_bptt); },
-          py::arg("inputs"), py::arg("target"), py::arg("n_bptt") = -1,
-          "Train sequence with answer-only loss and N-step BPTT")
-      .def("reset", &Predictor::reset,
-           "Reset LSTM hidden/cell state (start of new sequence)")
-      .def("set_offline", &Predictor::set_offline,
-           "Set offline mode (imagination — no weight updates)")
-      .def("save", &Predictor::save)
-      .def_static("load",
-                  [](const std::string &p) { return Predictor::load(p); })
+            return to_np(std::vector<float>{}); // Disabled manual step from python
+          })
       .def_property_readonly("last_error", &Predictor::last_error)
-      .def_property_readonly("is_offline", &Predictor::is_offline)
+      .def("set_offline", &Predictor::set_offline)
+      .def_property("is_offline", &Predictor::is_offline, &Predictor::set_offline)
       .def_property("lr", &Predictor::lr,
                     [](Predictor &p, float v) { p.set_lr(v); })
       .def_property_readonly("input_dim",
@@ -295,8 +280,9 @@ PYBIND11_MODULE(brain2, m) {
       .def("is_frozen", &Language::is_frozen)
       .def("knows", &Language::knows)
       .def("familiarity", &Language::familiarity)
-      .def("frequency", &Language::frequency)
       .def("vocab", &Language::vocab)
+      .def("vocab_size", &Language::vocab_size)
+      .def("word_id", &Language::word_id)
       .def("save", &Language::save)
       .def_static("load",
                   [](const std::string &p) { return Language::load(p); })
@@ -566,7 +552,14 @@ PYBIND11_MODULE(brain2, m) {
            [](Brain &b, py::array_t<float, py::array::c_style> arr) {
              return b.perceive(to_vec(arr));
            })
-      .def("perceive_text", &Brain::perceive_text, py::arg("text"))
+      .def("train_lm_sequence", &Brain::train_lm_sequence,
+           py::arg("text"),
+           "Fast sequential LM batch training path")
+      .def("train_lm_sequence_fused", &Brain::train_lm_sequence_fused,
+           py::arg("text"),
+           "Fused LM training + cognitive pass: one LSTM forward, real CE-based sigma-gating, single SOM scan")
+      .def("perceive_text", [](Brain &b, const std::string& text, brain2::ErrorMode mode) { return b.perceive_text(text, mode); },
+           py::arg("text"), py::arg("mode") = brain2::ErrorMode::FULL)
       .def("get_profiling_report", &Brain::get_profiling_report)
       .def("perceive_sequence",
            [](Brain &b, py::list seq) {
@@ -596,6 +589,8 @@ PYBIND11_MODULE(brain2, m) {
       .def("direct_reason_step", &Brain::direct_reason_step, py::arg("goal_word"))
       .def("cognitive_step", &Brain::cognitive_step, py::arg("input_text"))
       .def("expand_dims", &Brain::expand_dims, py::arg("new_dims"))
+      .def("set_active_vocab", &Brain::set_active_vocab, py::arg("active_indices"))
+      .def("perplexity", [](Brain& b){ return b.predictor.perplexity(); })
       .def_readonly("n_dims", &Brain::n_dims)
       .def("speak",
           [](Brain &b, std::vector<std::vector<float>> concepts, float min_sim) {
