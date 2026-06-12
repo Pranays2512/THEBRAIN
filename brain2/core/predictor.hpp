@@ -114,11 +114,18 @@ struct LMHead {
     // Head learns with Adam at its own rates (LSTM stays on SGD at lr_).
     // bias: its logit effect is direct (+lr per step), and it must traverse
     //   the unigram log-frequency range (~4-5 nats) within one corpus pass.
-    // W_proj: gradient of a row is d_h_proj * h_out, so a sign-aligned Adam
-    //   step moves the logit by ~lr * sum|h_out_j| (~200 at hidden=512). A
-    //   bias-sized lr here explodes CE within one chunk; keep it ~25x smaller.
+    // W_proj: gradient of a row is d_h_proj * y, so a sign-aligned Adam step
+    //   moves a logit by ~lr * sum|y_j| (~400 at hidden=512 with unit-RMS y).
+    //   Swept 2e-3/5e-4/2e-4 on cycle + long-range tasks: 2e-3 goes
+    //   confidently-wrong on noisy data (CE >> ln V), 2e-4 converges slowly;
+    //   5e-4 matches 2e-3 convergence while staying calibrated.
     float adam_lr_b_ = 0.05f;
-    float adam_lr_W_ = 0.002f;
+    float adam_lr_W_ = 0.0005f;
+    // Decoupled weight decay (AdamW-style) on W_proj only — never on bias.
+    // Measured no effect on the train/eval gap at wd=0.01 and wd=0.5 (the
+    // overfitting is in the LSTM, not this 32k-param projection), so it
+    // defaults off. Knob retained for larger heads.
+    float adam_wd_W_ = 0.0f;
 
     LMHead() = default;
     LMHead(int hidden_dim, int target_dim, std::mt19937& rng)
@@ -154,6 +161,10 @@ struct LMHead {
         }
         adam_update(W_proj.data(), gW, m_W_.data(), v_W_.data(),
                     W_proj.size(), ++t_W_, adam_lr_W_);
+        if (adam_wd_W_ > 0.f) {
+            float decay = 1.f - adam_lr_W_ * adam_wd_W_;
+            for (auto& w : W_proj) w *= decay;
+        }
     }
 
     // Adam step on active bias given gradient gb [active_size]; syncs word_bias
@@ -263,7 +274,7 @@ public:
   Predictor(int input_dim, int hidden_dim, int target_dim, int K,
             float lr = 0.01f, unsigned int seed = 42)
       : input_dim(input_dim), hidden_dim(hidden_dim), target_dim(target_dim),
-        K(K), mtx_(std::make_unique<std::mutex>()) {
+        K(K), lr_(lr), mtx_(std::make_unique<std::mutex>()) {
     std::mt19937 rng(seed);
     // Use 256 active neurons per layer for sparsity
     lstm1_ = SparseLSTMLayer(input_dim, hidden_dim, 256, rng);
@@ -323,9 +334,16 @@ public:
     std::vector<float> h_out(hidden_dim);
     for(int j=0; j<hidden_dim; j++) h_out[j] = q[j] + ctx[j];
 
+    // RMSNorm — must match the batch training forward
+    float ms_ = 0.f;
+    for (int j = 0; j < hidden_dim; j++) ms_ += h_out[j] * h_out[j];
+    float rms_r = std::sqrt(ms_ / hidden_dim + 1e-6f);
+    std::vector<float> y_norm(hidden_dim);
+    for (int j = 0; j < hidden_dim; j++) y_norm[j] = h_out[j] / rms_r;
+
     // Project to Embedding Space
     std::vector<float> h_proj(target_dim, 0.f);
-    matvec(head_.W_proj.data(), h_out.data(), h_proj.data(), target_dim, hidden_dim);
+    matvec(head_.W_proj.data(), y_norm.data(), h_proj.data(), target_dim, hidden_dim);
 
     // If context not set, return empty
     if (!head_.E_ || head_.active_vocab_.empty()) return {};
@@ -457,18 +475,18 @@ public:
             head_.adam_bias(d_logits.data());
 
             // Backprop into W_proj and h_out.
-            // delta_h2_out must use W_proj from BEFORE this step's update.
-            std::vector<float> delta_h2_out(hidden_dim, 0.f);
+            // d_y must use W_proj from BEFORE this step's update.
+            std::vector<float> d_y(hidden_dim, 0.f);
             std::vector<float> g_W((size_t)target_dim * hidden_dim, 0.f);
 #ifdef __APPLE__
-            // delta_h2_out = W_proj^T * d_h_proj
+            // d_y = W_proj^T * d_h_proj
             cblas_sgemv(CblasRowMajor, CblasTrans, target_dim, hidden_dim,
                         1.0f, head_.W_proj.data(), hidden_dim,
                         d_h_proj.data(), 1,
-                        0.0f, delta_h2_out.data(), 1);
-            // g_W = d_h_proj * h_out^T
+                        0.0f, d_y.data(), 1);
+            // g_W = d_h_proj * y_norm^T
             cblas_sger(CblasRowMajor, target_dim, hidden_dim,
-                       1.0f, d_h_proj.data(), 1, h_out.data(), 1,
+                       1.0f, d_h_proj.data(), 1, y_norm.data(), 1,
                        g_W.data(), hidden_dim);
 #else
             for (int i = 0; i < target_dim; i++) {
@@ -476,12 +494,20 @@ public:
                 float* gr = g_W.data() + (size_t)i * hidden_dim;
                 const float* wr = head_.W_proj.data() + (size_t)i * hidden_dim;
                 for (int j = 0; j < hidden_dim; j++) {
-                    delta_h2_out[j] += dp * wr[j];
-                    gr[j] = dp * h_out[j];
+                    d_y[j] += dp * wr[j];
+                    gr[j] = dp * y_norm[j];
                 }
             }
 #endif
             head_.adam_W(g_W.data());
+
+            // RMSNorm backward: delta_h2_out = (1/r)(d_y − y · mean(d_y ⊙ y))
+            std::vector<float> delta_h2_out(hidden_dim);
+            float dy_dot = 0.f;
+            for (int j = 0; j < hidden_dim; j++) dy_dot += d_y[j] * y_norm[j];
+            dy_dot /= (float)hidden_dim;
+            for (int j = 0; j < hidden_dim; j++)
+                delta_h2_out[j] = (d_y[j] - y_norm[j] * dy_dot) / rms_r;
 
             auto delta_h2 = delta_h2_out;
             auto delta_h1 = lstm2_.backward(delta_h2, lr_);
@@ -493,220 +519,16 @@ public:
     return ranked_preds;
   }
 
+
+  // Batch LM training over a token sequence. Thin wrapper; the single
+  // implementation lives in train_lm_sequence_per_token.
   float train_lm_sequence(const std::vector<std::vector<float>> &inputs,
                           const std::vector<int> &targets) {
-      std::lock_guard<std::mutex> lock(*mtx_);
-      if (inputs.empty() || inputs.size() != targets.size() || !head_.E_ || head_.active_vocab_.empty()) return 0.f;
-
-      if (head_.language_frozen_ptr_ && !(*head_.language_frozen_ptr_)) {
-          throw std::runtime_error("Predictor E_active_ cache is stale!");
-      }
-
-      int active_size = head_.active_vocab_.size();
-      float total_ce = 0.f;
-      int num_valid = 0;
-
-      int total_T = inputs.size();
-      int MAX_T = 128;
-      
-      for (int chunk_start = 0; chunk_start < total_T; chunk_start += MAX_T) {
-          int T = std::min(MAX_T, total_T - chunk_start);
-          
-          lstm1_.clear_history();
-          lstm2_.clear_history();
-          
-          std::vector<float> H_OUT(T * hidden_dim);
-          std::vector<float> H_PROJ(T * target_dim);
-          
-          for (int t = 0; t < T; t++) {
-              int global_t = chunk_start + t;
-              auto h1 = lstm1_.forward(inputs[global_t], !offline_);
-              auto h2 = lstm2_.forward(h1, !offline_);
-              
-              h2_history_.push_back(h2);
-              if ((int)h2_history_.size() > MAX_ATTN_HISTORY) h2_history_.pop_front();
-              
-              int H = h2_history_.size();
-              auto q = h2;
-              std::vector<float> scores(H);
-              float scale = 1.0f / std::sqrt((float)hidden_dim);
-              float max_s = -1e9f;
-              for(int i=0; i<H; i++) {
-                  float dot = 0.f;
-                  for(int j=0; j<hidden_dim; j++) dot += q[j] * h2_history_[i][j];
-                  scores[i] = dot * scale;
-                  if(scores[i] > max_s) max_s = scores[i];
-              }
-              float sum_exp = 0.f;
-              std::vector<float> alpha(H);
-              for(int i=0; i<H; i++) {
-                  alpha[i] = std::exp(scores[i] - max_s);
-                  sum_exp += alpha[i];
-              }
-              std::vector<float> ctx(hidden_dim, 0.f);
-              for(int i=0; i<H; i++) {
-                  alpha[i] /= sum_exp;
-                  for(int j=0; j<hidden_dim; j++) ctx[j] += alpha[i] * h2_history_[i][j];
-              }
-              std::vector<float> h_out(hidden_dim);
-              for(int j=0; j<hidden_dim; j++) h_out[j] = q[j] + ctx[j];
-              
-              std::copy(h_out.begin(), h_out.end(), H_OUT.begin() + t * hidden_dim);
-              
-              std::vector<float> h_proj(target_dim, 0.f);
-              matvec(head_.W_proj.data(), h_out.data(), h_proj.data(), target_dim, hidden_dim);
-              std::copy(h_proj.begin(), h_proj.end(), H_PROJ.begin() + t * target_dim);
-          }
-          
-          std::vector<float> LOGITS(active_size * T);
-          for (int i = 0; i < active_size; i++) {
-              float b = head_.bias_active_[i];
-              for (int t = 0; t < T; t++) {
-                  LOGITS[i * T + t] = b;
-              }
-          }
-          
-#ifdef __APPLE__
-          cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, 
-                      active_size, T, target_dim,
-                      1.0f, head_.E_active_.data(), target_dim,
-                      H_PROJ.data(), target_dim,
-                      1.0f, LOGITS.data(), T);
-#else
-          for (int i = 0; i < active_size; i++) {
-              const float* emb = head_.E_active_.data() + i * target_dim;
-              for (int t = 0; t < T; t++) {
-                  float dot = 0.f;
-                  const float* hp = H_PROJ.data() + t * target_dim;
-                  for (int d = 0; d < target_dim; d++) {
-                      dot += emb[d] * hp[d];
-                  }
-                  LOGITS[i * T + t] += dot;
-              }
-          }
-#endif
-
-          std::vector<float> D_LOGITS(active_size * T, 0.f);
-          for (int t = 0; t < T; t++) {
-              int target_word_id = targets[chunk_start + t];
-              if (target_word_id < 0) continue;
-
-              int target_idx = head_.active_index(target_word_id);
-              if (target_idx < 0) continue;
-              
-              float max_logit = -1e9f;
-              for (int i = 0; i < active_size; i++) {
-                  float l = LOGITS[i * T + t];
-                  if (l > max_logit) max_logit = l;
-              }
-              
-              float sum_prob = 0.f;
-              for (int i = 0; i < active_size; i++) {
-                  float p = std::exp(LOGITS[i * T + t] - max_logit);
-                  D_LOGITS[i * T + t] = p;
-                  sum_prob += p;
-              }
-              
-              float p_target = D_LOGITS[target_idx * T + t] / sum_prob;
-              float err = -std::log(std::max(p_target, 1e-7f));
-              total_ce += err;
-              num_valid++;
-              last_error_ = err;
-              avg_ce_ = 0.99f * avg_ce_ + 0.01f * last_error_;
-              avg_err_sq_ = 0.99f * avg_err_sq_ + 0.01f * (last_error_ * last_error_);
-              
-              if (!offline_) {
-                  for (int i = 0; i < active_size; i++) {
-                      D_LOGITS[i * T + t] = (D_LOGITS[i * T + t] / sum_prob);
-                  }
-                  D_LOGITS[target_idx * T + t] -= 1.0f;
-              }
-          }
-          
-          if (offline_) continue;
-          
-          std::vector<float> D_H_PROJ(T * target_dim, 0.f);
-          
-#ifdef __APPLE__
-          cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
-                      T, target_dim, active_size,
-                      1.0f, D_LOGITS.data(), T,
-                      head_.E_active_.data(), target_dim,
-                      0.0f, D_H_PROJ.data(), target_dim);
-          
-          std::vector<float> g_bias(active_size, 0.f);
-          for (int i = 0; i < active_size; i++) {
-              for (int t = 0; t < T; t++) g_bias[i] += D_LOGITS[i * T + t];
-          }
-          head_.adam_bias(g_bias.data());
-
-          // D_H_OUT must use W_proj from BEFORE this chunk's update
-          std::vector<float> D_H_OUT(T * hidden_dim, 0.f);
-          cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                      T, hidden_dim, target_dim,
-                      1.0f, D_H_PROJ.data(), target_dim,
-                      head_.W_proj.data(), hidden_dim,
-                      0.0f, D_H_OUT.data(), hidden_dim);
-
-          std::vector<float> g_W((size_t)target_dim * hidden_dim, 0.f);
-          cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
-                      target_dim, hidden_dim, T,
-                      1.0f, D_H_PROJ.data(), target_dim,
-                      H_OUT.data(), hidden_dim,
-                      0.0f, g_W.data(), hidden_dim);
-          head_.adam_W(g_W.data());
-#else
-          for (int t = 0; t < T; t++) {
-              float* dhp = D_H_PROJ.data() + t * target_dim;
-              for (int i = 0; i < active_size; i++) {
-                  float dl = D_LOGITS[i * T + t];
-                  const float* emb = head_.E_active_.data() + i * target_dim;
-                  for (int d = 0; d < target_dim; d++) dhp[d] += dl * emb[d];
-              }
-          }
-          std::vector<float> g_bias(active_size, 0.f);
-          for (int i = 0; i < active_size; i++) {
-              for (int t = 0; t < T; t++) g_bias[i] += D_LOGITS[i * T + t];
-          }
-          head_.adam_bias(g_bias.data());
-
-          // D_H_OUT must use W_proj from BEFORE this chunk's update
-          std::vector<float> D_H_OUT(T * hidden_dim, 0.f);
-          for (int t = 0; t < T; t++) {
-              float* dho = D_H_OUT.data() + t * hidden_dim;
-              float* dhp = D_H_PROJ.data() + t * target_dim;
-              for (int d = 0; d < target_dim; d++) {
-                  float dp = dhp[d];
-                  const float* w_row = head_.W_proj.data() + d * hidden_dim;
-                  for (int j = 0; j < hidden_dim; j++) dho[j] += dp * w_row[j];
-              }
-          }
-          std::vector<float> g_W((size_t)target_dim * hidden_dim, 0.f);
-          for (int d = 0; d < target_dim; d++) {
-              float* gr = g_W.data() + (size_t)d * hidden_dim;
-              for (int t = 0; t < T; t++) {
-                  float dp = D_H_PROJ[t * target_dim + d];
-                  const float* ho = H_OUT.data() + t * hidden_dim;
-                  for (int j = 0; j < hidden_dim; j++) gr[j] += dp * ho[j];
-              }
-          }
-          head_.adam_W(g_W.data());
-#endif
-
-          std::vector<std::vector<float>> d_h2_seq(T, std::vector<float>(hidden_dim));
-          for (int t = 0; t < T; t++) {
-              std::copy(D_H_OUT.begin() + t * hidden_dim, 
-                        D_H_OUT.begin() + (t + 1) * hidden_dim, 
-                        d_h2_seq[t].begin());
-          }
-          auto delta_h1_seq = lstm2_.backward_through_time(d_h2_seq, lr_, T);
-          lstm1_.backward_through_time(delta_h1_seq, lr_, T);
-      }
-      
-      return (num_valid > 0) ? (total_ce / num_valid) : 0.f;
+      std::vector<float> ce_scratch;
+      return train_lm_sequence_per_token(inputs, targets, ce_scratch);
   }
 
-  // Like train_lm_sequence but also returns per-token CE for the fused cognitive pass.
+  // Core batch trainer. Also returns per-token CE for the fused cognitive pass.
   // ce_per_token[t] = CE at position t, or -1.f if no valid target at t.
   float train_lm_sequence_per_token(const std::vector<std::vector<float>>& inputs,
                                      const std::vector<int>& targets,
@@ -728,40 +550,57 @@ public:
           lstm1_.clear_history();
           lstm2_.clear_history();
 
-          std::vector<float> H_OUT(T * hidden_dim);
-          std::vector<float> H_PROJ(T * target_dim);
+          // Chunk-local self-attention: position t attends over h2[0..t] of
+          // THIS chunk only, so the backward pass below is exact. (The old
+          // h2_history_ deque spanned chunk boundaries, where gradients can
+          // never flow — and its gradient was dropped entirely anyway.)
+          std::vector<float> H2((size_t)T * hidden_dim);        // lstm2 outputs
+          std::vector<float> ALPHA((size_t)T * T, 0.f);         // attn weights, row t: i<=t
+          std::vector<float> Y((size_t)T * hidden_dim);         // rmsnorm(h2 + ctx)
+          std::vector<float> R(T);                              // rms denominators
+          std::vector<float> H_PROJ((size_t)T * target_dim);
+          const float scale = 1.0f / std::sqrt((float)hidden_dim);
 
           for (int t = 0; t < T; t++) {
               int gt = chunk_start + t;
               auto h1 = lstm1_.forward(inputs[gt], !offline_);
               auto h2 = lstm2_.forward(h1, !offline_);
-              h2_history_.push_back(h2);
-              if ((int)h2_history_.size() > MAX_ATTN_HISTORY) h2_history_.pop_front();
-              int H = (int)h2_history_.size();
-              auto q = h2;
-              float scale = 1.0f / std::sqrt((float)hidden_dim);
+              std::copy(h2.begin(), h2.end(), H2.begin() + (size_t)t * hidden_dim);
+
               float max_s = -1e9f;
-              std::vector<float> scores(H);
-              for (int i = 0; i < H; i++) {
+              std::vector<float> scores(t + 1);
+              for (int i = 0; i <= t; i++) {
                   float dot = 0.f;
-                  for (int j = 0; j < hidden_dim; j++) dot += q[j] * h2_history_[i][j];
+                  const float* hi = H2.data() + (size_t)i * hidden_dim;
+                  for (int j = 0; j < hidden_dim; j++) dot += h2[j] * hi[j];
                   scores[i] = dot * scale;
                   if (scores[i] > max_s) max_s = scores[i];
               }
               float sum_exp = 0.f;
-              std::vector<float> alpha(H);
-              for (int i = 0; i < H; i++) { alpha[i] = std::exp(scores[i] - max_s); sum_exp += alpha[i]; }
-              std::vector<float> ctx(hidden_dim, 0.f);
-              for (int i = 0; i < H; i++) {
-                  alpha[i] /= sum_exp;
-                  for (int j = 0; j < hidden_dim; j++) ctx[j] += alpha[i] * h2_history_[i][j];
+              for (int i = 0; i <= t; i++) {
+                  float a = std::exp(scores[i] - max_s);
+                  ALPHA[(size_t)t * T + i] = a;
+                  sum_exp += a;
               }
-              std::vector<float> h_out(hidden_dim);
-              for (int j = 0; j < hidden_dim; j++) h_out[j] = q[j] + ctx[j];
-              std::copy(h_out.begin(), h_out.end(), H_OUT.begin() + t * hidden_dim);
+              std::vector<float> h_out(h2);
+              for (int i = 0; i <= t; i++) {
+                  float a = (ALPHA[(size_t)t * T + i] /= sum_exp);
+                  const float* hi = H2.data() + (size_t)i * hidden_dim;
+                  for (int j = 0; j < hidden_dim; j++) h_out[j] += a * hi[j];
+              }
+
+              // RMSNorm (no learnable params): pins the scale feeding the LM
+              // head so head Adam steps have a consistent effective size.
+              float ms = 0.f;
+              for (int j = 0; j < hidden_dim; j++) ms += h_out[j] * h_out[j];
+              float r = std::sqrt(ms / hidden_dim + 1e-6f);
+              R[t] = r;
+              float* y = Y.data() + (size_t)t * hidden_dim;
+              for (int j = 0; j < hidden_dim; j++) y[j] = h_out[j] / r;
+
               std::vector<float> h_proj(target_dim, 0.f);
-              matvec(head_.W_proj.data(), h_out.data(), h_proj.data(), target_dim, hidden_dim);
-              std::copy(h_proj.begin(), h_proj.end(), H_PROJ.begin() + t * target_dim);
+              matvec(head_.W_proj.data(), y, h_proj.data(), target_dim, hidden_dim);
+              std::copy(h_proj.begin(), h_proj.end(), H_PROJ.begin() + (size_t)t * target_dim);
           }
 
           std::vector<float> LOGITS(active_size * T);
@@ -823,17 +662,17 @@ public:
           }
           head_.adam_bias(g_bias.data());
 
-          // D_H_OUT must use W_proj from BEFORE this chunk's update
-          std::vector<float> D_H_OUT(T * hidden_dim, 0.f);
+          // D_Y (grad wrt rmsnorm output) must use W_proj from BEFORE update
+          std::vector<float> D_Y((size_t)T * hidden_dim, 0.f);
           cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                       T, hidden_dim, target_dim,
                       1.0f, D_H_PROJ.data(), target_dim, head_.W_proj.data(), hidden_dim,
-                      0.0f, D_H_OUT.data(), hidden_dim);
+                      0.0f, D_Y.data(), hidden_dim);
 
           std::vector<float> g_W((size_t)target_dim * hidden_dim, 0.f);
           cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                       target_dim, hidden_dim, T,
-                      1.0f, D_H_PROJ.data(), target_dim, H_OUT.data(), hidden_dim,
+                      1.0f, D_H_PROJ.data(), target_dim, Y.data(), hidden_dim,
                       0.0f, g_W.data(), hidden_dim);
           head_.adam_W(g_W.data());
 #else
@@ -851,15 +690,15 @@ public:
           }
           head_.adam_bias(g_bias.data());
 
-          // D_H_OUT must use W_proj from BEFORE this chunk's update
-          std::vector<float> D_H_OUT(T * hidden_dim, 0.f);
+          // D_Y (grad wrt rmsnorm output) must use W_proj from BEFORE update
+          std::vector<float> D_Y((size_t)T * hidden_dim, 0.f);
           for (int t = 0; t < T; t++) {
-              float* dho = D_H_OUT.data() + t * hidden_dim;
+              float* dy = D_Y.data() + (size_t)t * hidden_dim;
               float* dhp = D_H_PROJ.data() + t * target_dim;
               for (int d = 0; d < target_dim; d++) {
                   const float* wr = head_.W_proj.data() + d * hidden_dim;
                   float dp = dhp[d];
-                  for (int j = 0; j < hidden_dim; j++) dho[j] += dp * wr[j];
+                  for (int j = 0; j < hidden_dim; j++) dy[j] += dp * wr[j];
               }
           }
           std::vector<float> g_W((size_t)target_dim * hidden_dim, 0.f);
@@ -867,15 +706,58 @@ public:
               float* gr = g_W.data() + (size_t)d * hidden_dim;
               for (int t = 0; t < T; t++) {
                   float dp = D_H_PROJ[t*target_dim+d];
-                  const float* ho = H_OUT.data() + t * hidden_dim;
-                  for (int j = 0; j < hidden_dim; j++) gr[j] += dp * ho[j];
+                  const float* y = Y.data() + (size_t)t * hidden_dim;
+                  for (int j = 0; j < hidden_dim; j++) gr[j] += dp * y[j];
               }
           }
           head_.adam_W(g_W.data());
 #endif
-          std::vector<std::vector<float>> d_h2_seq(T, std::vector<float>(hidden_dim));
-          for (int t = 0; t < T; t++)
-              std::copy(D_H_OUT.begin()+t*hidden_dim, D_H_OUT.begin()+(t+1)*hidden_dim, d_h2_seq[t].begin());
+          // ── RMSNorm backward: d_hout = (1/r) (d_y − y · mean(d_y ⊙ y)) ──
+          std::vector<float> D_HOUT((size_t)T * hidden_dim);
+          for (int t = 0; t < T; t++) {
+              const float* dy = D_Y.data() + (size_t)t * hidden_dim;
+              const float* y  = Y.data() + (size_t)t * hidden_dim;
+              float dot = 0.f;
+              for (int j = 0; j < hidden_dim; j++) dot += dy[j] * y[j];
+              dot /= (float)hidden_dim;
+              float inv_r = 1.f / R[t];
+              float* dh = D_HOUT.data() + (size_t)t * hidden_dim;
+              for (int j = 0; j < hidden_dim; j++) dh[j] = inv_r * (dy[j] - y[j] * dot);
+          }
+
+          // ── Attention backward (exact, within chunk) ────────────────────
+          // h_out[t] = h2[t] + Σ_{i<=t} α_ti h2[i],  α_t = softmax_i(score_ti),
+          // score_ti = (h2[t] · h2[i]) * scale. Gradients flow through the
+          // residual, the values, AND the attention weights (the old code
+          // sent everything down the residual only).
+          std::vector<std::vector<float>> d_h2_seq(T, std::vector<float>(hidden_dim, 0.f));
+          std::vector<float> d_alpha(T);
+          for (int t = 0; t < T; t++) {
+              const float* g = D_HOUT.data() + (size_t)t * hidden_dim;
+              const float* a = ALPHA.data() + (size_t)t * T;
+              for (int j = 0; j < hidden_dim; j++) d_h2_seq[t][j] += g[j];
+              float adot = 0.f;
+              for (int i = 0; i <= t; i++) {
+                  const float* hi = H2.data() + (size_t)i * hidden_dim;
+                  float da = 0.f;
+                  for (int j = 0; j < hidden_dim; j++) {
+                      da += g[j] * hi[j];
+                      d_h2_seq[i][j] += a[i] * g[j];
+                  }
+                  d_alpha[i] = da;
+                  adot += a[i] * da;
+              }
+              const float* ht = H2.data() + (size_t)t * hidden_dim;
+              for (int i = 0; i <= t; i++) {
+                  float ds = a[i] * (d_alpha[i] - adot) * scale;
+                  if (ds == 0.f) continue;
+                  const float* hi = H2.data() + (size_t)i * hidden_dim;
+                  for (int j = 0; j < hidden_dim; j++) {
+                      d_h2_seq[t][j] += ds * hi[j];
+                      d_h2_seq[i][j] += ds * ht[j];
+                  }
+              }
+          }
           auto dh1 = lstm2_.backward_through_time(d_h2_seq, lr_, T);
           lstm1_.backward_through_time(dh1, lr_, T);
       }

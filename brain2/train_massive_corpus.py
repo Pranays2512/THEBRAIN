@@ -58,6 +58,21 @@ def train():
                 vec[:min(50, N_DIMS)] = vec50[:min(50, N_DIMS)]
                 b.language.register_word(word, vec)
     
+    # Register corpus words missing from GloVe with seeded random vectors.
+    # Previously these were silently skipped during training — the model
+    # never saw them at all (no embedding -> dropped from every sequence).
+    rng = np.random.default_rng(42)
+    corpus_vocab = set()
+    for pair in corpus:
+        corpus_vocab.update(pair["input"].split())
+        corpus_vocab.update(pair["target"].split())
+    n_new = 0
+    for w in corpus_vocab:
+        if not b.language.knows(w):
+            b.language.register_word(w, (rng.standard_normal(N_DIMS) * 0.3).astype(np.float32))
+            n_new += 1
+    print(f"Registered {n_new} corpus words not in GloVe (seeded random init).")
+
     # Freeze vocabulary to prevent semantic drift/catastrophic forgetting
     b.language.freeze_vocabulary()
     print("Vocabulary frozen.")

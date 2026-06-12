@@ -122,6 +122,12 @@ PYBIND11_MODULE(brain2, m) {
       .def_property("is_offline", &Predictor::is_offline, &Predictor::set_offline)
       .def_property("lr", &Predictor::lr,
                     [](Predictor &p, float v) { p.set_lr(v); })
+      .def_property("head_adam_lr_w",
+                    [](const Predictor &p) { return p.head_.adam_lr_W_; },
+                    [](Predictor &p, float v) { p.head_.adam_lr_W_ = v; })
+      .def_property("head_adam_lr_b",
+                    [](const Predictor &p) { return p.head_.adam_lr_b_; },
+                    [](Predictor &p, float v) { p.head_.adam_lr_b_ = v; })
       .def_property_readonly("input_dim",
                              [](const Predictor &p) { return p.input_dim; })
       .def_property_readonly("hidden_dim",
