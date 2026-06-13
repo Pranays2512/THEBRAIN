@@ -261,13 +261,32 @@ public:
   bool offline_ = false;
   int top_k_report = 20;
 
+  // Embedding (input) dropout — AWD-LSTM style regularization. Applied to the
+  // LSTM input during training only (inverted dropout). The LSTM stores the
+  // masked x in its own snapshot, so the backward stays consistent with no
+  // changes to the recurrent gradient code. 0 = off.
+  float input_dropout_ = 0.f;
+  std::mt19937 dropout_rng_{12345};
+
   SparseLSTMLayer lstm1_;
   SparseLSTMLayer lstm2_;
   LMHead head_;
   std::unique_ptr<std::mutex> mtx_;
-  
+
   std::deque<std::vector<float>> h2_history_;
   int MAX_ATTN_HISTORY = 50;
+
+  // Returns x with inverted dropout if training and dropout enabled, else x.
+  std::vector<float> maybe_drop_input(const std::vector<float>& x) {
+      if (offline_ || input_dropout_ <= 0.f) return x;
+      float keep = 1.f - input_dropout_;
+      float scale = 1.f / keep;
+      std::vector<float> out(x.size());
+      std::uniform_real_distribution<float> u(0.f, 1.f);
+      for (size_t i = 0; i < x.size(); i++)
+          out[i] = (u(dropout_rng_) < keep) ? x[i] * scale : 0.f;
+      return out;
+  }
 
   Predictor() : mtx_(std::make_unique<std::mutex>()) {}
 
@@ -563,7 +582,7 @@ public:
 
           for (int t = 0; t < T; t++) {
               int gt = chunk_start + t;
-              auto h1 = lstm1_.forward(inputs[gt], !offline_);
+              auto h1 = lstm1_.forward(maybe_drop_input(inputs[gt]), !offline_);
               auto h2 = lstm2_.forward(h1, !offline_);
               std::copy(h2.begin(), h2.end(), H2.begin() + (size_t)t * hidden_dim);
 

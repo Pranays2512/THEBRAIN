@@ -117,6 +117,7 @@ struct SparseForwardSnapshot {
 struct SparseLSTMLayer {
     int input_dim, hidden_dim;
     int k_active;
+    float weight_decay = 0.f; // decoupled L2 on Wx/Wh active rows (0 = off)
 
     DeviceVector<float> Wh, Wx, b; // Dense backing matrices
     DeviceVector<float> h, c;      // Current state
@@ -301,20 +302,23 @@ struct SparseLSTMLayer {
             }
 
             // Weight updates ONLY for the active rows!
+            // Decoupled weight decay (AdamW-style): shrink active rows toward 0
+            // before the gradient step. Bias is never decayed.
+            float wd = (weight_decay > 0.f) ? (1.f - lr * weight_decay) : 1.f;
             for (int n : snap.active_neurons) {
                 for (int j = 0; j < I; j++) {
                     float xj = snap.x[j];
-                    Wx[n * I + j] -= lr * dpre[n] * xj;
-                    Wx[(H + n) * I + j] -= lr * dpre[H + n] * xj;
-                    Wx[(2 * H + n) * I + j] -= lr * dpre[2 * H + n] * xj;
-                    Wx[(3 * H + n) * I + j] -= lr * dpre[3 * H + n] * xj;
+                    Wx[n * I + j] = wd * Wx[n * I + j] - lr * dpre[n] * xj;
+                    Wx[(H + n) * I + j] = wd * Wx[(H + n) * I + j] - lr * dpre[H + n] * xj;
+                    Wx[(2 * H + n) * I + j] = wd * Wx[(2 * H + n) * I + j] - lr * dpre[2 * H + n] * xj;
+                    Wx[(3 * H + n) * I + j] = wd * Wx[(3 * H + n) * I + j] - lr * dpre[3 * H + n] * xj;
                 }
                 for (int j = 0; j < H; j++) {
                     float hj = snap.h_prev[j];
-                    Wh[n * H + j] -= lr * dpre[n] * hj;
-                    Wh[(H + n) * H + j] -= lr * dpre[H + n] * hj;
-                    Wh[(2 * H + n) * H + j] -= lr * dpre[2 * H + n] * hj;
-                    Wh[(3 * H + n) * H + j] -= lr * dpre[3 * H + n] * hj;
+                    Wh[n * H + j] = wd * Wh[n * H + j] - lr * dpre[n] * hj;
+                    Wh[(H + n) * H + j] = wd * Wh[(H + n) * H + j] - lr * dpre[H + n] * hj;
+                    Wh[(2 * H + n) * H + j] = wd * Wh[(2 * H + n) * H + j] - lr * dpre[2 * H + n] * hj;
+                    Wh[(3 * H + n) * H + j] = wd * Wh[(3 * H + n) * H + j] - lr * dpre[3 * H + n] * hj;
                 }
                 b[n] -= lr * dpre[n];
                 b[H + n] -= lr * dpre[H + n];

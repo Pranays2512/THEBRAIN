@@ -537,6 +537,39 @@ public:
         return predictor.train_lm_sequence(inputs, targets);
     }
 
+    // Offline evaluation: total negative log-likelihood (nats) and the number
+    // of scored tokens over `text`. Lets callers compute tokenizer-invariant
+    // metrics (bits/char, NLL/word) instead of per-token mean CE, which is not
+    // comparable across tokenizations. Does not update any weights.
+    std::pair<double, long> eval_text_nll(const std::string& text) {
+        std::istringstream iss(text);
+        std::string word;
+        std::vector<std::string> words;
+        while (iss >> word) words.push_back(word);
+
+        std::vector<std::vector<float>> inputs;
+        std::vector<int> targets;
+        for (size_t i = 0; i < words.size(); i++) {
+            if (!language.knows(words[i])) continue;
+            inputs.push_back(language.encode(words[i]));
+            int target_id = (i + 1 < words.size() && language.knows(words[i + 1]))
+                          ? language.word_id(words[i + 1]) : -1;
+            targets.push_back(target_id);
+        }
+        if (inputs.empty()) return {0.0, 0};
+
+        bool was_offline = predictor.is_offline();
+        predictor.set_offline(true);
+        std::vector<float> ce;
+        predictor.train_lm_sequence_per_token(inputs, targets, ce);
+        predictor.set_offline(was_offline);
+
+        double total = 0.0;
+        long n = 0;
+        for (float c : ce) if (c >= 0.f) { total += c; n++; }
+        return {total, n};
+    }
+
     // Fused LM training + cognitive perception in one pass per segment.
     // - Runs train_lm_sequence_per_token to get real per-position CE (one LSTM forward+backward)
     // - For each word feeds that real CE through the cognitive pipeline

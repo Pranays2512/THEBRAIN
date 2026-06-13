@@ -1,15 +1,18 @@
 {
-  "lm_eval_ce": 6.9826,
-  "lm_eval_ppl": 1077.7,
-  "train_words_per_sec": 809.0,
+  "tokenizer": "word",
+  "bits_per_char": 1.7355,
+  "nll_per_word": 6.1695,
+  "lm_eval_ppl_tok": 1039.0,
+  "oov_coverage": 0.0833,
+  "train_words_per_sec": 971.0,
   "fact_retrieval_acc": 1.0,
-  "peak_rss_mb": 154.0,
+  "peak_rss_mb": 199.0,
   "config": {
     "n_dims": 64,
-    "som": "128x128",
     "hidden_dim": 512,
     "n_words": 100000,
-    "vocab": 8815,
+    "token_vocab": 8515,
+    "bpe_merges": 0,
     "seed": 42
   }
 }

@@ -128,6 +128,15 @@ PYBIND11_MODULE(brain2, m) {
       .def_property("head_adam_lr_b",
                     [](const Predictor &p) { return p.head_.adam_lr_b_; },
                     [](Predictor &p, float v) { p.head_.adam_lr_b_ = v; })
+      .def_property("input_dropout",
+                    [](const Predictor &p) { return p.input_dropout_; },
+                    [](Predictor &p, float v) { p.input_dropout_ = v; })
+      .def_property("lstm_weight_decay",
+                    [](const Predictor &p) { return p.lstm1_.weight_decay; },
+                    [](Predictor &p, float v) {
+                        p.lstm1_.weight_decay = v;
+                        p.lstm2_.weight_decay = v;
+                    })
       .def_property_readonly("input_dim",
                              [](const Predictor &p) { return p.input_dim; })
       .def_property_readonly("hidden_dim",
@@ -564,6 +573,8 @@ PYBIND11_MODULE(brain2, m) {
       .def("train_lm_sequence_fused", &Brain::train_lm_sequence_fused,
            py::arg("text"),
            "Fused LM training + cognitive pass: one LSTM forward, real CE-based sigma-gating, single SOM scan")
+      .def("eval_text_nll", &Brain::eval_text_nll, py::arg("text"),
+           "Offline (total_nll_nats, n_tokens) over text; no weight updates")
       .def("perceive_text", [](Brain &b, const std::string& text, brain2::ErrorMode mode) { return b.perceive_text(text, mode); },
            py::arg("text"), py::arg("mode") = brain2::ErrorMode::FULL)
       .def("get_profiling_report", &Brain::get_profiling_report)
