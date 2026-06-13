@@ -707,12 +707,12 @@ PYBIND11_MODULE(brain2, m) {
           "binding_query",
           [](Brain &b, py::array_t<float, py::array::c_style> subj,
              py::array_t<float, py::array::c_style> rel, bool want_object,
-             float threshold) {
-            auto result = b.binding_query(to_vec(subj), to_vec(rel), want_object, threshold);
+             float threshold, int depth) {
+            auto result = b.binding.query(to_vec(subj), to_vec(rel), want_object, threshold, depth);
             return py::make_tuple(to_np(result.first), result.second);
           },
           py::arg("subj"), py::arg("rel"), py::arg("want_object") = true,
-          py::arg("threshold") = 0.5f)
+          py::arg("threshold") = 0.5f, py::arg("depth") = 3)
       .def(
           "analogy_op",
           [](Brain &b, py::array_t<float, py::array::c_style> a,
