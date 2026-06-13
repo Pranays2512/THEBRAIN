@@ -61,8 +61,23 @@ def nll(b, chunks):
     return tot / max(n, 1)
 
 
-def gen_corpus(rng, vocab_words, n_chunks, chunk_len):
-    return [" ".join(rng.choice(vocab_words, size=chunk_len)) for _ in range(n_chunks)]
+def make_markov(rng, words, fanout=3):
+    """Fixed transition table: each word -> a small set of successors. Gives the
+    corpus REAL learnable structure (so consolidation reinforces signal, not
+    noise). Random word streams have nothing to consolidate."""
+    return {w: list(rng.choice(words, size=fanout, replace=False)) for w in words}
+
+
+def gen_corpus(rng, words, mk, n_chunks, chunk_len):
+    out = []
+    for _ in range(n_chunks):
+        w = rng.choice(words)
+        seq = [w]
+        for _ in range(chunk_len - 1):
+            w = rng.choice(mk[w])
+            seq.append(w)
+        out.append(" ".join(seq))
+    return out
 
 
 # ── 1. dream consolidation ───────────────────────────────────────────────────
@@ -74,63 +89,72 @@ def test_dream(rng, dream_cycles=30):
     words = poolA + poolB
     vocab, emb = make_vocab(words, rng)
 
-    A_train = gen_corpus(rng, poolA, 40, 40)
-    A_eval = gen_corpus(rng, poolA, 10, 40)
-    B_train = gen_corpus(rng, poolB, 40, 40)
+    mkA = make_markov(rng, poolA)
+    mkB = make_markov(rng, poolB)
+    A_train = gen_corpus(rng, poolA, mkA, 120, 40)
+    A_eval = gen_corpus(rng, poolA, mkA, 12, 40)   # same chain as A_train -> learnable
+    B_train = gen_corpus(rng, poolB, mkB, 120, 40)
+    A_PASSES = 3   # learn A well enough that there is real structure to retain
+
+    B_eval = gen_corpus(rng, poolB, mkB, 12, 40)
+
+    def rehearse(b, mode):
+        # interleaved replay: rehearse buffered A sequences WHILE learning B.
+        # This is how experience replay actually fights forgetting (rehearsal),
+        # vs a pre-B "sleep" which B then overwrites.
+        if mode == "faithful":
+            b.dream_replay_faithful(4, 1)
+        elif mode == "generative":
+            b.dream_replay_generative(4, 24, 0.5, 5)
 
     results = {}
-    diag = {}
-    for label, do_dream in (("no_dream", False), ("dream", True)):
+    for label in ("no_dream", "faithful", "generative"):
         b = fresh_brain(vocab, emb)
-        for c in A_train:                      # learn A
-            b.reset_sequence()
-            b.train_lm_sequence_fused(c)
+        for _ in range(A_PASSES):              # learn A (multiple passes)
+            for c in A_train:
+                b.reset_sequence()
+                b.train_lm_sequence_fused(c)
         a_after_learn = nll(b, A_eval)
-        if do_dream:                           # sleep on A
-            ep_before = b.episodic.episode_count
-            nll_before = a_after_learn
-            for _ in range(dream_cycles):
-                b.dream(20, 15)
-            # diagnostics: did dreaming change the LM or the episodic store?
-            diag["episodes_before_dream"] = ep_before
-            diag["episodes_after_dream"] = b.episodic.episode_count
-            diag["A_nll_lm_change_from_dream"] = round(nll(b, A_eval) - nll_before, 5)
-        for c in B_train:                      # interfering learning
+        for i, c in enumerate(B_train):        # learn B, rehearsing A every 4th
             b.reset_sequence()
             b.train_lm_sequence_fused(c)
+            if label != "no_dream" and i % 4 == 0:
+                rehearse(b, label)
         a_after_interf = nll(b, A_eval)
-        results[label] = (a_after_learn, a_after_interf)
+        b_learned = nll(b, B_eval)             # confirm B still learned
+        results[label] = (a_after_learn, a_after_interf, b_learned)
 
-    return results, diag
+    return results
 
 
 def main():
     rng = np.random.default_rng(SEED)
     print("component validation — measure each part where it should act\n")
 
-    r, diag = test_dream(rng)
-    nl, ni = r["no_dream"]
-    dl, di = r["dream"]
-    print("1. DREAM CONSOLIDATION (learn A -> sleep? -> learn B -> retest A)")
-    print(f"   A loss after learning A:        no_dream {nl:.3f} | dream {dl:.3f}")
-    print(f"   A loss after B interference:    no_dream {ni:.3f} | dream {di:.3f}")
-    forget_no = ni - nl
-    forget_dr = di - dl
-    print(f"   forgetting (rise in A loss):    no_dream {forget_no:+.3f} | dream {forget_dr:+.3f}")
-    print("   wiring diagnostics:")
-    print(f"     LM change from dreaming:      {diag.get('A_nll_lm_change_from_dream')}  (≈0 => replay not training the predictor)")
-    print(f"     episodes before/after dream:  {diag.get('episodes_before_dream')} -> {diag.get('episodes_after_dream')}  (drop => consolidate() erasing, not strengthening)")
-    verdict = ("dreaming REDUCES forgetting" if forget_dr < forget_no - 1e-3
-               else "no measurable dream benefit — WIRING BUG, not a reason to cut")
-    print(f"   -> {verdict}\n")
+    r = test_dream(rng)
+    print("1. DREAM CONSOLIDATION  (learn A -> learn B while rehearsing A -> retest A)")
+    print(f"   {'mode':12s} {'A after learn':>13s} {'A after B':>10s} {'forgetting':>11s} {'B learned':>10s}")
+    summary = {}
+    forgets = {}
+    for label in ("no_dream", "faithful", "generative"):
+        learn, interf, bl = r[label]
+        forget = interf - learn
+        forgets[label] = forget
+        print(f"   {label:12s} {learn:13.3f} {interf:10.3f} {forget:+11.3f} {bl:10.3f}")
+        summary[label + "_forgetting"] = round(forget, 3)
 
-    print("summary:", {
-        "dream_forgetting_no": round(forget_no, 3),
-        "dream_forgetting_yes": round(forget_dr, 3),
-        "dream_helps": bool(forget_dr < forget_no - 1e-3),
-        "lm_change_from_dream": diag.get("A_nll_lm_change_from_dream"),
-        "episodes_after_dream": diag.get("episodes_after_dream"),
-    })
+    base = forgets["no_dream"]
+    best = min(("faithful", "generative"), key=lambda m: forgets[m])
+    print()
+    if forgets[best] < base - 1e-3:
+        pct = 100 * (base - forgets[best]) / base
+        print(f"   -> WINNER: {best} replay cuts forgetting {pct:.0f}% "
+              f"({base:+.3f} -> {forgets[best]:+.3f}), B still learned")
+        summary["winner"] = best
+    else:
+        print("   -> neither replay beats no-dream (investigate)")
+        summary["winner"] = "none"
+    print("\nsummary:", summary)
 
 
 if __name__ == "__main__":

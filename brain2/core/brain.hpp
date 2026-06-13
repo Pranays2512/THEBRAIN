@@ -117,6 +117,23 @@ public:
     std::unordered_map<std::string, double> profile_times_;
     std::vector<std::string> spoken_words;
 
+    // Replay buffer of recently-learned token sequences, for dream
+    // consolidation. Each entry is (token embeddings, next-token target ids) —
+    // exactly what the predictor trains on. Bounded ring; oldest evicted.
+    struct ReplaySeq {
+        std::vector<std::vector<float>> inputs;
+        std::vector<int> targets;
+    };
+    std::deque<ReplaySeq> replay_buffer_;
+    size_t replay_capacity_ = 300;
+
+    void push_replay(std::vector<std::vector<float>> inputs, std::vector<int> targets) {
+        if (inputs.empty()) return;
+        replay_buffer_.push_back({std::move(inputs), std::move(targets)});
+        while (replay_buffer_.size() > replay_capacity_) replay_buffer_.pop_front();
+    }
+    int replay_size() const { return (int)replay_buffer_.size(); }
+
     std::string get_profiling_report() const {
         std::string s = "--- Brain Profiling Report (microseconds) ---\n";
         for (const auto& [mod, time] : profile_times_) {
@@ -602,6 +619,9 @@ public:
         // LM training pass — gets per-token CE for real
         std::vector<float> ce_per_token;
         float mean_ce = predictor.train_lm_sequence_per_token(inputs, targets, ce_per_token);
+
+        // Buffer this sequence for dream-time replay consolidation.
+        push_replay(inputs, targets);
 
         // Cognitive pass — one SOM scan per word, σ-gated
         std::lock_guard<std::mutex> lock(*mtx_);
@@ -1215,6 +1235,78 @@ public:
         episodic.consolidate(0.85f);
 
         return frames;
+    }
+
+    // ── Dream consolidation via replay ──────────────────────────────────────
+    // FAITHFUL replay: re-train the predictor on a sample of the exact
+    // sequences it recently learned. This is experience replay — the standard
+    // defense against catastrophic forgetting. Returns mean replay CE.
+    float dream_replay_faithful(int n_samples = 16, int passes = 1) {
+        if (replay_buffer_.empty()) return 0.f;
+        std::mt19937 rng(step_ + 1234567u);
+        std::uniform_int_distribution<int> pick(0, (int)replay_buffer_.size() - 1);
+        float total = 0.f; int cnt = 0;
+        for (int p = 0; p < passes; p++) {
+            for (int s = 0; s < n_samples; s++) {
+                const auto& seq = replay_buffer_[pick(rng)];
+                predictor.reset();  // clean state per replayed sequence
+                total += predictor.train_lm_sequence(seq.inputs, seq.targets);
+                cnt++;
+            }
+        }
+        predictor.reset();
+        return cnt ? total / cnt : 0.f;
+    }
+
+    // GENERATIVE replay: prime the predictor with a buffered sequence's first
+    // token, let the model DREAM a continuation by sampling its own top-k
+    // predictions, then train on that self-generated sequence at reduced lr.
+    // More brain-like (REM-style novel recombination) and, unlike faithful
+    // replay, consolidates the model's learned *structure* rather than verbatim
+    // examples — at the risk of reinforcing its own drift. The A/B forgetting
+    // number decides which is better. Returns mean generated CE.
+    float dream_replay_generative(int n_samples = 16, int gen_len = 24,
+                                  float lr_scale = 0.5f, int top_k = 5) {
+        if (replay_buffer_.empty()) return 0.f;
+        std::mt19937 rng(step_ + 7654321u);
+        std::uniform_int_distribution<int> pick(0, (int)replay_buffer_.size() - 1);
+        float saved_lr = predictor.lr();
+        float total = 0.f; int cnt = 0;
+
+        for (int s = 0; s < n_samples; s++) {
+            const auto& seq = replay_buffer_[pick(rng)];
+            if (seq.inputs.empty()) continue;
+
+            // 1. Dream a sequence by sampling the model's own predictions.
+            std::vector<std::vector<float>> gen_in;
+            std::vector<int> gen_tgt;
+            predictor.set_offline(true);
+            predictor.reset();
+            std::vector<float> cur = seq.inputs[0];
+            for (int t = 0; t < gen_len; t++) {
+                auto ranked = predictor.step(cur);   // offline forward, top-K
+                if (ranked.empty()) break;
+                int kk = std::min((int)ranked.size(), top_k);
+                std::uniform_int_distribution<int> samp(0, kk - 1);
+                int wid = ranked[samp(rng)].second;  // sample among top-k
+                gen_in.push_back(cur);
+                gen_tgt.push_back(wid);
+                cur = predictor.get_embedding(wid);
+                if (cur.empty()) break;
+            }
+            predictor.set_offline(false);
+
+            // 2. Train on the dreamed sequence at reduced lr.
+            if (gen_in.size() > 1) {
+                predictor.reset();  // clean state per dreamed sequence
+                predictor.set_lr(saved_lr * lr_scale);
+                total += predictor.train_lm_sequence(gen_in, gen_tgt);
+                predictor.set_lr(saved_lr);
+                cnt++;
+            }
+        }
+        predictor.reset();
+        return cnt ? total / cnt : 0.f;
     }
 
     // Evaluate a goal state against imagination

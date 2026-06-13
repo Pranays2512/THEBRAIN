@@ -617,6 +617,14 @@ PYBIND11_MODULE(brain2, m) {
       .def("dream", &Brain::dream, py::arg("n_dreams") = 20,
            py::arg("steps_per_dream") = 15)
       .def("daydream", &Brain::daydream, "Run unsupervised predictive coding on imagination")
+      .def("dream_replay_faithful", &Brain::dream_replay_faithful,
+           py::arg("n_samples") = 16, py::arg("passes") = 1,
+           "Dream consolidation: replay recent learned sequences (experience replay)")
+      .def("dream_replay_generative", &Brain::dream_replay_generative,
+           py::arg("n_samples") = 16, py::arg("gen_len") = 24,
+           py::arg("lr_scale") = 0.5f, py::arg("top_k") = 5,
+           "Dream consolidation: train on self-generated dreamed sequences")
+      .def_property_readonly("replay_size", &Brain::replay_size)
       .def(
           "imagine_goal",
           [](Brain &b, py::array_t<float, py::array::c_style> start,
