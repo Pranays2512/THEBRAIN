@@ -1,0 +1,23 @@
+[
+  {
+    "epoch": 1,
+    "train_ce": 8.785,
+    "eval_bits_per_char": 1.72,
+    "eval_ppl_tok": 4609.0,
+    "epoch_sec": 1713.0
+  },
+  {
+    "epoch": 2,
+    "train_ce": 9.098,
+    "eval_bits_per_char": 1.7717,
+    "eval_ppl_tok": 5940.1,
+    "epoch_sec": 1732.0
+  },
+  {
+    "epoch": 3,
+    "train_ce": 9.2983,
+    "eval_bits_per_char": 1.8643,
+    "eval_ppl_tok": 9355.1,
+    "epoch_sec": 1670.0
+  }
+]
