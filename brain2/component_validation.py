@@ -46,6 +46,7 @@ def fresh_brain(vocab, emb):
         b.language.register_word(w, emb[w])
     b.language.freeze_vocabulary()
     b.set_active_vocab([b.language.word_id(w) for w in vocab])
+    b.auto_replay = False   # this test controls replay explicitly
     return b
 
 

@@ -125,6 +125,7 @@ def main():
 
     b = brain2.Brain(som_rows=SOM_ROWS, som_cols=SOM_COLS,
                      n_dims=N_DIMS, hidden_dim=HIDDEN_DIM, seed=SEED)
+    b.auto_replay = False   # clean single-corpus LM baseline (replay is for continual learning)
     register_token_vocab(b, tok_vocab, glove)
     b.language.freeze_vocabulary()
     b.set_active_vocab([b.language.word_id(t) for t in tok_vocab])

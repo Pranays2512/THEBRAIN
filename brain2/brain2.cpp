@@ -625,6 +625,15 @@ PYBIND11_MODULE(brain2, m) {
            py::arg("lr_scale") = 0.5f, py::arg("top_k") = 5,
            "Dream consolidation: train on self-generated dreamed sequences")
       .def_property_readonly("replay_size", &Brain::replay_size)
+      .def_property("auto_replay",
+                    [](const Brain &b) { return b.auto_replay_; },
+                    [](Brain &b, bool v) { b.auto_replay_ = v; })
+      .def_property("replay_interval",
+                    [](const Brain &b) { return b.replay_interval_; },
+                    [](Brain &b, int v) { b.replay_interval_ = v; })
+      .def_property("replay_samples",
+                    [](const Brain &b) { return b.replay_samples_; },
+                    [](Brain &b, int v) { b.replay_samples_ = v; })
       .def(
           "imagine_goal",
           [](Brain &b, py::array_t<float, py::array::c_style> start,
