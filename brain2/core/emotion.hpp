@@ -130,10 +130,14 @@ public:
         return arousal * (0.5f + 0.5f * std::abs(valence));
     }
 
+    // When false, lr_modulator returns the neutral 1.0 regardless of arousal —
+    // ablates emotion's salience-weighted learning so its effect is measurable.
+    bool modulation_enabled = true;
+
     // Learning rate modulator: aroused + surprised = learn more
     float lr_modulator() const noexcept {
         // Neutral state = 1.0x, max arousal = 2.0x
-        return 1.f + arousal;
+        return modulation_enabled ? (1.f + arousal) : 1.f;
     }
 
     // Attention threshold modulator: high arousal = more selective attention

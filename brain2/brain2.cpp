@@ -393,6 +393,9 @@ PYBIND11_MODULE(brain2, m) {
       .def("save", &Emotion::save)
       .def_static("load", [](const std::string &p) { return Emotion::load(p); })
       .def_property_readonly("salience", &Emotion::salience)
+      .def_property("modulation_enabled",
+                    [](const Emotion &e) { return e.modulation_enabled; },
+                    [](Emotion &e, bool v) { e.modulation_enabled = v; })
       .def_property_readonly("lr_modulator", &Emotion::lr_modulator)
       .def_property_readonly("attention_modulator",
                              &Emotion::attention_modulator)

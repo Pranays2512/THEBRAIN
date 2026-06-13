@@ -39,8 +39,8 @@ def make_vocab(words, rng):
     return vocab, emb
 
 
-def fresh_brain(vocab, emb):
-    b = brain2.Brain(som_rows=SOM, som_cols=SOM, n_dims=N_DIMS,
+def fresh_brain(vocab, emb, som_size=SOM):
+    b = brain2.Brain(som_rows=som_size, som_cols=som_size, n_dims=N_DIMS,
                      hidden_dim=HIDDEN, seed=SEED)
     for w in vocab:
         b.language.register_word(w, emb[w])
@@ -128,6 +128,57 @@ def test_dream(rng, dream_cycles=30):
     return results
 
 
+# ── 2. emotion: salience-weighted learning ───────────────────────────────────
+def som_qe(b, words, emb):
+    """Mean SOM quantization error: distance from each word's vector to its BMU
+    neuron. Lower = the SOM has imprinted a neuron onto that word."""
+    qe = []
+    for w in words:
+        v = emb[w]
+        bmu = b.som.find_bmu(v)
+        nw = np.asarray(b.som.neuron_weights(bmu), dtype=np.float32)
+        qe.append(float(np.linalg.norm(v - nw)))
+    return float(np.mean(qe))
+
+
+def test_emotion(n_seeds=5):
+    """Emotion scales the SOM learning rate by arousal (= surprise). Claim:
+    surprising/salient items get imprinted more strongly. Two EQUAL-frequency
+    word pools — 'pred' in a fixed predictable pattern (low surprise once
+    learned), 'rand' at random positions (always high surprise). Only the
+    surprise differs, so any QE gap that emotion opens is the salience effect.
+    SOM resource pressure (12x12=144 neurons, 300 words) makes imprinting
+    contested. The effect is weak/noisy, so average the differential over
+    seeds rather than trust one lucky run."""
+    rows = {False: [], True: []}
+    diffs = []
+    for seed in range(1, n_seeds + 1):
+        rng = np.random.default_rng(100 + seed)
+        pred = [f"p{i}" for i in range(150)]
+        rand = [f"r{i}" for i in range(150)]
+        words = pred + rand
+        vocab, emb = make_vocab(words, rng)
+        fixed = " ".join(rng.choice(pred, size=40))
+        corpus = [fixed if rng.random() < 0.5 else " ".join(rng.choice(rand, size=40))
+                  for _ in range(300)]
+        rng.shuffle(corpus)
+        qe = {}
+        for emo in (False, True):
+            b = fresh_brain(vocab, emb, som_size=12)
+            b.emotion.modulation_enabled = emo
+            for c in corpus:
+                b.reset_sequence()
+                b.train_lm_sequence_fused(c)
+            qe[emo] = (som_qe(b, pred, emb), som_qe(b, rand, emb))
+            rows[emo].append(qe[emo])
+        gain_pred = qe[False][0] - qe[True][0]
+        gain_rand = qe[False][1] - qe[True][1]
+        diffs.append(gain_rand - gain_pred)   # >0 => emotion favors surprising
+    mean = {e: (float(np.mean([r[0] for r in rows[e]])),
+                float(np.mean([r[1] for r in rows[e]]))) for e in (False, True)}
+    return mean, diffs
+
+
 def main():
     rng = np.random.default_rng(SEED)
     print("component validation — measure each part where it should act\n")
@@ -155,6 +206,32 @@ def main():
     else:
         print("   -> neither replay beats no-dream (investigate)")
         summary["winner"] = "none"
+    print()
+
+    mean, diffs = test_emotion()
+    qp_off, qr_off = mean[False]
+    qp_on, qr_on = mean[True]
+    mean_diff = sum(diffs) / len(diffs)
+    favoring = sum(1 for d in diffs if d > 0)
+    print("2. EMOTION = salience-weighted learning (SOM imprinting, lower QE better)")
+    print(f"   {'':14s} {'predictable':>12s} {'surprising':>12s}   (mean over {len(diffs)} seeds)")
+    print(f"   emotion OFF    {qp_off:12.3f} {qr_off:12.3f}")
+    print(f"   emotion ON     {qp_on:12.3f} {qr_on:12.3f}")
+    print(f"   surprising-favoring differential per seed: "
+          f"{[round(d, 3) for d in diffs]}")
+    print(f"   mean differential {mean_diff:+.4f}  ({favoring}/{len(diffs)} seeds favor surprising)")
+    if mean_diff > 0 and favoring > len(diffs) / 2:
+        print("   -> emotion DOES bias imprinting toward surprising items, but the")
+        print("      effect is WEAK (modulation is gentle: lr 1.5x->2.0x). Wired and")
+        print("      directionally correct; strengthen modulation if it should matter more.")
+        emo_verdict = "weak-directional"
+    else:
+        print("   -> no reliable emotion effect (investigate)")
+        emo_verdict = "none"
+    summary["emotion_mean_differential"] = round(mean_diff, 4)
+    summary["emotion_seeds_favoring"] = f"{favoring}/{len(diffs)}"
+    summary["emotion"] = emo_verdict
+
     print("\nsummary:", summary)
 
 
