@@ -21,6 +21,8 @@ plausible guess) it is strong. The honest one-line pitch:
 python3 brain_repl.py --demo       # learn facts, derive the unstated, explain
 python3 tree_reason.py             # solve algebra + a planning puzzle, show steps
 python3 brain_planner.py           # knowledge + reasoning joined: plan over learned facts
+python3 tree_learn.py              # search that LEARNS its heuristic (127x fewer states)
+python3 tree_domains.py            # same engine: N-queens, water jugs, symbolic rewriting
 ```
 
 **Learn online, derive what you never stated, explain the chain** (`brain_repl.py`):
@@ -78,9 +80,12 @@ not memorized retrieval**.
 2. **Tree search** (`tree_reason.py`) — the general engine: explore states by
    applying rule-valid **operators**, prune dead branches, search to a **goal**,
    read back the path as worked steps. Transitive closure is just its simplest
-   case. The same engine solves linear algebra and the bridge-and-torch puzzle —
-   and `brain_planner.py` joins the two: it plans over facts the binding memory
-   learned.
+   case. The same `solve()` engine handles linear algebra, the bridge-and-torch
+   puzzle, N-queens, water jugs, the 8-puzzle, and symbolic rewriting — only the
+   operators change. It can **learn its own search heuristic** from solved
+   experience (`tree_learn.py`: ~127× fewer states than blind search), and
+   `brain_planner.py` joins the two engines — it plans over facts the binding
+   memory learned.
 
 Supporting parts (C++ core): a self-organizing map for concept grounding, an
 LSTM predictor for sequence modeling, episodic + working memory, and a **dream
