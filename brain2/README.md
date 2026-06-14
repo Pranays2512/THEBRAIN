@@ -25,6 +25,7 @@ python3 tree_learn.py              # search that LEARNS its heuristic (127x fewe
 python3 tree_domains.py            # same engine: N-queens, water jugs, symbolic rewriting
 python3 program_synth.py           # WRITE code from examples, by search, verifiably
 python3 program_synth_guided.py    # synthesis that LEARNS which operators to try
+python3 program_synth_policy.py    # goal-conditioned policy guides each next op (3.8x)
 ```
 
 **Write a program from examples, by search** (`program_synth.py`) — it searches a
