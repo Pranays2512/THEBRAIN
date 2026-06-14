@@ -24,6 +24,7 @@ python3 brain_planner.py           # knowledge + reasoning joined: plan over lea
 python3 tree_learn.py              # search that LEARNS its heuristic (127x fewer states)
 python3 tree_domains.py            # same engine: N-queens, water jugs, symbolic rewriting
 python3 program_synth.py           # WRITE code from examples, by search, verifiably
+python3 program_synth_guided.py    # synthesis that LEARNS which operators to try
 ```
 
 **Write a program from examples, by search** (`program_synth.py`) — it searches a
