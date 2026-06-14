@@ -23,6 +23,16 @@ python3 tree_reason.py             # solve algebra + a planning puzzle, show ste
 python3 brain_planner.py           # knowledge + reasoning joined: plan over learned facts
 python3 tree_learn.py              # search that LEARNS its heuristic (127x fewer states)
 python3 tree_domains.py            # same engine: N-queens, water jugs, symbolic rewriting
+python3 program_synth.py           # WRITE code from examples, by search, verifiably
+```
+
+**Write a program from examples, by search** (`program_synth.py`) — it searches a
+DSL for a program that reproduces the examples, then generalizes to new inputs.
+Every program returned is correct on the spec *by construction*, not guessed:
+
+```
+"John Smith" -> "JOHN"     SYNTHESIZED:  upper -> first_word
+"bob dylan"  -> "BOB"      "alice cooper" -> "ALICE"   (generalizes; never shown)
 ```
 
 **Learn online, derive what you never stated, explain the chain** (`brain_repl.py`):
