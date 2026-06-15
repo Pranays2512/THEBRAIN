@@ -26,6 +26,7 @@ python3 tree_domains.py            # same engine: N-queens, water jugs, symbolic
 python3 program_synth.py           # WRITE code from examples, by search, verifiably
 python3 program_synth_guided.py    # synthesis that LEARNS which operators to try
 python3 program_synth_policy.py    # goal-conditioned policy guides each next op (3.8x)
+python3 program_synth_tree.py      # the policy as a decision tree (5.4x, interpretable)
 ```
 
 **Write a program from examples, by search** (`program_synth.py`) — it searches a
