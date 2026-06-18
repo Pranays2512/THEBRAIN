@@ -11,7 +11,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | 2 | **Reasoning** ✅ HARDENED | composition rules across relations, explained | `reasoning_engine.py`, `tests/test_reasoning_engine.py` | parent∘parent→grandparent + nested rules; 12 tests green |
 | 3 | **General search** ✅ HARDENED | branch / prune / search to a goal over rules | `tree_reason.py`, `tests/test_search_engine.py` | optimal + deterministic; algebra, bridge=17, N-queens, jugs, rewrite; 16 tests |
 | 4 | **Knowledge + search joined** ✅ HARDENED | plan over the facts it learned | `planning_engine.py`, `tests/test_planning_engine.py` | multi-precondition planning, optimal, online replan; 12 tests |
-| 5 | **Learned search guidance** | learns to search more efficiently from experience | `tree_learn.py`, `program_synth_*` | heuristic 127× fewer states; synthesis policy 3.8×; tree policy 5.4× |
+| 5 | **Learned search guidance** ✅ HARDENED | learns to search more efficiently from experience | `learned_guidance.py`, `tests/test_learned_guidance.py` | LearnedHeuristic ~100× fewer states, solutions stay valid; 9 tests |
 | 6 | **Verifiable program synthesis** | write code from examples, correct by construction | `program_synth.py` | synthesizes + generalizes; honest failure outside the DSL |
 | 7 | **Consolidation (dreaming)** | replay fights catastrophic forgetting, automatic | `component_validation.py` | −84% forgetting (interleaved faithful replay) |
 | 8 | **Dual cognition** ← **CURRENT CHECKPOINT** | reflex (System 1) + deliberation (System 2), with compilation | `dual_process.py` | recurring workload 602 µs → 15 µs (~41×); deliberation compiles into reflex |
@@ -49,7 +49,14 @@ clean, validated, persistent module before the next is promoted.
   plans, online replan when actions are added, distractor-robust, validated,
   persisted, explained. 12 tests. (This is why bottom-up order matters — it
   reuses already-proven layers.)
-- **#5 and up** — still prototype-grade; promote next, gate-guarded.
+- **#5 Learned search guidance** ✅ — `learned_guidance.py`: a reusable
+  `LearnedHeuristic` (domain-agnostic, fit by least squares over state features
+  from solved instances) that guides the hardened search engine. Tests pin the
+  two properties that matter — guided solutions stay VALID, and search expands
+  ~100× fewer states than blind — plus determinism, persistence, validation.
+  9 tests. (The synthesis policies — guided/policy/tree — remain validated by
+  `validate.py --full`.)
+- **#6 and up** — still prototype-grade; promote next, gate-guarded.
 
 ## Workflow
 
