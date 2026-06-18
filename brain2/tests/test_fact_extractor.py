@@ -37,6 +37,10 @@ def run():
     check("'Apple is red' -> is",
           fe.extract("Apple is red.") == [("apple", "is", "red")])
 
+    # 2b. "X is the R of Y" relational pattern
+    check("'Tom is the parent of Sam' -> parent",
+          fe.extract("Tom is the parent of Sam.") == [("tom", "parent", "sam")])
+
     # 3. has / prepositional-verb relations
     check("'A dog has a tail' -> has",
           fe.extract("A dog has a tail.") == [("dog", "has", "tail")])

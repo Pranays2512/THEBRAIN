@@ -32,8 +32,10 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 ARTICLES = {"a", "an", "the"}
 PRONOUNS = {"it", "they", "he", "she", "this", "that"}
 
-# (regex, relation, subj_group, obj_group). Order matters: specific first.
+# (regex, relation). Order matters: specific first. "%MID%" means the relation
+# is the MIDDLE captured group ("X is the parent of Y" -> (X, parent, Y)).
 PATTERNS = [
+    (r"^(\w+) is (?:the |a |an )?(\w+) of (\w+)$", "%MID%"),
     (r"^(\w+) is an? (\w+)$", "isa"),
     (r"^(\w+) are an? (\w+)$", "isa"),
     (r"^(\w+) (?:is|are) (\w+)$", "is"),
@@ -93,7 +95,9 @@ class FactExtractor:
             m = re.match(pat, joined)
             if not m:
                 continue
-            if rel is None:                      # generic: relation is the verb
+            if rel == "%MID%":                   # "X is the R of Y" -> (X, R, Y)
+                subj, rel, obj = m.group(1), _norm(m.group(2)), m.group(3)
+            elif rel is None:                    # generic: relation is the verb
                 subj, verb, obj = m.group(1), m.group(2), m.group(3)
                 if verb in ARTICLES or obj in ARTICLES:
                     continue

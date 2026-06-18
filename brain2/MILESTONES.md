@@ -143,7 +143,25 @@ So the brain can now learn by being FED TEXT, not only hand-typed facts — the
 fuel for a real use. 12 tests (each relation type, coreference, topic switch,
 read->learn->answer round-trip, validation). Pluggable: an LLM extractor for
 messy/open text implements the same `extract()` interface and drops in (offline,
-heavier) without changing anything downstream. Gate: 20/20.
+heavier) without changing anything downstream.
+
+## The payoff lap — a verifiable expert it LEARNED BY READING
+
+`domain_demo.py` runs the whole stack on a real (small) domain end to end: it
+READS a family tree from plain text, is given two inheritance rules, and answers
+multi-hop questions it was never told — with the derivation shown:
+
+```
+read:  "Tom is the parent of Sam. Sam is the parent of Kim. Kim is the parent of Ada."  ...
+ask:   who is Tom's great-grandparent?
+   ->  Ada
+   because: tom parent sam AND sam grandparent ada => tom great_grandparent ada  [rule]
+ask:   is Tom the parent of Ada?      -> no (Tom is Ada's great-grandparent)
+ask:   who is Zara's grandparent?     -> I don't know anyone named Zara
+```
+
+text -> fact_extractor -> reasoning (facts + rules) -> answers + WHY, honest about
+unknowns. The demonstration that everything built does something. Gate: 21/21.
 
 ## Workflow
 

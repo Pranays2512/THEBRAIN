@@ -48,6 +48,8 @@ CORE = [
      [r"Conversation loop: READY"]),
     ("learn-by-reading (NEW)", "tests/test_fact_extractor.py",
      [r"Fact extractor: READY"]),
+    ("domain demo (read->reason->why)", "domain_demo.py",
+     [r"great_grandparent ada", r"don.t know anyone named Zara"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
