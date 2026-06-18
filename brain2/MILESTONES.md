@@ -10,7 +10,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | 1 | **Knowledge** ✅ HARDENED | learn facts online, retrieve them | `knowledge_engine.py`, `tests/test_knowledge_engine.py` | one-shot retrieval 1.0; 17 hardening tests green |
 | 2 | **Reasoning** ✅ HARDENED | composition rules across relations, explained | `reasoning_engine.py`, `tests/test_reasoning_engine.py` | parent∘parent→grandparent + nested rules; 12 tests green |
 | 3 | **General search** ✅ HARDENED | branch / prune / search to a goal over rules | `tree_reason.py`, `tests/test_search_engine.py` | optimal + deterministic; algebra, bridge=17, N-queens, jugs, rewrite; 16 tests |
-| 4 | **Knowledge + search joined** | plan over the facts it learned | `brain_planner.py` | multi-precondition planning (forge needs iron AND wood) |
+| 4 | **Knowledge + search joined** ✅ HARDENED | plan over the facts it learned | `planning_engine.py`, `tests/test_planning_engine.py` | multi-precondition planning, optimal, online replan; 12 tests |
 | 5 | **Learned search guidance** | learns to search more efficiently from experience | `tree_learn.py`, `program_synth_*` | heuristic 127× fewer states; synthesis policy 3.8×; tree policy 5.4× |
 | 6 | **Verifiable program synthesis** | write code from examples, correct by construction | `program_synth.py` | synthesizes + generalizes; honest failure outside the DSL |
 | 7 | **Consolidation (dreaming)** | replay fights catastrophic forgetting, automatic | `component_validation.py` | −84% forgetting (interleaved faithful replay) |
@@ -43,7 +43,13 @@ clean, validated, persistent module before the next is promoted.
   cycle-terminating), input validation (rejects negative costs, bad max_nodes,
   malformed problems), clean no-solution / node-cap handling, ergonomic
   `search()` -> SearchResult. 16 tests across all domains.
-- **#4 and up** — still prototype-grade; promote next, gate-guarded.
+- **#4 Knowledge + search joined** ✅ — `planning_engine.py`: the first layer
+  built on TWO hardened layers (KnowledgeEngine stores actions as facts; the
+  hardened search plans over them). Multi-precondition planning, optimal/minimal
+  plans, online replan when actions are added, distractor-robust, validated,
+  persisted, explained. 12 tests. (This is why bottom-up order matters — it
+  reuses already-proven layers.)
+- **#5 and up** — still prototype-grade; promote next, gate-guarded.
 
 ## Workflow
 
