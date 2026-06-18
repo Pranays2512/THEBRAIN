@@ -43,7 +43,8 @@ logs/
 .DS_Store
 .AppleDouble
 .LSOverride
-
+.claude
+.remember
 # IDE
 .vscode/
 .idea/
