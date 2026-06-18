@@ -99,7 +99,32 @@ a slow dict; emotion was a weak learning-rate dial). These give them real jobs:
   wall. 12 tests.
 
 These are the input (appraisal) and memory (semantic) pieces of the
-understand -> reason -> produce loop. Gate: 18/18.
+understand -> reason -> produce loop.
+
+## 🔑 CAPSTONE — the understand -> reason -> produce loop
+
+`conversation_engine.py` closes the loop, wiring the whole stack into controlled
+conversation, fully symbolic and explainable:
+
+- **understand** — AppraisalEngine (utterance type/tone) + intent recognition +
+  working-memory context (resolves "it"/"that" to the current topic)
+- **reason** — ReasoningEngine (facts, rules, transitive) — the hardened core
+- **produce** — grammar-based verbalization of retrieved relations (article
+  a/an, is/are agreement, pronoun for follow-ups) — GENERATED, not matched
+
+```
+teach: apple isa fruit / color red / grows_on tree / has seeds
+> what is apple?   ->  An apple is a fruit. It is red. It grows on a tree. It has seeds.
+> is it red?       ->  Yes, apple is red.        ("it" -> apple, from working memory)
+> is it blue?      ->  Not that I know of.
+> what is banana?  ->  I don't know anything about banana.
+```
+
+11 tests (greeting routing, multi-relation describe with article+pronoun,
+confirm yes/no, coreference, honest unknown, topic switching, transitive). Every
+word out is derived from a stored relation through a grammar rule — production,
+not pattern-matching. Honest scope: controlled conversation; open-domain
+comprehension remains the wall (needs an LLM). Gate: 19/19.
 
 ## Workflow
 
