@@ -8,7 +8,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | # | milestone | what it is | validated by | result |
 |---|-----------|------------|--------------|--------|
 | 1 | **Knowledge** ✅ HARDENED | learn facts online, retrieve them | `knowledge_engine.py`, `tests/test_knowledge_engine.py` | one-shot retrieval 1.0; 17 hardening tests green |
-| 2 | **Reasoning** | transitive / compositional inference, explained | `reasoning_suite.py` | 1.0 to 5 hops; noise-robust 0.67 @ σ=0.5; composition 1.0 |
+| 2 | **Reasoning** ✅ HARDENED | composition rules across relations, explained | `reasoning_engine.py`, `tests/test_reasoning_engine.py` | parent∘parent→grandparent + nested rules; 12 tests green |
 | 3 | **General search** | branch / prune / search to a goal over rules | `tree_reason.py`, `tree_domains.py` | algebra, bridge puzzle, N-queens, water jugs, rewriting — all solved |
 | 4 | **Knowledge + search joined** | plan over the facts it learned | `brain_planner.py` | multi-precondition planning (forge needs iron AND wood) |
 | 5 | **Learned search guidance** | learns to search more efficiently from experience | `tree_learn.py`, `program_synth_*` | heuristic 127× fewer states; synthesis policy 3.8×; tree policy 5.4× |
@@ -33,7 +33,12 @@ clean, validated, persistent module before the next is promoted.
   robustness, JSON persistence, 17 tests. (Hardening caught and fixed a real
   bug: a strong relation match could compensate for an absent subject, giving
   dead-end false positives — fixed with a stricter confidence threshold.)
-- **#2 and up** — still prototype-grade; promote next, gate-guarded.
+- **#2 Reasoning** ✅ — `reasoning_engine.py`: composition rules across
+  different relations (`X parent Y & Y parent Z => X grandparent Z`), backward
+  chaining, nested rules, transitive relations, cycle-safe, explained, persisted.
+  12 tests. Builds on the hardened KnowledgeEngine — the rule layer above
+  fact retrieval.
+- **#3 and up** — still prototype-grade; promote next, gate-guarded.
 
 ## Workflow
 
