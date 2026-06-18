@@ -34,6 +34,8 @@ CORE = [
      [r"Planning layer: READY"]),
     ("learned guidance (HARDENED)", "tests/test_learned_guidance.py",
      [r"Learned guidance: READY"]),
+    ("synthesis engine (HARDENED)", "tests/test_synthesis_engine.py",
+     [r"Synthesis engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

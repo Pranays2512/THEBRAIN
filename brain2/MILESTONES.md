@@ -12,7 +12,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | 3 | **General search** ✅ HARDENED | branch / prune / search to a goal over rules | `tree_reason.py`, `tests/test_search_engine.py` | optimal + deterministic; algebra, bridge=17, N-queens, jugs, rewrite; 16 tests |
 | 4 | **Knowledge + search joined** ✅ HARDENED | plan over the facts it learned | `planning_engine.py`, `tests/test_planning_engine.py` | multi-precondition planning, optimal, online replan; 12 tests |
 | 5 | **Learned search guidance** ✅ HARDENED | learns to search more efficiently from experience | `learned_guidance.py`, `tests/test_learned_guidance.py` | LearnedHeuristic ~100× fewer states, solutions stay valid; 9 tests |
-| 6 | **Verifiable program synthesis** | write code from examples, correct by construction | `program_synth.py` | synthesizes + generalizes; honest failure outside the DSL |
+| 6 | **Verifiable program synthesis** ✅ HARDENED | write code from examples, correct by construction | `synthesis_engine.py`, `tests/test_synthesis_engine.py` | verified on spec, generalizes, shortest program, honest failure; 13 tests |
 | 7 | **Consolidation (dreaming)** | replay fights catastrophic forgetting, automatic | `component_validation.py` | −84% forgetting (interleaved faithful replay) |
 | 8 | **Dual cognition** ← **CURRENT CHECKPOINT** | reflex (System 1) + deliberation (System 2), with compilation | `dual_process.py` | recurring workload 602 µs → 15 µs (~41×); deliberation compiles into reflex |
 
@@ -56,7 +56,12 @@ clean, validated, persistent module before the next is promoted.
   ~100× fewer states than blind — plus determinism, persistence, validation.
   9 tests. (The synthesis policies — guided/policy/tree — remain validated by
   `validate.py --full`.)
-- **#6 and up** — still prototype-grade; promote next, gate-guarded.
+- **#6 Verifiable program synthesis** ✅ — `synthesis_engine.py`: clean
+  `SynthesisEngine` on the hardened search. Examples in -> shortest program that
+  reproduces them all (correct BY CONSTRUCTION), generalizes to unseen inputs,
+  fails honestly outside the DSL. Tests pin verification-on-spec, generalization,
+  shortest-program, determinism, and validation. 13 tests.
+- **#7 and up** — still prototype-grade; promote next, gate-guarded.
 
 ## Workflow
 
