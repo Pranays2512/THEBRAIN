@@ -76,8 +76,30 @@ clean, validated, persistent module before the next is promoted.
 ### ✅ ALL 8 LAYERS HARDENED — the full hierarchy is production-validated.
 
 Every capability is now a clean, tested module built on the hardened layer below
-it, all green under `validate.py` (16/16). ~90 hardening tests; each rung a
-reversible git tag (`hardened-knowledge` … `hardened-dual-cognition`).
+it, all green under `validate.py`. ~90 hardening tests; each rung a reversible
+git tag (`hardened-knowledge` … `hardened-dual-cognition`).
+
+## Enhancements — making dormant components load-bearing
+
+Two components were measured as barely-helping (the binding memory was acting as
+a slow dict; emotion was a weak learning-rate dial). These give them real jobs:
+
+- **Semantic memory** (`semantic_memory.py`) — the binding memory with REAL
+  embeddings (GloVe), so it does what a dict cannot: GENERALIZE via meaning.
+  Learn a fact about "automobile", answer a query about "car" — never stored —
+  because they mean nearly the same. Unrelated words correctly don't match
+  (genuine similarity, not match-everything). 11 tests. Honest limit: only as
+  good as the embeddings (GloVe-50 nails strong synonyms, noisy on subtle pairs).
+- **Appraisal / redesigned emotion** (`appraisal_engine.py`) — grades input
+  along pragmatic/affect dimensions from markers (surprise-weighted, so constant
+  function words barely count), recognizing utterance TYPE (question / greeting /
+  command) and tone (curious / friendly) from FORM before meaning. This is
+  emotion's real job — a fast appraisal of the input — not the weak modulator it
+  was. The tractable front of "understanding"; it does not break the meaning
+  wall. 12 tests.
+
+These are the input (appraisal) and memory (semantic) pieces of the
+understand -> reason -> produce loop. Gate: 18/18.
 
 ## Workflow
 
