@@ -28,6 +28,8 @@ CORE = [
      [r"Knowledge layer: READY"]),
     ("reasoning engine (HARDENED)", "tests/test_reasoning_engine.py",
      [r"Reasoning layer: READY"]),
+    ("search engine (HARDENED)", "tests/test_search_engine.py",
+     [r"Search engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

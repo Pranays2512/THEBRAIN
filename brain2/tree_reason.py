@@ -36,9 +36,27 @@ class SearchProblem:
     def key(self, state): return state                     # hashable canonical form
 
 
+from collections import namedtuple
+
+SearchResult = namedtuple("SearchResult", "solved path cost nodes")
+
+
 def solve(problem, max_nodes=500_000):
-    """Best-first (A*) search. Returns (path, total_cost, nodes_expanded).
-    path is a list of (operator_label, resulting_state)."""
+    """Best-first (A*) search. Returns (path, total_cost, nodes_expanded);
+    (None, None, nodes) if no solution within max_nodes.
+
+    Guarantees: with non-negative step costs and an admissible heuristic
+    (heuristic never over-estimates true cost-to-goal; the default 0 is always
+    admissible), the returned path is OPTIMAL. Tie-breaking is deterministic, so
+    the same problem always yields the same result. Visited states are kept at
+    their best known cost, so cycles terminate.
+    """
+    if not isinstance(max_nodes, int) or max_nodes < 1:
+        raise ValueError("max_nodes must be a positive integer")
+    for m in ("initial", "moves", "is_goal", "heuristic", "key"):
+        if not callable(getattr(problem, m, None)):
+            raise TypeError(f"problem is missing required method: {m}()")
+
     start = problem.initial()
     tie = itertools.count()
     frontier = [(problem.heuristic(start), 0, next(tie), start, [])]
@@ -50,6 +68,8 @@ def solve(problem, max_nodes=500_000):
             return path, g, expanded
         expanded += 1
         for label, nxt, cost in problem.moves(state):
+            if cost < 0:
+                raise ValueError(f"negative step cost {cost} breaks A* optimality")
             ng = g + cost
             k = problem.key(nxt)
             if k in best and best[k] <= ng:
@@ -59,6 +79,12 @@ def solve(problem, max_nodes=500_000):
                            (ng + problem.heuristic(nxt), ng, next(tie), nxt,
                             path + [(label, nxt)]))
     return None, None, expanded
+
+
+def search(problem, max_nodes=500_000):
+    """Ergonomic wrapper: returns a SearchResult(solved, path, cost, nodes)."""
+    path, cost, nodes = solve(problem, max_nodes)
+    return SearchResult(path is not None, path or [], cost, nodes)
 
 
 # ── domain 1: linear equations ───────────────────────────────────────────────
