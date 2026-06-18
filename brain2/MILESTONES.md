@@ -7,7 +7,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 
 | # | milestone | what it is | validated by | result |
 |---|-----------|------------|--------------|--------|
-| 1 | **Knowledge** | learn facts online, retrieve them | `reasoning_suite.py`, `brain_repl.py` | one-shot retrieval 1.0 |
+| 1 | **Knowledge** ✅ HARDENED | learn facts online, retrieve them | `knowledge_engine.py`, `tests/test_knowledge_engine.py` | one-shot retrieval 1.0; 17 hardening tests green |
 | 2 | **Reasoning** | transitive / compositional inference, explained | `reasoning_suite.py` | 1.0 to 5 hops; noise-robust 0.67 @ σ=0.5; composition 1.0 |
 | 3 | **General search** | branch / prune / search to a goal over rules | `tree_reason.py`, `tree_domains.py` | algebra, bridge puzzle, N-queens, water jugs, rewriting — all solved |
 | 4 | **Knowledge + search joined** | plan over the facts it learned | `brain_planner.py` | multi-precondition planning (forge needs iron AND wood) |
@@ -21,6 +21,19 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 - Operators are defined per domain — it masters rules you give it, doesn't invent them.
 - It reasons over knowledge; it doesn't originate knowledge from raw perception.
 - Language is a capacity-bound interface, not a strength.
+
+## Hardening status (bottom-up)
+
+Capabilities are hardened from the bottom of the hierarchy up — each becomes a
+clean, validated, persistent module before the next is promoted.
+
+- **Infra** ✅ — `validate.py` gate + this checkpoint record.
+- **#1 Knowledge** ✅ — `knowledge_engine.py`: clean API (`learn`/`ask`/`derive`/
+  `explain`/`knows`), input validation, idempotency, cycle handling, distractor
+  robustness, JSON persistence, 17 tests. (Hardening caught and fixed a real
+  bug: a strong relation match could compensate for an absent subject, giving
+  dead-end false positives — fixed with a stricter confidence threshold.)
+- **#2 and up** — still prototype-grade; promote next, gate-guarded.
 
 ## Workflow
 

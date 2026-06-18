@@ -24,6 +24,8 @@ PY = sys.executable
 
 # (name, script, [regex asserts on output]); empty asserts => just must run clean
 CORE = [
+    ("knowledge engine (HARDENED)", "tests/test_knowledge_engine.py",
+     [r"Knowledge layer: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
