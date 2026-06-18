@@ -44,7 +44,7 @@ NON_ENTITY = {
 # relation -> sentence template (controlled vocabulary)
 TEMPLATES = {
     "isa":      "is {art} {obj}",
-    "is":       "is {art} {obj}",
+    "is":       "is {obj}",            # adjective/property: "is red" (no article)
     "color":    "is {obj}",
     "grows_on": "grows on {art} {obj}",
     "has":      "has {obj}",

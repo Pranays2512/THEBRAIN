@@ -124,7 +124,26 @@ teach: apple isa fruit / color red / grows_on tree / has seeds
 confirm yes/no, coreference, honest unknown, topic switching, transitive). Every
 word out is derived from a stored relation through a grammar rule — production,
 not pattern-matching. Honest scope: controlled conversation; open-domain
-comprehension remains the wall (needs an LLM). Gate: 19/19.
+comprehension remains the wall (needs an LLM).
+
+## Learn by READING — the inverse of production
+
+`fact_extractor.py` closes the read/write loop: the conversation engine turns
+facts into sentences; this turns sentences back into facts. For controlled text
+it parses (subject, relation, object) triples with grammar patterns — no LLM —
+and resolves "it"/"they" to the running subject across sentences.
+
+```
+read:  "An apple is a fruit. It is red. It grows on a tree."
+   ->  (apple, isa, fruit), (apple, is, red), (apple, grows_on, tree)
+then:  "what is apple?"  ->  "An apple is a fruit. It is red. It grows on a tree."
+```
+
+So the brain can now learn by being FED TEXT, not only hand-typed facts — the
+fuel for a real use. 12 tests (each relation type, coreference, topic switch,
+read->learn->answer round-trip, validation). Pluggable: an LLM extractor for
+messy/open text implements the same `extract()` interface and drops in (offline,
+heavier) without changing anything downstream. Gate: 20/20.
 
 ## Workflow
 

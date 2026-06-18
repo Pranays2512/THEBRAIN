@@ -46,6 +46,8 @@ CORE = [
      [r"Appraisal engine: READY"]),
     ("conversation loop (CAPSTONE)", "tests/test_conversation_engine.py",
      [r"Conversation loop: READY"]),
+    ("learn-by-reading (NEW)", "tests/test_fact_extractor.py",
+     [r"Fact extractor: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
