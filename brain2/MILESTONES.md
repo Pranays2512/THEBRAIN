@@ -14,7 +14,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | 5 | **Learned search guidance** ✅ HARDENED | learns to search more efficiently from experience | `learned_guidance.py`, `tests/test_learned_guidance.py` | LearnedHeuristic ~100× fewer states, solutions stay valid; 9 tests |
 | 6 | **Verifiable program synthesis** ✅ HARDENED | write code from examples, correct by construction | `synthesis_engine.py`, `tests/test_synthesis_engine.py` | verified on spec, generalizes, shortest program, honest failure; 13 tests |
 | 7 | **Consolidation (dreaming)** ✅ HARDENED | replay fights catastrophic forgetting, automatic | `tests/test_consolidation.py` | auto-replay cuts A forgetting 1.99→0.54 (~73%), new task kept; 4 tests |
-| 8 | **Dual cognition** ← **CURRENT CHECKPOINT** | reflex (System 1) + deliberation (System 2), with compilation | `dual_process.py` | recurring workload 602 µs → 15 µs (~41×); deliberation compiles into reflex |
+| 8 | **Dual cognition** ✅ HARDENED | reflex (System 1) + deliberation (System 2), with compilation | `dual_process_engine.py`, `tests/test_dual_process.py` | every tier correct; deliberation compiles into instant memory; 7 tests |
 
 ## Honest boundary (true at every milestone above)
 
@@ -67,7 +67,17 @@ clean, validated, persistent module before the next is promoted.
   catastrophic forgetting of an earlier task by ~73% (learn A -> learn B ->
   retest A) WITHOUT sacrificing the new task, and the replay knobs are honored.
   4 tests.
-- **#8 Dual cognition** — last rung; promote next, gate-guarded.
+- **#8 Dual cognition** ✅ — `dual_process_engine.py`: `DualProcessSolver` with
+  three tiers (compiled memory -> policy reflex -> deliberation), composing the
+  learned tree policy (reflex) and the hardened search (deliberation). Every
+  tier's answer is correct on the spec; deliberated solutions compile into
+  instant memory on recurrence. 7 tests.
+
+### ✅ ALL 8 LAYERS HARDENED — the full hierarchy is production-validated.
+
+Every capability is now a clean, tested module built on the hardened layer below
+it, all green under `validate.py` (16/16). ~90 hardening tests; each rung a
+reversible git tag (`hardened-knowledge` … `hardened-dual-cognition`).
 
 ## Workflow
 

@@ -38,6 +38,8 @@ CORE = [
      [r"Synthesis engine: READY"]),
     ("consolidation (HARDENED)", "tests/test_consolidation.py",
      [r"Consolidation: READY"]),
+    ("dual cognition (HARDENED)", "tests/test_dual_process.py",
+     [r"Dual cognition: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
@@ -53,7 +55,7 @@ CORE = [
     ("dual cognition", "dual_process.py",
      [r"faster once practiced|dual-process"]),
     ("unit tests", "tests/run_all.py",
-     [r"1[2-9] passed"]),
+     [r"\d\d passed"]),
 ]
 
 FULL = [
