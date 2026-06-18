@@ -161,7 +161,28 @@ ask:   who is Zara's grandparent?     -> I don't know anyone named Zara
 ```
 
 text -> fact_extractor -> reasoning (facts + rules) -> answers + WHY, honest about
-unknowns. The demonstration that everything built does something. Gate: 21/21.
+unknowns. The demonstration that everything built does something.
+
+### Basic world knowledge — ConceptNet
+
+`world_knowledge.py` + `world_demo.py` point the brain at real common-sense
+knowledge: a curated English subset of ConceptNet 5.7 (~1500 high-weight
+assertions about everyday concepts). The brain answers everyday questions over
+it, deriving category membership through the FULL IsA taxonomy (multi-parent
+closure) with the chain shown:
+
+```
+a dog can: bark, bite, chase ball     a car is: machine, vehicle
+is a dog an animal?  -> yes   because: dog -> pet -> animal   (multi-hop, derived)
+is a dog a vehicle?  -> not that I can derive
+can a fish fly?      -> no (a fish can swim)
+what is a zorblax?   -> I have never heard of a zorblax
+```
+
+Honest finding it surfaced: ConceptNet concepts have many parents, so membership
+needs real transitive CLOSURE over the fact graph, not the binding memory's
+single-chain derive — the demo reasons over the brain's fact graph. This is the
+"feed it curated, trusted knowledge" path (not crawl-the-web). Gate: 22/22.
 
 ## Workflow
 
