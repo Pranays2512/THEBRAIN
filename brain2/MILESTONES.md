@@ -294,6 +294,25 @@ Honest scope: the slot extraction is still controlled grammar — the comprehens
 wall is unmoved — but the structure (plan -> stack -> compose) is real and
 generalizes every earlier ad-hoc intent into one mechanism. 11 tests.
 
+## Math reasoning — symbolic differentiation (policies COMPOSE)
+
+`calculus_engine.py` is the concrete answer to "can the brain switch between
+policies?" Each differentiation rule (power, product, quotient, chain, trig, exp,
+log) is a policy; one expression forces several to compose, and the engine
+applies exactly the ones the expression demands, reporting which fired:
+
+```
+d/dx [ sin(x^2) ]      = cos(x^2)*(2*x)   policies: sin rule, power rule, chain rule
+d/dx [ x^2 * sin(x) ]  = (2*x)*sin(x) + x^2*cos(x)   policies: product, power, sin
+```
+
+Differentiation is mechanical and complete, so the derivative is correct BY
+CONSTRUCTION — and the tests also verify each one NUMERICALLY against a finite
+difference, not just by shape. 6 tests. Honest scope: differentiation is the
+deterministic case (rules compose one way); integration / theorem rediscovery is
+the SEARCH case (rules apply many ways, complete but exponential) — a later build
+on the existing search engine, guided by the learned heuristic.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

@@ -61,6 +61,8 @@ CORE = [
      [r"7 apples. \(10 - 3 = 7\)", r"9 marbles"]),
     ("query planner (decompose+compose)", "tests/test_query_planner.py",
      [r"Query planner: READY"]),
+    ("calculus (differentiation)", "tests/test_calculus_engine.py",
+     [r"Calculus engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
