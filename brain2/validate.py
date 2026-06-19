@@ -81,6 +81,8 @@ CORE = [
      [r"Inductive engine: READY"]),
     ("curiosity loop (idle learning)", "tests/test_curiosity_loop.py",
      [r"Curiosity loop: READY"]),
+    ("analogy (structure mapping)", "tests/test_analogy_engine.py",
+     [r"Analogy engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

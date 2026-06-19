@@ -470,6 +470,26 @@ remain. The prediction table keeps the IMMEDIATE successor (so rain->wet_ground
 wins over the transitive rain->puddles). 8 tests. Honest scope: it fills gaps with
 rules the data supports; it does not invent new mathematics.
 
+## Analogy — structure mapping between domains (bounded idea #2)
+
+`analogy_engine.py` aligns RELATIONS, not surface features: a pump maps to a
+battery because both *cause flow*, not because they resemble each other. Given two
+domains as facts sharing a relation vocabulary, it finds the object correspondence
+that preserves relational structure, then transfers a source fact whose analog is
+missing in the target — an analogical prediction:
+
+```
+water -> electricity:  pump~battery, flow~current, pipe~resistor, pressure~voltage
+predicts:  battery raises voltage   (analog of 'pump raises pressure' — and true)
+```
+
+Honest scope: the realistic core of structure mapping — alignment by relational
+signature over a SHARED vocabulary, with an UNAMBIGUOUS correspondence (ambiguous
+or structure-poor domains yield no/partial mapping). It is NOT open-ended
+invention; a transferred fact is a HYPOTHESIS that should be verified
+(inductive_engine) before it is trusted — analogy proposes, verification disposes.
+9 tests, incl. the no-shared-structure and ambiguous cases.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
