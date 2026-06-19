@@ -401,6 +401,28 @@ problem, with the derivation/policies and the honest failures surfaced. 14 parse
 tests (precedence, associativity, errors) + 9 chat tests (routing, honest
 unknowns). Honest scope: math notation only — not natural-language word problems.
 
+## One front door — brain_chat (unified router)
+
+`brain_chat.py` is a thin router over every faculty: detect the KIND of input and
+dispatch. Math notation is a formal grammar (route to the exact math engines);
+everything else is natural language (route to the conversation engine, which
+itself covers facts, how/why chains, and arithmetic word problems). One
+`respond()` now answers across the whole stack:
+
+```
+> what is apple?              An apple is a fruit. It is red.        [reasoning]
+> is a dog an animal?         Yes — dog -> pet -> animal.            [closure]
+> how does fruit grow?        Sunlight leads to photosynthesis, ...  [causal]
+> I have 10 apples, give 3 …  7 apples. (10 - 3 = 7)                 [word math]
+> differentiate sin(x^2)      cos(x^2)*(2*x)  (sin, power, chain)    [calculus]
+> solve 2*x + 3 = 7 for x     x = 2  (verified)                      [algebra]
+```
+
+The router holds no intelligence — all reasoning stays in the specialized
+engines; it only decides who answers. Routing discipline is pinned (plain words
+stay in language; math intent routes to the engines even when wrapped in words).
+10 tests. This is the session's whole stack behind a single entry point.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
