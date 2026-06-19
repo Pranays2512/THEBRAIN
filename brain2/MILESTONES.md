@@ -328,6 +328,20 @@ It applies physics; it doesn't invent it. The `isolate()` kernel (single-unknown
 symbolic rearrangement) is shared with the algebra solver. 8 tests; refuses
 variables not in the law and unknown laws.
 
+## Algebra — solve an equation for x, verified
+
+`algebra_engine.py` generalizes the isolate kernel from "rearrange a law" to
+"solve an equation": isolate x, evaluate, and VERIFY by substituting the answer
+back into the original equation (checked, not just produced):
+
+```
+2*x + 3 = 7   ->  x = (7-3)/2 = 2     x^2 = 49  ->  x = 49^(1/2) = 7
+```
+
+Honest scope: the unknown appears once (linear / single-power). x on both sides,
+or appearing twice, needs term collection — the search-based rewrite+solve rung,
+not direct isolation. 9 tests; refuses both-sides and no-x equations.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

@@ -65,6 +65,8 @@ CORE = [
      [r"Calculus engine: READY"]),
     ("physics (solve any variable)", "tests/test_physics_engine.py",
      [r"Physics engine: READY"]),
+    ("algebra (solve for x)", "tests/test_algebra_engine.py",
+     [r"Algebra engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
