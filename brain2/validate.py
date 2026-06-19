@@ -77,6 +77,8 @@ CORE = [
      [r"Math chat: READY"]),
     ("brain chat (unified router)", "tests/test_brain_chat.py",
      [r"Brain chat: READY"]),
+    ("inductive learning (mine+verify)", "tests/test_inductive_engine.py",
+     [r"Inductive engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

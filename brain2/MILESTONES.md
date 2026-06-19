@@ -423,6 +423,30 @@ engines; it only decides who answers. Routing discipline is pinned (plain words
 stay in language; math intent routes to the engines even when wrapped in words).
 10 tests. This is the session's whole stack behind a single entry point.
 
+## Learning rules from data — inductive_engine (mine + verify)
+
+`inductive_engine.py` is hypothesis generation (#1) + simulation/testing (#3) as
+one honest loop: instead of being TOLD every rule, the brain scans observed
+episodes for patterns ("B tends to follow A"), proposes provisional rules, then
+VERIFIES each on a held-out split — promoting the ones that replicate and
+rejecting coincidences:
+
+```
+Promoted (held up on hold-out):  rain -> wet_ground, study -> pass, ...
+Rejected:  cat -> rainbow   (spurious — train 100% but hold-out 0%)
+
+Reasoning with the DISCOVERED rules:  does rain lead to puddles? -> yes
+```
+
+The point is the GATE, not the guess. Generation is cheap (you can always propose
+A -> B); the value is rejecting spurious correlations — a pattern that scores 100%
+on training but fails the hold-out is superstition, not a rule. Promoted rules
+install into the reasoning engine and become chainable knowledge. 8 tests.
+Honest scope: co-occurrence rules that REPLICATE — it does not infer causation
+(that needs intervention, not just observation). This is the brain learning rules
+instead of only being given them, with the project's own verify-before-promote
+discipline turned on its own hypotheses.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
