@@ -447,6 +447,29 @@ Honest scope: co-occurrence rules that REPLICATE — it does not infer causation
 instead of only being given them, with the project's own verify-before-promote
 discipline turned on its own hypotheses.
 
+## Curiosity — idle learning driven by prediction error (idea #4)
+
+`curiosity_loop.py` makes the brain explore its own knowledge gaps when it is not
+being asked anything. Curiosity = prediction error: it predicts what follows each
+event, and where it is wrong (or has no rule) the error is high. Each idle tick it
+folds in more observations, mines + verifies new rules (the inductive engine) to
+cover the high-error areas, and the error drops:
+
+```
+start: no rules, no observations
+tick 1: error 100%   curious about rain, wet_ground, study
+tick 2: learned seed->plant, study->pass   error 56%
+tick 3: learned rain->wet_ground, wet_ground->puddles   error 11%
+converged: error 11%   remaining curiosity: [('dice', 1.0)]   (random — unlearnable)
+```
+
+The honest tell: an event with a genuinely random follower (dice) never yields a
+verified rule, so curiosity correctly persists there — the loop cannot manufacture
+a pattern that isn't real. Solved events drop out of curiosity; only real gaps
+remain. The prediction table keeps the IMMEDIATE successor (so rain->wet_ground
+wins over the transitive rain->puddles). 8 tests. Honest scope: it fills gaps with
+rules the data supports; it does not invent new mathematics.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
