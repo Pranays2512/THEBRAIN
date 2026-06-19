@@ -207,6 +207,18 @@ two engine promotions above are what make "is a dog an animal?" answerable in a
 sentence with the derivation shown. understand -> reason (multi-parent) ->
 produce, over real world knowledge.
 
+Produce stage now AGGREGATES: many objects of one relation collapse into a
+single coordinated clause instead of one sentence each — a second grammar pass
+over the structured relations (not a lossy re-parse of the generated text):
+
+```
+A dog is a canine, a pet and an animal. It can bark, bite and chase ball.
+        (not: "A dog is a canine. It is a pet. It is an animal. It can bark. ...")
+```
+
+Fires only on multi-valued relations; one-object-per-relation output (apple) is
+unchanged. `oxford()` joins "a, b and c"; isa/is share is/are agreement.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

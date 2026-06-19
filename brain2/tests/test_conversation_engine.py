@@ -72,6 +72,19 @@ def run():
     # "is cat an animal?" should hold transitively
     check("transitive fact answered", c2.respond("is cat a animal?").lower().startswith("yes"))
 
+    # 9. aggregation: many objects of ONE relation collapse into one clause
+    agg = ConversationEngine()
+    for o in ["canine", "pet", "animal"]:
+        agg.learn("dog", "isa", o)
+    out = agg.respond("what is dog?").lower()
+    check("aggregates multi-valued relation into one clause",
+          "a canine, a pet and an animal" in out)
+    check("relation verb not repeated", out.count(" is ") == 1)
+
+    # one object per relation is unchanged (no spurious coordination)
+    check("single-object relations unaffected",
+          c.respond("what is apple?").startswith("An apple is a fruit"))
+
     print(f"\nConversation loop: {'READY' if _ok else 'NEEDS FIX'}")
     return _ok
 

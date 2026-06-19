@@ -58,8 +58,26 @@ TEMPLATES = {
 }
 
 
+# relation -> (clause verb/prefix, objects take an article) for AGGREGATION:
+# many objects under one relation collapse into a single coordinated clause
+# ("is a canine, a pet and an animal") instead of one sentence each.
+CLAUSES = {
+    "isa": ("is", True), "is": ("is", False), "color": ("is", False),
+    "has": ("has", False), "gives": ("gives", False),
+    "grows_on": ("grows on", True), "lives_in": ("lives in", True),
+    "can": ("can", False), "used_for": ("is used for", False),
+    "part_of": ("is part of", True), "made_of": ("is made of", False),
+}
+
+
 def article(word):
     return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def oxford(items):
+    """['a', 'b', 'c'] -> 'a, b and c'  (single item passes through)."""
+    items = list(items)
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def verb_be(subject):
@@ -146,22 +164,41 @@ class ConversationEngine:
             if tmpl.startswith("is") else tmpl.format(art=article(disp), obj=disp)
         return f"{subj.replace('_', ' ')} {body}"
 
+    def _clause(self, head, rel, objs):
+        """One coordinated clause for ALL objects of a relation:
+        ("dog","isa",[canine,pet,animal]) -> "is a canine, a pet and an animal"."""
+        prefix, takes_art = CLAUSES.get(rel, (rel.replace("_", " "), False))
+        if prefix == "is":
+            prefix = verb_be(head)                   # is/are agreement
+        phrases = []
+        for o in objs:
+            d = o.replace("_", " ")
+            phrases.append(f"{article(d)} {d}" if takes_art else d)
+        return f"{prefix} {oxford(phrases)}"
+
     def _describe(self, subj):
         facts = self._facts_of(subj)
         if not facts:
             return f"I don't know anything about {subj}."
-        # lead with what it IS (isa), then its properties — stable otherwise
-        facts = sorted(facts, key=lambda ro: 0 if ro[0] == "isa" else 1)
-        if self.max_describe:
-            facts = facts[:self.max_describe]
+        # group objects under each relation (aggregation), leading with isa
+        groups = {}
+        for rel, obj in facts:
+            objs = groups.setdefault(rel, [])
+            if obj not in objs:
+                objs.append(obj)
+        ordered = sorted(groups.items(), key=lambda kv: 0 if kv[0] == "isa" else 1)
+        if self.max_describe:                        # cap clauses AND objects/clause
+            ordered = [(r, objs[:self.max_describe]) for r, objs in ordered[:self.max_describe]]
+
         sentences = []
-        for i, (rel, obj) in enumerate(facts):
-            s = self._sentence(subj if i == 0 else "it", rel, obj)
+        for i, (rel, objs) in enumerate(ordered):
+            head = subj if i == 0 else "it"          # pronoun after the first clause
+            s = f"{head.replace('_', ' ')} {self._clause(head, rel, objs)}"
             sentences.append(s[0].upper() + s[1:] + ".")
         # first sentence: add an article to the subject if it's a singular noun
-        first = sentences[0]
         if not subject_is_proper(subj):
-            sentences[0] = f"{article(subj).capitalize()} {first[0].lower() + first[1:]}"
+            first = sentences[0]
+            sentences[0] = f"{article(subj.replace('_', ' ')).capitalize()} {first[0].lower() + first[1:]}"
         return " ".join(sentences)
 
 

@@ -26,7 +26,7 @@ from world_knowledge import load_conceptnet
 
 def build():
     # cap describe so dense concepts answer with a few facts, not a wall of text
-    c = ConversationEngine(max_describe=4)
+    c = ConversationEngine(max_describe=3)
     for s, r, o in load_conceptnet():
         c.learn(s, r, o)
     c.set_transitive("isa")                  # IsA chains through the taxonomy
