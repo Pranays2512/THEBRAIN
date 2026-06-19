@@ -360,6 +360,28 @@ basic trig/exp, 1/x). u-substitution and by-parts — where real backtracking
 search lives (exponential) — are not built; the engine returns None rather than
 guess. 5 tests, including the verified round-trip and the honest None cases.
 
+## Coding — generate class boilerplate (Python / C++ / Java)
+
+`code_gen.py` is the honest reading of "build something from proper
+instructions": a structured spec (class name, typed fields, method signatures) is
+PRODUCED into idiomatic code per language — the same grammar-production idea as
+the sentence generator, applied to code. One spec, three languages, with type
+mapping (float -> double in C++/Java, str in Python) and OOP scaffolding
+(fields, constructor, method stubs):
+
+```
+ClassSpec("Point", [Field("x","int"), Field("y","int")], [Method("distance",[],"float")])
+  python -> class Point: def __init__(self, x: int, y: int): ...
+  cpp    -> class Point { public: int x; Point(int x,int y):x(x),y(y){} double distance(){...} };
+  java   -> public class Point { private int x; public Point(...){this.x=x;} public double distance(){...} }
+```
+
+The generated Python is compiled AND executed in the tests (instantiate the
+class, read a field) — verified by the real interpreter, not just string shape.
+8 tests. Honest scope: OOP scaffolding from an explicit spec; it does NOT write
+method bodies — arbitrary algorithm logic is the synthesis/LLM frontier, left as
+a stub. This is deterministic production, not understanding.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

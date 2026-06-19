@@ -69,6 +69,8 @@ CORE = [
      [r"Algebra engine: READY"]),
     ("integration (verified by inverse)", "tests/test_integral_engine.py",
      [r"Integral engine: READY"]),
+    ("code generation (3 languages)", "tests/test_code_gen.py",
+     [r"Code generator: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
