@@ -52,6 +52,8 @@ CORE = [
      [r"great_grandparent ada", r"don.t know anyone named Zara"]),
     ("world knowledge (ConceptNet)", "world_demo.py",
      [r"dog -> pet -> animal", r"never heard of a zorblax"]),
+    ("world chat (conversation)", "world_chat.py",
+     [r"Yes . dog -> pet -> animal", r"don.t know anything about zorblax"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

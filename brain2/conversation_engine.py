@@ -50,6 +50,11 @@ TEMPLATES = {
     "has":      "has {obj}",
     "gives":    "gives {obj}",
     "lives_in": "lives in {art} {obj}",
+    # ConceptNet common-sense relations
+    "can":      "can {obj}",
+    "used_for": "is used for {obj}",
+    "part_of":  "is part of {art} {obj}",
+    "made_of":  "is made of {obj}",
 }
 
 
@@ -62,10 +67,11 @@ def verb_be(subject):
 
 
 class ConversationEngine:
-    def __init__(self):
+    def __init__(self, max_describe=None):
         self.r = ReasoningEngine()
         self.appraiser = AppraisalEngine()
         self.topic = None                      # working memory: entity in focus
+        self.max_describe = max_describe       # cap facts per describe (dense KBs)
 
     # ── teaching ─────────────────────────────────────────────────────────────
     def learn(self, subj, rel, obj):
@@ -121,23 +127,33 @@ class ConversationEngine:
         objs = {o for (_, o) in self._facts_of(subj)}
         if target in objs:
             return f"Yes, {self._sentence(subj, *next((r, o) for (r, o) in self._facts_of(subj) if o == target))}."
-        # maybe target is a category reached transitively / by rule
-        for rel in {r for (r, _) in self._facts_of(subj)}:
-            ans, _ = self.r.ask(subj, rel)
-            if ans == target:
+        # category membership reached transitively — show the chain
+        # (dog -> pet -> animal), via the engine's multi-parent closure
+        for rel in self.r.transitive:
+            ok, path = self.r.reaches(subj, rel, target)
+            if ok:
+                return f"Yes — {' -> '.join(path)}."
+        # derivable by any relation or composition rule (all bindings)
+        for rel in {r for (r, _) in self._facts_of(subj)} | set(self.r.transitive):
+            if target in self.r.ask_all(subj, rel):
                 return f"Yes, {subj} {rel} {target}."
         return f"Not that I know of."
 
     def _sentence(self, subj, rel, obj):
+        disp = obj.replace("_", " ")                 # motor_vehicle -> "motor vehicle"
         tmpl = TEMPLATES.get(rel, f"{rel.replace('_', ' ')} {{obj}}")
-        body = tmpl.format(art=article(obj), obj=obj).replace("is ", verb_be(subj) + " ", 1) \
-            if tmpl.startswith("is") else tmpl.format(art=article(obj), obj=obj)
-        return f"{subj} {body}"
+        body = tmpl.format(art=article(disp), obj=disp).replace("is ", verb_be(subj) + " ", 1) \
+            if tmpl.startswith("is") else tmpl.format(art=article(disp), obj=disp)
+        return f"{subj.replace('_', ' ')} {body}"
 
     def _describe(self, subj):
         facts = self._facts_of(subj)
         if not facts:
             return f"I don't know anything about {subj}."
+        # lead with what it IS (isa), then its properties — stable otherwise
+        facts = sorted(facts, key=lambda ro: 0 if ro[0] == "isa" else 1)
+        if self.max_describe:
+            facts = facts[:self.max_describe]
         sentences = []
         for i, (rel, obj) in enumerate(facts):
             s = self._sentence(subj if i == 0 else "it", rel, obj)

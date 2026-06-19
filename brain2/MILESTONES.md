@@ -184,8 +184,28 @@ membership needs real transitive CLOSURE over the multi-valued fact graph — th
 binding memory's associative recall returns one best parent and can't represent
 it. First the demo hand-rolled a BFS; that closure is now PROMOTED into the
 engine (`ReasoningEngine.closure` / `reaches` / `derive_all`), so the brain does
-multi-parent reasoning natively and `world_demo` just calls it. This is the
-"feed it curated, trusted knowledge" path (not crawl-the-web). Gate: 22/22.
+multi-parent reasoning natively and `world_demo` just calls it. The companion
+fix `ask_all` explores ALL composition-rule bindings (two parents -> two
+grandparents) instead of the first. This is the "feed it curated, trusted
+knowledge" path (not crawl-the-web). Gate: 23/23.
+
+### Talking about the world — world_chat
+
+`world_chat.py` routes the same ConceptNet knowledge through the full
+conversation loop, so the brain answers in GENERATED sentences, not print lines:
+
+```
+> what is a dog?       ->  A dog is a canine. It is an example of pet. ...
+> is a dog an animal?  ->  Yes — dog -> pet -> animal.     (closure, chain shown)
+> is a dog a vehicle?  ->  Not that I know of.
+> what is a zorblax?   ->  I don't know anything about zorblax.
+```
+
+The conversation engine now routes category questions through the engine's
+transitive closure (`reaches`) and all-bindings inference (`ask_all`), so the
+two engine promotions above are what make "is a dog an animal?" answerable in a
+sentence with the derivation shown. understand -> reason (multi-parent) ->
+produce, over real world knowledge.
 
 ## Workflow
 
