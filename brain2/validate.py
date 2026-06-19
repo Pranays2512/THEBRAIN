@@ -56,6 +56,8 @@ CORE = [
      [r"Yes . dog -> pet -> animal", r"don.t know anything about zorblax"]),
     ("causal how/why (chain)", "causal_demo.py",
      [r"leads to photosynthesis, which leads to sugar", r"don.t know how rock works"]),
+    ("word problem (arithmetic)", "word_math.py",
+     [r"7 apples. \(10 - 3 = 7\)", r"9 marbles"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

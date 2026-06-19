@@ -29,6 +29,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from reasoning_engine import ReasoningEngine
 from appraisal_engine import AppraisalEngine
+from word_math import solve as solve_word_math
 
 PRONOUNS = {"it", "that", "this", "he", "she", "him", "her", "they", "them"}
 # "how does X grow/form?" asks what PRODUCES X -> walk the causal chain backward;
@@ -37,7 +38,7 @@ BACKWARD_WORDS = {"grow", "grows", "grew", "form", "forms", "happen", "happens",
                   "made", "produced", "created", "develop", "develops", "appear"}
 # words that are never the *entity* of a query
 NON_ENTITY = {
-    "what", "which", "how", "why", "who", "where", "when", "whose",
+    "what", "which", "how", "why", "who", "where", "when", "whose", "many", "much",
     "is", "are", "am", "do", "does", "did", "can", "could", "will", "would",
     "a", "an", "the", "of", "to", "i", "me", "my", "you", "your", "it", "that",
     "this", "in", "on", "for", "with", "and", "tell", "show", "describe",
@@ -131,8 +132,15 @@ class ConversationEngine:
         subject = ents[0]
         self.topic = subject                   # update working-memory focus
 
-        # how/why-question: narrate the causal chain through the topic
         raw = re.findall(r"[a-z']+", text.lower())
+
+        # arithmetic word problem: "... how many ... left/have?"
+        if "how" in raw and "many" in raw:
+            ans = solve_word_math(text)
+            if ans:
+                return ans
+
+        # how/why-question: narrate the causal chain through the topic
         if "how" in raw or "why" in raw:
             return self._how(ents, raw)
 

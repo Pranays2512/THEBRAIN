@@ -96,6 +96,15 @@ def run():
     check("unknown process is honest",
           "don't know how" in howc.respond("how does metal grow?").lower())
 
+    # 11. arithmetic word problem routed through the loop
+    mathc = ConversationEngine()
+    check("subtraction word problem",
+          mathc.respond("I have 10 apples and give 3 away, how many do I have left?").startswith("7"))
+    check("addition word problem",
+          mathc.respond("I have 5 marbles and find 4 more, how many do I have?").startswith("9"))
+    check("how-many with no numbers isn't faked",
+          "7" not in mathc.respond("how many legs does it have?"))
+
     print(f"\nConversation loop: {'READY' if _ok else 'NEEDS FIX'}")
     return _ok
 

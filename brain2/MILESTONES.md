@@ -241,6 +241,26 @@ No new reasoning power — a "how" question is a chain walk with a direction,
 reusing the transitive core. Honest scope: linear taught processes, controlled
 phrasing; it reorders and verbalizes given steps, doesn't discover the science.
 
+### Arithmetic word problems — language -> operation
+
+`word_math.py` answers "I have 10 apples and give 3 away, how many do I have
+left?" The brain already computes; the new capability is mapping the SENTENCE to
+the operation. A grammar extractor pulls the numbers and reads the operator from
+a verb (give/lose/eat -> subtract, get/buy/find -> add), then computes and shows
+the working:
+
+```
+> I have 10 apples and give 3 away, how many do I have left?  ->  7 apples. (10 - 3 = 7)
+> I have 5 marbles and find 4 more, how many do I have?       ->  9 marbles. (5 + 4 = 9)
+> how many legs does it have?                                 ->  (no numbers -> not faked)
+```
+
+Wired into the conversation loop, intercepting "how many …" before the how/why
+intent. Honest scope: controlled single-operation (+/-) problems over a running
+quantity; multi-step, rates, or free phrasing need a real semantic parser (LLM).
+The point it proves: the brain's weakness was never the math — it computes fine
+— it was language -> operation, the same wall, narrowed by a controlled grammar.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
