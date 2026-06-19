@@ -54,6 +54,8 @@ CORE = [
      [r"dog -> pet -> animal", r"never heard of a zorblax"]),
     ("world chat (conversation)", "world_chat.py",
      [r"Yes . dog -> pet -> animal", r"don.t know anything about zorblax"]),
+    ("causal how/why (chain)", "causal_demo.py",
+     [r"leads to photosynthesis, which leads to sugar", r"don.t know how rock works"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

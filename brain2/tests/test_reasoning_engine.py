@@ -134,6 +134,17 @@ def run():
     check("ask_all explanation cites the rule",
           "rule" in gps["joe"] and "ann" in gps["joe"])
 
+    # 9d. causal process chain (how/why) — directional walk on a causal relation
+    proc = ReasoningEngine()
+    for s, o in [("a", "b"), ("b", "c"), ("c", "d")]:
+        proc.learn(s, "leads_to", o)
+    proc.set_transitive("leads_to")
+    check("forward process chain (effects)",
+          proc.process_chain("a", "leads_to", "forward") == ["a", "b", "c", "d"])
+    check("backward process chain (causes)",
+          proc.process_chain("d", "leads_to", "backward") == ["a", "b", "c", "d"])
+    check("no chain -> []", proc.process_chain("z", "leads_to", "forward") == [])
+
     # 10. persistence round-trip (facts + rules)
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "re.json")

@@ -85,6 +85,17 @@ def run():
     check("single-object relations unaffected",
           c.respond("what is apple?").startswith("An apple is a fruit"))
 
+    # 10. how/why -> narrate the causal chain through the topic
+    howc = ConversationEngine()
+    for s, o in [("sun", "plant_growth"), ("plant_growth", "fruit")]:
+        howc.learn(s, "leads_to", o)
+    howc.set_transitive("leads_to")
+    ans = howc.respond("how does fruit grow?").lower()
+    check("how-question narrates the chain",
+          "sun leads to plant growth, which leads to fruit" in ans)
+    check("unknown process is honest",
+          "don't know how" in howc.respond("how does metal grow?").lower())
+
     print(f"\nConversation loop: {'READY' if _ok else 'NEEDS FIX'}")
     return _ok
 

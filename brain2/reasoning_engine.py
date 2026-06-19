@@ -174,6 +174,46 @@ class ReasoningEngine:
         generalization of KnowledgeEngine.derive (which follows one chain)."""
         return sorted(self.closure(subj, rel))
 
+    # ── causal / process chains (how / why) ──────────────────────────────────
+    # A process is a chain on a single causal relation (e.g. leads_to): each
+    # step causes the next. "How does X happen?" walks BACKWARD (what produces
+    # X); "how does X help?" walks FORWARD (what X causes). Same traversal, the
+    # adjacency just reversed. Returns the steps in story order (cause first).
+    def _bfs_paths(self, start, adj):
+        paths = {start: [start]}
+        frontier = deque([start])
+        while frontier:
+            node = frontier.popleft()
+            for nbr in sorted(adj.get(node, ())):
+                if nbr not in paths:
+                    paths[nbr] = paths[node] + [nbr]
+                    frontier.append(nbr)
+        paths.pop(start, None)
+        return paths
+
+    def process_chain(self, topic, rel, direction="forward"):
+        """The longest causal chain through `topic` on relation `rel`, in story
+        order (cause -> ... -> effect). direction='forward' follows rel out of
+        `topic` (its effects); 'backward' follows rel into `topic` (its causes).
+        Returns [] if no chain. Linear processes give the obvious full chain."""
+        topic, rel = KnowledgeEngine._norm(topic), KnowledgeEngine._norm(rel)
+        fwd, rev = defaultdict(set), defaultdict(set)
+        for s, r, o in self.kb.facts:
+            if r == rel:
+                fwd[s].add(o)
+                rev[o].add(s)
+        if direction == "forward":
+            paths = self._bfs_paths(topic, fwd)
+            if not paths:
+                return []
+            end = max(paths, key=lambda k: len(paths[k]))
+            return paths[end]                           # [topic, ..., effect]
+        paths = self._bfs_paths(topic, rev)
+        if not paths:
+            return []
+        root = max(paths, key=lambda k: len(paths[k]))
+        return list(reversed(paths[root]))              # [root, ..., topic]
+
     def explain(self, subj, rel):
         _, why = self.ask(subj, rel)
         return why

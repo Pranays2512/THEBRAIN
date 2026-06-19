@@ -219,6 +219,28 @@ A dog is a canine, a pet and an animal. It can bark, bite and chase ball.
 Fires only on multi-valued relations; one-object-per-relation output (apple) is
 unchanged. `oxford()` joins "a, b and c"; isa/is share is/are agreement.
 
+### Causal "how / why" — narrating a chain
+
+`causal_demo.py` answers process questions. A process is a chain on one causal
+relation (`leads_to`, `helps`): each step causes the next. Taught the steps, the
+brain answers "how does X happen?" by walking the chain and verbalizing it —
+backward to X's causes for "how does X grow/form", forward to X's effects
+otherwise (`ReasoningEngine.process_chain`, a directional BFS; conversation adds
+the how/why intent + `_narrate_chain`):
+
+```
+teach: sunlight leads_to photosynthesis leads_to sugar leads_to fruit leads_to apple
+> how does an apple grow?   ->  Sunlight leads to photosynthesis, which leads to
+                                sugar, which leads to fruit, which leads to apple.
+> how does vitamin help?    ->  Vitamin helps immune system, which helps fighting
+                                infection, which helps good health.
+> how does a rock grow?     ->  I don't know how rock works.
+```
+
+No new reasoning power — a "how" question is a chain walk with a direction,
+reusing the transitive core. Honest scope: linear taught processes, controlled
+phrasing; it reorders and verbalizes given steps, doesn't discover the science.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

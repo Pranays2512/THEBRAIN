@@ -31,6 +31,10 @@ from reasoning_engine import ReasoningEngine
 from appraisal_engine import AppraisalEngine
 
 PRONOUNS = {"it", "that", "this", "he", "she", "him", "her", "they", "them"}
+# "how does X grow/form?" asks what PRODUCES X -> walk the causal chain backward;
+# anything else ("how does X help/work?") walks forward to its effects.
+BACKWARD_WORDS = {"grow", "grows", "grew", "form", "forms", "happen", "happens",
+                  "made", "produced", "created", "develop", "develops", "appear"}
 # words that are never the *entity* of a query
 NON_ENTITY = {
     "what", "which", "how", "why", "who", "where", "when", "whose",
@@ -127,6 +131,11 @@ class ConversationEngine:
         subject = ents[0]
         self.topic = subject                   # update working-memory focus
 
+        # how/why-question: narrate the causal chain through the topic
+        raw = re.findall(r"[a-z']+", text.lower())
+        if "how" in raw or "why" in raw:
+            return self._how(ents, raw)
+
         # confirm-question: "is X (a) Y" / "is it red" -> check a value
         if len(ents) >= 2 or (self._has_pronoun(text) and len(ents) >= 1 and ents[0] != subject):
             target = ents[-1]
@@ -140,6 +149,37 @@ class ConversationEngine:
     # ── reason + produce ─────────────────────────────────────────────────────
     def _facts_of(self, subj):
         return [(r, o) for (s, r, o) in self.r.kb.facts if s == subj]
+
+    def _how(self, ents, raw):
+        """Answer 'how/why does X ...?' by narrating the longest causal chain
+        through X over a transitive (causal) relation — backward to its causes
+        for 'how does X form/grow', forward to its effects otherwise."""
+        subjects = {s for s, _, _ in self.r.kb.facts}
+        topic = next((e for e in ents if e in subjects), ents[0])
+        self.topic = topic
+        direction = "backward" if (set(raw) & BACKWARD_WORDS) else "forward"
+
+        # pick the relation giving the longest chain; try the other way if none
+        best, best_rel = [], None
+        for d in (direction, "forward" if direction == "backward" else "backward"):
+            for rel in self.r.transitive:
+                chain = self.r.process_chain(topic, rel, d)
+                if len(chain) > len(best):
+                    best, best_rel = chain, rel
+            if len(best) >= 2:
+                break
+        if len(best) < 2:
+            return f"I don't know how {topic.replace('_', ' ')} works."
+        return self._narrate_chain(best, best_rel)
+
+    def _narrate_chain(self, path, rel):
+        verb = rel.replace("_", " ")
+        parts = [p.replace("_", " ") for p in path]
+        sent = parts[0]
+        for i, nxt in enumerate(parts[1:]):
+            sep = f" {verb} " if i == 0 else f", which {verb} "
+            sent += f"{sep}{nxt}"
+        return sent[0].upper() + sent[1:] + "."
 
     def _confirm(self, subj, target):
         objs = {o for (_, o) in self._facts_of(subj)}
