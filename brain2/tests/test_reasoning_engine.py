@@ -117,6 +117,23 @@ def run():
     anc_c = cyc.derive_all("a", "isa")     # must return, not hang
     check("closure terminates on cycle (self excluded)", set(anc_c) == {"b"})
 
+    # 9c. ALL bindings — a subject with two parents has two grandparents.
+    # ask() returns one; ask_all() must enumerate both.
+    multi = ReasoningEngine()
+    for s, o in [("tom", "sam"), ("tom", "ann"),       # tom has TWO parents
+                 ("sam", "kid"), ("ann", "joe")]:        # each with a child
+        multi.learn(s, "parent", o)
+    multi.add_rule("parent", "parent", "grandparent")
+
+    gps = multi.ask_all("tom", "grandparent")
+    check("ask_all finds BOTH grandparents", set(gps) == {"kid", "joe"})
+    check("ask() still returns one (first binding)",
+          multi.ask("tom", "grandparent")[0] in {"kid", "joe"})
+    check("ask_all direct relation multi-valued",
+          set(multi.ask_all("tom", "parent")) == {"sam", "ann"})
+    check("ask_all explanation cites the rule",
+          "rule" in gps["joe"] and "ann" in gps["joe"])
+
     # 10. persistence round-trip (facts + rules)
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "re.json")

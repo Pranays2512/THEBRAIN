@@ -82,6 +82,43 @@ class ReasoningEngine:
                            f"{subj} {rel} {z}   [rule {prem1}∘{prem2}→{rel}]")
         return None, None
 
+    # ── multi-valued inference (ALL bindings, not first) ─────────────────────
+    # ask() returns one answer (first binding it finds). But a subject can have
+    # many: two parents -> two grandparents; a rule premise that matches several
+    # mids fans out to several conclusions. ask_all enumerates EVERY derivable
+    # object, exploring all premise bindings instead of committing to the first.
+    def ask_all(self, subj, rel, max_depth=8):
+        """All objects derivable for (subj, rel) via direct facts, transitive
+        closure, and composition rules — the multi-valued ask(). Returns
+        {object: explanation}, one shortest explanation per object."""
+        subj, rel = KnowledgeEngine._norm(subj), KnowledgeEngine._norm(rel)
+        return self._ask_all(subj, rel, max_depth, frozenset())
+
+    def _ask_all(self, subj, rel, depth, seen):
+        if depth <= 0 or (subj, rel) in seen:
+            return {}
+        seen = seen | {(subj, rel)}
+        out = {}                                     # setdefault keeps first (shortest) reason
+
+        # 1. transitive closure (already multi-valued)
+        if rel in self.transitive:
+            for o, path in self.closure(subj, rel).items():
+                out.setdefault(o, f"{(' ' + rel + ' ').join(path)}  (transitive)")
+
+        # 2. ALL direct facts for (subj, rel), not just the best-recalled one
+        for o in sorted(self._adjacency(rel).get(subj, ())):
+            out.setdefault(o, f"{subj} {rel} {o}  (direct)")
+
+        # 3. composition rules, fanning out over EVERY premise binding
+        for prem1, prem2, concl in self.rules:
+            if concl != rel:
+                continue
+            for mid in self._ask_all(subj, prem1, depth - 1, seen):
+                for z in self._ask_all(mid, prem2, depth - 1, seen):
+                    out.setdefault(z, (f"{subj} {prem1} {mid} AND {mid} {prem2} {z}  =>  "
+                                       f"{subj} {rel} {z}   [rule {prem1}∘{prem2}→{rel}]"))
+        return out
+
     # ── multi-parent transitive closure (DAG, not single chain) ──────────────
     # KnowledgeEngine.derive and binding-memory recall return ONE best object
     # per (subject, relation) — fine for a chain (a -> b -> c), wrong for real
