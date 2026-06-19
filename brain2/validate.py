@@ -83,6 +83,8 @@ CORE = [
      [r"Curiosity loop: READY"]),
     ("analogy (structure mapping)", "tests/test_analogy_engine.py",
      [r"Analogy engine: READY"]),
+    ("discovery (propose+verify+reason)", "tests/test_discovery.py",
+     [r"Discovery: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

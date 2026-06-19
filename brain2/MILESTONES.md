@@ -490,6 +490,27 @@ invention; a transferred fact is a HYPOTHESIS that should be verified
 (inductive_engine) before it is trusted — analogy proposes, verification disposes.
 9 tests, incl. the no-shared-structure and ambiguous cases.
 
+## 🔑 DISCOVERY — two proposers, one verifier, one memory
+
+`discovery.py` ties the quartet into one cycle. Induction proposes rules from
+observed data; analogy proposes rules by transferring structure from a known
+domain. BOTH hypotheses pass the SAME verify-before-promote gate (held-out data /
+targeted experiment), and the survivors install into ONE reasoning engine:
+
+```
+mined from data (hold-out verified):   switch->battery, battery->current, ...
+transferred by analogy + experiment:   battery raises voltage  (analog of pump raises pressure)
+reasons over both:  switch leads to current? -> yes  |  battery raises? -> voltage
+```
+
+Without the confirming experiment, the analogical transfer stays an unpromoted
+hypothesis — borrowed knowledge earns trust the same way mined knowledge does.
+This is the discovery loop closed: analogy + induction PROPOSE, simulation
+DISPOSES (verify), curiosity DRIVES (idle), and discovered + borrowed facts become
+equally trustworthy because both survived the gate. 8 tests. Honest scope: every
+promoted rule replicated on held-out data or was confirmed by an experiment — no
+causation claims, no open-ended invention.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
