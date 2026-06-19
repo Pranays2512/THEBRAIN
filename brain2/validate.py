@@ -63,6 +63,8 @@ CORE = [
      [r"Query planner: READY"]),
     ("calculus (differentiation)", "tests/test_calculus_engine.py",
      [r"Calculus engine: READY"]),
+    ("physics (solve any variable)", "tests/test_physics_engine.py",
+     [r"Physics engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",

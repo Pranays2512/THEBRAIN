@@ -313,6 +313,21 @@ deterministic case (rules compose one way); integration / theorem rediscovery is
 the SEARCH case (rules apply many ways, complete but exponential) — a later build
 on the existing search engine, guided by the learned heuristic.
 
+## Physics reasoning — apply a law, solve for any variable
+
+`physics_engine.py` applies taught laws and solves for ANY variable by isolating
+the unknown symbolically — inverting operations outward (x -> /, + -> -,
+^n -> ^(1/n)) — then evaluating, showing the rearranged formula and the numbers:
+
+```
+F = m*a       given F=12, m=3, solve a  ->  a = F/m = 12/3 = 4
+KE = ½mv²      given KE=100, m=2, solve v  ->  v = ((KE/0.5)/m)^(1/2) = 10
+```
+
+It applies physics; it doesn't invent it. The `isolate()` kernel (single-unknown
+symbolic rearrangement) is shared with the algebra solver. 8 tests; refuses
+variables not in the law and unknown laws.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
