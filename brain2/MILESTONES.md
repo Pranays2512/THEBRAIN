@@ -382,6 +382,25 @@ class, read a field) — verified by the real interpreter, not just string shape
 method bodies — arbitrary algorithm logic is the synthesis/LLM frontier, left as
 a stub. This is deterministic production, not understanding.
 
+## Ask the math engines in notation — math_parser + math_chat
+
+`math_parser.py` is an EXACT recursive-descent parser (precedence = < ± < ×÷ < ^,
+functions, parens, unary minus) — math notation is a formal grammar, so unlike
+natural language this parse is exact, not approximate. `math_chat.py` routes a
+plain request to the right engine:
+
+```
+> differentiate sin(x^2)     d/dx = cos(x^2)*(2*x)   (rules: sin, power, chain)
+> integrate cos(x)           int = sin(x) + C        [checked]
+> integrate sin(x^2)         no rule applies (likely no elementary form)
+> solve 2*x + 3 = 7 for x    x = 2                    (verified)
+```
+
+This closes the math loop: the four engines are now reachable by typing the
+problem, with the derivation/policies and the honest failures surfaced. 14 parser
+tests (precedence, associativity, errors) + 9 chat tests (routing, honest
+unknowns). Honest scope: math notation only — not natural-language word problems.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
