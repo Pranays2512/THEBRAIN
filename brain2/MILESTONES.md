@@ -270,6 +270,30 @@ quantity; multi-step, rates, or free phrasing need a real semantic parser (LLM).
 The point it proves: the brain's weakness was never the math — it computes fine
 — it was language -> operation, the same wall, narrowed by a controlled grammar.
 
+### Question decomposition — plan, stack, compose
+
+`query_planner.py` replaces the scattered "if 'how' in text" intents with ONE
+pipeline that breaks a question down the way you would by hand, then reasons:
+
+```
+intent (appraisal) -> quantifier (count/which/list/single) -> subject -> relation
+   -> push each sub-question on a STACK -> solve each over the engine -> COMPOSE
+```
+
+A multi-part question decomposes into a stack of structured sub-queries, each
+answered over the reasoning core (inverse lookup `subjects_with`, category filter
+via `reaches`, branch listing), then merged:
+
+```
+> in how many ways can we get vitamin C? which fruit provides vitamin C?
+  We can get vitamin c in 3 ways: from lemon, orange and strawberry.
+  Specifically, the fruits that provide vitamin c are lemon, orange and strawberry.
+```
+
+Honest scope: the slot extraction is still controlled grammar — the comprehension
+wall is unmoved — but the structure (plan -> stack -> compose) is real and
+generalizes every earlier ad-hoc intent into one mechanism. 11 tests.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

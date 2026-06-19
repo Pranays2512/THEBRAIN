@@ -214,6 +214,18 @@ class ReasoningEngine:
         root = max(paths, key=lambda k: len(paths[k]))
         return list(reversed(paths[root]))              # [root, ..., topic]
 
+    def subjects_with(self, rel, obj):
+        """Inverse lookup: all subjects s with (s, rel, obj) — answers
+        'which X <rel> <obj>?' (which fruit provides vitamin_c)."""
+        rel, obj = KnowledgeEngine._norm(rel), KnowledgeEngine._norm(obj)
+        return sorted({s for s, r, o in self.kb.facts if r == rel and o == obj})
+
+    def relations_into(self, obj):
+        """All relations r for which some (s, r, obj) exists — lets a question
+        about `obj` infer which relation it is asking over."""
+        obj = KnowledgeEngine._norm(obj)
+        return sorted({r for _, r, o in self.kb.facts if o == obj})
+
     def process_branches(self, topic, rel):
         """Every forward causal chain from `topic` to a leaf (a node with no
         further `rel`-edge) — the branches of "in which ways does X ...?".
