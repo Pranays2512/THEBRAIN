@@ -29,18 +29,19 @@ def main():
     for s, o in [("sunlight", "photosynthesis"), ("photosynthesis", "sugar"),
                  ("sugar", "fruit"), ("fruit", "apple")]:
         c.learn(s, "leads_to", o)
-    # taught process 2: how a vitamin helps the body
+    # taught process 2: how a vitamin helps the body (BRANCHING — many ways)
     for s, o in [("vitamin", "immune_system"), ("immune_system", "fighting_infection"),
-                 ("fighting_infection", "good_health")]:
+                 ("vitamin", "digestion"), ("vitamin", "energy")]:
         c.learn(s, "helps", o)
     c.set_transitive("leads_to")
     c.set_transitive("helps")
 
     for q in [
-        "how does an apple grow?",          # backward: causes of apple
-        "why does an apple grow?",          # same chain, 'why'
-        "how does vitamin help the body?",  # forward: effects of vitamin
-        "how does a rock grow?",            # honest unknown
+        "how does an apple grow?",              # backward: causes of apple
+        "why does an apple grow?",              # same chain, 'why'
+        "how does vitamin help the body?",      # forward: one (longest) chain
+        "in which ways does vitamin help?",     # forward: ALL branches listed
+        "how does a rock grow?",                # honest unknown
     ]:
         print(f"  > {q}")
         print(f"    {c.respond(q)}\n")

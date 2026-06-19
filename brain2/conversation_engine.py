@@ -140,8 +140,8 @@ class ConversationEngine:
             if ans:
                 return ans
 
-        # how/why-question: narrate the causal chain through the topic
-        if "how" in raw or "why" in raw:
+        # how/why/ways-question: narrate the causal chain(s) through the topic
+        if {"how", "why", "way", "ways"} & set(raw):
             return self._how(ents, raw)
 
         # confirm-question: "is X (a) Y" / "is it red" -> check a value
@@ -167,6 +167,12 @@ class ConversationEngine:
         self.topic = topic
         direction = "backward" if (set(raw) & BACKWARD_WORDS) else "forward"
 
+        # "in which ways …?" — list every forward branch, not one chain
+        if "way" in raw or "ways" in raw:
+            ways = self._how_ways(topic)
+            if ways:
+                return ways
+
         # pick the relation giving the longest chain; try the other way if none
         best, best_rel = [], None
         for d in (direction, "forward" if direction == "backward" else "backward"):
@@ -179,6 +185,24 @@ class ConversationEngine:
         if len(best) < 2:
             return f"I don't know how {topic.replace('_', ' ')} works."
         return self._narrate_chain(best, best_rel)
+
+    def _how_ways(self, topic):
+        """List every forward branch from the topic — 'in which ways does X
+        help?' -> one clause per branch, later ones de-duplicated to 'It also'."""
+        best, best_rel = [], None
+        for rel in self.r.transitive:
+            branches = self.r.process_branches(topic, rel)
+            if len(branches) > len(best):
+                best, best_rel = branches, rel
+        if len(best) < 2:                          # 0 or 1 branch -> not a list
+            return None
+        sents = []
+        for i, branch in enumerate(best):
+            s = self._narrate_chain(branch, best_rel)
+            if i > 0:                              # drop the repeated subject
+                s = "It also " + s.split(" ", 1)[1]
+            sents.append(s)
+        return " ".join(sents)
 
     def _narrate_chain(self, path, rel):
         verb = rel.replace("_", " ")

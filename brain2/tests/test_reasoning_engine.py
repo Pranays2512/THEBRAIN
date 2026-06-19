@@ -145,6 +145,17 @@ def run():
           proc.process_chain("d", "leads_to", "backward") == ["a", "b", "c", "d"])
     check("no chain -> []", proc.process_chain("z", "leads_to", "forward") == [])
 
+    # 9e. branching forward chains — "in which ways"
+    br = ReasoningEngine()
+    for s, o in [("x", "a"), ("a", "b"), ("x", "c")]:
+        br.learn(s, "helps", o)
+    br.set_transitive("helps")
+    branches = br.process_branches("x", "helps")
+    check("branches reach every leaf",
+          sorted(p[-1] for p in branches) == ["b", "c"])
+    check("deep branch keeps full chain",
+          ["x", "a", "b"] in branches)
+
     # 10. persistence round-trip (facts + rules)
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "re.json")

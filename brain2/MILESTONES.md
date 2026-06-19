@@ -238,8 +238,17 @@ teach: sunlight leads_to photosynthesis leads_to sugar leads_to fruit leads_to a
 ```
 
 No new reasoning power — a "how" question is a chain walk with a direction,
-reusing the transitive core. Honest scope: linear taught processes, controlled
-phrasing; it reorders and verbalizes given steps, doesn't discover the science.
+reusing the transitive core. "In which ways does X help?" lists every forward
+BRANCH (`process_branches` -> all chains to a leaf), de-duplicating the repeated
+subject to "It also":
+
+```
+> in which ways does vitamin help?  ->  Vitamin helps digestion. It also helps
+   energy. It also helps immune system, which helps fighting infection.
+```
+
+Honest scope: linear/branching taught processes, controlled phrasing; it reorders
+and verbalizes given steps, doesn't discover the science.
 
 ### Arithmetic word problems — language -> operation
 

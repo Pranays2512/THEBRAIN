@@ -214,6 +214,19 @@ class ReasoningEngine:
         root = max(paths, key=lambda k: len(paths[k]))
         return list(reversed(paths[root]))              # [root, ..., topic]
 
+    def process_branches(self, topic, rel):
+        """Every forward causal chain from `topic` to a leaf (a node with no
+        further `rel`-edge) — the branches of "in which ways does X ...?".
+        Each chain is in story order [topic, ..., leaf]."""
+        topic, rel = KnowledgeEngine._norm(topic), KnowledgeEngine._norm(rel)
+        fwd = defaultdict(set)
+        for s, r, o in self.kb.facts:
+            if r == rel:
+                fwd[s].add(o)
+        paths = self._bfs_paths(topic, fwd)
+        leaves = [n for n in paths if not fwd.get(n)]   # ends of each branch
+        return [paths[leaf] for leaf in sorted(leaves, key=lambda n: paths[n])]
+
     def explain(self, subj, rel):
         _, why = self.ask(subj, rel)
         return why

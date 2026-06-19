@@ -96,6 +96,15 @@ def run():
     check("unknown process is honest",
           "don't know how" in howc.respond("how does metal grow?").lower())
 
+    # "in which ways" -> list every branch
+    waysc = ConversationEngine()
+    for s, o in [("vit", "immune"), ("immune", "fight"), ("vit", "energy")]:
+        waysc.learn(s, "helps", o)
+    waysc.set_transitive("helps")
+    wout = waysc.respond("in which ways does vit help?").lower()
+    check("ways lists multiple branches",
+          "it also" in wout and "energy" in wout and "fight" in wout)
+
     # 11. arithmetic word problem routed through the loop
     mathc = ConversationEngine()
     check("subtraction word problem",
