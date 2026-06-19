@@ -342,6 +342,24 @@ Honest scope: the unknown appears once (linear / single-power). x on both sides,
 or appearing twice, needs term collection — the search-based rewrite+solve rung,
 not direct isolation. 9 tests; refuses both-sides and no-x equations.
 
+## Integration — rule SELECTION, verified by its own inverse
+
+`integral_engine.py` is the honest contrast to differentiation. Differentiation
+always succeeds (one rule per node, deterministic composition). Integration must
+CHOOSE a rule by the integrand's form and can FAIL — many functions have no
+elementary antiderivative. That failure-possibility is what makes it the SEARCH
+case. Each result is verified by DIFFERENTIATING it back with the calculus engine:
+
+```
+int x^2 dx = x^3/3 + C   [checked]      int sin(x) dx = -cos(x) + C  [checked]
+int sin(x^2) dx = (no rule applies — honest fail, not faked)
+```
+
+Honest scope: a bounded ruleset (constants, powers, sums, constant multiples,
+basic trig/exp, 1/x). u-substitution and by-parts — where real backtracking
+search lives (exponential) — are not built; the engine returns None rather than
+guess. 5 tests, including the verified round-trip and the honest None cases.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

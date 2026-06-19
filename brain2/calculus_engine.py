@@ -70,6 +70,9 @@ class CalculusEngine:
 
         op = e[0]
 
+        if op == "neg":                              # d/dx(-u) = -(du)
+            return ("neg", self._d(e[1], var))
+
         if op in ("+", "-"):
             self._use(f"{'sum' if op == '+' else 'difference'} rule")
             return (op, self._d(e[1], var), self._d(e[2], var))

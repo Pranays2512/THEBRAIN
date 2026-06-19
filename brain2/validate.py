@@ -67,6 +67,8 @@ CORE = [
      [r"Physics engine: READY"]),
     ("algebra (solve for x)", "tests/test_algebra_engine.py",
      [r"Algebra engine: READY"]),
+    ("integration (verified by inverse)", "tests/test_integral_engine.py",
+     [r"Integral engine: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
