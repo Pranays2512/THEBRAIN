@@ -8,7 +8,7 @@ promoted up the hierarchy. Nothing moves up if `validate.py` regresses.
 | # | milestone | what it is | validated by | result |
 |---|-----------|------------|--------------|--------|
 | 1 | **Knowledge** ✅ HARDENED | learn facts online, retrieve them | `knowledge_engine.py`, `tests/test_knowledge_engine.py` | one-shot retrieval 1.0; 17 hardening tests green |
-| 2 | **Reasoning** ✅ HARDENED | composition rules across relations, explained | `reasoning_engine.py`, `tests/test_reasoning_engine.py` | parent∘parent→grandparent + nested rules; 12 tests green |
+| 2 | **Reasoning** ✅ HARDENED | composition rules + multi-parent transitive closure, explained | `reasoning_engine.py`, `tests/test_reasoning_engine.py` | parent∘parent→grandparent + nested rules + DAG closure (dog→pet→animal over MANY parents); tests green |
 | 3 | **General search** ✅ HARDENED | branch / prune / search to a goal over rules | `tree_reason.py`, `tests/test_search_engine.py` | optimal + deterministic; algebra, bridge=17, N-queens, jugs, rewrite; 16 tests |
 | 4 | **Knowledge + search joined** ✅ HARDENED | plan over the facts it learned | `planning_engine.py`, `tests/test_planning_engine.py` | multi-precondition planning, optimal, online replan; 12 tests |
 | 5 | **Learned search guidance** ✅ HARDENED | learns to search more efficiently from experience | `learned_guidance.py`, `tests/test_learned_guidance.py` | LearnedHeuristic ~100× fewer states, solutions stay valid; 9 tests |
@@ -179,9 +179,12 @@ can a fish fly?      -> no (a fish can swim)
 what is a zorblax?   -> I have never heard of a zorblax
 ```
 
-Honest finding it surfaced: ConceptNet concepts have many parents, so membership
-needs real transitive CLOSURE over the fact graph, not the binding memory's
-single-chain derive — the demo reasons over the brain's fact graph. This is the
+Honest finding it surfaced, then FIXED: ConceptNet concepts have many parents, so
+membership needs real transitive CLOSURE over the multi-valued fact graph — the
+binding memory's associative recall returns one best parent and can't represent
+it. First the demo hand-rolled a BFS; that closure is now PROMOTED into the
+engine (`ReasoningEngine.closure` / `reaches` / `derive_all`), so the brain does
+multi-parent reasoning natively and `world_demo` just calls it. This is the
 "feed it curated, trusted knowledge" path (not crawl-the-web). Gate: 22/22.
 
 ## Workflow

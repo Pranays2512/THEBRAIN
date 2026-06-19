@@ -88,6 +88,35 @@ def run():
     check("knows() via composition", re.knows("tom", "grandparent", "kid"))
     check("knows() false when underivable", not re.knows("tom", "grandparent", "tom"))
 
+    # 9b. MULTI-PARENT transitive closure (the promotion).
+    # A concept with MANY parents — binding memory's single-best recall can't
+    # do this; closure over the fact graph can.
+    tax = ReasoningEngine()
+    for s, o in [("dog", "pet"), ("dog", "mammal"), ("dog", "canine"),
+                 ("pet", "animal"), ("mammal", "animal"), ("animal", "organism")]:
+        tax.learn(s, "isa", o)
+    tax.set_transitive("isa")
+
+    anc = tax.derive_all("dog", "isa")
+    check("closure finds ALL ancestors (multi-parent)",
+          set(anc) == {"pet", "mammal", "canine", "animal", "organism"})
+
+    reach, path = tax.reaches("dog", "isa", "animal")
+    check("reaches target through an intermediate", reach)
+    check("path is a real chain dog..animal",
+          path and path[0] == "dog" and path[-1] == "animal" and "animal" in path)
+    check("shortest path (dog->pet->animal, not longer)", len(path) == 3)
+
+    reach2, _ = tax.reaches("dog", "isa", "vehicle")
+    check("underivable membership -> False", not reach2)
+
+    # closure must terminate on a cycle
+    cyc = ReasoningEngine()
+    cyc.learn("a", "isa", "b"); cyc.learn("b", "isa", "a")
+    cyc.set_transitive("isa")
+    anc_c = cyc.derive_all("a", "isa")     # must return, not hang
+    check("closure terminates on cycle (self excluded)", set(anc_c) == {"b"})
+
     # 10. persistence round-trip (facts + rules)
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "re.json")

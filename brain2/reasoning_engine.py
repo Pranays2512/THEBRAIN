@@ -19,6 +19,7 @@ validation, cycle safety, persistence, explanations.
 
 import os
 import sys
+from collections import defaultdict, deque
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from knowledge_engine import KnowledgeEngine, KnowledgeError
@@ -80,6 +81,61 @@ class ReasoningEngine:
                 return z, (f"{subj} {prem1} {mid} AND {mid} {prem2} {z}  =>  "
                            f"{subj} {rel} {z}   [rule {prem1}∘{prem2}→{rel}]")
         return None, None
+
+    # ── multi-parent transitive closure (DAG, not single chain) ──────────────
+    # KnowledgeEngine.derive and binding-memory recall return ONE best object
+    # per (subject, relation) — fine for a chain (a -> b -> c), wrong for real
+    # taxonomies where a concept has MANY parents (dog isa pet, mammal, canine).
+    # Closure traverses the multi-valued FACT graph: every ancestor, each with
+    # a shortest derivation path. This is the honest fix the ConceptNet demo
+    # surfaced, now native in the engine instead of re-coded per demo.
+    def _adjacency(self, rel):
+        """(subject) -> set(objects) for one relation, from the fact graph.
+        Multi-valued: the ground truth the single-best recall can't represent."""
+        adj = defaultdict(set)
+        for s, r, o in self.kb.facts:
+            if r == rel:
+                adj[s].add(o)
+        return adj
+
+    def closure(self, subj, rel, max_nodes=100000):
+        """Every object reachable from `subj` by following `rel` transitively,
+        each mapped to a SHORTEST derivation path [subj, ..., obj].
+
+        BFS over the multi-valued fact graph. The graph may contain cycles, so
+        a visited set is required for termination. Excludes `subj` itself.
+        Returns {obj: [subj, ..., obj]}.
+        """
+        subj, rel = KnowledgeEngine._norm(subj), KnowledgeEngine._norm(rel)
+        adj = self._adjacency(rel)
+        # paths[node] holds the shortest path discovered to `node`.
+        paths = {subj: [subj]}
+
+        # BFS: the first time a node is reached is via a shortest path, so the
+        # explanation shows the most direct ancestry. `paths` is also the
+        # visited set, which makes cyclic graphs terminate.
+        frontier = deque([subj])
+        while frontier and len(paths) <= max_nodes:
+            node = frontier.popleft()
+            for nbr in sorted(adj.get(node, ())):     # sorted -> deterministic
+                if nbr not in paths:
+                    paths[nbr] = paths[node] + [nbr]
+                    frontier.append(nbr)
+
+        paths.pop(subj, None)          # report ancestors, not the start node
+        return paths
+
+    def reaches(self, subj, rel, target):
+        """(bool, path) — is `target` a transitive `rel`-ancestor of `subj`,
+        and the shortest chain that shows it (e.g. dog -> pet -> animal)."""
+        target = KnowledgeEngine._norm(target)
+        paths = self.closure(subj, rel)
+        return (target in paths), paths.get(target)
+
+    def derive_all(self, subj, rel):
+        """All transitive `rel`-ancestors of `subj`, sorted — the multi-parent
+        generalization of KnowledgeEngine.derive (which follows one chain)."""
+        return sorted(self.closure(subj, rel))
 
     def explain(self, subj, rel):
         _, why = self.ask(subj, rel)

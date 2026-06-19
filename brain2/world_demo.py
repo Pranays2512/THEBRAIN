@@ -15,10 +15,10 @@ The binding memory holds the facts; reasoning traverses them.
 
 import os
 import sys
-from collections import defaultdict, deque
+from collections import defaultdict
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from knowledge_engine import KnowledgeEngine
+from reasoning_engine import ReasoningEngine
 from world_knowledge import load_conceptnet
 
 
@@ -29,35 +29,22 @@ def pretty(w):
 def main():
     print("=== world_demo — reasoning over basic world knowledge (ConceptNet) ===\n")
     facts = load_conceptnet()
-    kb = KnowledgeEngine()                      # the brain holds the knowledge
+    re = ReasoningEngine()                       # the brain reasons over the facts
     for s, r, o in facts:
-        kb.learn(s, r, o)
+        re.learn(s, r, o)
+    re.set_transitive("isa")                     # IsA chains through the taxonomy
 
-    # reason over the brain's fact graph
-    isa = defaultdict(set)
+    # direct multi-valued lookups for "what it knows" come from the fact graph
     rel_obj = defaultdict(set)
-    for s, r, o in kb.facts:
+    for s, r, o in re.kb.facts:
         rel_obj[(s, r)].add(o)
-        if r == "isa":
-            isa[s].add(o)
-    ents = {s for s, _, _ in kb.facts} | {o for _, _, o in kb.facts}
-    print(f"Loaded {len(kb.facts)} common-sense facts about {len(ents)} concepts.\n")
+    ents = {s for s, _, _ in re.kb.facts} | {o for _, _, o in re.kb.facts}
+    print(f"Loaded {len(re.kb.facts)} common-sense facts about {len(ents)} concepts.\n")
 
-    def ancestors(c):
-        """All IsA ancestors with a shortest path to each (full closure)."""
-        path = {c: [c]}
-        q = deque([c])
-        while q:
-            x = q.popleft()
-            for p in isa[x]:
-                if p not in path:
-                    path[p] = path[x] + [p]
-                    q.append(p)
-        return path
-
+    # category membership = the engine's native multi-parent closure (no longer
+    # re-coded here — reaches() does BFS over the multi-valued fact graph).
     def is_a(c, target):
-        p = ancestors(c)
-        return (target in p), p.get(target)
+        return re.reaches(c, "isa", target)
 
     def holds(c, rel, obj):
         return obj in rel_obj.get((c, rel), set())
