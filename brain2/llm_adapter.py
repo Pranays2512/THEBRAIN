@@ -61,7 +61,8 @@ class OllamaClient(LLMClient):                      # pragma: no cover (needs a 
     def complete(self, prompt, system=""):
         import urllib.request
         body = json.dumps({"model": self.model, "prompt": prompt, "system": system,
-                           "stream": False, "options": {"temperature": 0}}).encode()
+                           "stream": False, "think": False,   # qwen3: skip slow thinking
+                           "options": {"temperature": 0}}).encode()
         req = urllib.request.Request(self.host + "/api/generate", data=body,
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=180) as r:
