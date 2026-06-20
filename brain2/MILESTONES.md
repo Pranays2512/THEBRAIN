@@ -703,6 +703,32 @@ opaque Q/P codes) needs label resolution and isn't a laptop job — but a labele
 subset exported as TSV/N-Triples drops straight in. 9 tests. This turns "feed the
 brain breadth" into a concrete pipe: export a subset, pour it in, watch coverage.
 
+## 🔗 Closing the corpus loop — llm_extractor (prose -> triples -> ingest)
+
+`llm_extractor.py` is the "learn from a corpus" path, done honestly. Trusted text
+is read by the LLM into triples, each GROUNDING-checked (its terms must appear in
+the source) before it's kept — so the model can't smuggle in facts the text never
+stated. Same `extract(text)` interface as the grammar extractor, so it drops into
+`knowledge_base.ingest_text`. Verified end to end with the real qwen3:1.7B:
+
+```
+text: "The sun is a star. The earth is a planet and it orbits the sun.
+       Water is made of hydrogen and oxygen."
+qwen3 -> (sun,isa,star) (earth,isa,planet) (water,made_of,hydrogen) (water,made_of,oxygen)
+ingest -> ask "what is the sun?" -> "A sun is a star."
+
+(a hallucinated 'dragon breathes fire' triple is DROPPED — not in the source)
+```
+
+Honest boundary: it trusts the SOURCE and verifies the EXTRACTION (faithful, not
+hallucinated) — it does NOT verify the source is true (feed it curated text;
+truth-checking a claim needs corroboration, not parsing). 6 tests (grounded kept,
+hallucinated dropped, both JSON shapes, garbage -> empty, ingest integration).
+
+This closes the data loop end to end: **prose -> LLM extract -> ground-verify ->
+ingest -> reason**, all over a local model — the symbolic brain learning by
+reading, with the LLM as the reading eye and the verifier as the gate.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

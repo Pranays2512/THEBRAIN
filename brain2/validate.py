@@ -99,6 +99,8 @@ CORE = [
      [r"Core knowledge: READY"]),
     ("knowledge pack (bulk loaders)", "tests/test_knowledge_pack.py",
      [r"Knowledge pack: READY"]),
+    ("llm extractor (prose -> triples)", "tests/test_llm_extractor.py",
+     [r"LLM extractor: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
