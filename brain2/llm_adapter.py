@@ -60,12 +60,13 @@ class OllamaClient(LLMClient):                      # pragma: no cover (needs a 
 
     def complete(self, prompt, system=""):
         import urllib.request
-        body = json.dumps({"model": self.model, "prompt": prompt,
-                           "system": system, "stream": False}).encode()
+        body = json.dumps({"model": self.model, "prompt": prompt, "system": system,
+                           "stream": False, "options": {"temperature": 0}}).encode()
         req = urllib.request.Request(self.host + "/api/generate", data=body,
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return json.loads(r.read()).get("response", "")
+        with urllib.request.urlopen(req, timeout=180) as r:
+            out = json.loads(r.read()).get("response", "")
+        return re.sub(r"<think>.*?</think>", "", out, flags=re.DOTALL).strip()
 
 
 def _first_json(text):
@@ -80,10 +81,15 @@ def _first_json(text):
 
 # ── LLM as Eyes: exact parser first, model only as fallback ──────────────────
 EYES_SYSTEM = (
-    "Convert the user message into JSON, output ONLY JSON. "
+    "You convert a request into JSON. Output ONLY JSON. "
     'Schema: {"kind": "differentiate|integrate|solve|language", '
-    '"expr": "<math in standard notation, e.g. sin(x^2) or 2*x+3=7>", '
-    '"text": "<cleaned text for language>"}. '
+    '"expr": "<the expression to OPERATE ON, in notation — NEVER the answer>", '
+    '"text": "<cleaned text, for language only>"}. '
+    "expr is the INPUT expression, never the computed result. "
+    'Examples: "slope of x squared" -> {"kind":"differentiate","expr":"x^2"}. '
+    '"integral of cosine x" -> {"kind":"integrate","expr":"cos(x)"}. '
+    '"what x makes 2x+3=7" -> {"kind":"solve","expr":"2*x+3=7"}. '
+    'Anything not math -> {"kind":"language","text":"..."}. '
     "Use * for multiply and ^ for power."
 )
 
@@ -113,8 +119,8 @@ class LLMEyes(Eyes):
 
 # ── LLM as Mouth: polish language answers, keep verified ones deterministic ──
 MOUTH_SYSTEM = (
-    "Render this answer as ONE natural sentence. Use ONLY the facts given; "
-    "add nothing. Keep numbers and symbols exactly as provided."
+    "Render this answer as ONE short natural sentence. Use ONLY the facts given; "
+    "add nothing. Keep numbers and symbols exactly. Output only the sentence."
 )
 
 

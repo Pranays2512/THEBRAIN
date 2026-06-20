@@ -625,6 +625,43 @@ language-domain answers — hard guarantees need constrained decoding; the verif
 content is always in the Answer for audit. This is the "download a 4B and make it
 the mouth" step, done so the brain stays the mind.
 
+### Wired to a real local model (qwen3:1.7B via Ollama)
+
+Verified end to end against a live local model, no training:
+
+```
+> what is the slope of x squared?   (qwen3 eyes -> "differentiate x^2")  ->  The derivative is 2*x.
+> solve 2*x + 3 = 7 for x           (exact path, no model)               ->  x = 2 (verified)
+> tell me about the apple           (qwen3 mouth polishes)               ->  An apple is a fruit. It is red.
+```
+
+`OllamaClient` runs the model deterministically (`temperature: 0`) and strips
+qwen3 `<think>` tags. Two real findings, honestly handled: (1) a 1.7B will
+sometimes PRE-SOLVE ("slope" -> expr `2*x` the answer) — fixed with a few-shot
+"expr is the operand, never the result" prompt; (2) it is nondeterministic —
+fixed with temperature 0. Even so, a flaky eyes can only mis-route, never corrupt
+a verified answer. Wiring is `OllamaClient("qwen3:1.7B")` into the Eyes/Mouth slots.
+
+## Super-quality data — core_knowledge (the vetted seed)
+
+`core_knowledge.py` is the honest meaning of "train on quality data": ~70
+hand-verified `(s, r, o)` triples a person can check by eye, across taxonomy,
+biology, chemistry, astronomy, geography and everyday objects — with deliberate
+isa ladders (dog -> mammal -> animal -> living_thing) so transitive reasoning has
+clean rungs to climb:
+
+```
+> what is a whale?       A whale is a mammal. It lives in an ocean.
+> is a dog an animal?    Yes — dog -> mammal -> animal.       (climbed the ladder)
+> what is a unicorn?     I don't know.                        (honest, not seeded)
+```
+
+Scale comes later from ConceptNet / Wikidata via `knowledge_base`; this is the
+gold core the brain reasons over. 8 tests. Honest scope: curated, vetted facts —
+quality over a scraped firehose. (Known gap: reverse phrasings like "capital OF
+france" need `query_planner` routing, not the conversation layer — the fact is in
+the seed, the language path just doesn't ask it that way yet.)
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
