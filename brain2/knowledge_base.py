@@ -21,6 +21,7 @@ value is a clean, deduped, persistent store and a measurable coverage number, so
 
 import json
 import os
+import re
 import sys
 from collections import Counter
 
@@ -58,6 +59,36 @@ class KnowledgeBase:
     def ingest_text(self, text, source="text", extractor=None):
         ex = extractor or FactExtractor()
         return self.ingest_triples(ex.extract(text), source)
+
+    def ingest_tsv(self, path, source=None):
+        """Tab-separated 'subject<TAB>relation<TAB>object' per line — the lowest
+        common denominator any structured source can export to."""
+        src = source or os.path.basename(path)
+        n = 0
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                if len(cols) >= 3:
+                    n += self.add(cols[0], cols[1], cols[2], src)
+        return n
+
+    def ingest_ntriples(self, path, source=None):
+        """Basic N-Triples ('<s> <p> <o> .'), keeping the local name (last URI
+        segment) — works for label-bearing dumps (DBpedia-style)."""
+        src = source or os.path.basename(path)
+
+        def local(u):
+            u = u.strip().strip("<>").strip('"')
+            return (re.split(r"[/#]", u)[-1] or u).strip()
+
+        n = 0
+        line_re = re.compile(r'^\s*(\S+)\s+(\S+)\s+(.+?)\s*\.\s*$')
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                m = line_re.match(line)
+                if m:
+                    n += self.add(local(m.group(1)), local(m.group(2)), local(m.group(3)), src)
+        return n
 
     # ── stats / persistence ──────────────────────────────────────────────────
     def entities(self):

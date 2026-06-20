@@ -682,6 +682,27 @@ fall back — so adding the planner widens what gets answered without hijacking 
 plain describe path. The planner's own demo phrasing is untouched (its tests stay
 green); the brain uses a separate general verbalizer.
 
+## Bulk ingest — knowledge_pack (format loaders + a shippable pack)
+
+`knowledge_base` gains generic loaders so any structured dump pours in, and
+`knowledge_pack.py` fuses the curated core + ConceptNet (+ your dumps) into one
+saveable, coverage-measured file:
+
+```
+pack: 1596 facts, 1423 entities, 13 relations   by source {core:69, conceptnet:1527}
+coverage on sample questions: 6/7   (the unicorn is honestly unknown)
+```
+
+- `ingest_tsv` — `subject<TAB>relation<TAB>object`, the lowest common denominator
+  any source can export to.
+- `ingest_ntriples` — `<s> <p> <o> .`, keeping the local URI name (DBpedia-style).
+- `build_pack` — fuse + dedupe + save + measure.
+
+Honest scope: structured, curated sources. The full Wikidata dump (terabytes of
+opaque Q/P codes) needs label resolution and isn't a laptop job — but a labeled
+subset exported as TSV/N-Triples drops straight in. 9 tests. This turns "feed the
+brain breadth" into a concrete pipe: export a subset, pour it in, watch coverage.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
