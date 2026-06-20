@@ -600,6 +600,31 @@ its KB to disk. The REPL is thin glue (`:ingest`, `:stats`, `:coverage`, `:save`
 the logic is in `BrainSession` so it's gate-tested. 9 tests. This is the product
 demo you can actually run — the whole architecture as one bootable brain.
 
+## Attaching the model — llm_adapter (LLM fills the eyes & mouth slots)
+
+`llm_adapter.py` plugs a local LLM (Ollama: `qwen2.5` / `gemma3:4b` on a Mac) into
+the Eyes/Mouth slots, with NO training — the model is used off the shelf as a
+translator:
+
+```
+> differentiate sin(x^2)            exact parser, no LLM   -> cos(x^2)*(2*x)
+> what is the slope of x squared?   LLM-eyes rescues it    -> 2*x   (model -> "differentiate x^2")
+> solve 2*x + 3 = 7 for x           verified, deterministic-> x = 2 (verified)
+> what is apple?                    LLM-mouth polishes     -> "An apple is a lovely red fruit."
+```
+
+Crucial design: the exact path stays exact — math notation goes through the
+deterministic parser; the LLM is only the FALLBACK for phrasings the rules miss,
+and **VERIFIED answers are rendered deterministically** (the model never touches
+the numbers). So attaching an LLM can only WIDEN what the eyes read and SMOOTH what
+the mouth says — it can never corrupt a verified result (a test feeds the mouth
+hallucinated junk and the verified answer is unchanged). `StubClient` makes it
+gate-testable; `OllamaClient` is the real drop-in. 9 tests. Honest limit: prompt-
+constraining the mouth reduces but does not PROVE no hallucination on the
+language-domain answers — hard guarantees need constrained decoding; the verified
+content is always in the Answer for audit. This is the "download a 4B and make it
+the mouth" step, done so the brain stays the mind.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

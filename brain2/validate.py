@@ -93,6 +93,8 @@ CORE = [
      [r"Knowledge base: READY"]),
     ("brain session (operational)", "tests/test_brain_session.py",
      [r"Brain session: READY"]),
+    ("llm adapter (eyes & mouth)", "tests/test_llm_adapter.py",
+     [r"LLM adapter: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
