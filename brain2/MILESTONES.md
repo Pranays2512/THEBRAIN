@@ -556,6 +556,28 @@ brain covers — a demonstration of the trust metric, NOT an MMLU claim (broad M
 needs the knowledge-ingestion work). The pitch: right whenever it says "verified",
 honest otherwise — trustworthiness a frontier LLM cannot report.
 
+## Knowledge ingestion at scale — knowledge_base (the coverage bottleneck)
+
+`knowledge_base.py` attacks the real product bottleneck: coverage = what the brain
+knows. It is a multi-source ingestion pipeline — pull triples from ConceptNet or
+from plain text (the fact extractor), normalize, DEDUPE, persist — then load the
+whole store into the brain so coverage on real questions rises, measurably:
+
+```
+empty brain coverage:        0/5
+ingest ConceptNet:           +1541 facts
+ingest text:                 +1 fact (whale is a mammal)
+KB: 1542 facts, 1383 entities, 7 relations
+brain coverage after:        4/5   (was 0/5)   — zorblax still unknown (honest)
+```
+
+Normalization folds case/spaces ("New York" -> new_york), dedupe keeps the store
+clean, by-source counts track provenance, and it round-trips to JSON. This turns
+"feed the brain more" from a slogan into a concrete, trackable step: ingest a
+source, watch coverage rise, while un-ingested entities stay honestly unknown.
+12 tests. Honest scope: CURATED, trusted sources — not crawling the web; the value
+is a clean deduped store and a measurable coverage number on the path to a product.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

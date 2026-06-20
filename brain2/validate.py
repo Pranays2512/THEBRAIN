@@ -89,6 +89,8 @@ CORE = [
      [r"Neuro bridge: READY"]),
     ("eval harness (trust metrics)", "tests/test_eval_harness.py",
      [r"Eval harness: READY"]),
+    ("knowledge base (ingestion)", "tests/test_knowledge_base.py",
+     [r"Knowledge base: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
