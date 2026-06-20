@@ -511,6 +511,31 @@ equally trustworthy because both survived the gate. 8 tests. Honest scope: every
 promoted rule replicated on held-out data or was confirmed by an experiment — no
 causation claims, no open-ended invention.
 
+## 🔌 IO CONTRACT — LLM is the eyes and mouth, the brain is brain
+
+`neuro_bridge.py` makes the product architecture concrete: the brain (controller)
+operates ONLY on structured Query/Answer — it never sees raw text. Eyes turn
+language into a Query; Mouth turns a verified Answer into language. The LLM is
+just one implementation of Eyes/Mouth and drops into those slots without touching
+cognition.
+
+```
+text --Eyes--> Query --Brain--> Answer --Mouth--> text
+
+> differentiate sin(x^2)   eyes:differentiate  brain:verified value=cos(x^2)*(2*x)  mouth:"The derivative is ..."
+> integrate sin(x^2)       brain:known=False                                        mouth:"I can't integrate that ..."
+> what is apple?           eyes:language       brain:known=True                      mouth:"An apple is a fruit. ..."
+```
+
+Because the LLM only translates in and out, it cannot invent facts — every
+answer's content comes from the verified symbolic core, and coverage = what the
+brain knows (it answers or honestly flags unknown). Proven swappable: the same
+brain Answer renders through two different Mouths unchanged, so the LLM can
+replace Eyes/Mouth without retraining cognition. v0 uses the exact symbolic
+parsers (`math_parser`) + grammar production; the LLM-eyes upgrades open-NL
+parsing, the LLM-mouth upgrades fluency. 14 tests. This is the spine that lets a
+1B LLM be the sensory cortex while the brain stays the seat of reasoning.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

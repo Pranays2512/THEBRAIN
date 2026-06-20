@@ -85,6 +85,8 @@ CORE = [
      [r"Analogy engine: READY"]),
     ("discovery (propose+verify+reason)", "tests/test_discovery.py",
      [r"Discovery: READY"]),
+    ("neuro bridge (eyes/brain/mouth)", "tests/test_neuro_bridge.py",
+     [r"Neuro bridge: READY"]),
     ("knowledge+reasoning", "reasoning_suite.py",
      [r"transitive_derived_acc': 1\.0", r"relation_composition_acc': 1\.0"]),
     ("dream consolidation", "component_validation.py",
