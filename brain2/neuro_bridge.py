@@ -99,7 +99,7 @@ class Brain:
         self.calc = CalculusEngine()
         self.intg = IntegralEngine()
         self.alg = AlgebraEngine()
-        self.lang = ConversationEngine()
+        self.lang = ConversationEngine(max_describe=4)   # keep answers readable on dense KBs
 
     # teaching the knowledge/reasoning side
     def teach(self, s, rel, o):

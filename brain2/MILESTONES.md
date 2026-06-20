@@ -578,6 +578,28 @@ source, watch coverage rise, while un-ingested entities stay honestly unknown.
 12 tests. Honest scope: CURATED, trusted sources — not crawling the web; the value
 is a clean deduped store and a measurable coverage number on the path to a product.
 
+## The operational shell — brain_session (bootable, ingestable, queryable)
+
+`brain_session.py` ties the spine into one running system. A persistent
+KnowledgeBase loads into the Brain at boot; the Mind answers via
+eyes -> brain -> mouth; you ingest more knowledge live and coverage grows
+mid-session:
+
+```
+boot ConceptNet:         1541 facts loaded
+> what is a dog?         A dog is a canine, a chap, a domestic animal and an example of pet. ...
+> differentiate sin(x^2) The derivative is cos(x^2)*(2*x).
+> what is a whale?       I don't know anything about whale.
+ingest: +1 fact
+> what is a whale?       A whale is a mammal.
+```
+
+One session answers knowledge AND math through the same pipeline, learns new
+facts on the fly (reports the delta, dedupes), tracks coverage, and round-trips
+its KB to disk. The REPL is thin glue (`:ingest`, `:stats`, `:coverage`, `:save`);
+the logic is in `BrainSession` so it's gate-tested. 9 tests. This is the product
+demo you can actually run — the whole architecture as one bootable brain.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
