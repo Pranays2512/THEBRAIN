@@ -97,6 +97,16 @@ class QueryPlanner:
         toks = self._tokens(part)
         tset = set(toks)
         intent = self.appraiser.appraise(part).type
+        ents, cats, rels = self._entities(), self._categories(), self._relations()
+
+        # inverse pattern: "<rel> of <obj>"  (the capital OF france -> who?)
+        if "of" in toks:
+            i = toks.index("of")
+            relw = toks[i - 1] if i > 0 else None
+            obj = next((t for t in toks[i + 1:] if t in ents), None)
+            cand = relw if relw in rels else (f"{relw}_of" if relw and f"{relw}_of" in rels else None)
+            if cand and obj:
+                return Query(intent, "inverse", obj, cand, None, part)
 
         if "how" in tset and "many" in tset:
             quant = "count"
@@ -107,7 +117,6 @@ class QueryPlanner:
         else:
             quant = "single"
 
-        ents, cats, rels = self._entities(), self._categories(), self._relations()
         category = next((t for t in toks if t in cats and
                          (("which" in tset) or ("what" in tset))), None)
         # subject: a known entity that isn't the category (prefer a real entity)
@@ -124,6 +133,8 @@ class QueryPlanner:
     def execute(self, q):
         if q.subject is None or q.relation is None:
             return ("none", [])
+        if q.quantifier == "inverse":
+            return ("inverse", self.r.subjects_with(q.relation, q.subject))
         if q.quantifier in ("count", "which"):
             srcs = self.r.subjects_with(q.relation, q.subject)
             if q.category:
@@ -150,6 +161,37 @@ class QueryPlanner:
         if kind == "single" and items and items[0]:
             return f"{sub.capitalize()}: {items[0].replace('_', ' ')}."
         return f"I can't answer that about {sub}."
+
+    # general verbalizer + success-or-None resolver (used by the Brain) ───────
+    def _verbalize(self, q, kind, items):
+        sub = q.subject.replace("_", " ")
+        names = oxford([s.replace("_", " ") for s in items])
+        rel = q.relation.replace("_", " ")
+        if kind == "inverse":
+            noun = q.relation[:-3] if q.relation.endswith("_of") else q.relation
+            return f"The {noun.replace('_', ' ')} of {sub} is {names}."
+        if kind == "count":
+            return f"There are {len(items)}: {names}."
+        if kind == "which":
+            return f"{names[0].upper() + names[1:]} {rel} {sub}."
+        if kind == "list":
+            steps = [" -> ".join(p.replace('_', ' ') for p in path) for path in items]
+            return f"{sub.capitalize()}: " + "; ".join(steps) + "."
+        return f"{sub.capitalize()} {rel} {names}."        # single
+
+    def try_answer(self, text):
+        """Answer relational/quantified questions, or None if it can't — so the
+        caller can fall back to another faculty."""
+        out, prev = [], None
+        for q in self.parse(text):
+            kind, items = self.execute(q)
+            if kind == "none" or not items:
+                continue
+            s = self._verbalize(q, kind, items)
+            out.append(("Specifically, " + s[0].lower() + s[1:])
+                       if prev and q.subject == prev else s)
+            prev = q.subject
+        return " ".join(out) if out else None
 
     def answer(self, text):
         queries = self.parse(text)

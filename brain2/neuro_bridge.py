@@ -28,6 +28,7 @@ from calculus_engine import CalculusEngine
 from integral_engine import IntegralEngine, render as render_expr
 from algebra_engine import AlgebraEngine, AlgebraError
 from conversation_engine import ConversationEngine
+from query_planner import QueryPlanner
 
 
 # ── the contract ─────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ class Brain:
         self.intg = IntegralEngine()
         self.alg = AlgebraEngine()
         self.lang = ConversationEngine(max_describe=4)   # keep answers readable on dense KBs
+        self.planner = QueryPlanner(engine=self.lang.r)  # share one reasoning store
 
     # teaching the knowledge/reasoning side
     def teach(self, s, rel, o):
@@ -128,7 +130,12 @@ class Brain:
                 return Answer("solve", False, note=str(e))
             return Answer("solve", True, verified=True, value=val, steps=steps)
         if q.kind == "language":
-            text = self.lang.respond(q.payload["text"])
+            text_in = q.payload["text"]
+            # relational/quantified questions ("capital of france", "which X ...")
+            planned = self.planner.try_answer(text_in)
+            if planned is not None:
+                return Answer("language", True, verified=False, value=planned)
+            text = self.lang.respond(text_in)
             known = not text.lower().startswith(("i don't know", "i'm not sure", "not that"))
             return Answer("language", known, verified=False, value=text)
         return Answer("error", False, note=q.payload.get("error", "could not parse"))

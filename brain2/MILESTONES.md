@@ -662,6 +662,26 @@ quality over a scraped firehose. (Known gap: reverse phrasings like "capital OF
 france" need `query_planner` routing, not the conversation layer — the fact is in
 the seed, the language path just doesn't ask it that way yet.)
 
+### Closing the gap — query planner wired into the brain
+
+The reverse-phrasing gap above is now fixed. The Brain shares ONE reasoning store
+between its conversation engine and the `QueryPlanner`, and routes relational /
+quantified questions through the planner first (falling back to conversation when
+the planner can't answer):
+
+```
+> what is the capital of france?   The capital of france is paris.   (inverse lookup)
+> what is the capital of japan?     The capital of japan is tokyo.
+> what is a whale?                  A whale is a mammal. ...          (still conversation)
+> what is the capital of narnia?    I don't know.                    (honest)
+```
+
+A new `inverse` query type handles "&lt;rel&gt; of &lt;obj&gt;" via
+`subjects_with`, and `try_answer` returns None on a miss so the brain knows when to
+fall back — so adding the planner widens what gets answered without hijacking the
+plain describe path. The planner's own demo phrasing is untouched (its tests stay
+green); the brain uses a separate general verbalizer.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).

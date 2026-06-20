@@ -63,6 +63,16 @@ def run():
     check("terse mouth renders the same answer differently", terse.render(a) == "3*x^2")
     check("the brain answer was identical for both mouths", a.value == "3*x^2")
 
+    # 4b. relational/inverse questions route through the query planner
+    brain.teach("paris", "capital_of", "france")
+    inv = brain.answer(eyes.parse("what is the capital of france?"))
+    check("inverse query answered via planner",
+          inv.known and "paris" in inv.value.lower())
+    check("a plain describe still goes to conversation",
+          "An apple is a fruit" in brain.answer(eyes.parse("what is apple?")).value)
+    check("planner declines cleanly -> honest unknown",
+          brain.answer(eyes.parse("what is the capital of narnia?")).known is False)
+
     # 5. full Mind pipeline
     mind = Mind(RuleEyes(), brain, GrammarMouth())
     check("end-to-end differentiate", "3*x^2" in mind.respond("differentiate x^3"))
