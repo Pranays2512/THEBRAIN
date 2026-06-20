@@ -536,6 +536,26 @@ parsers (`math_parser`) + grammar production; the LLM-eyes upgrades open-NL
 parsing, the LLM-mouth upgrades fluency. 14 tests. This is the spine that lets a
 1B LLM be the sensory cortex while the brain stays the seat of reasoning.
 
+## Benchmarking for a product — eval_harness (trust metrics)
+
+`eval_harness.py` measures the brain through the Mind and reports the numbers a
+product pitch needs — not just accuracy, but the metric a bare LLM cannot claim:
+
+```
+coverage (answered)        83%    accuracy on answered      100%
+calibration (incl declines) 100%  VERIFIED-CORRECT RATE     100% (8/8)  <- the wedge
+```
+
+Of every answer the brain marked VERIFIED, 100% were correct; the rest it
+honestly declined ("no elementary integral", "I don't know X"). Honest declines
+are scored as correct CALIBRATION, not coverage — the brain is graded on knowing
+what it knows, not on bluffing. Critically, the harness is proven to FAIL a wrong
+answer (a planted gold-mismatch drops the trust metric), so the 100% is real, not
+a rubber stamp. 7 tests. Honest scope: a curated benchmark over what the symbolic
+brain covers — a demonstration of the trust metric, NOT an MMLU claim (broad MMLU
+needs the knowledge-ingestion work). The pitch: right whenever it says "verified",
+honest otherwise — trustworthiness a frontier LLM cannot report.
+
 ## Workflow
 
 1. **Prototype** a new capability (Python, fast iteration).
