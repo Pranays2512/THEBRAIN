@@ -83,35 +83,38 @@ class NLQueryParser:
             for w in _rel_words(r) + [r]:
                 self.lex[w] = r
 
+    def match_relation(self, tokens):
+        """Map content tokens to the best (relation, score): exact name, then a
+        shared-prefix morphological hit, then embedding-nearest. Reusable across
+        attribute queries (rung 1) and relational/comparison queries (rung 2)."""
+        # 1. exact lexical hit (a token that names a relation)
+        rel = next((self.lex[t] for t in tokens if t in self.lex), None)
+        if rel is not None:
+            return rel, 1.0
+        # 2. morphological hit: shared 4-char prefix (dense -> density)
+        for t in tokens:
+            if len(t) < 4:
+                continue
+            m = next((r for r in self.relations
+                      if r.startswith(t[:4]) or t.startswith(r[:4])), None)
+            if m:
+                return m, 0.9
+        # 3. else embedding-nearest relation across content tokens
+        best = (0.35, None)                       # threshold floor
+        for t in tokens:
+            if t not in self.glove:
+                continue
+            for r, rv in self.rel_vec.items():
+                c = _cos(self.glove[t], rv)
+                if c > best[0]:
+                    best = (c, r)
+        return best[1], best[0]
+
     def parse(self, sentence):
         toks = [t for t in re.findall(r"[a-z_]+", sentence.lower()) if t not in STOP]
         entity = next((t for t in toks if t in self.entities), None)
         content = [t for t in toks if t != entity]
-
-        # 1. exact lexical hit (a token that names a relation)
-        rel = next((self.lex[t] for t in content if t in self.lex), None)
-        score = 1.0
-        # 2. morphological hit: shared 4-char prefix (dense -> density)
-        if rel is None:
-            for t in content:
-                if len(t) < 4:
-                    continue
-                m = next((r for r in self.relations
-                          if r.startswith(t[:4]) or t.startswith(r[:4])), None)
-                if m:
-                    rel, score = m, 0.9
-                    break
-        # 3. else embedding-nearest relation across content tokens
-        if rel is None:
-            best = (0.35, None)                  # threshold floor
-            for t in content:
-                if t not in self.glove:
-                    continue
-                for r, rv in self.rel_vec.items():
-                    c = _cos(self.glove[t], rv)
-                    if c > best[0]:
-                        best = (c, r)
-            score, rel = best[0], best[1]
+        rel, score = self.match_relation(content)
         return entity, rel, score
 
 
