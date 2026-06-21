@@ -50,7 +50,14 @@ def ev(expr, env):
         f = {"sin": math.sin, "cos": math.cos, "exp": math.exp, "ln": math.log}[op]
         return f(ev(expr[1], env))
     a, b = ev(expr[1], env), ev(expr[2], env)
-    return {"+": a + b, "-": a - b, "*": a * b, "/": a / b, "^": a ** b}[op]
+    # Evaluate lazily — a dict literal would compute a**b even for a '+'/'*' op,
+    # overflowing on large values.
+    if op == "+": return a + b
+    if op == "-": return a - b
+    if op == "*": return a * b
+    if op == "/": return a / b
+    if op == "^": return a ** b
+    raise PhysicsError(f"unknown operator {op!r}")
 
 
 def isolate(expr, target, other):
