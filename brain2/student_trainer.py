@@ -103,10 +103,25 @@ class Student:
             votes[rel] = votes.get(rel, 0.0) + max(sim, 0.0)   # cosine-weighted
         return max(votes, key=votes.get) if votes else None
 
-    def predict(self, question, method="wordmax"):
+    def _rel_ensemble(self, question):
+        """Majority vote of the three heads; wordmax breaks ties (it's strongest).
+        Best held-out — heads err on different cases, so the vote nets higher."""
+        from collections import Counter as _C
+        v = sentence_vec(question, self.glove)
+        votes = [self._rel_wordmax(question), self._rel_knn(v), self._rel_centroid(v)]
+        top = _C(v for v in votes if v).most_common()
+        if not top:
+            return None
+        if len(top) > 1 and top[0][1] == top[1][1]:
+            return self._rel_wordmax(question)
+        return top[0][0]
+
+    def predict(self, question, method="ensemble"):
         toks = re.findall(r"[a-z_]+", question.lower())
         ents = [t for t in toks if t in self.entities]
-        if method == "wordmax":
+        if method == "ensemble":
+            rel = self._rel_ensemble(question)
+        elif method == "wordmax":
             rel = self._rel_wordmax(question)
         elif method == "knn":
             rel = self._rel_knn(sentence_vec(question, self.glove))
@@ -144,11 +159,11 @@ def _demo():
     print("=== student_trainer — distilled parser (held-out eval) ===\n")
     print(f"  corpus {len(rows)} ex, {len(student.centroids)} relations, "
           f"train {len(train_rows)} / test {len(test_rows)}\n")
-    for m in ("centroid", "knn", "wordmax"):
+    for m in ("centroid", "knn", "wordmax", "ensemble"):
         print(f"  {m:9s} held-out rel accuracy: {accuracy(student, test_rows, m):.0%}")
-    print("\n  wordmax on held-out test questions:")
+    print("\n  ensemble on held-out test questions:")
     for r in test_rows[:8]:
-        p = student.predict(r["question"], "wordmax")
+        p = student.predict(r["question"], "ensemble")
         mark = "OK " if p[2] == r["label"]["rel"] else "XX "
         print(f"    {mark}{r['question'][:44]:44s} -> {p[2]} (true {r['label']['rel']})")
 

@@ -109,3 +109,6 @@ test_save.py
 
 # distillation corpus (generated data, not source)
 distill_data.jsonl
+
+# large GloVe vectors (downloaded/extracted, not source)
+glove.6B.*.txt
