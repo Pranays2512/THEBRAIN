@@ -67,9 +67,13 @@ def _fits(expr, rows, target, tol):
 def induce(rows, inputs, target, tol=1e-6, max_depth=2):
     """Discover a formula target = f(inputs) that fits the TRAIN rows and is then
     VERIFIED on held-out rows. Returns the expr (tuple) or None. Shortest first."""
+    if len(rows) < 4:
+        return None                                   # too few to fit AND hold out
     random.Random(0).shuffle(rows)
     cut = max(2, int(len(rows) * 0.6))
     train, holdout = rows[:cut], rows[cut:]
+    if not holdout:
+        return None
     for expr in enumerate_exprs(inputs, max_depth):   # shortest-first (by layer)
         if _fits(expr, train, target, tol) and _fits(expr, holdout, target, tol):
             return expr                               # induced AND verified
@@ -118,9 +122,13 @@ def _search(rows, inputs, target, guided, budget=1500, tol=1e-6):
     """Best-first search. guided=True orders by fit (the proposer); guided=False
     orders by size (blind baseline). Expands by combining with TERMINALS only —
     bounded branching, builds depth via chains. Returns (expr, nodes)."""
+    if len(rows) < 4:
+        return None, 0                                # too few to fit AND hold out
     random.Random(0).shuffle(rows)
     cut = max(2, int(len(rows) * 0.6))
     train, holdout = rows[:cut], rows[cut:]
+    if not holdout:
+        return None, 0
     terms = _terminals(inputs)
     seen = {repr(e) for e in terms}
     tie = 0

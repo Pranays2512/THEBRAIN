@@ -24,9 +24,27 @@ import brain2
 from policy_induction import guided_induce, _render
 from llm_adapter import OllamaClient, StubClient, _first_json
 
-EXTRACT_SYS = ("Extract every numeric quantity mentioned as flat JSON "
-               '{name: number}. Use the physical name (mass, acceleration, force). '
-               "Output ONLY the JSON object.")
+EXTRACT_SYS = (
+    "Extract ALL numeric quantities from the sentence into ONE flat JSON object "
+    "mapping each quantity's name to its number. Use short names: mass, accel, force. "
+    'Example: "mass 8, acceleration 8, force 64" -> {"mass": 8, "accel": 8, "force": 64}. '
+    "Output ONLY the JSON object, nothing else.")
+
+ALIASES = {"acceleration": "accel", "velocity": "speed", "vel": "speed"}
+
+
+def _normalize(d):
+    """Coerce the model's JSON into a flat {name: float} row, tolerating the
+    {"name":x,"value":y} shape some small models emit, and aliasing names."""
+    if set(d.keys()) == {"name", "value"}:        # single-record shape -> {name: value}
+        d = {d["name"]: d["value"]}
+    row = {}
+    for k, v in d.items():
+        try:
+            row[ALIASES.get(str(k).lower(), str(k).lower())] = float(v)
+        except (TypeError, ValueError):
+            pass
+    return row
 
 
 def read_examples(corpus, client):
@@ -35,10 +53,9 @@ def read_examples(corpus, client):
     for s in corpus:
         d = _first_json(client.complete(s, EXTRACT_SYS))
         if d:
-            try:
-                rows.append({k: float(v) for k, v in d.items()})
-            except (TypeError, ValueError):
-                pass
+            row = _normalize(d)
+            if row:
+                rows.append(row)
     return rows
 
 
