@@ -78,19 +78,28 @@ class Student:
                     s.rel_words.setdefault(rel, {})[w] = glove[w]
         return s
 
-    def _rel_wordmax(self, question):
-        """Score a relation by the BEST single (query-word, relation-word) cosine
-        — the salient content word decides, instead of a diluted sentence mean."""
+    def _wordmax_scored(self, question):
+        """(relation, score) by the BEST single (query-word, relation-word) cosine
+        — the salient content word decides, not a diluted sentence mean."""
         qw = [self.glove[w] for w in re.findall(r"[a-z_]+", question.lower())
               if w not in STOP and w in self.glove]
         if not qw:
-            return None
+            return None, 0.0
         best = (-1.0, None)
         for rel, words in self.rel_words.items():
             sc = max(_cos(q, wv) for q in qw for wv in words.values())
             if sc > best[0]:
                 best = (sc, rel)
-        return best[1]
+        return best[1], best[0]
+
+    def _rel_wordmax(self, question):
+        return self._wordmax_scored(question)[0]
+
+    def confident_rel(self, question):
+        """(ensemble_rel, wordmax_score). The wordmax cosine is the confidence
+        signal — high means a query word lands near a relation's keyword; low
+        means abstain (let the front escalate or say 'I don't know')."""
+        return self._rel_ensemble(question), self._wordmax_scored(question)[1]
 
     def _rel_centroid(self, v):
         return max(self.centroids, key=lambda r: _cos(v, self.centroids[r])) \

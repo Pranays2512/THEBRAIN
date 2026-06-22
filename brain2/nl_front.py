@@ -27,40 +27,65 @@ from nl_query import NLQueryParser, load_glove, _rel_words, STOP
 from student_trainer import Student, load_dataset, DATA
 
 STRONG = 0.9      # lexical confidence at/above which we trust the matcher over the student
+CONF_FLOOR = 0.85  # student confidence floor: real keyword hits score ~1.0 (the
+                   # teacher's phrasings cover the word); spurious matches sit ~0.75,
+                   # so this cleanly separates "answer" from "escalate to the LLM".
 
 
 class Front:
-    def __init__(self, kb, mem, lexical: NLQueryParser, student: Student, solvable):
+    """Escalation ladder: lexical -> distilled student -> local LLM. Each rung is
+    accepted only if it yields a Need the executive can actually SOLVE; the LLM is
+    invoked only when the cheaper rungs fail (so it costs nothing on easy queries)."""
+    def __init__(self, kb, mem, lexical: NLQueryParser, student: Student, solvable,
+                 llm_parser=None):
         self.kb, self.mem, self.lex, self.student = kb, mem, lexical, student
         self.entities = set(lexical.entities) | set(student.entities)
-        self.solvable = solvable      # relations the executive can actually answer
+        self.solvable = solvable
+        self.llm = llm_parser
+
+    def _entity(self, q):
+        toks = [t for t in re.findall(r"[a-z_]+", q.lower()) if t not in STOP]
+        return next((t for t in toks if t in self.entities), None)
+
+    def _solve(self, ent, rel):
+        if not (ent and rel and rel in self.solvable):
+            return None
+        return Solver(self.kb, self.mem, use_proposer=True).solve(ent, rel)
 
     def resolve(self, q):
-        toks = [t for t in re.findall(r"[a-z_]+", q.lower()) if t not in STOP]
-        ent = next((t for t in toks if t in self.entities), None)
-        content = [t for t in toks if t != ent]
+        """Confidence ladder: a tier is accepted only when it's CONFIDENT, not
+        merely solvable (everything is solvable for a known entity). When the
+        cheap tiers abstain, escalate to the LLM; if nothing confident resolves,
+        say so honestly."""
+        ent = self._entity(q)
+        content = [t for t in re.findall(r"[a-z_]+", q.lower())
+                   if t not in STOP and t != ent]
         lr, sc = self.lex.match_relation(content)
-        sr = self.student.predict(q, "wordmax")[2]
-        # agree + strong lexical -> trust the matcher; else trust the trained
-        # student when its answer is solvable (it handles false-friends like
-        # 'work out'->force); fall back to lexical otherwise.
-        if lr is not None and sc >= STRONG and lr == sr:
+        srel, conf = self.student.confident_rel(q)
+
+        # 1. strong lexical that AGREES with the student
+        if lr is not None and sc >= STRONG and lr == srel:
             return ent, lr, "lexical"
-        if sr in self.solvable:
-            return ent, sr, "student"
-        if lr in self.solvable:
-            return ent, lr, "lexical"
-        return ent, (sr or lr), "student"
+        # 2. the student, when its wordmax confidence clears the floor (it
+        #    overrides lexical false-friends like 'work out' -> force)
+        if conf >= CONF_FLOOR:
+            return ent, srel, "student"
+        # 3. escalate: the LLM (invoked only here — the expensive tail)
+        if self.llm is not None:
+            le, lrel = self.llm.parse(q)
+            if (le or ent) and lrel in self.solvable:
+                return (le or ent), lrel, "llm"
+        return ent, None, "none"
 
     def answer(self, q):
         ent, rel, src = self.resolve(q)
-        if ent is None or rel is None:
-            return f"(couldn't map: entity={ent}, rel={rel})", src
-        val = Solver(self.kb, self.mem, use_proposer=True).solve(ent, rel)
-        return (f"{ent}.{rel} = {'—' if val is None else f'{val:.4g}'}", src)
+        val = self._solve(ent, rel)
+        if val is None:
+            return "I don't know.", "none"
+        return f"{ent}.{rel} = {val:.4g}", src
 
 
-def _build():
+def _build(llm=None):
     kb = ReasoningEngine()
     facts = {
         "rocket": {"mass": 1000, "accel": 12, "speed": 300, "volume": 2.0,
@@ -95,26 +120,35 @@ def _build():
     student = Student.train(rows, glove, k=5)
     lexical = NLQueryParser(entities, relations, glove)
     solvable = set(mem.by_target) | {r for fs in facts.values() for r in fs}
-    return Front(kb, mem, lexical, student, solvable)
+
+    llm_parser = None
+    if llm:                                       # attach the rung-3 LLM tier
+        from rung3_parser import LLMParser
+        from llm_adapter import OllamaClient, StubClient
+        client = OllamaClient("qwen3:1.7B") if llm == "real" else StubClient({
+            "oomph": '{"entity":"rocket","rel":"force"}'})   # idiom only the LLM cracks
+        llm_parser = LLMParser(client, entities | set(facts), solvable)
+    return Front(kb, mem, lexical, student, solvable, llm_parser)
 
 
-def _demo():
-    front = _build()
+def _demo(llm="stub"):
+    front = _build(llm=llm)
     queries = [
         "what is the speed of the rocket?",       # lexical exact
         "how swiftly is the rocket moving?",      # novel -> student
-        "how heavy is the sample?",               # heavy -> mass
         "what's the rocket's momentum?",          # lexical
         "could you work out the force on the sample?",   # phrasing -> student
-        "how much energy does the rocket carry?", # energy
         "what is the density of the sample?",      # computed via policy
+        "what's the oomph of the rocket?",        # idiom -> cheap tiers abstain -> LLM
+        "what is the wisdom of the rocket?",      # unanswerable -> honest "I don't know"
     ]
-    print("=== nl_front — lexical + distilled student -> verified executive ===\n")
+    tag = "lexical + student + LLM" if llm else "lexical + student"
+    print(f"=== nl_front — full ladder ({tag}) -> verified executive ===\n")
     for q in queries:
         ans, src = front.answer(q)
         print(f"  > {q}")
-        print(f"      [{src:7s}] {ans}\n")
+        print(f"      [{src:8s}] {ans}\n")
 
 
 if __name__ == "__main__":
-    _demo()
+    _demo(llm="real" if "--real" in sys.argv else "stub")
