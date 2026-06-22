@@ -37,11 +37,12 @@ class Front:
     accepted only if it yields a Need the executive can actually SOLVE; the LLM is
     invoked only when the cheaper rungs fail (so it costs nothing on easy queries)."""
     def __init__(self, kb, mem, lexical: NLQueryParser, student: Student, solvable,
-                 llm_parser=None):
+                 llm_parser=None, cpp_engine=None):
         self.kb, self.mem, self.lex, self.student = kb, mem, lexical, student
         self.entities = set(lexical.entities) | set(student.entities)
         self.solvable = solvable
         self.llm = llm_parser
+        self.cpp = cpp_engine          # if set, solve via the C++ brain2.PolicyEngine
 
     def _entity(self, q):
         toks = [t for t in re.findall(r"[a-z_]+", q.lower()) if t not in STOP]
@@ -50,6 +51,8 @@ class Front:
     def _solve(self, ent, rel):
         if not (ent and rel and rel in self.solvable):
             return None
+        if self.cpp is not None:                  # C++ brain2.PolicyEngine
+            return self.cpp.solve(ent, rel)
         return Solver(self.kb, self.mem, use_proposer=True).solve(ent, rel)
 
     def resolve(self, q):
@@ -85,7 +88,7 @@ class Front:
         return f"{ent}.{rel} = {val:.4g}", src
 
 
-def _build(llm=None):
+def _build(llm=None, use_cpp=False):
     kb = ReasoningEngine()
     facts = {
         "rocket": {"mass": 1000, "accel": 12, "speed": 300, "volume": 2.0,
@@ -96,13 +99,13 @@ def _build(llm=None):
     for ent, fs in facts.items():
         for r, v in fs.items():
             kb.learn(ent, r, str(v))
+    policies = list(PACK) + [
+        # align distillation vocab with the executive: teacher used 'energy';
+        # executive only had ke/pe, so add energy = kinetic energy (½mv²).
+        ("energy", ("mass", "speed"), ("*", 0.5, ("*", "mass", ("^", "speed", 2))))]
     mem = MultiPolicyMemory()
-    for t, ins, expr in PACK:
+    for t, ins, expr in policies:
         mem.add(Policy(t, ins, expr))
-    # align distillation vocab with the executive: the teacher used 'energy';
-    # the executive only had ke/pe, so add energy = kinetic energy (½mv²).
-    mem.add(Policy("energy", ("mass", "speed"),
-                   ("*", 0.5, ("*", "mass", ("^", "speed", 2)))))
 
     rows = load_dataset(DATA)
     entities = set(facts) | {r["label"].get("entity", "") for r in rows} | \
@@ -121,6 +124,17 @@ def _build(llm=None):
     lexical = NLQueryParser(entities, relations, glove)
     solvable = set(mem.by_target) | {r for fs in facts.values() for r in fs}
 
+    cpp_engine = None
+    if use_cpp:                                   # solve via the native C++ reasoner
+        import brain2
+        cmem = brain2.PolicyMemory()
+        for t, ins, expr in policies:
+            cmem.add(t, list(ins), expr)
+        def fact(e, r):
+            ans, _ = kb.ask(e, r)
+            return float(ans) if ans is not None else None
+        cpp_engine = brain2.PolicyEngine(cmem, fact, True)
+
     llm_parser = None
     if llm:                                       # attach the rung-3 LLM tier
         from rung3_parser import LLMParser
@@ -128,11 +142,11 @@ def _build(llm=None):
         client = OllamaClient("qwen3:1.7B") if llm == "real" else StubClient({
             "oomph": '{"entity":"rocket","rel":"force"}'})   # idiom only the LLM cracks
         llm_parser = LLMParser(client, entities | set(facts), solvable)
-    return Front(kb, mem, lexical, student, solvable, llm_parser)
+    return Front(kb, mem, lexical, student, solvable, llm_parser, cpp_engine)
 
 
-def _demo(llm="stub"):
-    front = _build(llm=llm)
+def _demo(llm="stub", use_cpp=False):
+    front = _build(llm=llm, use_cpp=use_cpp)
     queries = [
         "what is the speed of the rocket?",       # lexical exact
         "how swiftly is the rocket moving?",      # novel -> student
@@ -143,7 +157,8 @@ def _demo(llm="stub"):
         "what is the wisdom of the rocket?",      # unanswerable -> honest "I don't know"
     ]
     tag = "lexical + student + LLM" if llm else "lexical + student"
-    print(f"=== nl_front — full ladder ({tag}) -> verified executive ===\n")
+    engine = "C++ PolicyEngine" if use_cpp else "Python executive"
+    print(f"=== nl_front — full ladder ({tag}) -> {engine} ===\n")
     for q in queries:
         ans, src = front.answer(q)
         print(f"  > {q}")
@@ -151,4 +166,5 @@ def _demo(llm="stub"):
 
 
 if __name__ == "__main__":
-    _demo(llm="real" if "--real" in sys.argv else "stub")
+    _demo(llm="real" if "--real" in sys.argv else "stub",
+          use_cpp="--cpp" in sys.argv)
