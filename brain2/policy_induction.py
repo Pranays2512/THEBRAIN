@@ -82,6 +82,84 @@ def _render(e):
     return str(e)
 
 
+# ── proposer-guided induction: best-first by fit, not blind enumeration ───────
+import heapq
+
+import numpy as np
+
+
+def _outputs(expr, rows):
+    try:
+        return [ev(expr, r) for r in rows]
+    except (ZeroDivisionError, KeyError, OverflowError):
+        return None
+
+
+def _score(expr, rows, target, tol):
+    """The PROPOSER signal: how promising is this expression as a building block?
+    2.0 if it already fits exactly; else |correlation| with the target (a piece
+    that tracks the target is worth expanding). This is what guides the search."""
+    outs = _outputs(expr, rows)
+    if outs is None:
+        return -1.0
+    tgt = [r[target] for r in rows]
+    if all(abs(o - t) <= tol for o, t in zip(outs, tgt)):
+        return 2.0
+    a, b = np.asarray(outs, float), np.asarray(tgt, float)
+    if a.std() < 1e-12 or b.std() < 1e-12:
+        return 0.0
+    return abs(float(np.corrcoef(a, b)[0, 1]))
+
+
+MAX_SIZE = 9
+
+
+def _search(rows, inputs, target, guided, budget=1500, tol=1e-6):
+    """Best-first search. guided=True orders by fit (the proposer); guided=False
+    orders by size (blind baseline). Expands by combining with TERMINALS only —
+    bounded branching, builds depth via chains. Returns (expr, nodes)."""
+    random.Random(0).shuffle(rows)
+    cut = max(2, int(len(rows) * 0.6))
+    train, holdout = rows[:cut], rows[cut:]
+    terms = _terminals(inputs)
+    seen = {repr(e) for e in terms}
+    tie = 0
+
+    def prio(e):
+        return -_score(e, train, target, tol) if guided else _size(e)
+
+    heap = []
+    for e in terms:
+        heapq.heappush(heap, (prio(e), tie, e)); tie += 1
+    nodes = 0
+    while heap and nodes < budget:
+        _, _, e = heapq.heappop(heap)
+        nodes += 1
+        if _fits(e, train, target, tol) and _fits(e, holdout, target, tol):
+            return e, nodes
+        if _size(e) >= MAX_SIZE:
+            continue
+        for op in OPS:
+            for t in terms:                       # combine with a terminal (bounded)
+                for ne in ((op, e, t), (op, t, e)):
+                    if repr(ne) not in seen:
+                        seen.add(repr(ne))
+                        heapq.heappush(heap, (prio(ne), tie, ne)); tie += 1
+    return None, nodes
+
+
+def guided_induce(rows, inputs, target, budget=1500, tol=1e-6):
+    return _search(rows, inputs, target, True, budget, tol)
+
+
+def blind_induce(rows, inputs, target, budget=1500, tol=1e-6):
+    return _search(rows, inputs, target, False, budget, tol)
+
+
+def _size(e):
+    return 1 if not isinstance(e, tuple) else 1 + _size(e[1]) + _size(e[2])
+
+
 # ── demo ──────────────────────────────────────────────────────────────────────
 def _make(formula, inputs, n=12, seed=1):
     rng = random.Random(seed)
@@ -114,5 +192,26 @@ def _demo():
             print(f"  {name:9s} = {_render(expr)}   (induced + held-out verified)")
 
 
+def _demo_guided():
+    # a deep formula: (mass*accel*height)/area  — depth 3, 4 inputs
+    inputs = ["mass", "accel", "height", "area"]
+    f = lambda r: r["mass"] * r["accel"] * r["height"] / r["area"]
+    rows = _make(f, inputs, n=16)
+    for r in rows:
+        r["stress"] = r.pop("__t__")
+    print("\n=== proposer-guided vs blind induction (deep formula, budget 1500) ===\n")
+    print(f"  target: stress = (mass*accel*height)/area  (depth 3, 4 inputs)\n")
+    be, bn = blind_induce([dict(r) for r in rows], inputs, "stress")
+    ge, gn = guided_induce([dict(r) for r in rows], inputs, "stress")
+    print(f"  blind   : {'FOUND ' + _render(be) if be else 'not found'}  "
+          f"(nodes {bn})")
+    print(f"  guided  : {'FOUND ' + _render(ge) if ge else 'not found'}  "
+          f"(nodes {gn})")
+    if ge and gn:
+        print(f"\n  guided reaches the depth-3 formula the fit signal points at; "
+              f"blind explores by size.")
+
+
 if __name__ == "__main__":
     _demo()
+    _demo_guided()
