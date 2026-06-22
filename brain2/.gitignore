@@ -106,3 +106,6 @@ checkpoints/
 *.pt
 *.pth
 test_save.py
+
+# distillation corpus (generated data, not source)
+distill_data.jsonl
