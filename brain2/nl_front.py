@@ -37,12 +37,13 @@ class Front:
     accepted only if it yields a Need the executive can actually SOLVE; the LLM is
     invoked only when the cheaper rungs fail (so it costs nothing on easy queries)."""
     def __init__(self, kb, mem, lexical: NLQueryParser, student: Student, solvable,
-                 llm_parser=None, cpp_engine=None):
+                 llm_parser=None, cpp_engine=None, brain=None):
         self.kb, self.mem, self.lex, self.student = kb, mem, lexical, student
         self.entities = set(lexical.entities) | set(student.entities)
         self.solvable = solvable
         self.llm = llm_parser
         self.cpp = cpp_engine          # if set, solve via the C++ brain2.PolicyEngine
+        self.brain = brain             # if set, solve via the C++ Brain (the mind itself)
 
     def _entity(self, q):
         toks = [t for t in re.findall(r"[a-z_]+", q.lower()) if t not in STOP]
@@ -51,6 +52,8 @@ class Front:
     def _solve(self, ent, rel):
         if not (ent and rel and rel in self.solvable):
             return None
+        if self.brain is not None:                # the C++ Brain reasons natively
+            return self.brain.policy_solve(ent, rel)
         if self.cpp is not None:                  # C++ brain2.PolicyEngine
             return self.cpp.solve(ent, rel)
         return Solver(self.kb, self.mem, use_proposer=True).solve(ent, rel)
@@ -88,7 +91,7 @@ class Front:
         return f"{ent}.{rel} = {val:.4g}", src
 
 
-def _build(llm=None, use_cpp=False):
+def _build(llm=None, use_cpp=False, use_brain=False):
     kb = ReasoningEngine()
     facts = {
         "rocket": {"mass": 1000, "accel": 12, "speed": 300, "volume": 2.0,
@@ -124,8 +127,16 @@ def _build(llm=None, use_cpp=False):
     lexical = NLQueryParser(entities, relations, glove)
     solvable = set(mem.by_target) | {r for fs in facts.values() for r in fs}
 
-    cpp_engine = None
-    if use_cpp:                                   # solve via the native C++ reasoner
+    cpp_engine = brain = None
+    if use_brain:                                 # the C++ Brain IS the reasoner
+        import brain2
+        brain = brain2.Brain(som_rows=8, som_cols=8, n_dims=8)
+        for ent, fs in facts.items():
+            for r, v in fs.items():
+                brain.teach_fact(ent, r, float(v))
+        for t, ins, expr in policies:
+            brain.policy_add(t, list(ins), expr)
+    elif use_cpp:                                 # solve via the native C++ reasoner
         import brain2
         cmem = brain2.PolicyMemory()
         for t, ins, expr in policies:
@@ -142,11 +153,11 @@ def _build(llm=None, use_cpp=False):
         client = OllamaClient("qwen3:1.7B") if llm == "real" else StubClient({
             "oomph": '{"entity":"rocket","rel":"force"}'})   # idiom only the LLM cracks
         llm_parser = LLMParser(client, entities | set(facts), solvable)
-    return Front(kb, mem, lexical, student, solvable, llm_parser, cpp_engine)
+    return Front(kb, mem, lexical, student, solvable, llm_parser, cpp_engine, brain)
 
 
-def _demo(llm="stub", use_cpp=False):
-    front = _build(llm=llm, use_cpp=use_cpp)
+def _demo(llm="stub", use_cpp=False, use_brain=False):
+    front = _build(llm=llm, use_cpp=use_cpp, use_brain=use_brain)
     queries = [
         "what is the speed of the rocket?",       # lexical exact
         "how swiftly is the rocket moving?",      # novel -> student
@@ -157,7 +168,8 @@ def _demo(llm="stub", use_cpp=False):
         "what is the wisdom of the rocket?",      # unanswerable -> honest "I don't know"
     ]
     tag = "lexical + student + LLM" if llm else "lexical + student"
-    engine = "C++ PolicyEngine" if use_cpp else "Python executive"
+    engine = "C++ Brain.policy_solve" if use_brain else \
+             "C++ PolicyEngine" if use_cpp else "Python executive"
     print(f"=== nl_front — full ladder ({tag}) -> {engine} ===\n")
     for q in queries:
         ans, src = front.answer(q)
@@ -167,4 +179,4 @@ def _demo(llm="stub", use_cpp=False):
 
 if __name__ == "__main__":
     _demo(llm="real" if "--real" in sys.argv else "stub",
-          use_cpp="--cpp" in sys.argv)
+          use_cpp="--cpp" in sys.argv, use_brain="--brain" in sys.argv)
