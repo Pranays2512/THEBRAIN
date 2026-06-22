@@ -94,22 +94,29 @@ class Counter:
     def __init__(self): self.n = 0
 
 
-def integrate_search(e, tree=None, counter=None, depth=20):
+def integrate_search(e, tree=None, counter=None, depth=20, memo=None):
     if counter is None:
         counter = Counter()
+    if memo is None:
+        memo = {}                                 # subgoal cache (tabling), fresh per top call
     counter.n += 1
     if depth <= 0 or counter.n > NODE_CAP:
         return None
+    if e in memo:
+        return memo[e]
     F = base_integrate(e)
     if F is not None:
+        memo[e] = F
         return F
     moves = candidate_moves(e)
     if tree is not None:                          # proposer: best split first
         moves.sort(key=lambda m: -float(tree.predict_dist(features(m))[1]))
     for m in moves:
-        sub = integrate_search(m.subgoal, tree, counter, depth - 1)
+        sub = integrate_search(m.subgoal, tree, counter, depth - 1, memo)
         if sub is not None:
-            return sp.expand(m.u * m.V - sub)
+            F = sp.expand(m.u * m.V - sub)
+            memo[e] = F                           # cache SUCCESS only
+            return F
     return None
 
 

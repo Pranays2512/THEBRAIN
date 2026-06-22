@@ -101,22 +101,29 @@ class Counter:
     def __init__(self): self.n = 0
 
 
-def integrate_search(e, tree=None, counter=None, depth=14):
+def integrate_search(e, tree=None, counter=None, depth=14, memo=None):
     if counter is None:
         counter = Counter()
+    if memo is None:
+        memo = {}                                 # subgoal cache (tabling), fresh per top call
     counter.n += 1
     if depth <= 0 or counter.n > NODE_CAP:
         return None
+    if e in memo:                                 # repeated subgoal across branches
+        return memo[e]
     F = base_integrate(e)
     if F is not None:
+        memo[e] = F
         return F
     moves = usub_moves(e)
     if tree is not None:
         moves.sort(key=lambda m: -float(tree.predict_dist(features(m.g, e))[1]))
     for m in moves:
-        sub = integrate_search(m.subgoal, tree, counter, depth - 1)
+        sub = integrate_search(m.subgoal, tree, counter, depth - 1, memo)
         if sub is not None:
-            return sub.subs(x, m.g)
+            F = sub.subs(x, m.g)
+            memo[e] = F                           # cache SUCCESS only (depth-independent truth)
+            return F
     return None
 
 
