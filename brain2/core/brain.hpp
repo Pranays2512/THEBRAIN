@@ -52,6 +52,7 @@
 #include "hierarchical_predictor.hpp"
 #include "analogy.hpp"
 #include "logic_engine.hpp"
+#include "policy_engine.hpp"
 
 #include <vector>
 #include <string>
@@ -114,6 +115,35 @@ public:
     HierarchicalPredictor h_predictor;  // chunk + episode predictors
     DecoderRNN            decoder;       // generative sequence decoder
     LogicEngine           logic_engine;
+    // Crisp symbolic reasoner (the ported neurosymbolic executive): stored
+    // policies + crisp numeric facts, solved/learned natively. Lives beside the
+    // fuzzy binding memory — the crisp half of the brain.
+    PolicyMemory          policy_mem;
+    std::map<std::pair<std::string, std::string>, double> crisp_facts;
+
+    void teach_fact(const std::string& entity, const std::string& rel, double value) {
+        crisp_facts[{entity, rel}] = value;
+    }
+    void policy_add(const std::string& target, const std::vector<std::string>& inputs,
+                    const ExprPtr& expr) {
+        policy_mem.add(Policy{target, inputs, expr});
+    }
+    FactFn fact_fn() {
+        return [this](const std::string& e, const std::string& r, double& out) -> bool {
+            auto it = crisp_facts.find({e, r});
+            if (it == crisp_facts.end()) return false;
+            out = it->second; return true;
+        };
+    }
+    std::optional<double> policy_solve(const std::string& entity, const std::string& rel) {
+        PolicyEngine eng(&policy_mem, fact_fn(), true);
+        return eng.solve(entity, rel);
+    }
+    bool policy_learn(const std::string& target, const std::string& entity) {
+        PolicyEngine eng(&policy_mem, fact_fn(), true);
+        return eng.learn(target, entity);
+    }
+
     std::unordered_map<std::string, double> profile_times_;
     std::vector<std::string> spoken_words;
 
@@ -309,6 +339,14 @@ public:
         if (!procedures_path.empty()) procedures   = ProceduralMemory::load(procedures_path);
         if (!hpred_path.empty())      h_predictor  = HierarchicalPredictor::load(hpred_path);
         if (!decoder_path.empty())    decoder      = DecoderRNN::load(decoder_path);
+
+        // crisp reasoner: load policies + facts from the save directory if present
+        std::string dir = predictor_path.substr(0, predictor_path.find_last_of('/'));
+        policy_mem = PolicyMemory();
+        policy_mem.load(dir + "/policies.txt");
+        std::ifstream ff(dir + "/facts.txt");
+        std::string fe, fr; double fv;
+        while (ff >> fe >> fr >> fv) crisp_facts[{fe, fr}] = fv;
     }
 
     void save_components(const std::string& directory) const {
@@ -326,6 +364,12 @@ public:
         procedures.save(directory + "/procedures.bin");
         h_predictor.save(directory + "/hpred.bin");
         decoder.save(directory + "/decoder.bin");
+
+        // crisp reasoner: stored policies + crisp facts
+        policy_mem.save(directory + "/policies.txt");
+        std::ofstream ff(directory + "/facts.txt");
+        for (auto& kv : crisp_facts)
+            ff << kv.first.first << '\t' << kv.first.second << '\t' << kv.second << '\n';
     }
 
     bool commit_episode(float err, const std::vector<float>& payload = {}) {

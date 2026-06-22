@@ -19,7 +19,9 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <functional>
+#include <sstream>
 #include <stdexcept>
 #include <map>
 #include <memory>
@@ -73,6 +75,39 @@ inline ExprPtr substitute(const ExprPtr& e, const std::string& name, const ExprP
   return e;
 }
 
+// ── serialize / parse an Expr (prefix s-expr: "(* mass #0.5)") ───────────────
+inline std::string serialize_expr(const ExprPtr& e) {
+  if (e->kind == Expr::NUM) { std::ostringstream o; o << "#" << e->num; return o.str(); }
+  if (e->kind == Expr::VAR) return e->var;
+  return std::string("(") + e->op + " " + serialize_expr(e->a) + " " + serialize_expr(e->b) + ")";
+}
+
+inline ExprPtr parse_tokens(const std::vector<std::string>& t, size_t& i) {
+  const std::string& tok = t.at(i++);
+  if (tok == "(") {
+    char op = t.at(i++)[0];
+    ExprPtr a = parse_tokens(t, i), b = parse_tokens(t, i);
+    ++i;  // ')'
+    return opx(op, a, b);
+  }
+  if (!tok.empty() && tok[0] == '#') return num(std::stod(tok.substr(1)));
+  return var(tok);
+}
+
+inline ExprPtr parse_expr(const std::string& s) {
+  std::vector<std::string> toks;
+  std::string cur;
+  auto flush = [&]() { if (!cur.empty()) { toks.push_back(cur); cur.clear(); } };
+  for (char c : s) {
+    if (c == '(' || c == ')') { flush(); toks.push_back(std::string(1, c)); }
+    else if (c == ' ') flush();
+    else cur += c;
+  }
+  flush();
+  size_t i = 0;
+  return parse_tokens(toks, i);
+}
+
 // ── policy + memory ─────────────────────────────────────────────────────────
 struct Policy {
   std::string target;
@@ -93,6 +128,34 @@ class PolicyMemory {
     std::vector<std::string> out;
     for (auto& kv : by_target_) out.push_back(kv.first);
     return out;
+  }
+
+  void save(const std::string& path) const {
+    std::ofstream f(path);
+    for (auto& kv : by_target_)
+      for (auto& p : kv.second) {
+        f << p.target << '\t';
+        for (size_t i = 0; i < p.inputs.size(); ++i)
+          f << (i ? "," : "") << p.inputs[i];
+        f << '\t' << serialize_expr(p.expr) << '\n';
+      }
+  }
+  void load(const std::string& path) {
+    std::ifstream f(path);
+    std::string line;
+    while (std::getline(f, line)) {
+      auto t1 = line.find('\t');
+      if (t1 == std::string::npos) continue;
+      auto t2 = line.find('\t', t1 + 1);
+      Policy p;
+      p.target = line.substr(0, t1);
+      std::string ins = line.substr(t1 + 1, t2 - t1 - 1);
+      std::stringstream ss(ins);
+      std::string in;
+      while (std::getline(ss, in, ',')) if (!in.empty()) p.inputs.push_back(in);
+      p.expr = parse_expr(line.substr(t2 + 1));
+      add(p);
+    }
   }
  private:
   std::map<std::string, std::vector<Policy>> by_target_;

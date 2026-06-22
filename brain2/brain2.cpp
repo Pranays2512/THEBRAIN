@@ -762,6 +762,17 @@ PYBIND11_MODULE(brain2, m) {
             b.consolidate_procedure(ops, name);
           },
           py::arg("ops"), py::arg("name") = "")
+      // Crisp reasoner (embedded PolicyEngine)
+      .def("teach_fact", &Brain::teach_fact, py::arg("entity"), py::arg("rel"),
+           py::arg("value"))
+      .def("policy_add",
+           [](Brain &b, const std::string &target,
+              const std::vector<std::string> &inputs, const py::object &expr) {
+             b.policy_add(target, inputs, py_to_expr(expr));
+           },
+           py::arg("target"), py::arg("inputs"), py::arg("expr"))
+      .def("policy_solve", &Brain::policy_solve, py::arg("entity"), py::arg("rel"))
+      .def("policy_learn", &Brain::policy_learn, py::arg("target"), py::arg("entity"))
       // V3 component accessors
       .def_property_readonly(
           "binding", [](Brain &b) -> BindingMemory & { return b.binding; },
