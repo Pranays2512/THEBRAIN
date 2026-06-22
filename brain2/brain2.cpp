@@ -32,6 +32,7 @@
 #include "core/hierarchical_predictor.hpp"
 #include "core/predictive_coding.hpp"
 #include "core/procedural_memory.hpp"
+#include "core/policy_engine.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -50,6 +51,18 @@ static py::array_t<float> to_np(const std::vector<float> &v) {
   py::array_t<float> arr((py::ssize_t)v.size());
   std::copy(v.begin(), v.end(), arr.mutable_data());
   return arr;
+}
+
+// Python expr -> ExprPtr.  number -> NUM, str -> VAR, [op,a,b] -> OP, [neg,a] -> 0-a.
+static brain2::ExprPtr py_to_expr(const py::object &o) {
+  if (py::isinstance<py::str>(o)) return brain2::var(o.cast<std::string>());
+  if (py::isinstance<py::int_>(o) || py::isinstance<py::float_>(o))
+    return brain2::num(o.cast<double>());
+  auto seq = o.cast<py::sequence>();
+  std::string op = seq[0].cast<std::string>();
+  if (op == "neg") return brain2::opx('-', brain2::num(0.0), py_to_expr(seq[1].cast<py::object>()));
+  return brain2::opx(op[0], py_to_expr(seq[1].cast<py::object>()),
+                     py_to_expr(seq[2].cast<py::object>()));
 }
 
 PYBIND11_MODULE(brain2, m) {
@@ -1041,4 +1054,35 @@ PYBIND11_MODULE(brain2, m) {
                              &HierarchicalPredictor::last_error_chunk)
       .def_property_readonly("last_error_episode",
                              &HierarchicalPredictor::last_error_episode);
+
+  // ── PolicyMemory + PolicyEngine (crisp symbolic reasoner) ────────────
+  py::class_<PolicyMemory>(m, "PolicyMemory")
+      .def(py::init<>())
+      .def("add",
+           [](PolicyMemory &pm, const std::string &target,
+              const std::vector<std::string> &inputs, const py::object &expr) {
+             pm.add(Policy{target, inputs, py_to_expr(expr)});
+           },
+           py::arg("target"), py::arg("inputs"), py::arg("expr"))
+      .def("contains", &PolicyMemory::contains)
+      .def("targets", &PolicyMemory::targets);
+
+  py::class_<PolicyEngine>(m, "PolicyEngine")
+      .def(py::init([](PolicyMemory *mem, py::function fact_cb, bool use_proposer) {
+             FactFn f = [fact_cb](const std::string &e, const std::string &r,
+                                  double &out) -> bool {
+               py::gil_scoped_acquire gil;
+               py::object res = fact_cb(e, r);
+               if (res.is_none()) return false;
+               out = res.cast<double>();
+               return true;
+             };
+             return std::make_unique<PolicyEngine>(mem, f, use_proposer);
+           }),
+           py::arg("memory"), py::arg("facts"), py::arg("use_proposer") = true,
+           py::keep_alive<1, 2>())
+      .def("solve", &PolicyEngine::solve, py::arg("entity"), py::arg("rel"))
+      .def("learn", &PolicyEngine::learn, py::arg("target"), py::arg("entity"),
+           py::arg("tol") = 1e-6)
+      .def_property_readonly("work", &PolicyEngine::work);
 }
