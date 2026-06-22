@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""
+policy_induction.py — the brain DISCOVERS a policy from examples (induction).
+
+Until now the executive only COMPOSED hand-given policies (conjecture->verify).
+This is the next rung: given examples (input columns + a target column), INDUCE the
+formula by bounded symbolic regression over {+,-,*,/}, then VERIFY it on held-out
+examples before admitting it as a Policy. Induction is unsound (a fit on N rows is
+a guess), so the held-out check is the gate — induction proposes, verification
+disposes, exactly the discipline everywhere else.
+
+    induce(rows, ["mass","accel"], "force")  ->  ("*","mass","accel")  (verified)
+
+Honest scope: formulas up to a small tree depth over the given inputs (+ constants
+0.5, 2). Deeper formulas (e.g. 1/2 m v^2) blow up blind enumeration — that's where
+a proposer-GUIDED induction goes next (the same premise-selection idea), not built
+here.
+"""
+
+import os
+import random
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from means_ends import ev          # local lazy tuple-formula evaluator
+
+OPS = ("+", "-", "*", "/")
+CONSTS = (0.5, 2.0)
+
+
+def _terminals(inputs):
+    return list(inputs) + list(CONSTS)
+
+
+def enumerate_exprs(inputs, max_depth):
+    """All expression trees up to max_depth over inputs+constants (deduped by repr)."""
+    layer = _terminals(inputs)                    # depth 0
+    seen = {repr(e) for e in layer}
+    all_exprs = list(layer)
+    frontier = list(layer)
+    for _ in range(max_depth):
+        nxt = []
+        for op in OPS:
+            for a in all_exprs:
+                for b in frontier:                # at least one new (depth-growing) child
+                    e = (op, a, b)
+                    if repr(e) not in seen:
+                        seen.add(repr(e)); nxt.append(e)
+                    e2 = (op, b, a)
+                    if repr(e2) not in seen:
+                        seen.add(repr(e2)); nxt.append(e2)
+        all_exprs += nxt
+        frontier = nxt
+    return all_exprs
+
+
+def _fits(expr, rows, target, tol):
+    for r in rows:
+        try:
+            if abs(ev(expr, r) - r[target]) > tol:
+                return False
+        except (ZeroDivisionError, KeyError):
+            return False
+    return True
+
+
+def induce(rows, inputs, target, tol=1e-6, max_depth=2):
+    """Discover a formula target = f(inputs) that fits the TRAIN rows and is then
+    VERIFIED on held-out rows. Returns the expr (tuple) or None. Shortest first."""
+    random.Random(0).shuffle(rows)
+    cut = max(2, int(len(rows) * 0.6))
+    train, holdout = rows[:cut], rows[cut:]
+    for expr in enumerate_exprs(inputs, max_depth):   # shortest-first (by layer)
+        if _fits(expr, train, target, tol) and _fits(expr, holdout, target, tol):
+            return expr                               # induced AND verified
+    return None
+
+
+def _render(e):
+    if isinstance(e, tuple):
+        return f"({_render(e[1])} {e[0]} {_render(e[2])})"
+    return str(e)
+
+
+# ── demo ──────────────────────────────────────────────────────────────────────
+def _make(formula, inputs, n=12, seed=1):
+    rng = random.Random(seed)
+    rows = []
+    for _ in range(n):
+        r = {i: round(rng.uniform(1, 10), 2) for i in inputs}
+        r["__t__"] = formula(r)
+        rows.append(r)
+    return rows
+
+
+def _demo():
+    cases = [
+        ("force", ["mass", "accel"], lambda r: r["mass"] * r["accel"]),
+        ("momentum", ["mass", "speed"], lambda r: r["mass"] * r["speed"]),
+        ("density", ["mass", "volume"], lambda r: r["mass"] / r["volume"]),
+        ("pe", ["mass", "gravity", "height"], lambda r: r["mass"] * r["gravity"] * r["height"]),
+        ("ke", ["mass", "speed"], lambda r: 0.5 * r["mass"] * r["speed"] ** 2),  # 0.5*m*v*v, found at depth 2
+    ]
+    print("=== policy_induction — discover a formula from examples, verified ===\n")
+    for name, inputs, f in cases:
+        rows = _make(f, inputs)
+        for r in rows:
+            r[name] = r.pop("__t__")
+        expr = induce(rows, inputs, name)
+        if expr is None:
+            print(f"  {name:9s} <- NOT FOUND at depth 2 "
+                  f"(needs guided/deeper induction)")
+        else:
+            print(f"  {name:9s} = {_render(expr)}   (induced + held-out verified)")
+
+
+if __name__ == "__main__":
+    _demo()
