@@ -775,6 +775,9 @@ PYBIND11_MODULE(brain2, m) {
       .def("policy_learn", &Brain::policy_learn, py::arg("target"), py::arg("entity"))
       // V3 component accessors
       .def_property_readonly(
+          "som", [](Brain &b) -> SOM & { return b.som; },
+          py::return_value_policy::reference_internal)
+      .def_property_readonly(
           "binding", [](Brain &b) -> BindingMemory & { return b.binding; },
           py::return_value_policy::reference_internal)
       .def_property_readonly(
