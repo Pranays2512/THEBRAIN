@@ -50,10 +50,10 @@ def ground(som, labeled):
     """Ground each symbol on the SOM region its labeled examples light up: the
     symbol's prototype = mean ACTIVATION MAP (the full distributed SOM response,
     far richer than a single BMU's grid position)."""
-    acts = {k: [] for k in range(K)}
+    acts = {}                                     # classes derived from the data (any K)
     for v, k in labeled:
-        acts[k].append(np.asarray(som.activation_map(v)))
-    return {k: np.mean(acts[k], axis=0) for k in acts if acts[k]}
+        acts.setdefault(k, []).append(np.asarray(som.activation_map(v)))
+    return {k: np.mean(v, axis=0) for k, v in acts.items()}
 
 
 def recognize(som, centroids, v):
