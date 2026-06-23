@@ -37,6 +37,7 @@ UPDATES = {  # (UA code, UB code): (UA fn, UB fn)
     ("a + 1", "b"):  (lambda a, b, i: a + 1, lambda a, b, i: b),
     ("b", "a + b"):  (lambda a, b, i: b,     lambda a, b, i: a + b),
     ("a * i", "b"):  (lambda a, b, i: a * i, lambda a, b, i: b),
+    ("a + i * i", "b"): (lambda a, b, i: a + i * i, lambda a, b, i: b),
 }
 EARLIES = {"None": None, "a >= n": lambda a, b, i, n: a >= n,
            "a > n": lambda a, b, i, n: a > n}
