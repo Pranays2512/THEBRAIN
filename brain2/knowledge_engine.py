@@ -46,6 +46,7 @@ class KnowledgeEngine:
         self._vecs = {}
         self._entities = set()       # tokens seen as subject or object (decode set)
         self.facts = []              # ordered list of (subj, rel, obj), unique
+        self._factset = set()        # same facts as a set — O(1) dedup (was O(N)/call)
 
     # ── token -> deterministic concept vector ────────────────────────────────
     def _vec(self, token):
@@ -69,15 +70,16 @@ class KnowledgeEngine:
     def learn(self, subj, rel, obj):
         """Store a fact. Idempotent: re-learning the same fact is a no-op."""
         subj, rel, obj = self._norm(subj), self._norm(rel), self._norm(obj)
-        if (subj, rel, obj) in self._fact_set():
+        if (subj, rel, obj) in self._factset:        # O(1), was O(N) rebuild/call
             return False
         self._b.bind_triple(self._vec(subj), self._vec(rel), self._vec(obj))
         self._entities.update((subj, obj))
         self.facts.append((subj, rel, obj))
+        self._factset.add((subj, rel, obj))
         return True
 
     def _fact_set(self):
-        return set(self.facts)
+        return self._factset
 
     # ── retrieval ────────────────────────────────────────────────────────────
     def _decode(self, vec):
