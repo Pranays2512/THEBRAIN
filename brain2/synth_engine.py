@@ -92,14 +92,51 @@ def solve(examples, kind):
     return None, None
 
 
+_SAFE = {"range": range, "len": len, "list": list, "max": max, "min": min, "set": set}
+
+
 def _verify(code, examples):
     ns = {}
-    exec(code, {"range": range, "len": len, "list": list, "max": max, "min": min}, ns)
+    exec(code, _SAFE, ns)
     f = ns["f"]
     try:
         return all(f(*a) == y for a, y in examples)
     except Exception:
         return False
+
+
+import random as _rnd
+
+GEN = {
+    "int1":  lambda r: (r.randint(0, 25),),
+    "int2":  lambda r: (r.randint(1, 40), r.randint(1, 40)),
+    "list":  lambda r: ([r.randint(-9, 9) for _ in range(r.randint(1, 8))],),
+    "listt": lambda r: (lambda L: (L, r.choice(L) if L and r.random() < .5
+                                   else r.randint(0, 9)))(
+        [r.randint(0, 9) for _ in range(r.randint(0, 6))]),
+}
+
+
+def stress(code, oracle, kind, n=1000, seed=0):
+    """Run the synthesized program vs the real reference on n random inputs.
+    Returns (survived, counterexample). 'Fits examples' -> 'survives 1000 cases'."""
+    ns = {}
+    exec(code, _SAFE, ns)
+    f = ns["f"]
+    rng = _rnd.Random(seed)
+    for _ in range(n):
+        args = GEN[kind](rng)
+        try:
+            exp = oracle(*args)
+        except Exception:
+            continue                         # oracle undefined here -> skip
+        try:
+            got = f(*args)
+        except Exception:
+            return False, args
+        if got != exp:
+            return False, args
+    return True, None
 
 
 # ── benchmark suite ───────────────────────────────────────────────────────────
@@ -119,7 +156,8 @@ BENCH = [
     ("sum_sq", "int1", lambda n: sum(i * i for i in range(1, n + 1)), [1, 2, 3, 4, 5]),
     ("gcd", "int2", __import__("math").gcd, [(12, 8), (48, 36), (7, 5), (100, 80), (17, 13)]),
     ("sum_list", "list", sum, [[1, 2, 3], [5, 5], [], [4], [2, 3, 4]]),
-    ("max_list", "list", max, [[3, 1, 4, 1, 5], [2, 2], [7], [9, 1]]),
+    ("max_list", "list", max, [[3, 1, 4, 1, 5], [2, 2], [7], [9, 1],
+                               [-3, -5, -1], [-2, -9]]),   # negatives disambiguate init
     ("product", "list", lambda a: __import__("math").prod(a), [[1, 2, 3, 4], [5], [2, 3]]),
     ("max_subarray", "list", lambda a: max(sum(a[i:j + 1]) for i in range(len(a))
         for j in range(i, len(a))), [[1, -2, 3, 4], [-1, -2], [2, 3], [5, -1, 5]]),
@@ -142,20 +180,22 @@ def _fib_task():
 
 def _demo():
     bench = BENCH + [_fib_task()]
-    print("=== synth_engine — one engine, all spaces; algorithm-zoo benchmark ===\n")
-    solved = 0
-    rows = []
+    print("=== synth_engine — match real Python fns, gated by stress-vs-oracle ===\n")
+    print(f"  {'task':16s} {'examples':>9s} {'stress(1000)':>13s}  [space]")
+    weak = strong = 0
     for name, kind, fn, inputs in bench:
         ex = _ex(kind, fn, inputs)
         space, code = solve(ex, kind)
-        ok = code is not None
-        solved += ok
-        rows.append((name, space if ok else "—", ok))
-    w = max(len(r[0]) for r in rows)
-    for name, space, ok in rows:
-        print(f"  {name:{w}s}  {'✓' if ok else '✗'}  [{space}]")
-    print(f"\n  coverage: {solved}/{len(bench)} tasks solved by the brain (no LLM), "
-          f"each verified.")
+        if code is None:
+            print(f"  {name:16s} {'—':>9s} {'—':>13s}  [—]")
+            continue
+        weak += 1
+        surv, ce = stress(code, fn, kind)
+        strong += surv
+        tag = "SURVIVED ✓" if surv else f"OVERFIT ✗ {ce}"
+        print(f"  {name:16s} {'fit ✓':>9s} {tag:>13s}  [{space}]")
+    print(f"\n  fits-examples: {weak}/{len(bench)}    survives-1000-stress: {strong}/{len(bench)}")
+    print("  the gap = overfits that example-fitting would have shipped. stress catches them.")
 
 
 if __name__ == "__main__":
