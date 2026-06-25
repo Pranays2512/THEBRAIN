@@ -41,6 +41,24 @@ class LLMClient(ABC):
     def complete(self, prompt: str, system: str = "") -> str: ...
 
 
+class SafeClient(LLMClient):
+    """Wrap any client so a down/unreachable server degrades to '' (-> the caller
+    abstains / falls back) instead of crashing. Optional local fallback client tried
+    first on failure."""
+    def __init__(self, primary, fallback=None):
+        self.primary, self.fallback = primary, fallback
+
+    def complete(self, prompt, system=""):
+        for c in (self.primary, self.fallback):
+            if c is None:
+                continue
+            try:
+                return c.complete(prompt, system)
+            except Exception:
+                continue
+        return ""                                   # all down -> empty -> caller abstains
+
+
 class StubClient(LLMClient):
     """Deterministic client for tests: first matching substring -> response."""
     def __init__(self, table):

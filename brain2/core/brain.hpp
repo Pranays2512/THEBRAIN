@@ -951,7 +951,28 @@ public:
         }
 
         predictor.set_offline(false);
-        result.coherence = 1.0f;
+        // Honest coherence: mean cosine similarity between consecutive inner-speech
+        // words (a smooth, on-topic trajectory scores high; a jumpy one low). Was a
+        // hardcoded 1.0 that made any downstream quality gate meaningless.
+        result.coherence = 0.0f;
+        {
+            float total = 0.f; int pairs = 0;
+            std::vector<float> prev;
+            for (const auto& w : result.words) {
+                std::vector<float> v = language.encode(w);
+                if (!prev.empty() && v.size() == prev.size()) {
+                    float dot = 0.f, na = 0.f, nb = 0.f;
+                    for (size_t k = 0; k < v.size(); k++) {
+                        dot += v[k] * prev[k]; na += v[k] * v[k]; nb += prev[k] * prev[k];
+                    }
+                    if (na > 1e-9f && nb > 1e-9f) {
+                        total += dot / (std::sqrt(na) * std::sqrt(nb)); pairs++;
+                    }
+                }
+                prev = std::move(v);
+            }
+            if (pairs) result.coherence = total / pairs;
+        }
         return result;
     }
 

@@ -45,7 +45,7 @@ def conceptnet_scale():
     print("=== ConceptNet at scale (load + graph reasoning) ===\n")
     print(f"  {'facts':>8s} {'load s':>8s} {'entities':>9s} {'closure ms/q':>13s} "
           f"{'avg ancestors':>14s}")
-    for N in (10_000, 50_000, 100_000):
+    for N in (10_000, 50_000, 100_000, 200_000):
         triples = stream_en(N)
         t0 = time.time()
         re = ReasoningEngine()
