@@ -112,3 +112,6 @@ distill_data.jsonl
 
 # large GloVe vectors (downloaded/extracted, not source)
 glove.6B.*.txt
+
+# accumulated knowledge store (generated state)
+brain_store/
