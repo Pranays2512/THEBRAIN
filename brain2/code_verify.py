@@ -27,9 +27,34 @@ _SAFE_BUILTINS = {b: __builtins__[b] if isinstance(__builtins__, dict)
                             "str", "zip", "map", "filter", "all", "any", "round")}
 
 
-def verify(code, fn_name, tests):
+import signal
+
+
+class _Timeout(Exception):
+    pass
+
+
+def _run(fn, args, secs):
+    """Call fn(*args) with a hard wall-clock timeout (kills infinite loops).
+    SIGALRM is Unix-only; on other platforms it runs without the guard."""
+    if not hasattr(signal, "SIGALRM"):
+        return fn(*args)
+    def _h(signum, frame):
+        raise _Timeout()
+    old = signal.signal(signal.SIGALRM, _h)
+    signal.setitimer(signal.ITIMER_REAL, secs)
+    try:
+        return fn(*args)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old)
+
+
+def verify(code, fn_name, tests, timeout=2.0):
     """Run candidate `code`, call fn_name on each test; True iff all match.
-    Returns (passed, detail)."""
+    Each call is bounded by `timeout` seconds (a runaway loop -> rejected, not hung).
+    Returns (passed, detail). Code runs with a minimal-builtins whitelist — for
+    verifying dev/LLM-generated functions, not untrusted input."""
     ns = {"__builtins__": _SAFE_BUILTINS}
     try:
         exec(code, ns)                              # define the function
@@ -40,7 +65,9 @@ def verify(code, fn_name, tests):
         return False, f"no function '{fn_name}' defined"
     for args, expected in tests:
         try:
-            got = fn(*args)
+            got = _run(fn, args, timeout)
+        except _Timeout:
+            return False, f"{fn_name}{args} TIMED OUT (> {timeout}s — runaway loop)"
         except Exception as e:
             return False, f"{fn_name}{args} raised {e}"
         if got != expected:

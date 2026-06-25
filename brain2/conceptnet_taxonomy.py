@@ -13,10 +13,13 @@ closure, property inheritance, and which concepts share an ancestor.
 """
 
 import gzip
+import json
 import os
 import sys
 import time
 from collections import Counter
+
+MIN_WEIGHT = 1.0     # drop low-confidence crowdsourced edges (junk like armadillo->book)
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from reasoning_engine import ReasoningEngine
@@ -42,6 +45,12 @@ def stream(quotas=QUOTAS):
                 if all(len(got[k]) >= quotas[k] for k in quotas):
                     break
                 continue
+            if len(c) > 4:                            # drop low-confidence junk by weight
+                try:
+                    if json.loads(c[4]).get("weight", 1.0) < MIN_WEIGHT:
+                        continue
+                except ValueError:
+                    pass
             sp, op = c[2].split("/"), c[3].split("/")
             if len(sp) >= 4 and len(op) >= 4:
                 got[tgt].append((sp[3], tgt, op[3]))

@@ -277,7 +277,7 @@ public:
           pc_hpred(som_rows * som_cols, 0.05f, 0.01f),
           pc_wm(som_rows * som_cols, 0.001f, 0.1f),
           pc_bg(1, 0.001f, 0.1f),
-          binding(n_dims, 2000),
+          binding(n_dims, 50000),   // fuzzy-recall capacity (exact graph keeps ALL facts regardless)
           analogy(&binding),
           global_ws(som_rows * som_cols),
           bg_controller(n_dims, 0.001f, seed),
