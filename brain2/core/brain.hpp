@@ -277,7 +277,10 @@ public:
           pc_hpred(som_rows * som_cols, 0.05f, 0.01f),
           pc_wm(som_rows * som_cols, 0.001f, 0.1f),
           pc_bg(1, 0.001f, 0.1f),
-          binding(n_dims, 50000),   // fuzzy-recall capacity (exact graph keeps ALL facts regardless)
+          binding(n_dims, 2000),    // fuzzy-recall cache cap; small ON PURPOSE — the exact
+                                    // fact GRAPH keeps ALL facts and is what reasoning uses.
+                                    // Raising this slows bulk ingest ~6x (256-bucket LSH fills);
+                                    // the real fix for bigger fuzzy recall is more LSH planes.
           analogy(&binding),
           global_ws(som_rows * som_cols),
           bg_controller(n_dims, 0.001f, seed),
