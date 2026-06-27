@@ -153,6 +153,108 @@ def _vars(t):
     return out
 
 
+# ── parameterized abstraction (anti-unification) ──────────────────────────────
+# shape()/factor() above abstract LEAVES but need an identical operator skeleton.
+# Anti-unification generalizes further: where two trees DIFFER (different op, or
+# leaf-vs-subtree), introduce a parameter that captures the whole differing subtree.
+# So (a+b)*c and (x-y)*z — which share NO leaf-only skeleton (+ vs -) — generalize to
+# P(u,v)=u*v. This catches idioms that share outer structure but differ inside.
+
+def antiunify(t1, t2):
+    """Most-specific generalization of two trees: keep matching structure, replace each
+    point of disagreement with a hole. Returns a skeleton with ('hole', i) params."""
+    ctr = [0]
+
+    def au(a, b):
+        if (not _is_leaf(a) and not _is_leaf(b)
+                and a[0] == b[0] and len(a) == len(b)):
+            return (a[0],) + tuple(au(x, y) for x, y in zip(a[1:], b[1:]))
+        if a == b:                              # identical leaves -> keep concrete
+            return a
+        h = ("hole", ctr[0]); ctr[0] += 1
+        return h
+    return _canon(au(t1, t2))
+
+
+def _canon(skel):
+    """Renumber holes 0..k-1 in pre-order so a pattern has a canonical positional form."""
+    ctr = [0]
+
+    def walk(s):
+        if isinstance(s, tuple) and s and s[0] == "hole":
+            i = ctr[0]; ctr[0] += 1
+            return ("hole", i)
+        if not isinstance(s, tuple):
+            return s
+        return (s[0],) + tuple(walk(k) for k in s[1:])
+    return walk(skel)
+
+
+def instance_match(pattern, tree, binds):
+    """Is `tree` an instance of `pattern` (holes match any subtree)? On success append
+    the hole-fillers (left-to-right) to `binds` and return True."""
+    if isinstance(pattern, tuple) and pattern and pattern[0] == "hole":
+        binds.append(tree)
+        return True
+    if _is_leaf(pattern) or _is_leaf(tree):
+        return pattern == tree
+    if pattern[0] != tree[0] or len(pattern) != len(tree):
+        return False
+    return all(instance_match(p, t, binds) for p, t in zip(pattern[1:], tree[1:]))
+
+
+def _pattern_arity(p):
+    if isinstance(p, tuple) and p and p[0] == "hole":
+        return 1
+    if not isinstance(p, tuple):
+        return 0
+    return sum(_pattern_arity(k) for k in p[1:])
+
+
+def _kept_nodes(p):                              # non-hole structural nodes (specificity)
+    if not isinstance(p, tuple) or (p and p[0] == "hole"):
+        return 0
+    return 1 + sum(_kept_nodes(k) for k in p[1:])
+
+
+def factor_au(library, min_count=2, min_kept=2, prims=None):
+    """Like factor(), but discovers a parameterized pattern via anti-unification, so it
+    can abstract idioms that share outer structure but differ inside. Returns
+    (new_library, prims, (name, pattern, arity)) or (library, prims, None)."""
+    prims = dict(prims or {})
+    subs = [st for _, t in library for st in _subtrees(t) if _size(st) >= min_kept]
+    # candidate patterns = pairwise anti-unifications
+    cands = {}
+    for i in range(len(subs)):
+        for j in range(i + 1, len(subs)):
+            p = antiunify(subs[i], subs[j])
+            if _kept_nodes(p) >= min_kept:
+                cands[p] = None
+    best, best_score = None, -1
+    for p in cands:
+        count = sum(1 for st in subs if instance_match(p, st, []))
+        if count < min_count:
+            continue
+        score = count * _kept_nodes(p)           # reuse x specificity
+        if score > best_score:
+            best, best_score = p, score
+    if best is None:
+        return library, prims, None
+    name = "Q%d" % len(prims)
+    arity = _pattern_arity(best)
+    prims[name] = (arity, best)
+
+    def rewrite(t):
+        if _is_leaf(t):
+            return t
+        binds = []
+        if instance_match(best, t, binds):
+            return ("call", name, [rewrite(b) for b in binds])
+        return (t[0],) + tuple(rewrite(k) for k in t[1:])
+    new_lib = [(nm, rewrite(tree)) for nm, tree in library]
+    return new_lib, prims, (name, best, arity)
+
+
 def _demo():
     print("=== factorizer — grow the DSL from solved formulas ===\n")
     library = [
@@ -175,6 +277,24 @@ def _demo():
     ok, who = _verify(library, new_lib, prims)
     print("\n  meaning preserved (verified on 200 random bindings):", ok)
     print("  Next search can now call", disc[0], "directly — the space grew itself.")
+
+    # parameterized abstraction: idioms that share OUTER structure but differ inside
+    print("\n=== parameterized (anti-unification): catches what leaf-only misses ===\n")
+    lib2 = [
+        ("h1", ("*", ("+", "a", "b"), "c")),     # (a+b)*c
+        ("h2", ("*", ("-", "x", "y"), "z")),     # (x-y)*z  — inner op differs (+/-)
+    ]
+    print("before (no shared leaf-only skeleton: + vs -):")
+    for n, t in lib2:
+        print("   %-4s %s" % (n, t))
+    _, _, leaf = factor(lib2, min_count=2, min_size=3)
+    print("  leaf-only factor() finds:", leaf)
+    new2, prims2, au = factor_au(lib2, min_count=2, min_kept=1)
+    print("  anti-unify factor_au() finds:", au[0], "=", au[1], "arity", au[2])
+    for n, t in new2:
+        print("   %-4s %s" % (n, t))
+    ok2, _ = _verify(lib2, new2, prims2)
+    print("  meaning preserved:", ok2, " — abstracted over the differing (+/-) subtree.")
 
 
 if __name__ == "__main__":
