@@ -122,8 +122,19 @@ public:
     // fuzzy binding memory — the crisp half of the brain.
     PolicyMemory          policy_mem;
     std::map<std::pair<std::string, std::string>, double> crisp_facts;
+    size_t crisp_conflicts = 0;   // # of times a taught fact OVERWROTE a different value
 
+    // The crisp store has no per-fact uncertainty (single scalars). teach_fact still
+    // overwrites, but a conflicting overwrite (same entity/rel, different value) is no
+    // longer SILENT — it's counted + logged, so a Python caller poisoning the truth
+    // store (audit: teach_fact bypasses the gate) is at least visible/auditable.
     void teach_fact(const std::string& entity, const std::string& rel, double value) {
+        auto it = crisp_facts.find({entity, rel});
+        if (it != crisp_facts.end() && std::abs(it->second - value) > 1e-9) {
+            crisp_conflicts++;
+            B2DEBUG("[crisp] CONFLICT %s.%s: %g -> %g (overwriting)\n",
+                    entity.c_str(), rel.c_str(), it->second, value);
+        }
         crisp_facts[{entity, rel}] = value;
     }
     void policy_add(const std::string& target, const std::vector<std::string>& inputs,

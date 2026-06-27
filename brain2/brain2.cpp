@@ -765,6 +765,7 @@ PYBIND11_MODULE(brain2, m) {
       // Crisp reasoner (embedded PolicyEngine)
       .def("teach_fact", &Brain::teach_fact, py::arg("entity"), py::arg("rel"),
            py::arg("value"))
+      .def_readonly("crisp_conflicts", &Brain::crisp_conflicts)
       .def("policy_add",
            [](Brain &b, const std::string &target,
               const std::vector<std::string> &inputs, const py::object &expr) {
