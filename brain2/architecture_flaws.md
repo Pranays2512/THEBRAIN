@@ -7,13 +7,14 @@ fixable now, what's a big redesign, and what's a *deliberate* tradeoff (not a bu
 
 ## Triage summary
 
-**Fix-now (safe, low-risk, real):**
-- `think()` returns a fake `coherence = 1.0` — should be honest (compute or sentinel).
-- Debug `printf` scattered, no logging framework / not thread-safe → guard behind a flag.
-- Static non-thread-safe instrumentation counters in `perceive` / `train_lm_sequence_fused`.
-- `DecoderRNN::save()` omits `lr_` → resume LR spike.
-- `teach_fact` writes crisp facts with **no verification gate** — add an optional gate /
-  confidence field so the C++ store can't be poisoned by Python callers.
+**Fix-now (safe, low-risk, real) — ALL DONE:**
+- ~~`think()` fake `coherence = 1.0`~~ → real mean-cosine of inner-speech words. **DONE.**
+- ~~Debug `printf` scattered / not thread-safe~~ → `core/debug.hpp` `B2DEBUG`, env-gated
+  (`BRAIN2_DEBUG`); all sites routed through it. **DONE.**
+- ~~Static non-thread-safe instrumentation counters~~ → `std::atomic<int>`. **DONE.**
+- ~~`DecoderRNN::save()` omits `lr_`~~ → persisted (trailing, backward-compatible). **DONE.**
+- ~~`teach_fact` no gate~~ → conflicting overwrites counted (`Brain::crisp_conflicts`) +
+  logged instead of silent; exposed to Python. (Single-scalar store unchanged.) **DONE.**
 
 **Big redesign (real, high value, multi-session, risk to a working core):**
 - `DecoderRNN` has no training loop (vanilla Elman, random weights forever) → implement BPTT.
