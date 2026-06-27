@@ -189,6 +189,21 @@ public:
         return 0.f; // API compat
     }
 
+    // Grow the map: append a neuron at vector w (e.g. a verified-novel blended concept).
+    // The SOM was fixed at construction; this lets new concepts EXPAND the representational
+    // space instead of overwriting old ones. Returns the new neuron's index.
+    int add_neuron(const std::vector<float>& w) {
+        if ((int)w.size() != n_dims)
+            throw std::invalid_argument("SOM::add_neuron: dim mismatch");
+        int idx = n_neurons;
+        weights_.insert(weights_.end(), w.begin(), w.end());
+        neighbors_.emplace_back();
+        hits_.push_back(0.f);
+        last_visited_.push_back(0);
+        n_neurons++;
+        return idx;
+    }
+
     // Update weights and dynamically rewire graph
     void update(const std::vector<float>& input, int bmu, float reward_mod = 1.f) {
         std::lock_guard<std::mutex> lock(*update_mtx_);

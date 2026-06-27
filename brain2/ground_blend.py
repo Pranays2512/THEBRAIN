@@ -109,8 +109,16 @@ def _demo():
         print("    original concepts before/after adding it: %.0f%% -> %.0f%%  (%s)"
               % (before * 100, after * 100,
                  "no damage" if after >= before - 0.02 else "regressed"))
-    print("\n  Novel (unclaimed) + generalizes (grounded) + harmless (no regression) = a"
-          " concept the brain invented and verified, not one it was told.")
+
+        # MINT A REAL NEURON: grow the live SOM at the chimera point so the new concept
+        # has a home in perceptual space (no longer a Python-only centroid).
+        before_n = som.n_neurons
+        new_idx = som.add_neuron(chimera_raw)
+        routed = sum(som.find_bmu(v) == new_idx for v in new_test)
+        print("    minted live SOM neuron #%d (neurons %d -> %d); %d/%d new-region samples"
+              " now route to it." % (new_idx, before_n, som.n_neurons, routed, len(new_test)))
+    print("\n  Novel (unclaimed) + generalizes (grounded) + harmless (no regression) + a"
+          " minted SOM neuron = a concept the brain invented, verified, and now PERCEIVES.")
 
 
 if __name__ == "__main__":

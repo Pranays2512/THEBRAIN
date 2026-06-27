@@ -105,6 +105,14 @@ PYBIND11_MODULE(brain2, m) {
           "Get weight vector for neuron i")
       .def("grid_dist", &SOM::grid_dist,
            "2D grid distance between neurons i and j")
+      .def(
+          "add_neuron",
+          [](SOM &s, py::array_t<float, py::array::c_style> arr) {
+            auto b = arr.request();
+            std::vector<float> w((float *)b.ptr, (float *)b.ptr + b.size);
+            return s.add_neuron(w);
+          },
+          "Grow the map: append a neuron at vector w; returns its index")
       .def("save", &SOM::save, "Save SOM to binary file")
       .def("prune_dead_branches", &SOM::prune_dead_branches, py::arg("max_age") = 10000, "Prune inactive sub-grids")
       .def_static(
