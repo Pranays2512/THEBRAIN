@@ -98,6 +98,7 @@ struct DecoderRNN {
         f.write((const char*)b_h.data(), b_h.size() * sizeof(float));
         f.write((const char*)W_ho.data(), W_ho.size() * sizeof(float));
         f.write((const char*)b_o.data(), b_o.size() * sizeof(float));
+        f.write((const char*)&lr_, sizeof(float));   // persist LR (else resume spikes to default)
     }
     
     static DecoderRNN load(const std::string& path) {
@@ -118,6 +119,7 @@ struct DecoderRNN {
         f.read((char*)d.b_h.data(), d.b_h.size() * sizeof(float));
         f.read((char*)d.W_ho.data(), d.W_ho.size() * sizeof(float));
         f.read((char*)d.b_o.data(), d.b_o.size() * sizeof(float));
+        f.read((char*)&d.lr_, sizeof(float));        // trailing LR; old files lack it -> keeps default
         return d;
     }
 };

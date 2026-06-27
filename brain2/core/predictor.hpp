@@ -12,6 +12,7 @@
 #include <deque>
 #include <fstream>
 #include <memory>
+#include "debug.hpp"
 #include <mutex>
 #include <numeric>
 #include <random>
@@ -367,21 +368,15 @@ public:
     // If context not set, return empty
     if (!head_.E_ || head_.active_vocab_.empty()) return {};
 
-    static int print_count = 0;
-    if (print_count < 5) {
-        printf("[Predictor::step] Mode: %d, target_word_id: %d\n", (int)error_mode, target_word_id);
-        print_count++;
-    }
+    B2DEBUG("[Predictor::step] Mode: %d, target_word_id: %d\n", (int)error_mode, target_word_id);
 
     if (error_mode == ErrorMode::SKIP) {
-        static int printed_skip = 0;
-        if (printed_skip++ == 0) printf("[Predictor::step] Executing SKIP branch for first pair\n");
+        B2DEBUG("[Predictor::step] Executing SKIP branch for first pair\n");
         return {};
     }
-    
+
     if (error_mode == ErrorMode::EMBED_PROXY && target_word_id >= 0) {
-        static int printed_proxy = 0;
-        if (printed_proxy++ == 0) printf("[Predictor::step] Executing EMBED_PROXY branch for first pair\n");
+        B2DEBUG("[Predictor::step] Executing EMBED_PROXY branch for first pair\n");
         // Fast cosine proxy
         const float* emb = head_.E_ + target_word_id * target_dim;
         float dot = 0.f, norm_h = 0.f, norm_e = 0.f;

@@ -30,6 +30,8 @@
  *   4. Consolidate episodic memories
  */
 
+#include <atomic>
+#include "debug.hpp"
 #include "som.hpp"
 #include "predictor.hpp"
 #include "episodic.hpp"
@@ -316,7 +318,7 @@ public:
         if (!episodic_path.empty()) {
             try {
                 episodic = EpisodicMemory::load(episodic_path);
-                printf("DEBUG: Loaded episodic memory with %d episodes\n", episodic.episode_count());
+                B2DEBUG("DEBUG: Loaded episodic memory with %d episodes\n", episodic.episode_count());
             } catch (const std::exception& e) {
                 printf("Warning: Could not load episodic memory: %s\n", e.what());
                 // Silently instantiate empty episodic memory
@@ -518,16 +520,16 @@ public:
         episodic.surprise_threshold = episodic_threshold();
         bool stored = episodic_active && episodic.commit(error);
         
-        static int word_count = 0;
-        static int wm_open_count = 0;
-        static int ep_commit_count = 0;
-        if (word_count < 500) {
-            word_count++;
+        static std::atomic<int> word_count{0};
+        static std::atomic<int> wm_open_count{0};
+        static std::atomic<int> ep_commit_count{0};
+        if (word_count.load() < 500) {
+            int wc = ++word_count;
             if (wm_gate_open) wm_open_count++;
             if (stored) ep_commit_count++;
-            if (word_count == 500) {
-                printf("[Instrumentation] First 500 words: WM gate opened %.1f%%, Episodic committed %.1f%%\n",
-                       (float)wm_open_count / 5.0f, (float)ep_commit_count / 5.0f);
+            if (wc == 500) {
+                B2DEBUG("[Instrumentation] First 500 words: WM gate opened %.1f%%, Episodic committed %.1f%%\n",
+                        (float)wm_open_count.load() / 5.0f, (float)ep_commit_count.load() / 5.0f);
             }
         }
         t1 = std::chrono::high_resolution_clock::now();
@@ -740,20 +742,20 @@ public:
             bool stored = episodic_active && (ce > ep_thr) && episodic.commit(ce);
 
             // Instrumentation (first 500 words)
-            static int word_count_f = 0;
-            static int wm_open_count_f = 0;
-            static int ep_commit_count_f = 0;
-            if (word_count_f < 500) {
-                word_count_f++;
+            static std::atomic<int> word_count_f{0};
+            static std::atomic<int> wm_open_count_f{0};
+            static std::atomic<int> ep_commit_count_f{0};
+            if (word_count_f.load() < 500) {
+                int wcf = ++word_count_f;
                 if (wm_gate_open) wm_open_count_f++;
                 if (stored) ep_commit_count_f++;
-                if (word_count_f == 500) {
-                    printf("[Fused] First 500 words: WM gate %.1f%%, Episodic %.1f%%, "
-                           "CE_mu=%.2f, CE_sigma=%.2f, wm_thr=%.2f, ep_thr=%.2f\n",
-                           (float)wm_open_count_f / 5.f,
-                           (float)ep_commit_count_f / 5.f,
-                           err_mu_, std::sqrt(std::max(0.f, err_var_)),
-                           wm_threshold(), episodic_threshold());
+                if (wcf == 500) {
+                    B2DEBUG("[Fused] First 500 words: WM gate %.1f%%, Episodic %.1f%%, "
+                            "CE_mu=%.2f, CE_sigma=%.2f, wm_thr=%.2f, ep_thr=%.2f\n",
+                            (float)wm_open_count_f.load() / 5.f,
+                            (float)ep_commit_count_f.load() / 5.f,
+                            err_mu_, std::sqrt(std::max(0.f, err_var_)),
+                            wm_threshold(), episodic_threshold());
                 }
             }
             (void)stored;
