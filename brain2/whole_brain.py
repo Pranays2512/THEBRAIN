@@ -31,6 +31,16 @@ import synth_engine as SE
 from brain_store import BrainStore
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
+# Paraphrase -> canonical token, so routing isn't brittle to exact wording. A real
+# semantic router needs sentence embeddings; this is the cheap robustness layer that
+# stops common paraphrases from falling through to "I don't know".
+SYNONYMS = {
+    "velocity": "speed", "fast": "speed",
+    "weight": "mass", "heavy": "mass", "massive": "mass",
+    "acceleration": "accel", "accelerating": "accel",
+    "make": "write", "create": "write", "build": "write", "generate": "write",
+    "method": "function", "subroutine": "function", "routine": "function", "procedure": "function",
+}
 CODE_TASKS = {  # name -> (kind, examples, oracle)
     "factorial": ("int1", [0, 1, 4, 5, 6], lambda n: math.factorial(n)),
     "fibonacci": ("int1", [0, 1, 2, 3, 7, 10], None),     # oracle set below
@@ -74,7 +84,7 @@ class WholeBrain:
         self.concepts = {s for s, _, _ in CORE_FACTS} | {o for _, _, o in CORE_FACTS}
 
     def ask(self, text):
-        toks = re.findall(r"[a-z_]+", text.lower())
+        toks = [SYNONYMS.get(t, t) for t in re.findall(r"[a-z_]+", text.lower())]
         ts = set(toks)
         if CODE_WORDS & ts:
             return self._code(toks)
