@@ -254,6 +254,24 @@ public:
         return ctx;
     }
 
+    // Slot-preserving view: the active slots as SEPARATE vectors (most-active first).
+    // context() blends everything into one mean vector — fine for "general gist", fatal
+    // for relational reasoning, where holding concept A and concept B DISTINCTLY (not
+    // mean(A,B)) is the whole point. This exposes the combinatorial structure.
+    std::vector<std::vector<float>> slot_contents(float min_activity = 0.05f) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        std::vector<std::pair<float, const LIFSlot*>> act;
+        for (const auto& t : tiers_)
+            for (const auto& s : t.slots)
+                if (s.activity > min_activity) act.emplace_back(s.activity, &s);
+        std::sort(act.begin(), act.end(),
+                  [](const std::pair<float, const LIFSlot*>& a,
+                     const std::pair<float, const LIFSlot*>& b) { return a.first > b.first; });
+        std::vector<std::vector<float>> out;
+        for (const auto& p : act) out.push_back(p.second->voltage);   // the held content per slot
+        return out;
+    }
+
     // Most active slot across all tiers
     std::vector<float> most_active() const {
         std::lock_guard<std::mutex> lock(*mtx_);

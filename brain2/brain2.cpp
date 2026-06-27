@@ -243,6 +243,15 @@ PYBIND11_MODULE(brain2, m) {
           [](const WorkingMemory &wm) { return to_np(wm.context()); },
           "Weighted mean of all active slots")
       .def(
+          "slot_contents",
+          [](const WorkingMemory &wm, float min_act) {
+            py::list out;
+            for (const auto &v : wm.slot_contents(min_act)) out.append(to_np(v));
+            return out;
+          },
+          py::arg("min_activity") = 0.05f,
+          "Active slots as SEPARATE vectors (most-active first) — preserves structure")
+      .def(
           "most_active",
           [](const WorkingMemory &wm) { return to_np(wm.most_active()); },
           "Vector of most active slot")
