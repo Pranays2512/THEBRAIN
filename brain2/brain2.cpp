@@ -766,6 +766,7 @@ PYBIND11_MODULE(brain2, m) {
       .def("teach_fact", &Brain::teach_fact, py::arg("entity"), py::arg("rel"),
            py::arg("value"))
       .def_readonly("crisp_conflicts", &Brain::crisp_conflicts)
+      .def_readonly("oov_count", &Brain::oov_count)
       .def("policy_add",
            [](Brain &b, const std::string &target,
               const std::vector<std::string> &inputs, const py::object &expr) {

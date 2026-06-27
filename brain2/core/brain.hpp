@@ -123,6 +123,8 @@ public:
     PolicyMemory          policy_mem;
     std::map<std::pair<std::string, std::string>, double> crisp_facts;
     size_t crisp_conflicts = 0;   // # of times a taught fact OVERWROTE a different value
+    size_t oov_count = 0;         // # of out-of-vocabulary words given a random embedding
+    size_t ep_seen_ = 0;          // tokens seen by the episodic min-rate floor
 
     // The crisp store has no per-fact uncertainty (single scalars). teach_fact still
     // overwrites, but a conflicting overwrite (same entity/rel, different value) is no
@@ -756,7 +758,11 @@ public:
                                    global_ws.is_winner((int)GWModule::EMOTION);
             if (episodic_active && pc_wm.should_propagate()) episodic.observe(pc3_err);
             episodic.surprise_threshold = ep_thr;
-            bool stored = episodic_active && (ce > ep_thr) && episodic.commit(ce);
+            // Episodic was triple-gated on surprise (ce > ep_thr): a converged model stops
+            // storing familiar domains exactly when re-examination matters. Add a min-rate
+            // floor so ~2% of familiar tokens still get committed.
+            bool min_rate = (++ep_seen_ % 50 == 0);
+            bool stored = episodic_active && (ce > ep_thr || min_rate) && episodic.commit(ce);
 
             // Instrumentation (first 500 words)
             static std::atomic<int> word_count_f{0};
@@ -797,6 +803,8 @@ public:
         auto process_word = [&](const std::string& w) {
             if (w.empty()) return;
             if (!language.knows(w)) {
+                oov_count++;                    // OOV gets a random embedding -> flag it, don't hide it
+                B2DEBUG("[lang] OOV '%s' -> random embedding (may false-match by chance)\n", w.c_str());
                 language.register_word(w);
                 symbolic.bind(w);
             }
