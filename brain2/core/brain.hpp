@@ -704,7 +704,13 @@ public:
 
             // SOM: single distance scan for BMU + activation map
             auto [bmu, act_map] = som.find_bmu_and_activate(inp);
-            som.update(inp, bmu, 1.f + emotion.lr_modulator() * 0.5f);
+            // PC error -> SOM (the representation now LEARNS from being wrong): scale the
+            // SOM update by how surprising this token was, z-scored against the running
+            // baseline. Surprising input -> larger weight move (re-represent it); familiar
+            // input -> smaller. Previously the error reached the SOM only via emotion.
+            float sigma = std::sqrt(std::max(1e-6f, err_var_));
+            float surprise_mod = std::max(-0.5f, std::min((ce - err_mu_) / sigma, 2.f)) * 0.3f;
+            som.update(inp, bmu, 1.f + emotion.lr_modulator() * 0.5f + surprise_mod);
 
             episodic.observe(act_map);
 
