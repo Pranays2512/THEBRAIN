@@ -133,21 +133,24 @@ public:
         return best_node;
     }
 
-    // Graph-based sparse activation
+    // Graded activation: BMU + the top-K nearest neurons with a soft decay, instead of
+    // 1-hot + a few graph neighbors at fast decay. Gives downstream a graded "sort of like
+    // X and Y" signal (the interpolation generalization needs) rather than a near-binary map.
     std::vector<float> activation_map(const std::vector<float>& input) const {
         std::vector<float> acts(n_neurons, 0.f);
-        int bmu = find_bmu(input);
-        
-        // Activate BMU
-        acts[bmu] = 1.0f;
-        
-        // Activate neighbors (decaying outward)
         const float* inp = input.data();
-        for (int neighbor : neighbors_[bmu]) {
-            float d = l2sq(&weights_[neighbor * n_dims], inp);
-            acts[neighbor] = std::exp(-d * 2.0f); // Fast decay
+        std::vector<std::pair<float, int>> d(n_neurons);
+        int bmu = 0; float best = std::numeric_limits<float>::max();
+        for (int i = 0; i < n_neurons; i++) {
+            float di = l2sq(&weights_[i * n_dims], inp);
+            d[i] = {di, i};
+            if (di < best) { best = di; bmu = i; }
         }
-        
+        int K = std::min(32, n_neurons);
+        std::partial_sort(d.begin(), d.begin() + K, d.end());
+        for (int k = 0; k < K; k++)
+            acts[d[k].second] = std::exp(-d[k].first);     // soft, graded decay
+        acts[bmu] = 1.0f;                                  // BMU stays the anchor
         return acts;
     }
 
