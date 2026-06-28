@@ -15,6 +15,7 @@
 #include "core/attention.hpp"
 #include "core/brain.hpp"
 #include "core/emotion.hpp"
+#include "core/invariants.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -74,6 +75,25 @@ PYBIND11_MODULE(brain2, m) {
         .export_values();
 
   m.doc() = "Brain v2 — general neural brain, C++ core";
+
+  // ── invariant checker (native port of invariant_miner) ──────────────────
+  auto to_examples = [](py::list pyex) {
+    std::vector<brain2::Example> ex;
+    for (auto item : pyex) {
+      auto t = item.cast<py::tuple>();
+      brain2::Example e;
+      for (auto v : t[0].cast<py::list>()) e.args.push_back(v.cast<double>());
+      e.y = t[1].cast<double>();
+      ex.push_back(std::move(e));
+    }
+    return ex;
+  };
+  m.def("inv_mine", [to_examples](py::list examples) {
+    return brain2::mine_invariants(to_examples(examples));
+  }, "Mine the invariants that hold across all (args, y) examples");
+  m.def("inv_check", [to_examples](py::list examples, std::vector<std::string> admitted) {
+    return brain2::check_invariants(to_examples(examples), admitted);
+  }, "Return the first admitted invariant a candidate violates, or '' if it passes");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")
