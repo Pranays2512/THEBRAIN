@@ -82,9 +82,27 @@ class WholeBrain:
         self.entities = {"rocket", "sample"}
         self.relations = {"force", "density", "momentum", "energy", "mass", "speed", "accel", "volume"}
         self.concepts = {s for s, _, _ in CORE_FACTS} | {o for _, _, o in CORE_FACTS}
+        # LEARNED context map: meaning from a corpus, not a hand table. Any corpus word
+        # whose context strongly matches a known relation becomes an automatic synonym —
+        # this is open-comprehension's fuzzy proposer; the crisp solver still verifies.
+        import context_embed as CE
+        STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
+                "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
+                "things", "thing", "great", "high", "large", "strong", "fast", "dense", "heavy"}
+        vecs = CE.build()
+        self.ctx_map = {}
+        for w in vecs:
+            if w in self.relations or w in self.entities or w in STOP:
+                continue
+            sims = sorted(((CE.cosine(vecs[w], vecs[c]), c)
+                           for c in self.relations if c in vecs and c != w), reverse=True)
+            # admit only a confident, unambiguous mapping (high sim AND clear margin)
+            if sims and sims[0][0] >= 0.6 and (len(sims) < 2 or sims[0][0] - sims[1][0] >= 0.1):
+                self.ctx_map[w] = sims[0][1]
 
     def ask(self, text):
-        toks = [SYNONYMS.get(t, t) for t in re.findall(r"[a-z_]+", text.lower())]
+        toks = [self.ctx_map.get(SYNONYMS.get(t, t), SYNONYMS.get(t, t))
+                for t in re.findall(r"[a-z_]+", text.lower())]
         ts = set(toks)
         if CODE_WORDS & ts:
             return self._code(toks)
