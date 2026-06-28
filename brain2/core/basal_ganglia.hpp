@@ -216,10 +216,11 @@ struct BasalGanglia {
     void reinforce(float final_reward, float gamma = 0.99f, float lambda = 0.95f) {
         if (traces_.empty()) return;
 
-        // Store this experience for future replay
-        if (!traces_.empty()) {
-            auto& t0 = traces_[0];
-            push_experience(t0.inp, {}, t0.op_idx, final_reward);
+        // Store EVERY step for replay. The old code stored only traces_[0] (the first op),
+        // so replay endlessly reinforced stale FIRST-step actions with old rewards while the
+        // policy moved on -> a destabilizing pull. Replay should sample real (state,op) pairs.
+        for (const auto& t : traces_) {
+            push_experience(t.inp, {}, t.op_idx, final_reward);
         }
 
         int in = 5 * n_dims;

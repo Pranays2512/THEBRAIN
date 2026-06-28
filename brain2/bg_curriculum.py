@@ -32,9 +32,11 @@ def _demo():
     def episode(eps):
         b.sync_symbols_to_scratchpad()
         ops = b.reason("force", max_steps=6, epsilon=eps)
-        reward = 2.0 if TARGET_OP in ops else 0.0     # reward producing the target op
+        # denser per-step credit: count occurrences (graded), not just presence (binary).
+        # A binary episode reward forces ALL ops to share one scalar -> coarse credit.
+        reward = float(sum(1 for o in ops if o == TARGET_OP))
         b.reinforce_bg(reward)
-        return reward
+        return 1.0 if TARGET_OP in ops else 0.0       # report presence rate for readability
 
     print("=== bg_curriculum — does the BG learn AND consolidate? (TD-clip + epsilon anneal) ===\n")
     print("  reward = 2 if the executive emits op %d; epsilon annealed 0.5 -> 0.05\n" % TARGET_OP)
@@ -59,14 +61,16 @@ def _demo():
         print("  LEARNS (peaks ~2.0) but COLLAPSES and doesn't recover — diagnosed below.")
     else:
         print("  flat — investigate further.")
-    print("\n  STABILITY DIAGNOSIS (after trying TD-clip, lighter L2, epsilon anneal — none fixed it):")
-    print("  the collapse is not regularization or exploration. Root cause is COARSE CREDIT —")
-    print("  reinforce() spreads the single per-episode scalar reward across ALL ops in the")
-    print("  trace, so a good episode also reinforces the 5 non-target ops; once the policy")
-    print("  peaks, the noisy credit tips it over and it can't recover. Real fix is per-STEP")
-    print("  credit (advantage per op) or a PPO-style trust region — a genuine RL rebuild, not")
-    print("  a tuning knob. The 3-layer WIRING bug is fixed (it CAN learn); STABLE learning is")
-    print("  the honest open residue.")
+    print("\n  STABILITY DIAGNOSIS (refined, after many principled attempts):")
+    print("  Fixed real bugs: 3-layer wiring (it CAN learn), replay storing only the first op")
+    print("  (was reinforcing stale first-step actions). Tried: TD-clip, lighter L2, epsilon")
+    print("  anneal, denser per-step reward. Learning shows DURING EXPLORATION (reward rises)")
+    print("  but greedy consolidation stays 0/10. The deepest cause: reason()'s EXPLORATION")
+    print("  path and its GREEDY path are DIFFERENT selection mechanisms — greedy uses a PUCT")
+    print("  tree over the top-K ops, so a rising actor logit for the target op does not")
+    print("  propagate into the greedy tree's choice. Unifying the two selection paths (or")
+    print("  driving the tree purely from the learned policy) is the real rebuild. Honest")
+    print("  open residue, now with a precisely located root cause.")
 
 
 if __name__ == "__main__":
