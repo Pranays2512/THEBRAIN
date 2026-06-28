@@ -213,6 +213,44 @@ struct BasalGanglia {
     }
 
     // TD(λ) backward pass + experience replay
+    // One actor-critic gradient step for a (op, activations, input) under an advantage.
+    void apply_grad(int op_idx, const std::vector<float>& h1,
+                    const std::vector<float>& inp, float td_error) {
+        td_error = std::max(-2.0f, std::min(2.0f, td_error));   // clip for stability
+        int in = 5 * n_dims;
+        b_v[0] += lr_ * td_error;
+        for (int j = 0; j < hidden; j++)
+            W_v[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * W_v[j];
+        float* row2 = W2.data() + op_idx * hidden;
+        for (int j = 0; j < hidden; j++)
+            row2[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * row2[j];
+        b2[op_idx] += lr_ * td_error;
+        for (int j = 0; j < hidden; j++) {
+            float d = (td_error * W2[op_idx * hidden + j] + td_error * W_v[j]) * (1.f - h1[j] * h1[j]);
+            b1[j] += lr_ * d;
+            float* row1 = W1.data() + j * in;
+            for (int k = 0; k < in; k++)
+                row1[k] += lr_ * d * inp[k] - 0.005f * lr_ * row1[k];
+        }
+    }
+
+    // PER-STEP credit: each op gets its OWN reward (advantage = r_i - value_i), so the op
+    // that earned the reward is credited and its episode-mates are not. The single-scalar
+    // reinforce() spread one reward to all ops -> no differential preference -> the policy
+    // couldn't actually prefer the rewarded op. This is the fix for stable consolidation.
+    void reinforce_steps(const std::vector<float>& step_rewards) {
+        if (traces_.empty()) return;
+        int n = std::min((int)traces_.size(), (int)step_rewards.size());
+        for (int i = 0; i < n; i++) {
+            auto& t = traces_[i];
+            apply_grad(t.op_idx, t.h1, t.inp, step_rewards[i] - t.value);
+            push_experience(t.inp, {}, t.op_idx, step_rewards[i]);
+        }
+        traces_.clear();
+        std::lock_guard<std::mutex> lock(*cache_mtx_);
+        cache_.clear();
+    }
+
     void reinforce(float final_reward, float gamma = 0.99f, float lambda = 0.95f) {
         if (traces_.empty()) return;
 
@@ -223,43 +261,11 @@ struct BasalGanglia {
             push_experience(t.inp, {}, t.op_idx, final_reward);
         }
 
-        int in = 5 * n_dims;
         float g_lambda = final_reward;
-
-        auto do_update = [&](int op_idx, const std::vector<float>& h1,
-                             const std::vector<float>& inp, float td_error) {
-            // Stability: clip the TD error. A large reward-vs-value gap was producing huge
-            // weight moves that destabilized the policy (learning climbed then collapsed).
-            td_error = std::max(-2.0f, std::min(2.0f, td_error));
-            // Critic
-            b_v[0] += lr_ * td_error;
-            for (int j = 0; j < hidden; j++) {
-                W_v[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * W_v[j]; // L2
-            }
-            // Actor
-            float* row2 = W2.data() + op_idx * hidden;
-            for (int j = 0; j < hidden; j++) {
-                row2[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * row2[j]; // L2
-            }
-            b2[op_idx] += lr_ * td_error;
-            // W1 backprop
-            for (int j = 0; j < hidden; j++) {
-                float d_act  = td_error * W2[op_idx * hidden + j];
-                float d_crit = td_error * W_v[j];
-                float d = (d_act + d_crit) * (1.f - h1[j] * h1[j]);
-                b1[j] += lr_ * d;
-                float* row1 = W1.data() + j * in;
-                for (int k = 0; k < in; k++) {
-                    row1[k] += lr_ * d * inp[k] - 0.005f * lr_ * row1[k]; // L2
-                }
-            }
-        };
-
         // On-policy trace update
         for (int i = (int)traces_.size() - 1; i >= 0; i--) {
             auto& t = traces_[i];
-            float td = g_lambda - t.value;
-            do_update(t.op_idx, t.h1, t.inp, td);
+            apply_grad(t.op_idx, t.h1, t.inp, g_lambda - t.value);
             if (i > 0)
                 g_lambda = gamma * ((1.f - lambda) * t.value + lambda * g_lambda);
         }
@@ -271,6 +277,7 @@ struct BasalGanglia {
             for (int s = 0; s < REPLAY_BATCH; s++) {
                 auto& exp = replay_buffer_[pick(rng_)];
                 // Recompute h for this experience
+                int in = 5 * n_dims;
                 std::vector<float> h_r(hidden, 0.f);
                 for (int i = 0; i < hidden; i++) {
                     float sv = b1[i];
@@ -284,7 +291,7 @@ struct BasalGanglia {
                 // Use smaller lr for replay to avoid overwriting current policy
                 float saved_lr = lr_;
                 lr_ *= 0.3f;
-                do_update(exp.op, h_r, exp.ctx, td_r);
+                apply_grad(exp.op, h_r, exp.ctx, td_r);
                 lr_ = saved_lr;
             }
         }

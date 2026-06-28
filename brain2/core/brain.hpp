@@ -918,6 +918,11 @@ public:
     void reinforce_bg(float reward) {
         bg_controller.reinforce(reward);
     }
+    // Per-op credit: reward[i] credits the op at trace step i (the op that earned it),
+    // not the whole episode. Enables stable consolidation of a learned op preference.
+    void reinforce_bg_steps(const std::vector<float>& step_rewards) {
+        bg_controller.reinforce_steps(step_rewards);
+    }
 
     // Consolidate current scratchpad op-chain into procedural memory.
     // Uses the GOAL WORD embedding as the trigger (not SOM context) — this is
@@ -1129,6 +1134,18 @@ public:
                     int rop = (int)(bg_controller.rng_() % (unsigned)Op::N_OPS);
                     if (rop != (int)Op::HALT) picked_op = rop;
                 }
+            }
+            // Greedy follows the LEARNED POLICY (argmax actor logits), not the value-tree's
+            // pick. The tree's value-based choice didn't reflect the trained logits, so a
+            // learned preference never showed up at eval (learning wouldn't consolidate). Now
+            // greedy = the policy, so what training improves is what greedy executes.
+            if (epsilon == 0.f) {
+                int gp = -1; float gpb = -1e30f;
+                for (int o = 0; o < (int)Op::N_OPS; o++) {
+                    if (o == (int)Op::HALT) continue;
+                    if (logits[o] > gpb) { gpb = logits[o]; gp = o; }
+                }
+                if (gp >= 0) picked_op = gp;
             }
             // Record the trace for the op that ACTUALLY ran, so reinforce credits it correctly.
             bg_controller.record_trace(picked_op, h, inp, current_value);

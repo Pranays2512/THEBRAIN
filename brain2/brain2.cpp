@@ -771,6 +771,8 @@ PYBIND11_MODULE(brain2, m) {
           },
           py::arg("subj"), py::arg("rel"),
           "Perform structure mapping analogy given (subj, rel)")
+      .def("reinforce_bg_steps", &Brain::reinforce_bg_steps, py::arg("step_rewards"),
+           "Per-op credit: reward[i] credits the op at trace step i")
       .def("reinforce_bg", &Brain::reinforce_bg, py::arg("reward"),
            "Reinforce last BG op-chain using TD(lambda)")
       .def(

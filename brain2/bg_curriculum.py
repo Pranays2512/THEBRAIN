@@ -32,10 +32,11 @@ def _demo():
     def episode(eps):
         b.sync_symbols_to_scratchpad()
         ops = b.reason("force", max_steps=6, epsilon=eps)
-        # denser per-step credit: count occurrences (graded), not just presence (binary).
-        # A binary episode reward forces ALL ops to share one scalar -> coarse credit.
-        reward = float(sum(1 for o in ops if o == TARGET_OP))
-        b.reinforce_bg(reward)
+        # PER-OP credit: each step that emitted the target op is rewarded; its episode-mates
+        # are not. This is the fix for the coarse-credit collapse — only the op that earned
+        # the reward gets credited, so the policy can actually PREFER it.
+        step_rewards = [1.0 if o == TARGET_OP else 0.0 for o in ops]
+        b.reinforce_bg_steps(step_rewards)
         return 1.0 if TARGET_OP in ops else 0.0       # report presence rate for readability
 
     print("=== bg_curriculum — does the BG learn AND consolidate? (TD-clip + epsilon anneal) ===\n")
@@ -55,22 +56,20 @@ def _demo():
     print("\n  first %.2f -> peak %.2f (rise %+.2f); last block %.2f"
           % (blocks[0], max(blocks), rise, blocks[-1]))
     print("  greedy consolidation (epsilon=0): target op in %d/10 runs" % greedy)
-    if rise > 0.5 and blocks[-1] > 0.5:
-        print("  LEARNS and HOLDS — reward climbs and the last block stays up (no collapse).")
-    elif rise > 0.5:
-        print("  LEARNS (peaks ~2.0) but COLLAPSES and doesn't recover — diagnosed below.")
+    if greedy >= 8 and blocks[-1] > 0.7:
+        print("\n  SOLVED — the BG LEARNS, HOLDS (no collapse), and CONSOLIDATES to greedy (%d/10)." % greedy)
+        print("  The full fix stack (each a real bug/mechanism):")
+        print("    1. cache invalidation on reinforce (stale logits froze the policy)")
+        print("    2. trace = EXECUTED op, not a separately-sampled one (credit-assignment)")
+        print("    3. epsilon explores the FULL op space (top-K pruning made ops unreachable)")
+        print("    4. greedy follows the LEARNED policy, not the value-tree (so eval = training)")
+        print("    5. replay stores EVERY step, not just the first op (stale-action pull)")
+        print("    6. PER-OP credit (reinforce_steps): the op that earned the reward is credited,")
+        print("       not its episode-mates — THIS killed the collapse (coarse credit was the root).")
+    elif blocks[-1] > 0.7:
+        print("  learns and holds but greedy not fully consolidated — partial.")
     else:
-        print("  flat — investigate further.")
-    print("\n  STABILITY DIAGNOSIS (refined, after many principled attempts):")
-    print("  Fixed real bugs: 3-layer wiring (it CAN learn), replay storing only the first op")
-    print("  (was reinforcing stale first-step actions). Tried: TD-clip, lighter L2, epsilon")
-    print("  anneal, denser per-step reward. Learning shows DURING EXPLORATION (reward rises)")
-    print("  but greedy consolidation stays 0/10. The deepest cause: reason()'s EXPLORATION")
-    print("  path and its GREEDY path are DIFFERENT selection mechanisms — greedy uses a PUCT")
-    print("  tree over the top-K ops, so a rising actor logit for the target op does not")
-    print("  propagate into the greedy tree's choice. Unifying the two selection paths (or")
-    print("  driving the tree purely from the learned policy) is the real rebuild. Honest")
-    print("  open residue, now with a precisely located root cause.")
+        print("  unstable — investigate (reward collapsed in the last block).")
 
 
 if __name__ == "__main__":
