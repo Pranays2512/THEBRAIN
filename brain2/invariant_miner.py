@@ -109,6 +109,54 @@ def demote(admitted, correct_examples):
     return keep, dropped
 
 
+# ── functional invariants (probe-based) ───────────────────────────────────────
+# Value invariants above constrain the OUTPUT. Functional invariants are properties of the
+# FUNCTION itself — checked by probing it, not read off the I/O examples: commutativity,
+# idempotence, involution. They catch errors value checks miss (e.g. a-b vs gcd: a-b can
+# satisfy the value bounds but is NOT commutative).
+FUNCTIONAL = {
+    "commutative": (2, lambda f, a, b: f(a, b) == f(b, a)),
+    "idempotent":  (1, lambda f, x: f(f(x)) == f(x)),
+    "involutive":  (1, lambda f, x: f(f(x)) == x),
+}
+
+
+def _probes(arity, seed=0, n=12):
+    import random
+    rng = random.Random(seed)
+    if arity == 1:
+        return [(rng.randint(0, 20),) for _ in range(n)]
+    return [(rng.randint(1, 20), rng.randint(1, 20)) for _ in range(n)]
+
+
+def mine_functional(f, arity, seed=0):
+    """Probe f; return the functional invariants it satisfies."""
+    probes = _probes(arity, seed)
+    out = set()
+    for name, (ar, pred) in FUNCTIONAL.items():
+        if ar != arity:
+            continue
+        try:
+            if all(pred(f, *p) for p in probes):
+                out.add(name)
+        except Exception:
+            pass
+    return out
+
+
+def check_functional(g, arity, admitted, seed=1):
+    """A candidate must satisfy the admitted functional invariants (probed, no oracle)."""
+    probes = _probes(arity, seed)
+    for name in admitted:
+        ar, pred = FUNCTIONAL[name]
+        try:
+            if not all(pred(g, *p) for p in probes):
+                return False, "violates %s" % name
+        except Exception:
+            return False, "raised checking %s" % name
+    return True, "passes functional invariants"
+
+
 def _demo():
     import math
     print("=== invariant_miner — the brain mints its own verifiers (arity-general) ===\n")
@@ -136,7 +184,19 @@ def _demo():
     # demotion still works
     kept, dropped = demote(admitted | {"out_even"}, train + holdout)
     print("\n  demotion: forced out_even ->", "dropped" if "out_even" in dropped else "kept")
-    print("\n  Mined, validated, revisable necessary checks — now over 1-arg AND 2-arg tasks.")
+
+    # functional invariants (probe-based): properties of the function, caught by probing
+    print("\n  functional invariants (probe-based, what value checks miss):")
+    fg = mine_functional(math.gcd, 2)
+    print("    gcd  -> %s" % sorted(fg))
+    print("      a-b rejected:", check_functional(lambda a, b: a - b, 2, fg)[1],
+          "(not commutative)")
+    print("      gcd passes:", check_functional(math.gcd, 2, fg)[0])
+    fa = mine_functional(abs, 1)
+    print("    abs  -> %s  (abs(abs(x))==abs(x))" % sorted(fa))
+    fn = mine_functional(lambda x: -x, 1)
+    print("    neg  -> %s  (-(-x)==x)" % sorted(fn))
+    print("\n  Mined, validated, revisable checks — value AND functional, 1-arg AND 2-arg.")
 
 
 if __name__ == "__main__":
