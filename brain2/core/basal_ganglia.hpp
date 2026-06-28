@@ -284,6 +284,16 @@ struct BasalGanglia {
                 lr_ = saved_lr;
             }
         }
+
+        // THE BUG FIX: weights just changed, so every memoized forward() output is now STALE.
+        // Without this, the cache kept serving the OLD logits/value for any context seen
+        // before -> the policy stayed frozen across episodes (narrow op set, flat reward)
+        // even though reinforce was correctly updating the weights. Clear it so the next
+        // decision recomputes with the updated policy.
+        {
+            std::lock_guard<std::mutex> lock(*cache_mtx_);
+            cache_.clear();
+        }
     }
 
     void clear_traces() { 

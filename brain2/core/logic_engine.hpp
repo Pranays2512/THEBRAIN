@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include "debug.hpp"
 #include "core/basal_ganglia.hpp"
 #include "core/language.hpp"
 #include "core/symbolic.hpp"
@@ -363,13 +364,13 @@ public:
             case Op::RETRIEVE: {
                 // Query Episodic Memory using the exact centroid sequence it expects
                 auto ctx_map = pad.read("context_map");
-                fprintf(stderr, "DEBUG: Executing OP_RETRIEVE. ctx_map.empty() = %d\\n", ctx_map.empty());
+                if (::b2::debug_on()) fprintf(stderr, "DEBUG: Executing OP_RETRIEVE. ctx_map.empty() = %d\\n", ctx_map.empty());
                 if (!ctx_map.empty()) {
                     // Search Episodic Memory using the full continuous 65536D context
                     auto topk = episodic.retrieve_topk(ctx_map, 1);
-                    fprintf(stderr, "DEBUG: OP_RETRIEVE topk.empty() = %d\\n", topk.empty());
+                    if (::b2::debug_on()) fprintf(stderr, "DEBUG: OP_RETRIEVE topk.empty() = %d\\n", topk.empty());
                     if (!topk.empty()) {
-                        fprintf(stderr, "DEBUG: OP_RETRIEVE topk[0].first = %f\\n", topk[0].first);
+                        if (::b2::debug_on()) fprintf(stderr, "DEBUG: OP_RETRIEVE topk[0].first = %f\\n", topk[0].first);
                         if (topk[0].first > 0.001f) { // Lowered threshold for Continuous-Discrete Dot Product
                             auto* ep = episodic.get_episode(topk[0].second);
                             if (ep) {

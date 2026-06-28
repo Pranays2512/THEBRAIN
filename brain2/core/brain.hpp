@@ -1062,10 +1062,10 @@ public:
         for (int step = 0; step < max_steps; step++) {
             auto current_ctx = scratchpad.current_tree_state();
             
-            bool greedy = (epsilon == 0.0f);
-            auto act = bg_controller.select_op(current_ctx, goal_vec, greedy, -1);
-            
-            // Re-run forward pass to get value just for logging/halting
+            // One forward for logits+value+activations. The EXECUTED op (picked below by the
+            // tree search) is what we record as the trace, so reinforce trains on what actually
+            // ran. The old code recorded a SEPARATELY-sampled op from select_op while the tree
+            // search executed a different one -> credit-assignment mismatch -> no learning.
             std::vector<float> h, inp;
             auto [logits, current_value] = bg_controller.forward(current_ctx, goal_vec, h, inp);
             
@@ -1120,6 +1120,18 @@ public:
                 }
             }
             
+            // epsilon-greedy over the FULL op space (not just the top-K=3 evals). Exploring
+            // only within the pruned top-K leaves every other op permanently unreachable, so
+            // an op that starts outside the top-3 can never be tried, reinforced, or learned.
+            if (epsilon > 0.f) {
+                std::uniform_real_distribution<float> u(0.f, 1.f);
+                if (u(bg_controller.rng_) < epsilon) {
+                    int rop = (int)(bg_controller.rng_() % (unsigned)Op::N_OPS);
+                    if (rop != (int)Op::HALT) picked_op = rop;
+                }
+            }
+            // Record the trace for the op that ACTUALLY ran, so reinforce credits it correctly.
+            bg_controller.record_trace(picked_op, h, inp, current_value);
             solution_path.push_back(picked_op);
             simulate_op((Op)picked_op, scratchpad);
         }
