@@ -784,6 +784,10 @@ PYBIND11_MODULE(brain2, m) {
            py::arg("value"))
       .def_readonly("crisp_conflicts", &Brain::crisp_conflicts)
       .def_readonly("oov_count", &Brain::oov_count)
+      .def("sync_symbols_to_scratchpad", &Brain::sync_symbols_to_scratchpad,
+           "Bridge: load Symbolic bindings into Scratchpad slots (count moved)")
+      .def("sync_scratchpad_to_symbols", &Brain::sync_scratchpad_to_symbols,
+           "Bridge: bind Scratchpad slots into the Symbolic store (count moved)")
       .def("policy_add",
            [](Brain &b, const std::string &target,
               const std::vector<std::string> &inputs, const py::object &expr) {

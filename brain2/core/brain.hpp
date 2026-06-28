@@ -143,6 +143,27 @@ public:
                     const ExprPtr& expr) {
         policy_mem.add(Policy{target, inputs, expr});
     }
+
+    // Bridge the two neurosymbolic islands (audit: "BG <-> Symbolic are islands"). The BG
+    // executive operates over the scratchpad; the Symbolic store holds bound symbols — but
+    // they never exchanged content, so the symbolic knowledge was invisible to the executive
+    // and its results never became symbols. These move data both ways. Returns count moved.
+    int sync_symbols_to_scratchpad() {
+        int n = 0;
+        for (const auto& s : symbolic.symbols()) {
+            scratchpad.write(s, symbolic.lookup(s), "from_symbolic");
+            n++;
+        }
+        return n;
+    }
+    int sync_scratchpad_to_symbols() {
+        int n = 0;
+        for (const auto& name : scratchpad.slot_names()) {
+            symbolic.bind(name, scratchpad.read(name));   // stable: won't overwrite existing
+            n++;
+        }
+        return n;
+    }
     FactFn fact_fn() {
         return [this](const std::string& e, const std::string& r, double& out) -> bool {
             auto it = crisp_facts.find({e, r});
