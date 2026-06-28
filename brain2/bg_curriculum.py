@@ -36,25 +36,37 @@ def _demo():
         b.reinforce_bg(reward)
         return reward
 
-    print("=== bg_curriculum — does the BG learn? (after the 3-layer reason() fix) ===\n")
-    print("  reward = 2 if the executive emits op %d; epsilon=0.4 exploration; 360 episodes\n"
-          % TARGET_OP)
+    print("=== bg_curriculum — does the BG learn AND consolidate? (TD-clip + epsilon anneal) ===\n")
+    print("  reward = 2 if the executive emits op %d; epsilon annealed 0.5 -> 0.05\n" % TARGET_OP)
     BLK, blocks = 60, []
     for blk in range(6):
-        rs = [episode(0.4) for _ in range(BLK)]
+        eps = max(0.05, 0.5 - 0.09 * blk)            # anneal exploration as it learns
+        rs = [episode(eps) for _ in range(BLK)]
         avg = sum(rs) / BLK
         blocks.append(avg)
-        print("  block %d (ep %3d-%3d): avg reward %.2f" % (blk, blk * BLK, blk * BLK + BLK - 1, avg))
+        print("  block %d (ep %3d-%3d, eps %.2f): avg reward %.2f"
+              % (blk, blk * BLK, blk * BLK + BLK - 1, eps, avg))
 
     rise = max(blocks) - blocks[0]
-    print("\n  first block %.2f -> peak %.2f  (rise %+.2f)" % (blocks[0], max(blocks), rise))
-    if rise > 0.5:
-        print("  LEARNS — reward climbs; the executive learned to produce the rewarded op.")
-        print("  (Previously FLAT — the 3-layer C++ bug is fixed.)")
+    # greedy consolidation: with NO exploration, does it still emit the learned op?
+    greedy = sum(TARGET_OP in b.reason("force", max_steps=6, epsilon=0.0) for _ in range(10))
+    print("\n  first %.2f -> peak %.2f (rise %+.2f); last block %.2f"
+          % (blocks[0], max(blocks), rise, blocks[-1]))
+    print("  greedy consolidation (epsilon=0): target op in %d/10 runs" % greedy)
+    if rise > 0.5 and blocks[-1] > 0.5:
+        print("  LEARNS and HOLDS — reward climbs and the last block stays up (no collapse).")
+    elif rise > 0.5:
+        print("  LEARNS (peaks ~2.0) but COLLAPSES and doesn't recover — diagnosed below.")
     else:
-        print("  still flat — investigate further.")
-    print("\n  Honest residue: learning happens during exploration; full greedy consolidation")
-    print("  + stability (it can regress) are a tuning matter, not a wiring bug.")
+        print("  flat — investigate further.")
+    print("\n  STABILITY DIAGNOSIS (after trying TD-clip, lighter L2, epsilon anneal — none fixed it):")
+    print("  the collapse is not regularization or exploration. Root cause is COARSE CREDIT —")
+    print("  reinforce() spreads the single per-episode scalar reward across ALL ops in the")
+    print("  trace, so a good episode also reinforces the 5 non-target ops; once the policy")
+    print("  peaks, the noisy credit tips it over and it can't recover. Real fix is per-STEP")
+    print("  credit (advantage per op) or a PPO-style trust region — a genuine RL rebuild, not")
+    print("  a tuning knob. The 3-layer WIRING bug is fixed (it CAN learn); STABLE learning is")
+    print("  the honest open residue.")
 
 
 if __name__ == "__main__":

@@ -227,15 +227,18 @@ struct BasalGanglia {
 
         auto do_update = [&](int op_idx, const std::vector<float>& h1,
                              const std::vector<float>& inp, float td_error) {
+            // Stability: clip the TD error. A large reward-vs-value gap was producing huge
+            // weight moves that destabilized the policy (learning climbed then collapsed).
+            td_error = std::max(-2.0f, std::min(2.0f, td_error));
             // Critic
             b_v[0] += lr_ * td_error;
             for (int j = 0; j < hidden; j++) {
-                W_v[j] += lr_ * td_error * h1[j] - 0.05f * lr_ * W_v[j]; // L2
+                W_v[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * W_v[j]; // L2
             }
             // Actor
             float* row2 = W2.data() + op_idx * hidden;
             for (int j = 0; j < hidden; j++) {
-                row2[j] += lr_ * td_error * h1[j] - 0.05f * lr_ * row2[j]; // L2
+                row2[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * row2[j]; // L2
             }
             b2[op_idx] += lr_ * td_error;
             // W1 backprop
@@ -246,7 +249,7 @@ struct BasalGanglia {
                 b1[j] += lr_ * d;
                 float* row1 = W1.data() + j * in;
                 for (int k = 0; k < in; k++) {
-                    row1[k] += lr_ * d * inp[k] - 0.05f * lr_ * row1[k]; // L2
+                    row1[k] += lr_ * d * inp[k] - 0.005f * lr_ * row1[k]; // L2
                 }
             }
         };
