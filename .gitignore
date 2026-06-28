@@ -60,3 +60,4 @@ brain2_512D_baseline_backup/train/conceptnet-assertions-5.7.0.csv.gz
 *.csv.gz
 .git.bak/
 a.out
+brain2/check_library/
