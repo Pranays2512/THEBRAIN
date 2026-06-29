@@ -79,6 +79,18 @@ def main():
     tgt, _ = L.learn_definition("momentum is mass times speed")
     expect("SD learns momentum=m*v", tgt == "momentum" and abs(L.query("rocket", "momentum") - 300000) < 1)
 
+    # C++ ports match Python (run under venv2 where brain2 imports)
+    try:
+        import brain2
+        c = [n * n for n in range(31)]; o = [n * (n + 1) // 2 for n in range(31)]
+        cpp = brain2.refute_int1(c, o, 0)
+        py = RF.refute(lambda n: n * n, lambda n: n * (n + 1) // 2, "int1")
+        expect("C++ refuter matches Python", cpp["scope"] == py["scope"] and cpp["robust"] == py["robust"])
+        ce = [([float(a[0])], float(y)) for a, y in [((0,), 1), ((1,), 1), ((4,), 24), ((5,), 120)]]
+        expect("C++ inv_mine matches Python", set(brain2.inv_mine(ce)) == (IM.mine([(0, 1), (1, 1), (4, 24), (5, 120)]) - {"monotonic_increasing"}))
+    except ImportError:
+        pass  # brain2 not available under this interpreter; skip the C++ match checks
+
     print("=== harden_regress — correctness lock on core modules ===\n")
     fails = 0
     for name, good in ok:

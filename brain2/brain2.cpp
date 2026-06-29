@@ -16,6 +16,7 @@
 #include "core/brain.hpp"
 #include "core/emotion.hpp"
 #include "core/invariants.hpp"
+#include "core/refuter.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -94,6 +95,20 @@ PYBIND11_MODULE(brain2, m) {
   m.def("inv_check", [to_examples](py::list examples, std::vector<std::string> admitted) {
     return brain2::check_invariants(to_examples(examples), admitted);
   }, "Return the first admitted invariant a candidate violates, or '' if it passes");
+
+  // ── refuter core (native port of refuter.py): find break + valid scope ──
+  m.def("refute_int1",
+        [](std::vector<long> cand, std::vector<long> oracle, long lo) {
+          auto r = brain2::refute_int1(cand, oracle, lo);
+          py::dict d;
+          d["robust"] = r.robust;
+          d["breaks_at"] = (r.breaks_at == LONG_MIN) ? py::none() : py::cast(r.breaks_at);
+          d["fail_rate"] = r.fail_rate;
+          d["scope"] = r.scope;
+          return d;
+        },
+        py::arg("cand"), py::arg("oracle"), py::arg("lo") = 0,
+        "Refute candidate vs oracle outputs over int inputs lo..lo+n-1: break + valid scope");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")
