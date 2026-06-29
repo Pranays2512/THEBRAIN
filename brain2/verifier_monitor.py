@@ -49,6 +49,7 @@ def audit(invariants, correct_examples, wrong_fns, probes):
 def _demo():
     import math
     print("=== verifier_monitor — audit the verifiers, flag the irregular ones ===\n")
+    IM.PREDICATES["out_le_1000"] = lambda a, y: y <= 1000   # inject a spurious one to audit
     correct = [(0, 1), (1, 1), (4, 24), (5, 120), (6, 720), (7, 5040), (8, 40320)]  # factorial
     probes = [0, 1, 2, 5, 8]
     wrong = [lambda n: n * n, lambda n: n + 1, lambda n: -math.factorial(n), lambda n: 0]

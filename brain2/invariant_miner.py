@@ -39,8 +39,10 @@ PREDICATES = {
     "out_le_prod":      lambda a, y: (y <= abs(prod(a))) if all(v != 0 for v in a) else True,
     "out_divides_args": lambda a, y: y > 0 and all(v % y == 0 for v in a),
     "out_even":         lambda a, y: y % 2 == 0,
-    "out_le_1000":      lambda a, y: y <= 1000,        # usually spurious; validation should kill it
 }
+# Arbitrary-magnitude bounds (out_le_1000 etc.) are NOT in the production set: they are more
+# often spurious than useful and risk falsely rejecting a correct large output. Demos inject
+# one locally to show validation/demotion pruning it.
 
 
 def _holds(name, examples):
@@ -160,6 +162,7 @@ def check_functional(g, arity, admitted, seed=1):
 def _demo():
     import math
     print("=== invariant_miner — the brain mints its own verifiers (arity-general) ===\n")
+    PREDICATES["out_le_1000"] = lambda a, y: y <= 1000   # inject a spurious one to show pruning
 
     # 1-arg: factorial
     train   = [(0, 1), (1, 1), (4, 24), (5, 120), (6, 720)]
