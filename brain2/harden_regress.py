@@ -54,6 +54,31 @@ def main():
     ps = [math.log(t) / math.log(a) for _, a, t in OW.TRAIN if a != 1.0]
     expect("OW rediscovers Kepler p~1.5", abs(sum(ps) / len(ps) - 1.5) < 0.05)
 
+    # language — structural parse + verified compute, incl. compare + abstain
+    import structural_parser as SP
+    import context_embed as CE
+    fkb, mem = SP.build_brain()
+    PP = SP.StructuralParser({"rocket", "sample"}, {"force", "mass", "speed", "accel", "volume"}, {})
+    expect("SP single computes force", "1.2e+04" in (SP.answer(PP.parse("force of the rocket"), fkb, mem) or ""))
+    expect("SP compare works", "more" in (SP.answer(PP.parse("which has more mass rocket or sample"), fkb, mem) or ""))
+    expect("SP abstains on garbage", SP.answer(PP.parse("the vibe of the rocket"), fkb, mem) is None)
+    vecs = CE.build(["the rocket has high speed", "the rocket has high velocity"])
+    expect("CE maps velocity->speed", CE.nearest("velocity", ["speed", "mass"], vecs)[0] == "speed")
+
+    # analogy — solar->atom structure map (no shared vocab)
+    import analogy_struct as AS
+    solar = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
+    atom = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
+    emap, _, score = AS.align(solar, atom)
+    expect("AS maps sun->nucleus", emap and emap.get("sun") == "nucleus" and score >= 2)
+
+    # semantic_depth — learns a new concept from a definition, verified
+    import semantic_depth as SD
+    fkb2, mem2 = SP.build_brain()
+    L = SD.ConceptLearner(fkb2, mem2, {"force", "mass", "speed", "accel", "volume"})
+    tgt, _ = L.learn_definition("momentum is mass times speed")
+    expect("SD learns momentum=m*v", tgt == "momentum" and abs(L.query("rocket", "momentum") - 300000) < 1)
+
     print("=== harden_regress — correctness lock on core modules ===\n")
     fails = 0
     for name, good in ok:
