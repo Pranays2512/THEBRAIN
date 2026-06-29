@@ -55,6 +55,8 @@ def _law_error(train, holdout):
 
 
 def assess(train, holdout, law_tol=0.05):
+    if not train or not holdout:
+        return "IRREGULAR", "insufficient data (need train + held-out points)"
     if not _functional(train + holdout):
         return "IRREGULAR", "not even a function (same input -> different outputs)"
     # Regularity must mean PREDICTABILITY: a law that generalizes to held-out. Surviving
