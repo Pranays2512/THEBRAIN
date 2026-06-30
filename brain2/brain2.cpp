@@ -17,6 +17,7 @@
 #include "core/emotion.hpp"
 #include "core/invariants.hpp"
 #include "core/refuter.hpp"
+#include "core/factorizer.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -109,6 +110,14 @@ PYBIND11_MODULE(brain2, m) {
         },
         py::arg("cand"), py::arg("oracle"), py::arg("lo") = 0,
         "Refute candidate vs oracle outputs over int inputs lo..lo+n-1: break + valid scope");
+
+  // ── factorizer evaluator (native port): eval an S-expression under an env ──
+  m.def("eval_sexpr",
+        [](const std::string& s, std::map<std::string, double> env) {
+          return brain2::eval_sexpr(s, env);
+        },
+        py::arg("sexpr"), py::arg("env"),
+        "Evaluate an S-expression '(* (+ a b) c)' under a variable environment");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")

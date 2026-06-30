@@ -88,6 +88,10 @@ def main():
         expect("C++ refuter matches Python", cpp["scope"] == py["scope"] and cpp["robust"] == py["robust"])
         ce = [([float(a[0])], float(y)) for a, y in [((0,), 1), ((1,), 1), ((4,), 24), ((5,), 120)]]
         expect("C++ inv_mine matches Python", set(brain2.inv_mine(ce)) == (IM.mine([(0, 1), (1, 1), (4, 24), (5, 120)]) - {"monotonic_increasing"}))
+        tree = ("+", ("*", "m", "v"), ("*", 0.5, "k"))
+        env = {"m": 3.0, "v": 4.0, "k": 8.0}
+        expect("C++ eval_sexpr matches Python",
+               abs(brain2.eval_sexpr(FZ.to_sexpr(tree), env) - FZ.eval_tree(tree, env, {})) < 1e-9)
     except ImportError:
         pass  # brain2 not available under this interpreter; skip the C++ match checks
 

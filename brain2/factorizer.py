@@ -30,6 +30,13 @@ def _is_leaf(t):
     return not isinstance(t, tuple)
 
 
+def to_sexpr(t):
+    """Serialize an expression tree to an S-expression string for the C++ evaluator."""
+    if _is_leaf(t):
+        return str(t)
+    return "(" + " ".join([t[0]] + [to_sexpr(k) for k in t[1:]]) + ")"
+
+
 def shape(t):
     """Return (skeleton, leaves): skeleton keeps internal ops, every leaf -> ('hole', i)
     in left-to-right order; leaves is the list of leaf subtrees in that order."""
