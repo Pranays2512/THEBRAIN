@@ -92,6 +92,11 @@ def main():
         env = {"m": 3.0, "v": 4.0, "k": 8.0}
         expect("C++ eval_sexpr matches Python",
                abs(brain2.eval_sexpr(FZ.to_sexpr(tree), env) - FZ.eval_tree(tree, env, {})) < 1e-9)
+        import irregularity_detector as ID
+        tr = [(0.387, 0.241), (0.723, 0.615), (1.0, 1.0), (1.524, 1.881), (5.203, 11.862)]
+        ho = [(9.537, 29.457), (19.191, 84.02)]
+        expect("C++ law_error matches Python",
+               abs(brain2.law_error(tr, ho) - ID._law_error(tr, ho)) < 1e-9)
     except ImportError:
         pass  # brain2 not available under this interpreter; skip the C++ match checks
 

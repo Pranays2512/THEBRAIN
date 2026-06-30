@@ -18,6 +18,7 @@
 #include "core/invariants.hpp"
 #include "core/refuter.hpp"
 #include "core/factorizer.hpp"
+#include "core/regularity.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -118,6 +119,22 @@ PYBIND11_MODULE(brain2, m) {
         },
         py::arg("sexpr"), py::arg("env"),
         "Evaluate an S-expression '(* (+ a b) c)' under a variable environment");
+
+  // ── regularity (native port): best held-out law-fit error ──
+  auto to_pairs = [](py::list pts) {
+    std::vector<std::pair<double, double>> v;
+    for (auto item : pts) {
+      auto t = item.cast<py::tuple>();
+      v.push_back({t[0].cast<double>(), t[1].cast<double>()});
+    }
+    return v;
+  };
+  m.def("law_error",
+        [to_pairs](py::list train, py::list hold) {
+          return brain2::law_error(to_pairs(train), to_pairs(hold));
+        },
+        py::arg("train"), py::arg("hold"),
+        "Best held-out relative error fitting a linear/power law (regularity detection)");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")
