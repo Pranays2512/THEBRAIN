@@ -97,6 +97,15 @@ def main():
         ho = [(9.537, 29.457), (19.191, 84.02)]
         expect("C++ law_error matches Python",
                abs(brain2.law_error(tr, ho) - ID._law_error(tr, ho)) < 1e-9)
+        import feature_learner as FL
+        lp = FL.LearnedProposer()
+        lp.proto = {"list": {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.5},
+                    "dp":   {"out_is_list": 0.0, "out_exceeds_max": 1.0, "neg_in": 0.5}}
+        pyw = lp._disc_weights()
+        cppw = brain2.disc_weights([lp.proto["list"], lp.proto["dp"]])
+        fe = {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.0}
+        expect("C++ proposer scoring matches Python",
+               abs(lp._sim(fe, lp.proto["list"], pyw) - brain2.feat_sim(fe, lp.proto["list"], cppw)) < 1e-9)
     except ImportError:
         pass  # brain2 not available under this interpreter; skip the C++ match checks
 

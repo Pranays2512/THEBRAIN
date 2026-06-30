@@ -19,6 +19,7 @@
 #include "core/refuter.hpp"
 #include "core/factorizer.hpp"
 #include "core/regularity.hpp"
+#include "core/proposer.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -135,6 +136,20 @@ PYBIND11_MODULE(brain2, m) {
         },
         py::arg("train"), py::arg("hold"),
         "Best held-out relative error fitting a linear/power law (regularity detection)");
+
+  // ── proposer scoring (native port): discriminative weights + weighted similarity ──
+  m.def("disc_weights",
+        [](std::vector<std::map<std::string, double>> protos) {
+          return brain2::disc_weights(protos);
+        },
+        py::arg("protos"), "Per-feature discriminative weight = variance across space profiles");
+  m.def("feat_sim",
+        [](std::map<std::string, double> feats, std::map<std::string, double> proto,
+           std::map<std::string, double> w) {
+          return brain2::feat_sim(feats, proto, w);
+        },
+        py::arg("feats"), py::arg("proto"), py::arg("w"),
+        "Weighted similarity of a task's features to a space profile");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")
