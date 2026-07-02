@@ -53,7 +53,10 @@ class NeuralLMTorch:
         torch.manual_seed(seed)
 
     def _tok(self, line):
-        return ["<s>"] + re.findall(r"[a-z]+", line.lower()) + ["</s>"]
+        # keep parsing structure (words, numbers, => | : = operators) so the student can
+        # learn text -> structured form, not just plain words.
+        toks = re.findall(r"[a-zA-Z_]+|\d+\.?\d*|=>|[|:=()+\-*/]", line.lower())
+        return ["<s>"] + toks + ["</s>"]
 
     def train(self, corpus):
         words = sorted({w for ln in corpus for w in self._tok(ln)} | {"<unk>", "<pad>"})

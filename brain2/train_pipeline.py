@@ -62,11 +62,53 @@ class UnifiedTrainer:
         self.teacher_model = teacher_model
         self.lm_epochs, self.lm_dim, self.lm_layers, self.lm_ctx = lm_epochs, lm_dim, lm_layers, lm_ctx
         self.report = {}
+        import knowledge_distill as KD
+        from means_ends import PolicyMemory
+        self.fkb = KD.SimpleKB()          # symbolic brain: exact taught facts
+        self.mem = PolicyMemory()         # symbolic brain: policies/laws
         try:
             import corpus_scale as CS
             self.corpus = list(CS.LARGE)
         except Exception:
             pass
+
+    # 1b. TEACH — the teacher PARSES each topic into sentence=>structure PAIRS. The symbolic
+    #     brain learns the STRUCTURE (facts + VERIFIED laws); the student LM learns the PARSING
+    #     itself (map a sentence to its structured form). The student's whole job is parsing —
+    #     text -> the structure the symbolic core verifies — so it trains on parse pairs only.
+    def stage_teach_knowledge(self):
+        if not self.use_teacher:
+            return
+        from llm_adapter import OllamaClient, SafeClient
+        import knowledge_distill as KD
+        teacher = SafeClient(OllamaClient(self.teacher_model))
+        prompt = ("For the topic '%s', output ONLY lines of the form  <sentence> => <structure>  where\n"
+                  "structure is  FACT: object | property | number   or   LAW: quantity = expression\n"
+                  "(expression uses the properties and + - * / and numbers). Use one object.\n"
+                  "Example:  the box has mass 5 => FACT: box | mass | 5\n"
+                  "Give 6-8 such lines, no prose.")
+        parse_pairs, struct_lines = [], []
+        for topic in self.seeds:
+            raw = teacher.complete(prompt % topic)
+            for ln in raw.splitlines():
+                if "=>" not in ln:
+                    continue
+                left, right = ln.split("=>", 1)
+                left, right = left.strip(), right.strip()
+                if len(left.split()) >= 3 and (right.startswith("FACT:") or right.startswith("LAW:")):
+                    parse_pairs.append("%s => %s" % (left.lower(), right))  # STUDENT: the parsing
+                    struct_lines.append(right)                              # BRAIN: the structure
+        # BRAIN learns the structure (facts taught, laws verified before admit)
+        f, l, _ = KD.parse_teacher("\n".join(struct_lines))
+        adm, rej = KD.teach(self.fkb, self.mem, f, l)
+        # STUDENT learns the PARSING ONLY — its corpus is the sentence=>structure pairs
+        self.corpus = parse_pairs
+        self.report["parse_pairs"] = len(parse_pairs)
+        self.report["facts_learned"] = len(f)
+        self.report["laws_admitted"] = len(adm)
+        self.report["laws_rejected"] = len(rej)
+        self._taught = adm
+        self._entities = {e for e, _, _ in f}
 
     # 1. DISTILL — expand the corpus via the teacher (qwen-coder), cleaned into sentences
     def stage_distill(self):
@@ -141,12 +183,28 @@ class UnifiedTrainer:
         self.report["proposer_attempts"] = att
         self.report["proposer_learned"] = len(prop.proto)
 
+    def stage_verify_learned(self):
+        """Prove the brain learned NEW verified knowledge: read back a taught derived quantity
+        (teach stored the verified value directly — no recursive solve needed)."""
+        shown = []
+        for target in getattr(self, "_taught", [])[:3]:
+            for e in getattr(self, "_entities", set()):
+                v, _ = self.fkb.ask(e, target)
+                if v is not None:
+                    shown.append("%s.%s=%.4g" % (e, target, v)); break
+        self.report["verified_answers"] = shown or ["(none computed)"]
+
     def run(self, tasks):
-        self.stage_distill()
-        self.stage_lm()            # STUDENT: the owned LM
+        if self.use_teacher:
+            self.stage_teach_knowledge()   # teacher parses -> brain(structure) + student(parsing)
+        else:
+            self.stage_distill()
+        self.report["corpus_sentences"] = len(self.corpus)
+        self.stage_lm()            # STUDENT: learns the PARSING (text -> structure)
         self.stage_train_brain()   # BRAIN: the C++ SOM + predictor
         self.stage_ground()
         self.stage_proposer(tasks)
+        self.stage_verify_learned()
         return self.report
 
 
@@ -164,10 +222,11 @@ def _demo(real=False):
     else:
         t = UnifiedTrainer(use_teacher=False)
     rep = t.run(tasks)
-    for k in ["corpus_sentences", "lm_backend", "lm_vocab", "lm_sample",
-              "brain_trained", "brain_oov", "grounding_acc",
-              "proposer_attempts", "proposer_learned"]:
-        print("  %-18s %s" % (k, rep.get(k)))
+    for k in ["parse_pairs", "facts_learned", "laws_admitted", "laws_rejected",
+              "verified_answers", "corpus_sentences", "lm_backend", "lm_vocab", "lm_sample",
+              "brain_trained", "grounding_acc", "proposer_attempts"]:
+        if k in rep:
+            print("  %-18s %s" % (k, rep.get(k)))
     print("\n  STUDENT (owned LM) + BRAIN (SOM/predictor) + grounding + proposer all trained from")
     print("  ONE corpus + verified signal in ONE pass. This is the")
     print("  wiring proof. TRAINING PHASE = same driver, your resources: --real (qwen-coder),")
