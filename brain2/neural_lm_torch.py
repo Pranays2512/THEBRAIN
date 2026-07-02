@@ -14,7 +14,6 @@ Requires PyTorch:  pip install torch    (MPS ships with the standard macOS wheel
     venv2/bin/python3 neural_lm_torch.py
 """
 
-import math
 import re
 
 import torch
@@ -47,9 +46,9 @@ class _LM(nn.Module):
 
 
 class NeuralLMTorch:
-    def __init__(self, dim=128, heads=4, layers=2, ctx=32, lr=3e-4, epochs=30, seed=0):
+    def __init__(self, dim=128, heads=4, layers=2, ctx=32, lr=3e-4, epochs=30, batch=64, seed=0):
         self.dim, self.heads, self.layers, self.ctx = dim, heads, layers, ctx
-        self.lr, self.epochs = lr, epochs
+        self.lr, self.epochs, self.batch = lr, epochs, batch
         self.device = _device()
         torch.manual_seed(seed)
 
@@ -75,12 +74,16 @@ class NeuralLMTorch:
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.lr)
         lossf = nn.CrossEntropyLoss()
         self.model.train()
+        n = X.size(0)
         for ep in range(self.epochs):
-            opt.zero_grad()
-            logits = self.model(X)[:, -1, :]          # predict next from last position
-            loss = lossf(logits, Y)
-            loss.backward()
-            opt.step()
+            perm = torch.randperm(n, device=self.device)
+            for i in range(0, n, self.batch):          # MINI-BATCH: caps memory regardless of corpus
+                idx = perm[i:i + self.batch]
+                logits = self.model(X[idx])[:, -1, :]  # predict next from last position
+                loss = lossf(logits, Y[idx])
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
         self.model.eval()
         self._pad = pad
         return self

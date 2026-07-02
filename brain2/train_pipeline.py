@@ -33,13 +33,34 @@ import synth_engine as SE
 from neural_lm import NeuralLM
 
 
+import re
+
+TOPICS = ["speed", "mass", "force", "energy", "gravity", "momentum", "acceleration", "heat",
+          "temperature", "light", "sound", "electricity", "magnetism", "atoms", "molecules",
+          "water", "metals", "motion", "friction", "pressure", "density", "volume", "waves",
+          "orbits", "planets", "stars", "electrons", "chemistry", "velocity", "power"]
+
+
+def _clean_sentences(text):
+    out = []
+    for ln in text.split("\n"):
+        ln = re.sub(r"^\s*[\d\-\*\.\)]+\s*", "", ln).strip()      # strip leading numbering/bullets
+        for s in re.split(r"(?<=[.!?])\s+", ln):
+            s = s.strip()
+            if len(s.split()) >= 4:
+                out.append(s)
+    return out
+
+
 class UnifiedTrainer:
-    def __init__(self, corpus=None, use_teacher=False,
-                 teacher_model="qwen3-coder:480b-cloud", lm_epochs=120):
+    def __init__(self, corpus=None, use_teacher=False, seeds=None,
+                 teacher_model="qwen3-coder:480b-cloud", lm_epochs=120,
+                 lm_dim=128, lm_layers=2, lm_ctx=32):
         self.corpus = list(corpus or CE.CORPUS)
         self.use_teacher = use_teacher
+        self.seeds = seeds or ("speed", "mass", "force", "energy")
         self.teacher_model = teacher_model
-        self.lm_epochs = lm_epochs
+        self.lm_epochs, self.lm_dim, self.lm_layers, self.lm_ctx = lm_epochs, lm_dim, lm_layers, lm_ctx
         self.report = {}
         try:
             import corpus_scale as CS
@@ -47,14 +68,15 @@ class UnifiedTrainer:
         except Exception:
             pass
 
-    # 1. DISTILL — expand corpus via the teacher if available (scale hook)
-    def stage_distill(self, seeds=("speed", "mass", "force", "energy")):
+    # 1. DISTILL — expand the corpus via the teacher (qwen-coder), cleaned into sentences
+    def stage_distill(self):
         if self.use_teacher:
             from llm_adapter import OllamaClient, SafeClient
             teacher = SafeClient(OllamaClient(self.teacher_model))
-            for s in seeds:
-                out = teacher.complete("Write three short factual sentences about %s in physics." % s)
-                self.corpus += [ln.strip() for ln in out.splitlines() if ln.strip()]
+            for s in self.seeds:
+                out = teacher.complete("Write four short simple factual sentences about %s. "
+                                       "Plain sentences, no numbering." % s)
+                self.corpus += _clean_sentences(out)
         self.report["corpus_sentences"] = len(self.corpus)
 
     # 2. LM — train the owned probabilistic pillar on the corpus. Prefer the PyTorch-MPS
@@ -62,7 +84,8 @@ class UnifiedTrainer:
     def stage_lm(self):
         try:
             from neural_lm_torch import NeuralLMTorch
-            self.lm = NeuralLMTorch(epochs=self.lm_epochs).train(self.corpus)
+            self.lm = NeuralLMTorch(dim=self.lm_dim, layers=self.lm_layers,
+                                    ctx=self.lm_ctx, epochs=self.lm_epochs).train(self.corpus)
             self.report["lm_backend"] = "torch/%s (%d params)" % (self.lm.device, self.lm.param_count())
         except ImportError:
             self.lm = NeuralLM(epochs=self.lm_epochs).train(self.corpus)
@@ -128,8 +151,13 @@ def _demo(real=False):
     tasks = [("factorial", "int1", math.factorial, [0, 1, 4, 5, 6]),
              ("gcd", "int2", math.gcd, [(12, 8), (48, 36), (7, 5)]),
              ("subarray", "list", msub, [[1, -2, 3], [-1, -2], [2, 3, 4]])]
-    print("=== train_pipeline — PHASE 3 scaffold (one run: LM + grounding + proposer) ===\n")
-    t = UnifiedTrainer(use_teacher=real)
+    print("=== train_pipeline — %s run (brain + student, one pass) ===\n"
+          % ("REAL (qwen-coder teacher, scaled)" if real else "tiny wiring proof"))
+    if real:
+        t = UnifiedTrainer(use_teacher=True, seeds=TOPICS,
+                           lm_epochs=250, lm_dim=256, lm_layers=4, lm_ctx=48)
+    else:
+        t = UnifiedTrainer(use_teacher=False)
     rep = t.run(tasks)
     for k in ["corpus_sentences", "lm_backend", "lm_vocab", "lm_sample",
               "brain_trained", "brain_oov", "grounding_acc",
