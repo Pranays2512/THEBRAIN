@@ -92,6 +92,11 @@ class UnifiedTrainer:
             self.report["lm_backend"] = "numpy (install torch for Mac-GPU + scale)"
         self.report["lm_vocab"] = len(self.lm.w2i)
         self.report["lm_sample"] = " ".join(self.lm.generate(seed=0))
+        # PERSIST the trained student so the run produces a reusable artifact (not in-memory only)
+        if hasattr(self.lm, "save"):
+            os.makedirs("trained", exist_ok=True)
+            self.lm.save("trained/owned_lm.pt")
+            self.report["lm_saved"] = "trained/owned_lm.pt"
 
     # 2b. BRAIN — train the C++ Brain's own neural (SOM + predictor) on the corpus via the
     #     perceive loop. This is the BRAIN half; stage_lm trains the STUDENT (owned LM). Both

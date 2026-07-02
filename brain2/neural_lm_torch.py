@@ -115,6 +115,21 @@ class NeuralLMTorch:
     def param_count(self):
         return sum(p.numel() for p in self.model.parameters())
 
+    def save(self, path):
+        torch.save({"state": self.model.state_dict(), "w2i": self.w2i, "i2w": self.i2w,
+                    "cfg": (self.dim, self.heads, self.layers, self.ctx), "pad": self._pad}, path)
+
+    @classmethod
+    def load(cls, path):
+        d = torch.load(path, map_location=_device(), weights_only=True)  # only tensors + simple data
+        lm = cls()
+        lm.dim, lm.heads, lm.layers, lm.ctx = d["cfg"]
+        lm.w2i, lm.i2w, lm._pad = d["w2i"], d["i2w"], d["pad"]
+        lm.model = _LM(len(lm.i2w), lm.dim, lm.heads, lm.layers, lm.ctx).to(lm.device)
+        lm.model.load_state_dict(d["state"])
+        lm.model.eval()
+        return lm
+
 
 def _demo():
     import context_embed as CE
