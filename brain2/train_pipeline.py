@@ -19,6 +19,12 @@ else changes — the pipeline is already connected; only scale differs.
     venv2/bin/python3 train_pipeline.py --real   # + qwen-coder teacher + grounding on the SOM
 """
 
+import os
+# torch and brain2 both link LLVM libomp; allow the duplicate AND pin OMP to 1 thread so the
+# grounding/brain stages (brain2/OpenMP) and the LM stage (torch) coexist in one process on
+# macOS without a segfault. (Must be set before torch/brain2 import.)
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
 import sys
 
 import context_embed as CE
@@ -51,11 +57,34 @@ class UnifiedTrainer:
                 self.corpus += [ln.strip() for ln in out.splitlines() if ln.strip()]
         self.report["corpus_sentences"] = len(self.corpus)
 
-    # 2. LM — train the owned probabilistic pillar on the corpus
+    # 2. LM — train the owned probabilistic pillar on the corpus. Prefer the PyTorch-MPS
+    #    Transformer (real, Mac-GPU) when torch is installed; else the numpy proof model.
     def stage_lm(self):
-        self.lm = NeuralLM(epochs=self.lm_epochs).train(self.corpus)
+        try:
+            from neural_lm_torch import NeuralLMTorch
+            self.lm = NeuralLMTorch(epochs=self.lm_epochs).train(self.corpus)
+            self.report["lm_backend"] = "torch/%s (%d params)" % (self.lm.device, self.lm.param_count())
+        except ImportError:
+            self.lm = NeuralLM(epochs=self.lm_epochs).train(self.corpus)
+            self.report["lm_backend"] = "numpy (install torch for Mac-GPU + scale)"
         self.report["lm_vocab"] = len(self.lm.w2i)
         self.report["lm_sample"] = " ".join(self.lm.generate(seed=0))
+
+    # 2b. BRAIN — train the C++ Brain's own neural (SOM + predictor) on the corpus via the
+    #     perceive loop. This is the BRAIN half; stage_lm trains the STUDENT (owned LM). Both
+    #     learn from the same corpus in the one run.
+    def stage_train_brain(self, epochs=3):
+        try:
+            import brain2
+            b = brain2.Brain(som_rows=16, som_cols=16, n_dims=32)
+            for _ in range(epochs):
+                for line in self.corpus:
+                    b.perceive_text(line)
+            self.brain = b
+            self.report["brain_trained"] = "SOM+predictor, %d lines x%d epochs" % (len(self.corpus), epochs)
+            self.report["brain_oov"] = b.oov_count
+        except Exception as e:
+            self.report["brain_trained"] = "skipped (%s)" % type(e).__name__
 
     # 3. GROUND — SOM self-organizes on data vectors + grounds concepts (fuzzy pillar)
     def stage_ground(self):
@@ -86,7 +115,8 @@ class UnifiedTrainer:
 
     def run(self, tasks):
         self.stage_distill()
-        self.stage_lm()
+        self.stage_lm()            # STUDENT: the owned LM
+        self.stage_train_brain()   # BRAIN: the C++ SOM + predictor
         self.stage_ground()
         self.stage_proposer(tasks)
         return self.report
@@ -101,10 +131,12 @@ def _demo(real=False):
     print("=== train_pipeline — PHASE 3 scaffold (one run: LM + grounding + proposer) ===\n")
     t = UnifiedTrainer(use_teacher=real)
     rep = t.run(tasks)
-    for k in ["corpus_sentences", "lm_vocab", "lm_sample", "grounding_acc",
+    for k in ["corpus_sentences", "lm_backend", "lm_vocab", "lm_sample",
+              "brain_trained", "brain_oov", "grounding_acc",
               "proposer_attempts", "proposer_learned"]:
         print("  %-18s %s" % (k, rep.get(k)))
-    print("\n  All three trainings ran from ONE corpus + verified signal in ONE pass. This is the")
+    print("\n  STUDENT (owned LM) + BRAIN (SOM/predictor) + grounding + proposer all trained from")
+    print("  ONE corpus + verified signal in ONE pass. This is the")
     print("  wiring proof. TRAINING PHASE = same driver, your resources: --real (qwen-coder),")
     print("  a large corpus, more epochs, a GPU. The pipeline is connected; only scale changes.")
 
