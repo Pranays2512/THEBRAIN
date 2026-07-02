@@ -172,3 +172,65 @@ accumulation cannot drift into confident-wrong knowledge.
 | `brain_store.py` | cross-session verified accumulation |
 | `conceptnet_taxonomy.py`, `scale_test.py` | real-knowledge + scale |
 | `core/brain.hpp` + components | perception substrate (SOM/predictor/…) |
+
+---
+
+## 11. Current state (updated 2026-07-02 — supersedes stale sections above)
+
+The architecture is now **three computing pillars**, all internal, all fed by the brain's
+own data; generate-and-verify with the *generate* side being fuzzy + probabilistic and the
+*verify* side symbolic:
+
+| Pillar | Role | Where |
+|---|---|---|
+| **Symbolic** | exact, verified, owns truth | crisp core, `means_ends`, verifiers, 7 primitives in C++ |
+| **Fuzzy** | similarity, grounding, lexical meaning | SOM, `grounding`, `context_embed` |
+| **Probabilistic** | distributions, uncertainty, **generation** | `prob_compute` (n-gram) → `neural_lm` / `neural_lm_torch` (MPS Transformer) |
+
+### Self-extension (the loops that make it grow)
+- **Make/break + novelty**: `refuter` (break a rule, find scope), `factorizer` (+`factor_au`
+  anti-unification → grow the DSL), `concept_blend`/`ground_blend` (mint verified-novel
+  concepts on the real SOM), `analogy_struct` (structure-mapping, no shared vocab).
+- **Self-made verifiers**: `invariant_miner` (mine→validate→admit→demote; value + functional),
+  `verifier_monitor` (audit the verifiers), `check_library` (persist across sessions),
+  `synth_invariant` (pre-filter the synthesis oracle ~5×). `irregularity_detector` maps where
+  verification *can't* reach (abstain).
+- **Self-improving loop**: `conjecture_sandbox` (test own guesses vs trusted knowledge),
+  `autonomous_loop` (curiosity→conjecture→test→bank→learn, solve-rate climbs).
+- **Learned proposer** (the once-weakest part, now self-sufficient): `online_proposer` /
+  `online_proposer2` / `feature_learner` — learns space-order from outcomes, transfers by
+  task signature, **discovers its own predictive features**. Ported to C++ (`core/proposer.hpp`).
+
+### C++ core ports (phase 2 — all verified == Python, locked in `harden_regress` 24/24)
+`core/invariants.hpp` (inv_mine/check), `core/refuter.hpp` (refute_int1), `core/factorizer.hpp`
+(eval_sexpr), `core/regularity.hpp` (law_error), `core/proposer.hpp` (disc_weights/feat_sim),
+`core/reasoning_ops.hpp` (cosine_map, analogy_score). Guards: `harden_test` (35/35 no-crash) +
+`harden_regress` (24/24 correctness) run before every port.
+
+### Owned language + training (self-contained, no external model at inference)
+- **Language comprehension** without an external LLM: `context_embed` (lexical, scales w/
+  corpus), `structural_parser`/`nested_parser`/`deeper_grammar` (sentence shapes), and the
+  learned+verified **templates** (`parse_template`, `template_memory`, conjecture→verify→admit).
+  `coverage_harness` = the LM-deletion metric. `semantic_depth` = vocabulary grows from definitions.
+- **Owned LM**: `neural_lm_torch` — small decoder-only Transformer on Apple-Silicon GPU (MPS).
+- **One training pipeline** (`train_pipeline.py`): the qwen-coder teacher PARSES a domain into
+  sentence⇒structure pairs; the **symbolic brain** learns the structure (facts + *verified*
+  laws — `knowledge_distill`), the **student LM** learns the *parsing* (text→structure). Trains
+  brain + student in one pass. `--real` uses the cloud teacher (bootstrap only, then disconnects).
+- **Concept lifecycle**: `concept_memory` names shared structures factorizer discovers and
+  promotes them by reuse (candidate→promoted).
+
+### The verifying agent
+`agent.py` — plan → act → **verify each step** → self-correct → repeat. Success stays flat over
+horizon (5–40 steps: 1.00) where an unverified agent decays (0.95^n → 0.13). Reliability beats
+parameters where errors compound.
+
+### Honest ceilings (current)
+- Problem-solving (math/code/physics/law-discovery) is **reliable now** via the symbolic core,
+  independent of LM scale; it **abstains** outside the verifiable envelope.
+- Open-language *fluency* scales with the owned LM's corpus + size (small owned LM + symbolic
+  offload = reliable, not frontier-fluent). External LLM = one-time bootstrap teacher.
+- Dimensional/other hard filters use the three-valued True/False/**None** contract — never
+  prune what they don't understand.
+- Remaining C++ perception-substrate gaps are logged in `architecture_flaws.md` (deferred, not
+  bugs in the path the current system runs).

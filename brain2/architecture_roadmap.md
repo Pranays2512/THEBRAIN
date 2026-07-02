@@ -6,6 +6,28 @@ Brain owns truth + reasoning + verified math; an LLM is a thin, shrinking
 language shell. The defensible niche is *reliability, auditability, efficiency on
 a bounded domain* — not general LLM parity (that needs LLM-scale weights).
 
+## Status — 2026-07-02 (as-built; corrections dated, history not rewritten)
+Much of this roadmap is now built. Current state is documented in
+`brain2_architecture.md §11`. Highlights:
+- **Three computing pillars live**: symbolic (verify), fuzzy (similarity), probabilistic
+  (generation) — the probabilistic pillar (`prob_compute` → `neural_lm_torch`) was the
+  missing third mode; language generation is now owned/internal.
+- **7 verifier/regularity/proposer primitives ported to C++**, each verified == Python and
+  locked in `harden_regress` (24/24); `harden_test` 35/35 no-crash. Guards run before ports.
+- **Self-made verifiers** (`invariant_miner`, `verifier_monitor`, `check_library`,
+  `synth_invariant`, `irregularity_detector`) and the **self-improving loop**
+  (`conjecture_sandbox`, `autonomous_loop`).
+- **Proposer** (once the weakest part) now learns online, transfers by task signature, and
+  discovers its own features (`online_proposer`/`feature_learner`, ported to C++).
+- **Training pipeline** (`train_pipeline.py`): qwen-coder teacher parses a domain into
+  sentence⇒structure pairs — symbolic brain learns verified structure, student LM learns
+  parsing — brain + student trained in one MPS pass. Teacher = bootstrap only.
+- **Phase A slice implemented** (learned+verified templates `parse_template`/`template_memory`,
+  `coverage_harness` LM-deletion metric, dimensional hard filter `domain_features`, concept
+  naming/promotion `concept_memory`; test_phase_a 32/32). Skipped the plan's parts that
+  duplicated existing tested modules (proposer trace/ranker, word grounder, front wiring).
+- **Verifying agent** (`agent.py`): verify-each-step, flat success over horizon vs LLM decay.
+
 ## The conservation law (why we build for our corner, not GPT's)
 - LLM: max breadth + fluency, low reliability + efficiency + auditability.
 - This architecture: max reliability + efficiency + auditability, low breadth + fluency.
