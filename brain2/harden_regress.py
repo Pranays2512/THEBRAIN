@@ -106,6 +106,15 @@ def main():
         fe = {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.0}
         expect("C++ proposer scoring matches Python",
                abs(lp._sim(fe, lp.proto["list"], pyw) - brain2.feat_sim(fe, lp.proto["list"], cppw)) < 1e-9)
+        import context_embed as CE2
+        va, vb = {"x": 2.0, "y": 1.0}, {"x": 1.0, "z": 3.0}
+        expect("C++ cosine matches Python", abs(brain2.cosine_map(va, vb) - CE2.cosine(va, vb)) < 1e-9)
+        import analogy_struct as AS2
+        src = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
+        tgt = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
+        em = {"sun": "nucleus", "planet": "electron"}
+        pysc, _ = AS2._score(src, tgt, em)
+        expect("C++ analogy_score matches Python", brain2.analogy_score(src, tgt, em) == pysc)
     except ImportError:
         pass  # brain2 not available under this interpreter; skip the C++ match checks
 

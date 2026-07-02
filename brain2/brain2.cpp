@@ -20,6 +20,7 @@
 #include "core/factorizer.hpp"
 #include "core/regularity.hpp"
 #include "core/proposer.hpp"
+#include "core/reasoning_ops.hpp"
 #include "core/episodic.hpp"
 #include "core/imagination.hpp"
 #include "core/language.hpp"
@@ -150,6 +151,20 @@ PYBIND11_MODULE(brain2, m) {
         },
         py::arg("feats"), py::arg("proto"), py::arg("w"),
         "Weighted similarity of a task's features to a space profile");
+
+  // ── reasoning ops (native port, closes phase 2): cosine + analogy score ──
+  m.def("cosine_map",
+        [](std::map<std::string, double> a, std::map<std::string, double> b) {
+          return brain2::cosine_map(a, b);
+        },
+        py::arg("a"), py::arg("b"), "Cosine similarity of two sparse feature maps");
+  m.def("analogy_score",
+        [](std::vector<brain2::Triple> src, std::vector<brain2::Triple> tgt,
+           std::map<std::string, std::string> emap) {
+          return brain2::analogy_score(src, tgt, emap);
+        },
+        py::arg("source"), py::arg("target"), py::arg("emap"),
+        "Corresponded relations under an entity mapping (structure-mapping score)");
 
   // ── SOM ─────────────────────────────────────────────────────────
   py::class_<SOM>(m, "SOM")
