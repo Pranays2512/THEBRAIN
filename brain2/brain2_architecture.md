@@ -280,6 +280,14 @@ here, crisp all the way, built in dependency order:
   "rock hunted deer" REJECTS. Wired into the front (`whole_brain` auto-acquires after each
   declarative), so across turns the running brain learns a new verb: "dog bit cat" held twice,
   then verified on the third use.
+- **Predictive processing** (`event_predict` + `reading_loop`): the default-state upgrade —
+  the reader PREDICTS the next event (verb-transition + base-rate stats over the event stream)
+  BEFORE parsing it, then the parse error becomes SURPRISE (surprisal of the observed verb).
+  This is the real *semantic* novelty signal (an unexpected event) that the cold SOM couldn't
+  give — it stays informative after lexical novelty saturates. Learning is Hebbian in spirit
+  (consecutive verified events strengthen the transition) and anti-collapse (only ADMITTED
+  events train the predictor). Proven: surprise 1.0→0.05 as `chase→eat` is learned, spikes on a
+  break; `sense()` surfaces it. Surprise is what drives attention/curiosity/learning-priority.
 - **The whole brain** (`whole_brain.sense`): the neural, symbolic, and open-language faculties
   now run in ONE runtime. `sense(text)` first PERCEIVES (the C++ `Brain.perceive_text` — SOM /
   episodic / emotion evolve) and appraises (novelty + `appraisal_engine` emotional frame), THEN

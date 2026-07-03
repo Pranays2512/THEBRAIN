@@ -111,9 +111,13 @@ class EventReader:
     'A because B' yields two events joined by CAUSE. Pronoun agents/patients resolve against
     the ContextStack before the membrane sees them, so type checks run on the referent."""
 
-    def __init__(self, entities, verbs, store=None, type_of=None, constraints=None, learner=None):
+    def __init__(self, entities, verbs, store=None, type_of=None, constraints=None, learner=None,
+                 predictor=None):
         self.entities = set(entities)
         self.verbs = set(verbs)
+        self.predictor = predictor              # optional EventPredictor (predictive processing)
+        self._last_event = None                 # previous event in the stream (for prediction)
+        self.last_surprise = None               # prediction error of the most recent event
         self.store = store or EventStore()
         if type_of is None:
             try:
@@ -149,6 +153,8 @@ class EventReader:
             self.stats["nomatch"] += 1
             return None, None
         ev = self._resolve(ev)                     # coref first, so observations use referents
+        if self.predictor is not None:             # PREDICT->parse->error: surprise = novelty
+            self.last_surprise = self.predictor.surprise(self._last_event, ev)
         if self.learner is not None:
             self.learner.observe(ev)               # accumulate evidence for verb acquisition
         if not verb_trusted(ev, self.verbs):       # positional parse: structure only, verb
@@ -162,6 +168,9 @@ class EventReader:
                     self.ctx.push_entity(tok)
             self.ctx.push_event(ev.id)
             self.events.append(ev)
+            if self.predictor is not None:         # learn the transition from VERIFIED events
+                self.predictor.learn(self._last_event, ev)   # only (anti-collapse discipline)
+                self._last_event = ev
         return d, ev
 
     def acquire(self, holdouts=None):

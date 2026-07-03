@@ -205,6 +205,26 @@ ok("learned verb now rejects type violation",
    _classify(parse_event("the rock hunted the deer", _vr.entities, _vr.verbs, V_ORACLE), _vr.store, V_ORACLE, _vr.constraints) == REJECT)
 
 
+# ── predictive processing: predict next event, learn from surprise ──────────
+from event_predict import EventPredictor
+_ev = lambda v: Event(v, "cat", "mouse")
+_ep = EventPredictor()
+ok("no history -> max surprise", _ep.surprise(None, _ev("chase")) == 1.0)
+for _ in range(6):                                  # teach chase -> eat
+    _ep.learn(_ev("chase"), _ev("eat"))
+    _ep.learn(None, _ev("chase"))
+ok("learned transition lowers surprise", _ep.surprise(_ev("chase"), _ev("eat")) < 0.3)
+ok("unexpected event is more surprising",
+   _ep.surprise(_ev("chase"), _ev("fly")) > _ep.surprise(_ev("chase"), _ev("eat")))
+ok("expect returns learned continuation", "eat" in _ep.expect(_ev("chase")))
+
+_pr = EventReader(E_ENT, E_VERBS, type_of=E_ORACLE, constraints=E_CON, predictor=EventPredictor())
+_pr.read("the cat ate the fish")
+ok("reader sets a surprise signal", _pr.last_surprise is not None)
+ok("reader learns only from verified events",   # a rejected event must not train the predictor
+   sum(_pr.predictor.base.values()) == _pr.stats[ADMIT])
+
+
 if __name__ == "__main__":
     fails = sum(1 for _, g in R if not g)
     for name, g in R:

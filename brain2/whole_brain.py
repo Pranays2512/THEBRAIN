@@ -92,12 +92,16 @@ class WholeBrain:
         from reading_loop import EventReader
         from type_oracle import TypeOracle
         from verb_learn import VerbLearner
+        from event_predict import EventPredictor
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
         self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
                                  "chase": {"agent": {"animal"}, "patient": {"animal"}}}
         _oracle = TypeOracle()
+        # predictive processing: the reader PREDICTS the next event and learns from the error,
+        # so surprise is a real semantic signal (unexpected event), not lexical novelty.
         self.reader = EventReader(self.concepts | self.entities, self.verbs, type_of=_oracle,
-                                  constraints=self.verb_constraints, learner=VerbLearner(_oracle))
+                                  constraints=self.verb_constraints, learner=VerbLearner(_oracle),
+                                  predictor=EventPredictor())
         # WHOLE: the NEURAL perception substrate (C++ Brain) + emotional appraisal. Every input
         # is perceived (SOM/episodic/emotion evolve) BEFORE the symbolic front answers — neural
         # senses (novelty, feeling), symbolic owns truth. Guarded: degrades if brain2 absent.
@@ -220,6 +224,10 @@ class WholeBrain:
         Returns the perception plus the crisp answer — all faculties in one runtime."""
         perc = self._perceive(text)
         kind, msg, ok = self.ask(text)
+        # SEMANTIC surprise from predictive processing (set if the answer read an event) — the
+        # real 'how expected was this?' signal, distinct from lexical novelty above.
+        if kind == "event" and self.reader.last_surprise is not None:
+            perc["surprise"] = round(self.reader.last_surprise, 2)
         return {"perception": perc, "answer": {"kind": kind, "msg": msg, "verified": ok}}
 
     # ── self-extension + verification faculties (formerly orphaned, now wired in) ──
