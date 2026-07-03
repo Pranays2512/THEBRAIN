@@ -90,11 +90,13 @@ class WholeBrain:
         # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
         from reading_loop import EventReader
         from type_oracle import TypeOracle
+        from verb_learn import VerbLearner
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
         self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
                                  "chase": {"agent": {"animal"}, "patient": {"animal"}}}
-        self.reader = EventReader(self.concepts | self.entities, self.verbs,
-                                  type_of=TypeOracle(), constraints=self.verb_constraints)
+        _oracle = TypeOracle()
+        self.reader = EventReader(self.concepts | self.entities, self.verbs, type_of=_oracle,
+                                  constraints=self.verb_constraints, learner=VerbLearner(_oracle))
         import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
@@ -156,6 +158,7 @@ class WholeBrain:
         evs, rel = self.reader.read(text)
         if not evs:
             return None
+        self.reader.acquire()                   # learn verbs seen enough times -> future crisp
         s = self.reader.stats
         e = evs[-1]
         desc = "%s%s %s %s" % ("not " if e.polarity < 0 else "", e.agent, e.verb, e.patient or "")

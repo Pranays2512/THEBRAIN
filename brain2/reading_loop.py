@@ -111,7 +111,7 @@ class EventReader:
     'A because B' yields two events joined by CAUSE. Pronoun agents/patients resolve against
     the ContextStack before the membrane sees them, so type checks run on the referent."""
 
-    def __init__(self, entities, verbs, store=None, type_of=None, constraints=None):
+    def __init__(self, entities, verbs, store=None, type_of=None, constraints=None, learner=None):
         self.entities = set(entities)
         self.verbs = set(verbs)
         self.store = store or EventStore()
@@ -123,6 +123,7 @@ class EventReader:
                 type_of = lambda _t: None
         self.type_of = type_of
         self.constraints = constraints or {}
+        self.learner = learner                          # optional VerbLearner (acquisition)
         self.ctx = ContextStack(type_of=self.type_of)
         self.events = []                                # admitted Events
         self.relations = []                            # admitted Relations
@@ -147,10 +148,12 @@ class EventReader:
         if ev is None:
             self.stats["nomatch"] += 1
             return None, None
+        ev = self._resolve(ev)                     # coref first, so observations use referents
+        if self.learner is not None:
+            self.learner.observe(ev)               # accumulate evidence for verb acquisition
         if not verb_trusted(ev, self.verbs):       # positional parse: structure only, verb
             self.stats["abstain"] += 1             # unverifiable -> hold, never commit
-            return "abstain", self._resolve(ev)
-        ev = self._resolve(ev)
+            return "abstain", ev
         d = admit(ev, self.store, self.type_of, self.constraints)
         self.stats[d] += 1
         if d == ADMIT:
@@ -160,6 +163,17 @@ class EventReader:
             self.ctx.push_event(ev.id)
             self.events.append(ev)
         return d, ev
+
+    def acquire(self, holdouts=None):
+        """Learn selectional constraints for observed-but-untrusted verbs and promote them
+        into the trusted lexicon. After this, those verbs' events move held -> admit/reject."""
+        if self.learner is None:
+            return set()
+        learned = self.learner.acquire(holdouts)
+        for v in learned:
+            self.verbs.add(v)
+            self.constraints[v] = self.learner.constraints[v]
+        return learned
 
     def read(self, sentence):
         """Read one sentence. Returns (events, relation_or_None). Splits on the first

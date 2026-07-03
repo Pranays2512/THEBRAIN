@@ -269,6 +269,17 @@ here, crisp all the way, built in dependency order:
   Grammar misses escalate **per-fragment** to the teacher, buffer per-relation, induce once
   ≥2 exist (real anti-unify + held-out check). Escalation rate is tracked — the honest
   "is the teacher still needed" decay signal.
+- **Verb acquisition** (`verb_learn.VerbLearner` + `EventReader.acquire`): the capstone —
+  read-only comprehension becomes LEARNING from prose. Watch a verb's uses, and induce its
+  selectional constraint as the INTERSECTION of the observed agent/patient isa-closures (minus
+  universal roots so it doesn't collapse to 'anything'). Same conjecture→verify→admit as
+  `type_oracle.grow`: admit after a track record (≥ promote_at sightings) with no held-out
+  counterexample; the learned constraint is a good hypothesis, still re-checked by the membrane
+  every use. Admitting a verb makes it TRUSTED — its events move held → admit/reject. Proven:
+  "wolf hunted deer" + "lion hunted zebra" (held) → acquire → "tiger hunted rabbit" ADMITS,
+  "rock hunted deer" REJECTS. Wired into the front (`whole_brain` auto-acquires after each
+  declarative), so across turns the running brain learns a new verb: "dog bit cat" held twice,
+  then verified on the third use.
 - **Wired into the front** (`whole_brain.ask`): a declarative (not a question) now routes to
   `EventReader` — the running brain reads prose into verified events through the same membrane
   as compute. "the dog ate the fish" → *learned + verified*; "the dog did not eat the fish" →

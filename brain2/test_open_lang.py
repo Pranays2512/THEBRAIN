@@ -174,6 +174,37 @@ ok("event_coverage_split taught flatters, wild honest",
    _ecs["taught"]["parsed_pct"] == 1.0 and _ecs["wild_parsed_pct"] == 0.0 and _ecs["gap"] == 1.0)
 
 
+# ── verb acquisition: learn a verb's constraint from reading (the capstone) ──
+from verb_learn import VerbLearner
+V_ISA = [("wolf", "isa", "mammal"), ("deer", "isa", "mammal"), ("lion", "isa", "mammal"),
+         ("zebra", "isa", "mammal"), ("tiger", "isa", "mammal"), ("rabbit", "isa", "mammal"),
+         ("mammal", "isa", "animal"), ("animal", "isa", "living_thing"), ("rock", "isa", "mineral")]
+V_ORACLE = TypeOracle(triples=V_ISA)
+V_ENT = {"wolf", "deer", "lion", "zebra", "tiger", "rabbit", "rock"}
+
+_vl = VerbLearner(V_ORACLE, promote_at=2)
+_vl.observe(Event("hunt", "wolf", "deer")); _vl.observe(Event("hunt", "lion", "zebra"))
+_spec = _vl.learn("hunt")
+ok("verb learn induces constraint (animal, not root)",
+   _spec and "animal" in _spec["agent"] and "living_thing" not in _spec["agent"])
+ok("verb learn refuses below promote_at", VerbLearner(V_ORACLE, 2).learn("x") is None)
+_vl2 = VerbLearner(V_ORACLE, 2)
+_vl2.observe(Event("hunt", "wolf", "deer")); _vl2.observe(Event("hunt", "lion", "zebra"))
+ok("verb learn refuses on held-out counterexample",
+   _vl2.learn("hunt", holdout=[(V_ORACLE("rock"), V_ORACLE("deer"))]) is None)
+
+# full loop through the reader: held -> acquire -> crisp disposal
+_vr = EventReader(V_ENT, set(), type_of=V_ORACLE, learner=VerbLearner(V_ORACLE, 2))
+_vr._read_clause("the wolf hunted the deer"); _vr._read_clause("the lion hunted the zebra")
+ok("unknown verb held before acquisition", _vr.stats[ABSTAIN] == 2 and _vr.stats[ADMIT] == 0)
+ok("acquire learns the verb", _vr.acquire() == {"hunt"} and "hunt" in _vr.verbs)
+from event_verify import classify as _classify
+ok("learned verb now admits valid use",
+   _classify(parse_event("the tiger hunted the rabbit", _vr.entities, _vr.verbs, V_ORACLE), _vr.store, V_ORACLE, _vr.constraints) == ADMIT)
+ok("learned verb now rejects type violation",
+   _classify(parse_event("the rock hunted the deer", _vr.entities, _vr.verbs, V_ORACLE), _vr.store, V_ORACLE, _vr.constraints) == REJECT)
+
+
 if __name__ == "__main__":
     fails = sum(1 for _, g in R if not g)
     for name, g in R:
