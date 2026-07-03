@@ -27,6 +27,14 @@ Much of this roadmap is now built. Current state is documented in
   naming/promotion `concept_memory`; test_phase_a 32/32). Skipped the plan's parts that
   duplicated existing tested modules (proposer trace/ranker, word grounder, front wiring).
 - **Verifying agent** (`agent.py`): verify-each-step, flat success over horizon vs LLM decay.
+- **Open-language track** (comprehension, built in dependency order; `test_open_lang` 29/29):
+  event-frame logical form + its crisp membrane (`event_form`/`event_verify` — polarity
+  non-contradiction + selectional type constraints, three-valued admit/reject/abstain, the
+  contract built BEFORE the representation to de-risk store-flooding), discourse coref +
+  typed connectives (`discourse`), autonomous reading loop with anti-collapse gate +
+  per-fragment teacher escalation + measurable decay (`reading_loop`), and the honest
+  taught-vs-wild coverage split (`coverage_harness.coverage_split`). Fluency stays owned-LM
+  territory; this is where "open" comprehension is won, crisp all the way.
 
 ## The conservation law (why we build for our corner, not GPT's)
 - LLM: max breadth + fluency, low reliability + efficiency + auditability.
