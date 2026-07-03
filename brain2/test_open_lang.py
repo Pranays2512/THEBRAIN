@@ -10,7 +10,7 @@ from event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT
 from discourse import ContextStack, connective_of, link_events
 from reading_loop import ReadingLoop, EventReader
 from event_parse import parse_event
-from coverage_harness import coverage_split
+from coverage_harness import coverage_split, event_coverage, event_coverage_split
 from template_memory import TemplateMemory
 from type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
 
@@ -157,6 +157,14 @@ ok("reader abstains on unknown agent", _r3.stats[ABSTAIN] == 1)
 _r4 = _er(); evs, rel = _r4.read("the dog chased the cat because it was hungry")
 ok("reader builds two events + CAUSE", len(evs) == 2 and rel is not None and rel.kind == CAUSE)
 ok("reader coref resolves pronoun to an entity", evs[1].agent in E_ENT)
+
+# event coverage: parse coverage = fraction reaching the membrane (non-nomatch)
+def _cread(s): return "admit" if "cat" in s else "nomatch"
+_ec = event_coverage(_cread, ["the cat ate", "the xyz ran"])
+ok("event_coverage parsed_pct", _ec["parsed_pct"] == 0.5 and _ec["admit"] == 1 and _ec["nomatch"] == 1)
+_ecs = event_coverage_split(_cread, ["the cat ate"], ["the xyz ran", "the abc saw"])
+ok("event_coverage_split taught flatters, wild honest",
+   _ecs["taught"]["parsed_pct"] == 1.0 and _ecs["wild_parsed_pct"] == 0.0 and _ecs["gap"] == 1.0)
 
 
 if __name__ == "__main__":
