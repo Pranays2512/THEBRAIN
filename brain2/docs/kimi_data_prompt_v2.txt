@@ -1,0 +1,87 @@
+PROMPT v2 FOR KIMI K2 — full-brain training data with VERIFIER RULES (no wasted training).
+Paste everything below the line into Kimi. The brain VERIFIES before it learns: any item it
+cannot verify is DISCARDED. So the #1 job of this data is to be VERIFIABLE. Follow every rule.
+Save Kimi's output to data/kimi_data2.txt.
+------------------------------------------------------------------------------------------
+
+You are generating training data for a symbolic "brain" that PARSES language to structure,
+GENERATES language from structure, PREDICTS event sequences, VERIFIES every fact/law before
+admitting it, and SOLVES problems by chaining verified laws. There is NO large language model
+in its trust path. Output ONLY tagged data lines. No prose, no markdown, no numbering. One item
+per line. Simple, concrete, REUSED vocabulary. Everything literally true.
+
+THE GOLDEN RULE (or the data is wasted): the brain admits a LAW only if it can COMPUTE it on a
+real object — i.e. some object has EVERY input property of that law as a FACT. A law with no
+worked example is REJECTED and the line is wasted. So: for every LAW, include at least one
+OBJECT that carries ALL of that law's inputs as FACTs.
+
+Emit these tag types, exactly as shown:
+
+1) FACT — a measured property of an object.
+   <sentence> => FACT: object | property | number
+   ex:  the block has mass 4 => FACT: block | mass | 4
+        the block has acceleration 3 => FACT: block | acceleration | 3
+
+2) UNIT — the dimensions of a property, as mass,length,time exponents (the dimensional
+   verifier uses this to reject nonsense laws). Give a UNIT for EVERY property used in a LAW.
+   UNIT: property | M,L,T
+   ex:  UNIT: mass | 1,0,0     UNIT: acceleration | 0,1,-2     UNIT: force | 1,1,-2
+        UNIT: speed | 0,1,-1   UNIT: time | 0,0,1              UNIT: length | 0,1,0
+
+3) LAW — a relation, expression over properties with + - * / and numbers.
+   <sentence> => LAW: target = expression
+   RULES: (a) every input property must appear as a FACT on at least one shared object (the
+   worked example); (b) the law must be dimensionally consistent with the UNITs. A verified law
+   becomes a POLICY the brain uses to SOLVE new problems.
+   ex:  force is mass times acceleration => LAW: force = mass * acceleration
+        (valid only because some object, e.g. block, has BOTH mass and acceleration facts)
+
+4) CHAIN — objects rich enough to derive 2-3 laws in sequence (this trains the multi-step
+   executive/policy solver). Give a few objects that carry MANY compatible facts so the brain
+   can chain: e.g. an object with mass, acceleration, distance, and time lets it derive
+   force -> work -> power. Just emit the FACTs (tagged FACT); ensure the chain is possible.
+   Add a comment line:  CHAIN: object | law1 -> law2 -> law3   (documents the intended chain)
+   ex:  CHAIN: block | force -> work -> power
+
+5) EVENT — verb | agent | patient | tense(past/present/future) | polarity(+ or -).
+   <sentence> => EVENT: verb | agent | patient | tense | polarity
+   RULES: use the verb LEMMA; leave patient blank for intransitives; KEEP EACH VERB'S AGENT/
+   PATIENT TYPE CONSISTENT across its examples (a verb like 'eat' always takes an animal agent)
+   so the brain LEARNS the verb's selectional rule. Give 3+ examples per verb.
+   ex:  the dog ate the bread => EVENT: eat | dog | bread | past | +
+        the cat did not eat the fish => EVENT: eat | cat | fish | past | -
+
+6) ISA — type of a noun; build chains to animal/plant/mineral/food/person/object.
+   RULE: every noun used as an EVENT agent or patient MUST have an ISA line.
+   ISA: child | parent
+   ex:  ISA: dog | mammal   ISA: mammal | animal   ISA: bread | food   ISA: food | object
+
+7) MORPH — verb forms so the mouth speaks fluently. RULE: every EVENT verb needs a MORPH line.
+   MORPH: lemma | past | present3sg
+   ex:  MORPH: eat | ate | eats     MORPH: carry | carried | carries
+
+8) ASK — a question whose answer the brain can VERIFY (the entity+property must be a FACT or
+   derivable by a LAW). Trains question understanding + answering.
+   <question sentence> => ASK: entity | property
+   ex:  what is the mass of the block => ASK: block | mass
+        what is the force of the block => ASK: block | force   (derivable: needs the force law + block's facts)
+
+9) SEQ — 2-4 sentence coherent stories that follow naturally (because/so/then allowed). Trains
+   prediction + discourse. Prefix each line with SEQ:. Reuse the same nouns/verbs.
+   ex:  SEQ: the dog chased the cat
+        SEQ: the cat ran because the dog chased it
+        SEQ: then the cat climbed the tree
+
+QUOTAS (aim for at least):
+  120 FACT, 20 UNIT, 30 LAW (each with a worked example!), 8 CHAIN objects, 120 EVENT
+  (3+ per verb, consistent types), 60 ISA, 40 MORPH, 30 ASK, 20 SEQ stories.
+
+FINAL CHECKS before you output — every one prevents wasted lines:
+  - Each LAW's inputs all appear as FACTs on one shared object.  (else law rejected)
+  - Each LAW is dimensionally consistent with the UNITs.          (else law rejected)
+  - Each property in a LAW has a UNIT line.
+  - Each EVENT verb has a MORPH line; each EVENT noun has an ISA line.
+  - Each ASK targets a FACT or a derivable (law-covered) quantity.
+  - Vocabulary is small and reused across all tags.
+
+Begin. Output only the tagged data lines.

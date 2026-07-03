@@ -39,6 +39,18 @@ def train(path, do_lm=False, do_brain=False):
     predictor = EventPredictor()
     rep["predictor"] = d.train_predictor(predictor)
 
+    # 4b. VERB CONSTRAINTS learned from data (trains the event membrane — no hand-set rules)
+    vc = d.learn_verb_constraints(oracle)
+    rep["verb_constraints"] = "%d verbs (e.g. %s)" % (
+        len(vc), {k: v for k, v in list(vc.items())[:1]})
+
+    # 4c. QUESTION understanding (trains QA: question templates, conjecture->verify->admit)
+    _, qn = d.learn_questions(d.entities())
+    rep["questions_learned"] = qn
+
+    # 4d. DIMENSIONAL verifier over the laws (domain_features, fed by UNIT lines)
+    rep["dimensional"] = d.dim_report()
+
     # 5. STUDENT LM (owned neural net; learns the PARSING, text -> structure) — heavy
     if do_lm:
         try:
