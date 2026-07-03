@@ -87,9 +87,9 @@ def _demo(rep, fkb, oracle, predictor):
     for k, v in rep.items():
         print("  %-11s %s" % (k, v))
     # the mouth, now fluent from LEARNED morphology (irregulars from the data)
-    print("\n  mouth (learned morphology):")
-    for verb, agent, patient, tense in [("carry", "girl", "cup", "past"), ("swim", "fish", None, "past"),
-                                        ("eat", "dog", "bread", "present"), ("fly", "bird", None, "past")]:
+    print("\n  mouth (learned morphology — irregulars from the data):")
+    for verb, agent, patient, tense in [("throw", "boy", "ball", "past"), ("drink", "girl", "milk", "past"),
+                                        ("hold", "boy", "book", "past"), ("eat", "dog", "bread", "present")]:
         print("    ", say_event(Event(verb, agent, patient, tense, POS)))
     # a verified derived quantity (only admitted laws computed)
     for obj in ("box", "cart", "ball"):
