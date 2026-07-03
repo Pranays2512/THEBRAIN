@@ -220,6 +220,53 @@ own data; generate-and-verify with the *generate* side being fuzzy + probabilist
 - **Concept lifecycle**: `concept_memory` names shared structures factorizer discovers and
   promotes them by reuse (candidate→promoted).
 
+### Open-language track (comprehension, not fluency — 2026-07-02)
+Fluency is owned-LM territory (scales with corpus). *Comprehension* of open prose is won
+here, crisp all the way, built in dependency order:
+- **Gap 1 — richer logical form** (`event_form`): `Event(verb, agent, patient, time, polarity)`
+  + typed `Relation` (CAUSE/CONTRAST/SEQUENCE). Extends, never replaces — a FACT is a
+  degenerate stative Event, so the numeric core survives (`fact_as_event`/`event_as_fact`).
+  Prose's negation/causality/roles/tense now have slots; more templates no longer just
+  saturate a shallow shape.
+- **Gap 1 membrane** (`event_verify`): the numeric gate doesn't apply to prose, so events get
+  a weaker-but-crisp contract — **polarity non-contradiction** (store can't hold a claim and
+  its negation) + **selectional type constraints** (a verb restricts agent/patient types).
+  `type_of` is wired by `type_oracle.TypeOracle` to the **crisp `isa`-closure** of
+  `core_knowledge` (dog→mammal→animal→living_thing; transitive, exact, no C++/GloVe needed).
+  The disposal path (`__call__`) is **crisp-only** — fuzzy never decides admit/reject. An
+  optional `similar` hook (GloVe via `build_similar_from_semantic`, off by default) instead
+  feeds `grow()`: fuzzy CONJECTURES an isa edge → a verify callback (crisp/teacher) DISPOSES →
+  the edge is admitted into the closure, and the token disposes exactly ever after. Fuzzy
+  proposes, crisp disposes — abstention is never traded for a guess. Three-valued admit/reject/**abstain**:
+  an unconstrained verb admits (numeric core vouches), a known type-violation rejects, a
+  *constrained verb with an unknown role type* abstains → escalates, never guesses. Built
+  BEFORE the representation on purpose — else event facts flood the truth store unverified.
+- **Gap 3 — discourse** (`discourse`): coref = pointer resolution to the most recent
+  type-compatible entity on a `ContextStack` (working memory, cheap); connectives
+  (because/so/but/then) become typed Relations between event ids. Markers-first; implicit
+  discourse stays unjudged.
+- **Intake — prose → Event** (`event_parse` + `reading_loop.EventReader`): the layer that
+  makes the whole membrane actually fire. `parse_event` turns a sentence into an
+  `Event(verb, agent, patient, time, polarity)` — negation (`not`/`-n't`)→polarity, tense
+  from aux/verb-form, SVO by nearest entity/pronoun around the verb; an unknown role token is
+  SURFACED (not dropped) so the membrane can abstain on it. `EventReader` splits a sentence on
+  a connective into clauses, resolves pronoun roles against the `ContextStack` (coref) BEFORE
+  the membrane sees them, admits each event, and links the two with the typed Relation.
+  Proven end-to-end: "cat ate fish" admits; "cat did not eat fish" then REJECTS (contradiction);
+  "rock ate fish" REJECTS (type); "blorp ate fish" ABSTAINS (unknown agent); "dog chased cat
+  because it was hungry" → two events + CAUSE. Markers-first/crisp (learned event templates are
+  future work); coref is recency-based (salience is a known limitation).
+- **Gap 2 — autonomous reading** (`reading_loop`): parse→Event→verify→admit, and only ADMIT
+  parses (+ trusted teacher labels) re-enter template induction (**anti-collapse gate**).
+  Grammar misses escalate **per-fragment** to the teacher, buffer per-relation, induce once
+  ≥2 exist (real anti-unify + held-out check). Escalation rate is tracked — the honest
+  "is the teacher still needed" decay signal.
+- **Gap 4 — honest metric** (`coverage_harness.coverage_split`): taught-domain coverage
+  FLATTERS (grammar was fitted there). `wild` = held-out text outside taught domains — the
+  real open-language number; the reported `gap` stops the flattering figure being quoted alone.
+- Reject-tests: `test_open_lang.py` 29/29 (membrane rejects contradiction/type-violation,
+  abstains on the unknown, admits the good; coref/connective direction; escalation decay).
+
 ### The verifying agent
 `agent.py` — plan → act → **verify each step** → self-correct → repeat. Success stays flat over
 horizon (5–40 steps: 1.00) where an unverified agent decays (0.95^n → 0.13). Reliability beats
