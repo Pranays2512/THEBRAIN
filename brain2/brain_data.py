@@ -22,6 +22,16 @@ Line grammars (one per line):
 from event_form import Event, POS, NEG
 
 
+def _say(ev):
+    """Synthesize a plain sentence for a structure-only Event, via the mouth (so the parser /
+    student LM still get a (sentence -> structure) pair). Falls back to a literal join."""
+    try:
+        from mouth import say_event
+        return say_event(ev).rstrip(".").lower()
+    except Exception:
+        return " ".join(x for x in ("the", ev.agent, ev.verb, ev.patient) if x)
+
+
 class BrainData:
     def __init__(self):
         self.facts = []          # (obj, prop, num_str)   [FACT]
@@ -73,6 +83,8 @@ class BrainData:
             elif "=>" in ln:
                 left, right = (x.strip() for x in ln.split("=>", 1))
                 d._parse_pair(left, right)
+            elif ln.split(":", 1)[0] in ("FACT", "LAW", "EVENT", "ASK"):
+                d._parse_pair(None, ln)     # structure-only line: synthesize the sentence
         return d
 
     def _parse_pair(self, sentence, struct):
@@ -81,23 +93,27 @@ class BrainData:
             if len(p) == 3 and all(p):
                 self.facts.append((p[0], p[1], p[2]))
                 self.structs.append(struct)
-                self.parse_pairs.append("%s => %s" % (sentence.lower(), struct))
+                s = sentence or "the %s has %s %s" % (p[0], p[1], p[2])
+                self.parse_pairs.append("%s => %s" % (s.lower(), struct))
         elif struct.startswith("LAW:"):
             self.laws.append(struct)
             self.structs.append(struct)
-            self.parse_pairs.append("%s => %s" % (sentence.lower(), struct))
+            if sentence:
+                self.parse_pairs.append("%s => %s" % (sentence.lower(), struct))
         elif struct.startswith("ASK:"):
             p = [x.strip() for x in struct[4:].split("|")]
             if len(p) == 2 and all(p):
-                self.questions.append((sentence, {"entity": p[0], "rel": p[1]}))
+                s = sentence or "what is the %s of the %s" % (p[1], p[0])
+                self.questions.append((s, {"entity": p[0], "rel": p[1]}))
         elif struct.startswith("EVENT:"):
             p = [x.strip() for x in struct[6:].split("|")]
             if len(p) == 5 and p[0]:
                 verb, agent, patient, tense, pol = p
                 ev = Event(verb, agent or None, patient or None, tense or "present",
                            NEG if pol == "-" else POS)
-                self.events.append((sentence, ev))
-                self.parse_pairs.append("%s => %s" % (sentence.lower(), struct))
+                s = sentence or _say(ev)        # the mouth synthesizes the sentence if absent
+                self.events.append((s, ev))
+                self.parse_pairs.append("%s => %s" % (s.lower(), struct))
 
     # ── feed each subsystem ────────────────────────────────────────────────────
     def type_oracle(self):
@@ -148,7 +164,9 @@ class BrainData:
         return {"events": len(self.events), "verbs": len(predictor.base)}
 
     def entities(self):
-        return {c for c, _ in self.isa} | {ev.agent for _, ev in self.events if ev.agent} \
+        return {c for c, _ in self.isa} | {o for o, _, _ in self.facts} \
+            | {q["entity"] for _, q in self.questions} \
+            | {ev.agent for _, ev in self.events if ev.agent} \
             | {ev.patient for _, ev in self.events if ev.patient}
 
     def verbs(self):
@@ -165,14 +183,22 @@ class BrainData:
         vl.acquire()
         return vl.constraints
 
-    def learn_questions(self, entities):
-        """Train question understanding: learn question templates from ASK pairs (the same
-        conjecture->verify->admit as statement templates, held out to prove generalization)."""
+    def learn_questions(self, entities, per_rel=2, max_rels=12):
+        """Train question understanding from ASK pairs. A question TEMPLATE depends on the
+        surface shape, not the specific entity, so a couple of examples PER RELATION suffice —
+        and capping is essential: template induction (_admit) is O(examples^2) with list growth,
+        so feeding all 285 questions blows up memory. 2 per rel generalizes; the rest are dupes."""
         from template_memory import TemplateMemory
-        if len(self.questions) < 2:
+        by_rel = {}
+        for s, q in self.questions:
+            by_rel.setdefault(q["rel"], []).append((s, q))
+        ex = []
+        for rel, items in list(by_rel.items())[:max_rels]:
+            for s, q in items[:per_rel]:
+                ex.append((s, {"entity": q["entity"], "rel": q["rel"], "value": 0}))
+        if len(ex) < 2:
             return None, 0
         tm = TemplateMemory(entities=set(entities))
-        ex = [(s, {"entity": q["entity"], "rel": q["rel"], "value": 0}) for s, q in self.questions]
         n = tm.learn_question(ex[:-1], holdout=ex[-1:])
         return tm, n
 
