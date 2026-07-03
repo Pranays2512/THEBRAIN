@@ -1,0 +1,165 @@
+                         BRAIN CONNECTIVITY MAP                         
+       generated 2026-07-03  —  regenerate: python3 (this audit)        
+========================================================================
+
+VERDICT
+------------------------------------------------------------------------
+The brain's ESSENTIAL loops are wired and CLOSED (front, open-language,
+training, guards). But NOT everything ever built is in the loop: of 169 .py
+files, 75 are USED (reachable from an entry point) and 94 are ORPHANED.
+The orphans are superseded alternates, documented-but-unwired components,
+and standalone tools — see the ORPHANED section for the honest breakdown.
+
+Load-bearing caveat: whole_brain (the symbolic front) and the C++ perception
+Brain (SOM/predictor/episodic in brain2.so) are PARALLEL stacks. whole_brain
+is pure-Python symbolic + open-language; the C++ Brain runs in chat/repl and
+in training. The two halves are joined ONLY in train_pipeline (both trained
+from one corpus). The 'two halves + membrane' is fully closed in TRAINING,
+not inside the single ask() front.
+
+ENTRY POINTS  — what each reaches (transitive import closure)
+------------------------------------------------------------------------
+  front (whole_brain)        38 modules
+  training (train_pipeline)  32 modules
+  guards                     31 modules
+  current tests              31 modules
+  interfaces                 27 modules
+
+LOOP CLOSURE (per subsystem)
+------------------------------------------------------------------------
+  Symbolic front loop  (whole_brain -> reasoning/means_ends/verify)  : CLOSED
+  Open-language loop   (prose -> event_parse -> event_verify -> reading_loop
+                        -> verb_learn -> whole_brain)                  : CLOSED
+  Training loop        (train_pipeline -> cache -> LM + C++ Brain + ground) : CLOSED
+  Guard loop           (harden_test/regress -> core + C++ ports)           : CLOSED
+  Neural C++ Brain <-> symbolic front (one runtime)                        : NOT joined
+                        (they meet only in train_pipeline)
+
+USED FILES  (75)  —  file -> local imports
+------------------------------------------------------------------------
+  agent                    -> refute_synth, synth_engine
+  algebra_engine           -> calculus_engine, physics_engine
+  analogy_struct           -> (leaf)
+  appraisal_engine         -> (leaf)
+  brain_chat               -> conversation_engine, math_chat, math_parser
+  brain_repl               -> (leaf)
+  brain_store              -> policy_induction, synth_engine
+  calculus_engine          -> (leaf)
+  chat                     -> (leaf)
+  composable_synth         -> (leaf)
+  concept_memory           -> (leaf)
+  conjecture_sandbox       -> (leaf)
+  context_embed            -> (leaf)
+  conversation_engine      -> appraisal_engine, reasoning_engine, word_math
+  core_knowledge           -> knowledge_base, neuro_bridge
+  corpus_scale             -> context_embed
+  coverage_harness         -> (leaf)
+  cpp_accel                -> (leaf)
+  deeper_grammar           -> means_ends, structural_parser
+  discourse                -> event_form
+  domain_features          -> (leaf)
+  dp_proposer              -> program_synth_tree
+  event_form               -> (leaf)
+  event_parse              -> discourse, event_form, parse_template
+  event_verify             -> (leaf)
+  fact_extractor           -> conversation_engine
+  factorizer               -> (leaf)
+  feature_learner          -> online_proposer, synth_engine
+  grounding                -> (leaf)
+  harden_regress           -> analogy_struct, conjecture_sandbox, context_embed, factorizer, feature_learner, invariant_miner, irregularity_detector, open_world, refuter, semantic_depth, structural_parser, synth_engine
+  harden_test              -> analogy_struct, conjecture_sandbox, context_embed, deeper_grammar, factorizer, feature_learner, invariant_miner, irregularity_detector, nested_parser, online_proposer, prob_compute, refuter, semantic_depth, structural_parser, synth_engine
+  integral_engine          -> calculus_engine, physics_engine
+  invariant_miner          -> (leaf)
+  irregularity_detector    -> cpp_accel
+  knowledge_base           -> fact_extractor, neuro_bridge, world_knowledge
+  knowledge_distill        -> means_ends
+  knowledge_engine         -> (leaf)
+  llm_adapter              -> math_parser, neuro_bridge
+  loop_synth3              -> (leaf)
+  loop_synth4              -> (leaf)
+  math_chat                -> algebra_engine, calculus_engine, integral_engine, math_parser
+  math_parser              -> (leaf)
+  means_ends               -> reasoning_engine
+  nested_parser            -> means_ends, structural_parser
+  neural_lm                -> context_embed, corpus_scale
+  neural_lm_torch          -> context_embed, corpus_scale
+  neuro_bridge             -> algebra_engine, calculus_engine, conversation_engine, integral_engine, math_parser, query_planner
+  online_proposer          -> synth_engine
+  open_world               -> (leaf)
+  parse_template           -> (leaf)
+  physics_engine           -> calculus_engine
+  policy_induction         -> means_ends
+  prob_compute             -> context_embed, corpus_scale
+  program_synth_guided     -> tree_reason
+  program_synth_policy     -> program_synth_guided, tree_reason
+  program_synth_tree       -> program_synth_guided, program_synth_policy, tree_reason
+  query_planner            -> appraisal_engine, conversation_engine, reasoning_engine
+  reading_loop             -> discourse, event_form, event_parse, event_verify, type_oracle
+  reasoning_engine         -> knowledge_engine
+  refute_synth             -> refuter, synth_engine
+  refuter                  -> synth_engine
+  semantic_depth           -> means_ends, structural_parser
+  server                   -> (leaf)
+  structural_parser        -> context_embed, means_ends, reasoning_engine
+  synth_engine             -> composable_synth, dp_proposer, loop_synth3, loop_synth4
+  template_memory          -> parse_template
+  test_open_lang           -> coverage_harness, discourse, event_form, event_parse, event_verify, reading_loop, template_memory, type_oracle, verb_learn
+  test_phase_a             -> concept_memory, coverage_harness, domain_features, means_ends, parse_template, template_memory
+  train_pipeline           -> context_embed, corpus_scale, feature_learner, grounding, knowledge_distill, llm_adapter, means_ends, neural_lm, neural_lm_torch, synth_engine
+  tree_reason              -> (leaf)
+  type_oracle              -> core_knowledge
+  verb_learn               -> (leaf)
+  whole_brain              -> brain_store, context_embed, core_knowledge, means_ends, reading_loop, reasoning_engine, synth_engine, type_oracle, verb_learn
+  word_math                -> (leaf)
+  world_knowledge          -> (leaf)
+
+C++ CORE  (brain2.so via pybind11 / brain2.cpp)
+------------------------------------------------------------------------
+  headers in core/ : 34   included by brain2.cpp : 26
+  bound classes    : SOM, Predictor, EpisodicMemory, WorkingMemory, Language, Simulation, Imagination, EmotionState, EmotionEvent, Emotion, AttentionResult, Attention, InternalState, SelfModel, Symbolic, PerceiveResult, ThinkResult, Brain, PossibilityNode, Scratchpad, ReasoningStep, ReasoningResult, ReasoningEngine, PredictiveCodingLayer, BindingMemory, GlobalWorkspace, BasalGanglia, ProceduralMemory, HierarchicalPredictor, PolicyMemory, PolicyEngine
+  bound functions  : inv_mine, inv_check, refute_int1, eval_sexpr, law_error, disc_weights, feat_sim, cosine_map, analogy_score
+  wired to runtime : law_error (via cpp_accel; others verified-equal but not wired)
+  included, NOT bound (internal to Brain or unused):
+    basal_ganglia, binding_memory, episodic, global_workspace, hierarchical_predictor, policy_engine, predictive_coding, procedural_memory, reasoning, self_model, working_mem
+  core/ headers NOT included by brain2.cpp (dead / standalone):
+    analogy, debug, decoder, logic_engine, lsh, memoization, sparse_lstm, sparse_tensor
+  Python consumers of brain2 (47): bg_curriculum, bg_symbolic_loop, brain_planner, brain_repl, chat, chat_executive, chat_fluency, chat_massive, chat_math, chat_neuro, clear_ep, component_validation, compositional, cpp_accel, crispify_bridge, ground_blend, ground_flow, ground_numeric, ground_reason, ground_to_binding, grounding, harden_regress, init_bg, knowledge_engine, learn_by_reading, load_glove, nl_front, reasoning_suite, repair_vocab, research_agent, retrain_probability, seed_vocab, semantic_memory, server, store_squad_episodes, stream_grounding, teach_12th_grade, teach_causality, teach_executive, teach_missing, teach_numbers, teach_world, train_algebra, train_pipeline, unsupervised_grounding, visualizer_api, wm_reason
+
+ORPHANED  (94)  — present but NOT reached by any entry point
+------------------------------------------------------------------------
+  [alt LM stack (superseded by neural_lm_torch)]
+    bpe, brain_lm_bridge, brain_lm_data, brain_lm_model
+    brain_lm_tokenizer, brain_lm_train, student_trainer
+
+  [documented self-improve/verifier — built, NOT wired to runtime]
+    autonomous_loop, check_library, curiosity_cross, curiosity_loop
+    dual_process, dual_process_engine, inductive_engine, make_break_loop
+    synth_invariant, verifier_monitor
+
+  [misc / demos / experiments]
+    analogy_engine, bg_curriculum, bg_symbolic_loop, brain_codegen
+    brain_planner, brain_session, clear_ep, code_gen
+    code_loop, code_verify, component_validation, compositional
+    concept_blend, crispify_bridge, dimensional_verify, distill_harness
+    init_bg, llm_extractor, planning_engine, reasoning_suite
+    research_agent, retrain_probability, train_algebra, validate
+    verify_rounding, visualizer_api, wm_reason
+
+  [proposer/synth experiments]
+    composable_proposer, dp_greedy_synth, knowledge_pack, learned_guidance
+    loop_synth, loop_synth2, online_proposer2, policy_pack
+    policy_proposer, program_synth, stress_synth, sympy_integration_proposer
+    sympy_usub_proposer, synthesis_engine, tree_domains, tree_learn
+
+  [standalone tools / data scripts (run by hand)]
+    conceptnet_scale, conceptnet_taxonomy, download_glove, ground_blend
+    ground_flow, ground_numeric, ground_reason, ground_to_binding
+    learn_by_reading, load_glove, prepare_squad, repair_vocab
+    seed_vocab, semantic_memory, split_corpus, store_squad_episodes
+    stream_grounding, teach_12th_grade, teach_causality, teach_executive
+    teach_missing, teach_numbers, teach_world, unsupervised_grounding
+
+  [superseded alternates (front/chat)]
+    chat_executive, chat_fluency, chat_massive, chat_math
+    chat_neuro, integrated_front, nl_front, nl_query
+    relational_query, rung3_parser
