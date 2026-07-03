@@ -819,8 +819,9 @@ public:
         return mean_ce;
     }
 
-    void perceive_text(const std::string& text, ErrorMode error_mode = ErrorMode::FULL) {
+    PerceiveResult perceive_text(const std::string& text, ErrorMode error_mode = ErrorMode::FULL) {
         std::string current_word;
+        PerceiveResult last{};              // zero-init; returned = last word's perception state
         auto process_word = [&](const std::string& w) {
             if (w.empty()) return;
             if (!language.knows(w)) {
@@ -830,9 +831,9 @@ public:
                 symbolic.bind(w);
             }
             int wid = language.word_id(w);
-            perceive(language.encode(w), wid, error_mode);
+            last = perceive(language.encode(w), wid, error_mode);
         };
-        
+
         for (char c : text) {
             if (c == ' ' || c == '\n' || c == '\t') {
                 process_word(current_word);
@@ -842,6 +843,7 @@ public:
             }
         }
         process_word(current_word);
+        return last;
     }
 
     // ── Unsupervised Daydreaming (Phase 1) ──────────────────────────────────

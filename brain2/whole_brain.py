@@ -198,16 +198,22 @@ class WholeBrain:
         novel = [t for t in toks if t not in self._seen]
         novelty = len(novel) / len(toks) if toks else 0.0
         self._seen.update(toks)
+        neural = None
         if self.brain is not None:
-            try:
-                self.brain.perceive_text(text, self._perceive_mode)  # real neural perception
+            try:                                        # real C++ perception (recompiled to
+                pr = self.brain.perceive_text(text, self._perceive_mode)  # RETURN PerceiveResult)
+                neural = {"bmu": pr.bmu, "surprise": round(pr.prediction_error, 4),
+                          "valence": round(pr.valence, 4)}
             except Exception:
                 pass
         ap = self.appraiser.appraise(text)
         dom = max(ap.frame, key=ap.frame.get) if ap.frame else None
         felt = dom if (dom and ap.frame.get(dom, 0) > 0) else "neutral"
+        # novelty (token-level) is the differentiating readable signal; `neural` carries the
+        # real C++ SOM/predictor state (bmu/surprise/valence) — meaningful once the Brain is
+        # semantically grounded + trained (a fresh SOM collapses these to ~constant).
         return {"novelty": round(novelty, 2), "utterance": ap.type, "felt": felt,
-                "perceived": self.brain is not None}
+                "perceived": self.brain is not None, "neural": neural}
 
     def sense(self, text):
         """The whole brain in one call: perceive+feel (neural/affective) THEN answer (verified).
