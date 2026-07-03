@@ -16,7 +16,7 @@ Two surfaces:
   * say_fact(e, rel, v, tm)  — bidirectional: fill a learned statement template's slots
 """
 
-from event_form import POS, NEG
+from event_form import NEG
 
 # lemma -> past (generation direction; the inverse of event_parse's surface->lemma map)
 _PAST = {"eat": "ate", "run": "ran", "go": "went", "see": "saw", "make": "made",
@@ -54,6 +54,16 @@ def say_event(ev):
     if ev.patient:
         parts += ["the", ev.patient]
     return " ".join(parts).strip().capitalize() + "."
+
+
+def ask(ev):
+    """Turn an event into a curiosity QUESTION — the mouth's role when surprise drives the
+    brain to wonder. 'the dog ate the fish' (surprising) -> 'Why did the dog eat the fish?'"""
+    aux = "did" if (ev.time or "present") == "past" else "does"
+    q = ["why", aux, "the", ev.agent or "it", ev.verb]
+    if ev.patient:
+        q += ["the", ev.patient]
+    return " ".join(q).capitalize() + "?"
 
 
 def say_fact(entity, rel, value, tm):

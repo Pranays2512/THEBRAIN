@@ -223,6 +223,14 @@ _pr.read("the cat ate the fish")
 ok("reader sets a surprise signal", _pr.last_surprise is not None)
 ok("reader learns only from verified events",   # a rejected event must not train the predictor
    sum(_pr.predictor.base.values()) == _pr.stats[ADMIT])
+# surprise -> attention (salience) -> curiosity
+_sr = EventReader(E_ENT, E_VERBS, type_of=E_ORACLE, constraints=E_CON, predictor=EventPredictor())
+_sr.read("the cat ate the fish")                # first event -> surprise 1.0 -> salient
+ok("surprise gates episodic salience", len(_sr.salient) == 1)
+ok("curiosity ranks weak-model verbs", "eat" in _sr.curiosity())
+from mouth import ask as _ask
+ok("mouth turns a salient event into a question",
+   _ask(_sr.salient[0]) == "Why did the cat eat the fish?")
 
 
 # ── the owned mouth: structure -> English, comprehension grammar run backward ──

@@ -17,7 +17,7 @@ unattended:
 (Open-language track, Gap 2 — uses Gap 1's Event + membrane and Gap 3's context stack.)"""
 
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 
 from event_form import fact_as_event, event_as_fact, Event
 from event_verify import EventStore, admit, ADMIT
@@ -118,6 +118,9 @@ class EventReader:
         self.predictor = predictor              # optional EventPredictor (predictive processing)
         self._last_event = None                 # previous event in the stream (for prediction)
         self.last_surprise = None               # prediction error of the most recent event
+        self.attention_gate = 0.5               # surprise >= this -> worth remembering (salient)
+        self.salient = []                       # surprise-gated episodic: the events worth keeping
+        self._surprise_by_verb = defaultdict(list)   # per-verb error -> where the model is weak
         self.store = store or EventStore()
         if type_of is None:
             try:
@@ -171,7 +174,18 @@ class EventReader:
             if self.predictor is not None:         # learn the transition from VERIFIED events
                 self.predictor.learn(self._last_event, ev)   # only (anti-collapse discipline)
                 self._last_event = ev
+                if self.last_surprise is not None:
+                    self._surprise_by_verb[ev.verb].append(self.last_surprise)
+                    if self.last_surprise >= self.attention_gate:   # attention: keep the
+                        self.salient.append(ev)                     # surprising, forget the dull
         return d, ev
+
+    def curiosity(self, k=3):
+        """Where the brain's model is weakest = what it should read toward. Ranks verbs by mean
+        recent prediction error; high error = an under-learned corner worth seeking out."""
+        rank = sorted(((sum(v) / len(v), verb) for verb, v in self._surprise_by_verb.items()),
+                      reverse=True)
+        return [verb for _, verb in rank[:k]]
 
     def acquire(self, holdouts=None):
         """Learn selectional constraints for observed-but-untrusted verbs and promote them

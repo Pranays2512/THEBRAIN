@@ -260,6 +260,17 @@ class WholeBrain:
                     break
         return {"banked": banked, "conjectures_tested": total}
 
+    def wonder(self):
+        """Curiosity -> a question. The brain asks about the most surprising event it has seen
+        (surprise-gated salience), voicing it through its own mouth. Returns None if nothing
+        has surprised it yet. This is the predictive loop closing into active learning: high
+        prediction error -> attention -> a question worth answering."""
+        if not self.reader.salient:
+            return None
+        from mouth import ask
+        return {"question": ask(self.reader.salient[-1]),
+                "curious_about": self.reader.curiosity()}
+
     def introspect(self):
         """The whole brain's self-report: known symbols, learned verbs, cached code checks,
         and live verification health — the faculties that were orphaned, now reachable."""
