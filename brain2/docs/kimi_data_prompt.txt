@@ -1,0 +1,60 @@
+PROMPT FOR KIMI K2 — generate training data for the brain (parser + mouth + neural net).
+Paste everything below the line into Kimi. Output feeds: knowledge_distill (FACT/LAW), the
+event parser + predictive loop (EVENT/SEQ), the owned mouth (EVENT reversed + MORPH), and the
+type oracle (ISA). Save Kimi's output to a .txt and load by line-prefix.
+------------------------------------------------------------------------------------------
+
+You are generating training data for a symbolic "brain" that learns to PARSE language into
+structure, GENERATE language from structure, and PREDICT event sequences — with NO large
+language model in its trust path. Output ONLY data lines in the exact grammars below. No prose,
+no markdown, no numbering, no blank explanations. One item per line. Use simple, concrete,
+everyday vocabulary. Every fact must be literally TRUE. Cover varied domains: physics, animals,
+everyday actions, chemistry, weather, cooking, motion.
+
+Emit these six line types, tagged exactly as shown:
+
+1) FACT pairs (teach facts + train the parser + the mouth). Format:
+   <plain sentence> => FACT: object | property | number
+   ex:  the box has mass 5 => FACT: box | mass | 5
+        the car moves at speed 30 => FACT: car | speed | 30
+
+2) LAW pairs (teach relations; expression uses + - * / and the properties above). Format:
+   <plain sentence> => LAW: quantity = expression
+   ex:  force equals mass times acceleration => LAW: force = mass * acceleration
+   Give laws whose inputs appear as FACTs above so they can be verified.
+
+3) EVENT pairs (train the event parser + the predictive loop + the mouth).
+   polarity is + (happened) or - (did not); tense is past, present, or future. Format:
+   <plain sentence> => EVENT: verb | agent | patient | tense | polarity
+   ex:  the dog ate the fish => EVENT: eat | dog | fish | past | +
+        the cat did not chase the mouse => EVENT: chase | cat | mouse | past | -
+        the bird will fly => EVENT: fly | bird |  | future | +
+   Use the VERB LEMMA (eat, not ate). Leave patient blank for intransitive verbs.
+
+4) ISA type facts (ground the type system: what kind of thing each noun is). Format:
+   ISA: child | parent
+   ex:  ISA: dog | mammal        ISA: mammal | animal        ISA: rose | plant
+   Build real chains up to animal / plant / mineral / living_thing / object.
+
+5) MORPH verb forms (teach the mouth correct morphology). Format:
+   MORPH: lemma | past | present3sg
+   ex:  MORPH: eat | ate | eats        MORPH: chase | chased | chases
+
+6) SEQUENCE — short coherent event stories (train the predictor to expect what follows, and
+   discourse links). 2-4 sentences that FOLLOW naturally, optionally with because/so/then.
+   Prefix each story line with SEQ: . Format:
+   SEQ: <sentence>
+   ex:  SEQ: the dog chased the cat
+        SEQ: the cat climbed the tree because the dog chased it
+        SEQ: then the dog barked
+
+Rules:
+- Keep vocabulary small and REUSED across lines (same nouns/verbs recur) — the brain learns
+  from repetition and needs consistent tokens.
+- Numbers are plain integers or simple decimals.
+- Laws must be dimensionally sensible (force=mass*accel, not force=mass+speed).
+- Aim for at least 60 FACT, 25 LAW, 80 EVENT, 40 ISA, 30 MORPH, and 15 SEQ stories.
+- Every EVENT verb should also appear in a MORPH line. Every noun in an EVENT should appear in
+  an ISA line. Consistency across the six types is the point.
+
+Begin. Output only the tagged data lines.

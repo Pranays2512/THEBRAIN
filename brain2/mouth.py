@@ -23,18 +23,26 @@ _PAST = {"eat": "ate", "run": "ran", "go": "went", "see": "saw", "make": "made",
          "drink": "drank", "fly": "flew", "catch": "caught", "chase": "chased",
          "like": "liked", "move": "moved", "be": "was"}
 
+# LEARNED morphology: lemma -> {"past":..., "present3sg":...}. Populated by the data loader
+# (MORPH lines). When present it overrides the guessed rules -> the mouth graduates from
+# child-grade ("the drone weigh") to fluent ("the drone weighs") by LEARNING, not by an LLM.
+MORPH = {}
+
 
 def _realize(verb, tense, polarity):
-    """Surface form of a verb given tense + polarity. Child-grade morphology (regular -s / -ed
-    with a small irregular table); imperfect on unseen irregulars, and honest about it."""
+    """Surface form of a verb given tense + polarity. Prefers LEARNED morphology (MORPH), then
+    the small irregular table, then regular rules. Imperfect on unseen irregulars — honest."""
+    m = MORPH.get(verb, {})
     if polarity == NEG:
         aux = "did not" if tense == "past" else "does not"
         return "%s %s" % (aux, verb)                  # negation uses the base form
     if tense == "past":
-        return _PAST.get(verb) or (verb + "d" if verb.endswith("e") else verb + "ed")
+        return m.get("past") or _PAST.get(verb) or (verb + "d" if verb.endswith("e") else verb + "ed")
     if tense == "future":
         return "will " + verb
-    # present 3rd-singular
+    if m.get("present3sg"):
+        return m["present3sg"]
+    # present 3rd-singular (regular fallback)
     if verb.endswith(("s", "sh", "ch", "x", "z")):
         return verb + "es"
     if verb.endswith("y") and verb[-2:-1] not in "aeiou":

@@ -250,6 +250,30 @@ ok("mouth: say_fact runs a learned template backward", say_fact("drone", "mass",
 ok("mouth: honest silence on unlearned relation", say_fact("drone", "wisdom", 9, _mtm) is None)
 
 
+# ── brain_data loader: one tagged corpus -> every subsystem ──────────────────
+from brain_data import BrainData
+_SAMPLE = """the box has mass 5 => FACT: box | mass | 5
+force equals mass times acceleration => LAW: force = mass * acceleration
+the dog chased the cat => EVENT: chase | dog | cat | past | +
+the cat did not eat the fish => EVENT: eat | cat | fish | past | -
+ISA: dog | mammal
+ISA: mammal | animal
+MORPH: teach | taught | teaches
+SEQ: the dog chased the cat"""
+_bd = BrainData.parse(_SAMPLE)
+ok("loader counts by tag", _bd.report() == {"facts": 1, "laws": 1, "events": 2, "isa": 2,
+   "morph": 1, "sequences": 1, "parse_pairs": 4})
+ok("loader event: negation parsed", _bd.events[1][1].polarity == NEG and _bd.events[1][1].verb == "eat")
+ok("loader grounds types from ISA", "animal" in (_bd.type_oracle()("dog") or frozenset()))
+ok("loader predictor learns transitions",
+   (lambda p: (_bd.train_predictor(p), p.base["chase"] == 1)[1])(EventPredictor()))
+_mtmp = dict(__import__("mouth").MORPH)
+_bd.load_morph()
+ok("loader MORPH upgrades the mouth (child->fluent)",
+   say_event(Event("teach", "a", "b", "past", POS)) == "The a taught the b.")
+__import__("mouth").MORPH.clear(); __import__("mouth").MORPH.update(_mtmp)   # restore
+
+
 if __name__ == "__main__":
     fails = sum(1 for _, g in R if not g)
     for name, g in R:
