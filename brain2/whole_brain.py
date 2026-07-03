@@ -85,6 +85,16 @@ class WholeBrain:
         # LEARNED context map: meaning from a corpus, not a hand table. Any corpus word
         # whose context strongly matches a known relation becomes an automatic synonym —
         # this is open-comprehension's fuzzy proposer; the crisp solver still verifies.
+        # OPEN-LANGUAGE: read declarative prose into VERIFIED events (the open-lang track).
+        # Fuzzy/positional parse proposes an Event; the crisp membrane disposes (admit verified,
+        # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
+        from reading_loop import EventReader
+        from type_oracle import TypeOracle
+        self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
+        self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
+                                 "chase": {"agent": {"animal"}, "patient": {"animal"}}}
+        self.reader = EventReader(self.concepts | self.entities, self.verbs,
+                                  type_of=TypeOracle(), constraints=self.verb_constraints)
         import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
@@ -126,7 +136,35 @@ class WholeBrain:
                     if x != y and self.kre.reaches(x, "isa", y)[0]:
                         return ("factual", f"Yes — {' -> '.join(self.kre.reaches(x,'isa',y)[1])}", True)
             return ("factual", f"No (no isa path among {known})", True)
+        # OPEN-LANGUAGE: a DECLARATIVE (not a question) -> read it as a verified event.
+        # Question-hood keys on the first token / '?', not word-presence, so "the dog did not
+        # eat the fish" (declarative, has 'did') still reads as an event.
+        first = toks[0] if toks else ""
+        is_question = text.strip().endswith("?") or first in {
+            "what", "how", "why", "who", "can", "is", "are", "does", "did", "will",
+            "could", "would", "should", "which", "when", "where"}
+        if not is_question:
+            ev = self._read_event(text)
+            if ev is not None:
+                return ev
         return ("none", "I don't know.", False)
+
+    def _read_event(self, text):
+        """Read a declarative into an Event and report the membrane's disposition. Returns a
+        response tuple, or None if nothing verb-like was found (fall through to 'I don't know')."""
+        b = dict(self.reader.stats)
+        evs, rel = self.reader.read(text)
+        if not evs:
+            return None
+        s = self.reader.stats
+        e = evs[-1]
+        desc = "%s%s %s %s" % ("not " if e.polarity < 0 else "", e.agent, e.verb, e.patient or "")
+        cause = " (CAUSE)" if rel is not None else ""
+        if s["admit"] > b.get("admit", 0):
+            return ("event", f"learned + verified: {desc.strip()}{cause}", True)
+        if s["reject"] > b.get("reject", 0):
+            return ("event", f"rejected (contradicts known / type-violation): {desc.strip()}", False)
+        return ("event", f"held — can't verify yet (unknown verb/type): {desc.strip()}", False)
 
     def _code(self, toks):
         name = next((t for t in toks if t in CODE_TASKS), None)

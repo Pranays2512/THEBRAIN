@@ -269,6 +269,12 @@ here, crisp all the way, built in dependency order:
   Grammar misses escalate **per-fragment** to the teacher, buffer per-relation, induce once
   ≥2 exist (real anti-unify + held-out check). Escalation rate is tracked — the honest
   "is the teacher still needed" decay signal.
+- **Wired into the front** (`whole_brain.ask`): a declarative (not a question) now routes to
+  `EventReader` — the running brain reads prose into verified events through the same membrane
+  as compute. "the dog ate the fish" → *learned + verified*; "the dog did not eat the fish" →
+  *rejected (contradiction)*; unknown verb/type → *held, can't verify*. Compute/factual/code
+  routes unchanged; question-hood keys on the first token / '?' so declarative negation still
+  reads. The open-lang track is no longer standalone — it runs in the real path.
 - **Gap 4 — honest metric** (`coverage_harness.coverage_split`): taught-domain coverage
   FLATTERS (grammar was fitted there). `wild` = held-out text outside taught domains — the
   real open-language number; the reported `gap` stops the flattering figure being quoted alone.
