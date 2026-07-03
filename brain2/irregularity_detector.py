@@ -31,7 +31,18 @@ def _functional(pairs, tol=1e-6):
 
 
 def _law_error(train, holdout):
-    """Best held-out relative error fitting y=m*x+b and y=k*x^p (whichever is better)."""
+    """Best held-out relative error fitting y=m*x+b and y=k*x^p (whichever is better).
+    Prefers the verified C++ port (brain2.law_error) when available, else the Python
+    reference below. harden_regress locks brain2.law_error == _law_error_py."""
+    from cpp_accel import cpp
+    b = cpp()
+    if b is not None:
+        return b.law_error(train, holdout)
+    return _law_error_py(train, holdout)
+
+
+def _law_error_py(train, holdout):
+    """Pure-Python reference (the equality target for the C++ port)."""
     n = len(train)
     xs = [x for x, _ in train]; ys = [y for _, y in train]
     best = 1e9

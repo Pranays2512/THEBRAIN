@@ -95,8 +95,10 @@ def main():
         import irregularity_detector as ID
         tr = [(0.387, 0.241), (0.723, 0.615), (1.0, 1.0), (1.524, 1.881), (5.203, 11.862)]
         ho = [(9.537, 29.457), (19.191, 84.02)]
+        # compare against the PYTHON REFERENCE (_law_error now prefers the C++ port, so
+        # comparing to _law_error would be C++ vs C++ and lock nothing)
         expect("C++ law_error matches Python",
-               abs(brain2.law_error(tr, ho) - ID._law_error(tr, ho)) < 1e-9)
+               abs(brain2.law_error(tr, ho) - ID._law_error_py(tr, ho)) < 1e-9)
         import feature_learner as FL
         lp = FL.LearnedProposer()
         lp.proto = {"list": {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.5},
