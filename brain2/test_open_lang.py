@@ -9,7 +9,7 @@ from event_form import (Event, Relation, POS, NEG, CAUSE, CONTRAST,
 from event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT, ABSTAIN
 from discourse import ContextStack, connective_of, link_events
 from reading_loop import ReadingLoop, EventReader
-from event_parse import parse_event
+from event_parse import parse_event, verb_trusted
 from coverage_harness import coverage_split, event_coverage, event_coverage_split
 from template_memory import TemplateMemory
 from type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
@@ -142,7 +142,11 @@ E_CON = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant"}},
 
 ok("parse_event SVO+tense", parse_event("the cat ate the fish", E_ENT, E_VERBS) == Event("eat", "cat", "fish", "past", POS, 0))
 ok("parse_event negation -> NEG", parse_event("the cat did not eat the fish", E_ENT, E_VERBS).polarity == NEG)
-ok("parse_event no known verb -> None", parse_event("the cat sleeps here", E_ENT, E_VERBS) is None)
+ok("parse_event positional recovers structure on unknown verb",
+   (lambda e: e is not None and e.agent == "cat" and e.verb not in E_VERBS)(parse_event("the cat sleeps here", E_ENT, E_VERBS)))
+ok("parse_event too few content tokens -> None", parse_event("fire", E_ENT, E_VERBS) is None)
+ok("verb_trusted: known verb True", verb_trusted(parse_event("the cat ate the fish", E_ENT, E_VERBS), E_VERBS) is True)
+ok("verb_trusted: positional verb False", verb_trusted(parse_event("the cat sleeps here", E_ENT, E_VERBS), E_VERBS) is False)
 ok("parse_event unknown agent surfaces (not dropped)", parse_event("the blorp ate the fish", E_ENT, E_VERBS).agent == "blorp")
 
 def _er(): return EventReader(E_ENT, E_VERBS, type_of=E_ORACLE, constraints=E_CON)
@@ -154,6 +158,9 @@ _r2 = _er(); _r2.read("the rock ate the fish")
 ok("reader rejects type violation", _r2.stats[REJECT] == 1 and _r2.stats[ADMIT] == 0)
 _r3 = _er(); _r3.read("the blorp ate the fish")
 ok("reader abstains on unknown agent", _r3.stats[ABSTAIN] == 1)
+_r5 = _er(); _r5.read("the government raised taxes")
+ok("reader abstains on unknown verb (positional, not committed)",
+   _r5.stats[ABSTAIN] == 1 and _r5.stats[ADMIT] == 0 and len(_r5.store.events) == 0)
 _r4 = _er(); evs, rel = _r4.read("the dog chased the cat because it was hungry")
 ok("reader builds two events + CAUSE", len(evs) == 2 and rel is not None and rel.kind == CAUSE)
 ok("reader coref resolves pronoun to an entity", evs[1].agent in E_ENT)

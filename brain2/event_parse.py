@@ -72,16 +72,27 @@ def parse_event(sentence, entities, verbs, type_of=None):
              else "future" if any(t in _FUTURE_AUX for t in raw) else "present")
 
     vi = verb = None
-    for i, t in enumerate(raw):
+    for i, t in enumerate(raw):                          # 1. trusted lemma (highest confidence)
         lem = _lemma(t)
         if lem in verbs or t in verbs:
             vi, verb = i, lem
             break
-    if vi is None:
-        return None
+    if vi is None:                                       # 2. positional: verb = first content
+        content = [i for i, t in enumerate(raw)          #    token after the subject. Recovers
+                   if t not in _STOP and t not in _NEG]  #    STRUCTURE on an unknown verb — but
+        if len(content) < 2:                             #    the caller must ABSTAIN on it (the
+            return None                                  #    verb isn't trusted), never admit.
+        vi, verb = content[1], _lemma(raw[content[1]])
     if tense == "present" and (raw[vi] in _IRREGULAR or raw[vi].endswith("ed")):
         tense = "past"                                  # verb form itself carries the tense
 
     agent = _nearest(reversed(raw[:vi]), entities, type_of)
     patient = _nearest(raw[vi + 1:], entities, type_of)
     return Event(verb, agent, patient, tense, polarity)
+
+
+def verb_trusted(ev, verbs):
+    """True if the verb came from the trusted lexicon (event is admissible); False if it was
+    only recovered positionally (structure parsed, but the verb is unverifiable -> abstain).
+    This is what keeps positional coverage from flooding the truth store with wild events."""
+    return ev is not None and ev.verb in verbs

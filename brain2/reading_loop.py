@@ -22,7 +22,7 @@ from collections import Counter
 from event_form import fact_as_event, event_as_fact, Event
 from event_verify import EventStore, admit, ADMIT
 from discourse import ContextStack, _PRONOUNS, link_events, _CONNECTIVES
-from event_parse import parse_event
+from event_parse import parse_event, verb_trusted
 
 
 class ReadingLoop:
@@ -147,6 +147,9 @@ class EventReader:
         if ev is None:
             self.stats["nomatch"] += 1
             return None, None
+        if not verb_trusted(ev, self.verbs):       # positional parse: structure only, verb
+            self.stats["abstain"] += 1             # unverifiable -> hold, never commit
+            return "abstain", self._resolve(ev)
         ev = self._resolve(ev)
         d = admit(ev, self.store, self.type_of, self.constraints)
         self.stats[d] += 1

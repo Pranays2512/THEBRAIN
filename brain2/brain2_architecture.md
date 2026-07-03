@@ -256,6 +256,14 @@ here, crisp all the way, built in dependency order:
   "rock ate fish" REJECTS (type); "blorp ate fish" ABSTAINS (unknown agent); "dog chased cat
   because it was hungry" → two events + CAUSE. Markers-first/crisp (learned event templates are
   future work); coref is recency-based (salience is a known limitation).
+- **Positional verb detection** (`event_parse` step 2 + `verb_trusted`): a sentence with no
+  trusted verb still parses — the verb is taken as the first content token after the subject,
+  recovering SVO structure on *unknown* verbs (government/**raised**/interest, engineers/
+  **deployed**/patch). But an untrusted verb makes the event ABSTAIN, never admit: structure
+  reaches the membrane, the truth store stays clean. This took **wild-prose parse coverage
+  0% → 100%** (`coverage_harness.event_coverage_split`), every wild event correctly held
+  (abstain, not asserted). Moving wild abstain→admit is the next depth: verb acquisition
+  (grow selectional constraints per verb — the `type_oracle.grow` pattern applied to verbs).
 - **Gap 2 — autonomous reading** (`reading_loop`): parse→Event→verify→admit, and only ADMIT
   parses (+ trusted teacher labels) re-enter template induction (**anti-collapse gate**).
   Grammar misses escalate **per-fragment** to the teacher, buffer per-relation, induce once
