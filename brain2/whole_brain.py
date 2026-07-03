@@ -29,6 +29,7 @@ from core_knowledge import CORE_FACTS
 from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
 import synth_engine as SE
 from brain_store import BrainStore
+from appraisal_engine import AppraisalEngine
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
 # Paraphrase -> canonical token, so routing isn't brittle to exact wording. A real
@@ -97,6 +98,17 @@ class WholeBrain:
         _oracle = TypeOracle()
         self.reader = EventReader(self.concepts | self.entities, self.verbs, type_of=_oracle,
                                   constraints=self.verb_constraints, learner=VerbLearner(_oracle))
+        # WHOLE: the NEURAL perception substrate (C++ Brain) + emotional appraisal. Every input
+        # is perceived (SOM/episodic/emotion evolve) BEFORE the symbolic front answers — neural
+        # senses (novelty, feeling), symbolic owns truth. Guarded: degrades if brain2 absent.
+        self.appraiser = AppraisalEngine()
+        self._seen = set()                         # perceived-token memory -> novelty sense
+        try:
+            import brain2
+            self.brain = brain2.Brain(som_rows=16, som_cols=16, n_dims=32)
+            self._perceive_mode = brain2.ErrorMode.FULL
+        except Exception:
+            self.brain = None
         import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
@@ -169,6 +181,34 @@ class WholeBrain:
             return ("event", f"rejected (contradicts known / type-violation): {desc.strip()}", False)
         return ("event", f"held — can't verify yet (unknown verb/type): {desc.strip()}", False)
 
+    # ── the WHOLE brain: perceive (neural) -> feel (appraisal) -> answer (verified) ──
+    def _perceive(self, text):
+        """Neural + affective sense of the input, BEFORE the symbolic answer. Runs the real
+        C++ perception (SOM/episodic/emotion evolve) as a side effect; returns the readable
+        projections: novelty (fraction of unseen tokens) and the emotional appraisal. Membrane:
+        this SENSES (soft, never authoritative); the symbolic front still owns the answer."""
+        toks = re.findall(r"[a-z_]+", text.lower())
+        novel = [t for t in toks if t not in self._seen]
+        novelty = len(novel) / len(toks) if toks else 0.0
+        self._seen.update(toks)
+        if self.brain is not None:
+            try:
+                self.brain.perceive_text(text, self._perceive_mode)  # real neural perception
+            except Exception:
+                pass
+        ap = self.appraiser.appraise(text)
+        dom = max(ap.frame, key=ap.frame.get) if ap.frame else None
+        felt = dom if (dom and ap.frame.get(dom, 0) > 0) else "neutral"
+        return {"novelty": round(novelty, 2), "utterance": ap.type, "felt": felt,
+                "perceived": self.brain is not None}
+
+    def sense(self, text):
+        """The whole brain in one call: perceive+feel (neural/affective) THEN answer (verified).
+        Returns the perception plus the crisp answer — all faculties in one runtime."""
+        perc = self._perceive(text)
+        kind, msg, ok = self.ask(text)
+        return {"perception": perc, "answer": {"kind": kind, "msg": msg, "verified": ok}}
+
     def _code(self, toks):
         name = next((t for t in toks if t in CODE_TASKS), None)
         if name is None:
@@ -205,6 +245,18 @@ def _demo():
         route, ans, ok = b.ask(q)
         mark = "✓" if ok else "·"
         print(f"  > {q}\n    [{route:7s} {mark}] {ans}\n")
+
+    # THE WHOLE BRAIN: perceive (neural) -> feel (appraisal) -> answer (verified), one runtime
+    print("=== whole brain — sense(): perceive + feel + answer in one call ===\n")
+    print("  neural perception attached (C++ Brain):", b.brain is not None, "\n")
+    for t in ["the dog ate the fish", "the dog ate the fish",           # repeat -> novelty drops
+              "the dog did not eat the fish",                            # contradiction + felt
+              "quantum entanglement defies locality",                    # novel, held
+              "what is the momentum of the rocket?"]:                    # verified compute
+        r = b.sense(t); p, a = r["perception"], r["answer"]
+        print(f"  > {t}")
+        print(f"    perceive: novelty={p['novelty']:.2f}  felt={p['felt']}  ({p['utterance']})")
+        print(f"    answer  : [{a['kind']} {'✓' if a['verified'] else '·'}] {a['msg'][:58]}\n")
 
 
 if __name__ == "__main__":

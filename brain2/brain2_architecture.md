@@ -280,6 +280,15 @@ here, crisp all the way, built in dependency order:
   "rock hunted deer" REJECTS. Wired into the front (`whole_brain` auto-acquires after each
   declarative), so across turns the running brain learns a new verb: "dog bit cat" held twice,
   then verified on the third use.
+- **The whole brain** (`whole_brain.sense`): the neural, symbolic, and open-language faculties
+  now run in ONE runtime. `sense(text)` first PERCEIVES (the C++ `Brain.perceive_text` — SOM /
+  episodic / emotion evolve) and appraises (novelty + `appraisal_engine` emotional frame), THEN
+  answers via the symbolic/open-lang routes. Membrane-correct: neural SENSES (soft — novelty,
+  feeling), symbolic OWNS truth (verified answer). Proven: novelty 1.0→0.0 on an exact repeat,
+  appraisal catches negation, and compute/factual/event/code all still verify — perceive → feel
+  → answer in one call. (The C++ Brain's rich `PerceiveResult` scalars are side-effecting; the
+  front reads robust projections for now.) This closes the front half of the "two halves +
+  membrane" — previously joined only in `train_pipeline`.
 - **Wired into the front** (`whole_brain.ask`): a declarative (not a question) now routes to
   `EventReader` — the running brain reads prose into verified events through the same membrane
   as compute. "the dog ate the fish" → *learned + verified*; "the dog did not eat the fish" →

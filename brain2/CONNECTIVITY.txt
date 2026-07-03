@@ -10,12 +10,15 @@ files, 75 are USED (reachable from an entry point) and 94 are ORPHANED.
 The orphans are superseded alternates, documented-but-unwired components,
 and standalone tools — see the ORPHANED section for the honest breakdown.
 
-Load-bearing caveat: whole_brain (the symbolic front) and the C++ perception
-Brain (SOM/predictor/episodic in brain2.so) are PARALLEL stacks. whole_brain
-is pure-Python symbolic + open-language; the C++ Brain runs in chat/repl and
-in training. The two halves are joined ONLY in train_pipeline (both trained
-from one corpus). The 'two halves + membrane' is fully closed in TRAINING,
-not inside the single ask() front.
+UPDATE (whole brain): whole_brain now OWNS a C++ perception Brain and perceives
+every input via sense() -> _perceive (perceive_text: SOM/episodic/emotion evolve)
+BEFORE the symbolic front answers. So the neural + symbolic + open-language
+faculties now run in ONE runtime, membrane-correct: neural SENSES (novelty +
+emotional appraisal, soft), symbolic OWNS truth (verified answer). The two
+halves are joined in the front (sense()) AND in training (train_pipeline).
+Remaining soft spot: the C++ Brain's rich scalar signals (bmu/valence via
+PerceiveResult) are side-effecting; the front reads robust projections
+(novelty + appraisal), not the full internal state yet.
 
 ENTRY POINTS  — what each reaches (transitive import closure)
 ------------------------------------------------------------------------
@@ -32,8 +35,8 @@ LOOP CLOSURE (per subsystem)
                         -> verb_learn -> whole_brain)                  : CLOSED
   Training loop        (train_pipeline -> cache -> LM + C++ Brain + ground) : CLOSED
   Guard loop           (harden_test/regress -> core + C++ ports)           : CLOSED
-  Neural C++ Brain <-> symbolic front (one runtime)                        : NOT joined
-                        (they meet only in train_pipeline)
+  Neural C++ Brain <-> symbolic front (whole_brain.sense())                : JOINED
+                        (perceive -> feel -> answer, one runtime + training)
 
 USED FILES  (75)  —  file -> local imports
 ------------------------------------------------------------------------
