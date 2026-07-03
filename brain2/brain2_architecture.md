@@ -280,6 +280,16 @@ here, crisp all the way, built in dependency order:
   "rock hunted deer" REJECTS. Wired into the front (`whole_brain` auto-acquires after each
   declarative), so across turns the running brain learns a new verb: "dog bit cat" held twice,
   then verified on the third use.
+- **The owned mouth** (`mouth.py`): generation without an LLM — structure → English, learned
+  like a child. The insight: a learned `Template` maps tokens ↔ slots, so the SAME grammar the
+  brain acquired by comprehension runs BACKWARD to produce (`say_fact` fills a learned
+  statement template's slots; `say_event` realizes an Event with tense + negation morphology
+  the mouth controls). Comprehension grammar = production grammar — it speaks with what it
+  learned to parse, improving as it reads. Membrane-clean: it only renders VERIFIED structure
+  (an admitted Event, an owned fact), never invents content; honest silence when no construction
+  is learned. Child-grade morphology early ("the drone weigh 7 kg"), improves with learning; a
+  tuned LLM stays an anytime fluency fallback. Proven: exact parse→say roundtrip; `whole_brain`
+  now voices admitted events in its own grammar.
 - **Predictive processing** (`event_predict` + `reading_loop`): the default-state upgrade —
   the reader PREDICTS the next event (verb-transition + base-rate stats over the event stream)
   BEFORE parsing it, then the parse error becomes SURPRISE (surprisal of the observed verb).

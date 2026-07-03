@@ -184,10 +184,11 @@ class WholeBrain:
         self.reader.acquire()                   # learn verbs seen enough times -> future crisp
         s = self.reader.stats
         e = evs[-1]
-        desc = "%s%s %s %s" % ("not " if e.polarity < 0 else "", e.agent, e.verb, e.patient or "")
+        from mouth import say_event
+        desc = say_event(e).rstrip(".")            # the brain says it in its OWN learned grammar
         cause = " (CAUSE)" if rel is not None else ""
         if s["admit"] > b.get("admit", 0):
-            return ("event", f"learned + verified: {desc.strip()}{cause}", True)
+            return ("event", f"learned + verified: {desc}{cause}", True)
         if s["reject"] > b.get("reject", 0):
             return ("event", f"rejected (contradicts known / type-violation): {desc.strip()}", False)
         return ("event", f"held — can't verify yet (unknown verb/type): {desc.strip()}", False)

@@ -225,6 +225,23 @@ ok("reader learns only from verified events",   # a rejected event must not trai
    sum(_pr.predictor.base.values()) == _pr.stats[ADMIT])
 
 
+# ── the owned mouth: structure -> English, comprehension grammar run backward ──
+from mouth import say_event, say_fact
+ok("mouth: past tense", say_event(Event("eat", "dog", "fish", "past", POS)) == "The dog ate the fish.")
+ok("mouth: present 3sg morphology", say_event(Event("chase", "dog", "cat", "present", POS)) == "The dog chases the cat.")
+ok("mouth: negation realized", say_event(Event("eat", "cat", "fish", "past", NEG)) == "The cat did not eat the fish.")
+ok("mouth: intransitive (no patient)", say_event(Event("run", "cat", None, "future", POS)) == "The cat will run.")
+# roundtrip: the grammar that parses is the grammar that speaks
+_rt = "the dog ate the fish"
+ok("mouth: parse->say roundtrip", say_event(parse_event(_rt, {"dog", "fish"}, {"eat"})) == "The dog ate the fish.")
+_mtm = TemplateMemory(entities={"rocket", "sample", "probe", "drone"})
+_mtm.learn([("the rocket weighs 1000 kg", {"entity": "rocket", "rel": "mass", "value": 1000}),
+            ("the sample weighs 2 kg", {"entity": "sample", "rel": "mass", "value": 2})],
+           holdout=[("the probe weighs 55 kg", {"entity": "probe", "rel": "mass", "value": 55})])
+ok("mouth: say_fact runs a learned template backward", say_fact("drone", "mass", 7, _mtm) == "The drone weigh 7 kg.")
+ok("mouth: honest silence on unlearned relation", say_fact("drone", "wisdom", 9, _mtm) is None)
+
+
 if __name__ == "__main__":
     fails = sum(1 for _, g in R if not g)
     for name, g in R:
