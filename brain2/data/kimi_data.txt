@@ -1,0 +1,387 @@
+the box has mass 5 => FACT: box | mass | 5
+the box moves at speed 2 => FACT: box | speed | 2
+the cart has mass 10 => FACT: cart | mass | 10
+the cart moves at speed 3 => FACT: cart | speed | 3
+the ball has mass 1 => FACT: ball | mass | 1
+the ball moves at speed 4 => FACT: ball | speed | 4
+the stone has mass 6 => FACT: stone | mass | 6
+the stone moves at speed 1 => FACT: stone | speed | 1
+the dog has mass 20 => FACT: dog | mass | 20
+the dog moves at speed 5 => FACT: dog | speed | 5
+the cat has mass 4 => FACT: cat | mass | 4
+the cat moves at speed 6 => FACT: cat | speed | 6
+the bird has mass 1 => FACT: bird | mass | 1
+the bird moves at speed 8 => FACT: bird | speed | 8
+the fish has mass 2 => FACT: fish | mass | 2
+the fish moves at speed 3 => FACT: fish | speed | 3
+the water has temperature 25 => FACT: water | temperature | 25
+the ice has temperature -2 => FACT: ice | temperature | -2
+the air has temperature 20 => FACT: air | temperature | 20
+the soup has temperature 60 => FACT: soup | temperature | 60
+the pot has mass 2 => FACT: pot | mass | 2
+the pan has mass 3 => FACT: pan | mass | 3
+the egg has mass 1 => FACT: egg | mass | 1
+the bread has mass 1 => FACT: bread | mass | 1
+the apple has mass 1 => FACT: apple | mass | 1
+the orange has mass 1 => FACT: orange | mass | 1
+the table has mass 15 => FACT: table | mass | 15
+the chair has mass 7 => FACT: chair | mass | 7
+the tree has height 8 => FACT: tree | height | 8
+the plant has height 1 => FACT: plant | height | 1
+the flower has height 1 => FACT: flower | height | 1
+the road has length 100 => FACT: road | length | 100
+the rope has length 5 => FACT: rope | length | 5
+the stick has length 2 => FACT: stick | length | 2
+the car moves at speed 20 => FACT: car | speed | 20
+the car has mass 1000 => FACT: car | mass | 1000
+the bicycle moves at speed 10 => FACT: bicycle | speed | 10
+the bicycle has mass 15 => FACT: bicycle | mass | 15
+the wind moves at speed 12 => FACT: wind | speed | 12
+the rain has rate 4 => FACT: rain | rate | 4
+the cloud has height 500 => FACT: cloud | height | 500
+the sun has temperature 5500 => FACT: sun | temperature | 5500
+the moon has distance 384400 => FACT: moon | distance | 384400
+the milk has temperature 8 => FACT: milk | temperature | 8
+the tea has temperature 70 => FACT: tea | temperature | 70
+the coffee has temperature 75 => FACT: coffee | temperature | 75
+the sugar has mass 1 => FACT: sugar | mass | 1
+the salt has mass 1 => FACT: salt | mass | 1
+the oxygen has mass 16 => FACT: oxygen | mass | 16
+the hydrogen has mass 1 => FACT: hydrogen | mass | 1
+the carbon has mass 12 => FACT: carbon | mass | 12
+the iron has mass 56 => FACT: iron | mass | 56
+the copper has mass 64 => FACT: copper | mass | 64
+the book has mass 2 => FACT: book | mass | 2
+the pencil has mass 1 => FACT: pencil | mass | 1
+the cup has mass 1 => FACT: cup | mass | 1
+the bottle has mass 1 => FACT: bottle | mass | 1
+the door has mass 30 => FACT: door | mass | 30
+the window has mass 12 => FACT: window | mass | 12
+the clock has mass 2 => FACT: clock | mass | 2
+
+force equals mass times acceleration => LAW: force = mass * acceleration
+distance equals speed times time => LAW: distance = speed * time
+density equals mass divided by volume => LAW: density = mass / volume
+momentum equals mass times speed => LAW: momentum = mass * speed
+work equals force times distance => LAW: work = force * distance
+power equals work divided by time => LAW: power = work / time
+average_speed equals distance divided by time => LAW: average_speed = distance / time
+volume equals mass divided by density => LAW: volume = mass / density
+time equals distance divided by speed => LAW: time = distance / speed
+kinetic_energy equals mass times speed times speed divided by 2 => LAW: kinetic_energy = mass * speed * speed / 2
+perimeter equals length * 4 => LAW: perimeter = length * 4
+area equals length * length => LAW: area = length * length
+total_mass equals mass + mass2 => LAW: total_mass = mass + mass2
+remaining_mass equals mass - lost_mass => LAW: remaining_mass = mass - lost_mass
+new_speed equals speed + acceleration => LAW: new_speed = speed + acceleration
+heat_change equals mass * temperature_change => LAW: heat_change = mass * temperature_change
+weight equals mass * gravity => LAW: weight = mass * gravity
+pressure equals force / area => LAW: pressure = force / area
+current equals voltage / resistance => LAW: current = voltage / resistance
+charge equals current * time => LAW: charge = current * time
+frequency equals 1 / period => LAW: frequency = 1 / period
+wave_speed equals frequency * wavelength => LAW: wave_speed = frequency * wavelength
+concentration equals mass / volume => LAW: concentration = mass / volume
+stretch_ratio equals length / original_length => LAW: stretch_ratio = length / original_length
+temperature_change equals final_temperature - initial_temperature => LAW: temperature_change = final_temperature - initial_temperature
+the dog ate the bread => EVENT: eat | dog | bread | past | +
+the cat ate the fish => EVENT: eat | cat | fish | past | +
+the bird ate the seed => EVENT: eat | bird | seed | past | +
+the fish did not eat the bread => EVENT: eat | fish | bread | past | -
+the dog eats the bread => EVENT: eat | dog | bread | present | +
+the cat eats the fish => EVENT: eat | cat | fish | present | +
+the bird will eat the seed => EVENT: eat | bird | seed | future | +
+the dog chased the cat => EVENT: chase | dog | cat | past | +
+the cat chased the mouse => EVENT: chase | cat | mouse | past | +
+the dog did not chase the bird => EVENT: chase | dog | bird | past | -
+the dog chases the cat => EVENT: chase | dog | cat | present | +
+the cat will chase the mouse => EVENT: chase | cat | mouse | future | +
+the bird flew => EVENT: fly | bird |  | past | +
+the bird flies => EVENT: fly | bird |  | present | +
+the bird will fly => EVENT: fly | bird |  | future | +
+the fish swam => EVENT: swim | fish |  | past | +
+the fish swims => EVENT: swim | fish |  | present | +
+the fish will swim => EVENT: swim | fish |  | future | +
+the dog ran => EVENT: run | dog |  | past | +
+the cat ran => EVENT: run | cat |  | past | +
+the dog runs => EVENT: run | dog |  | present | +
+the cat will run => EVENT: run | cat |  | future | +
+the boy pushed the cart => EVENT: push | boy | cart | past | +
+the girl pushed the box => EVENT: push | girl | box | past | +
+the boy pushes the cart => EVENT: push | boy | cart | present | +
+the girl will push the box => EVENT: push | girl | box | future | +
+the boy pulled the rope => EVENT: pull | boy | rope | past | +
+the girl pulled the door => EVENT: pull | girl | door | past | +
+the boy pulls the rope => EVENT: pull | boy | rope | present | +
+the girl will pull the door => EVENT: pull | girl | door | future | +
+the cook heated the soup => EVENT: heat | cook | soup | past | +
+the cook heated the water => EVENT: heat | cook | water | past | +
+the cook heats the soup => EVENT: heat | cook | soup | present | +
+the cook will heat the water => EVENT: heat | cook | water | future | +
+the cook mixed the soup => EVENT: mix | cook | soup | past | +
+the cook mixed the tea => EVENT: mix | cook | tea | past | +
+the cook mixes the soup => EVENT: mix | cook | soup | present | +
+the cook will mix the tea => EVENT: mix | cook | tea | future | +
+the rain fell => EVENT: fall | rain |  | past | +
+the rain falls => EVENT: fall | rain |  | present | +
+the rain will fall => EVENT: fall | rain |  | future | +
+the wind moved => EVENT: move | wind |  | past | +
+the car moved => EVENT: move | car |  | past | +
+the box moved => EVENT: move | box |  | past | +
+the wind moves => EVENT: move | wind |  | present | +
+the car moves => EVENT: move | car |  | present | +
+the box will move => EVENT: move | box |  | future | +
+the sun warmed the air => EVENT: warm | sun | air | past | +
+the sun warms the air => EVENT: warm | sun | air | present | +
+the sun will warm the air => EVENT: warm | sun | air | future | +
+the water cooled => EVENT: cool | water |  | past | +
+the soup cooled => EVENT: cool | soup |  | past | +
+the water cools => EVENT: cool | water |  | present | +
+the soup will cool => EVENT: cool | soup |  | future | +
+the boy opened the door => EVENT: open | boy | door | past | +
+the girl opened the window => EVENT: open | girl | window | past | +
+the boy opens the door => EVENT: open | boy | door | present | +
+the girl will open the window => EVENT: open | girl | window | future | +
+the boy closed the door => EVENT: close | boy | door | past | +
+the girl closed the window => EVENT: close | girl | window | past | +
+the boy closes the door => EVENT: close | boy | door | present | +
+the girl will close the window => EVENT: close | girl | window | future | +
+the boy carried the book => EVENT: carry | boy | book | past | +
+the girl carried the cup => EVENT: carry | girl | cup | past | +
+the boy carries the book => EVENT: carry | boy | book | present | +
+the girl will carry the cup => EVENT: carry | girl | cup | future | +
+the plant grew => EVENT: grow | plant |  | past | +
+the tree grew => EVENT: grow | tree |  | past | +
+the plant grows => EVENT: grow | plant |  | present | +
+the tree will grow => EVENT: grow | tree |  | future | +
+the boy washed the cup => EVENT: wash | boy | cup | past | +
+the girl washed the plate => EVENT: wash | girl | plate | past | +
+the boy washes the cup => EVENT: wash | boy | cup | present | +
+the girl will wash the plate => EVENT: wash | girl | plate | future | +
+the dog barked => EVENT: bark | dog |  | past | +
+the dog barks => EVENT: bark | dog |  | present | +
+the dog will bark => EVENT: bark | dog |  | future | +
+the cat slept => EVENT: sleep | cat |  | past | +
+the cat sleeps => EVENT: sleep | cat |  | present | +
+the cat will sleep => EVENT: sleep | cat |  | future |
+ISA: dog | mammal
+ISA: cat | mammal
+ISA: bird | animal
+ISA: fish | animal
+ISA: mouse | mammal
+ISA: mammal | animal
+ISA: animal | living_thing
+ISA: tree | plant
+ISA: plant | living_thing
+ISA: flower | plant
+ISA: seed | plant_part
+ISA: plant_part | object
+ISA: boy | person
+ISA: girl | person
+ISA: cook | person
+ISA: person | living_thing
+ISA: bread | food
+ISA: soup | food
+ISA: apple | food
+ISA: orange | food
+ISA: egg | food
+ISA: food | object
+ISA: tea | drink
+ISA: coffee | drink
+ISA: milk | drink
+ISA: drink | object
+ISA: water | liquid
+ISA: liquid | object
+ISA: rain | weather
+ISA: wind | weather
+ISA: cloud | weather
+ISA: weather | object
+ISA: sun | star
+ISA: moon | natural_object
+ISA: star | natural_object
+ISA: natural_object | object
+ISA: box | object
+ISA: cart | object
+ISA: ball | object
+ISA: stone | mineral
+ISA: mineral | object
+ISA: car | vehicle
+ISA: bicycle | vehicle
+ISA: vehicle | object
+ISA: rope | object
+ISA: stick | object
+ISA: table | object
+ISA: chair | object
+ISA: door | object
+ISA: window | object
+ISA: book | object
+ISA: cup | object
+ISA: plate | object
+ISA: bottle | object
+ISA: pencil | object
+
+MORPH: eat | ate | eats
+MORPH: chase | chased | chases
+MORPH: fly | flew | flies
+MORPH: swim | swam | swims
+MORPH: run | ran | runs
+MORPH: push | pushed | pushes
+MORPH: pull | pulled | pulls
+MORPH: heat | heated | heats
+MORPH: mix | mixed | mixes
+MORPH: fall | fell | falls
+MORPH: move | moved | moves
+MORPH: warm | warmed | warms
+MORPH: cool | cooled | cools
+MORPH: open | opened | opens
+MORPH: close | closed | closes
+MORPH: carry | carried | carries
+MORPH: grow | grew | grows
+MORPH: wash | washed | washes
+MORPH: bark | barked | barks
+MORPH: sleep | slept | sleeps
+MORPH: walk | walked | walks
+MORPH: jump | jumped | jumps
+MORPH: sit | sat | sits
+MORPH: stand | stood | stands
+MORPH: look | looked | looks
+MORPH: hold | held | holds
+MORPH: drop | dropped | drops
+MORPH: cut | cut | cuts
+MORPH: boil | boiled | boils
+MORPH: drink | drank | drinks
+
+SEQ: the dog chased the cat
+SEQ: the cat ran because the dog chased it
+SEQ: then the dog barked
+
+SEQ: the cook heated the soup
+SEQ: the cook mixed the soup
+SEQ: then the boy ate the soup
+
+SEQ: the bird flew
+SEQ: the bird found a seed
+SEQ: then the bird ate the seed
+
+SEQ: the rain fell
+SEQ: the road became wet
+SEQ: then the car moved slowly
+
+SEQ: the boy opened the door
+SEQ: the girl carried the box
+SEQ: then the boy closed the door
+
+SEQ: the fish swam
+SEQ: the bird flew over the water
+SEQ: then the fish swam away
+
+SEQ: the plant grew
+SEQ: the flower opened
+SEQ: then the bird landed nearby
+
+SEQ: the girl pulled the rope
+SEQ: the box moved
+SEQ: then the girl smiled
+
+SEQ: the boy washed the cup
+SEQ: the cook filled the cup with tea
+SEQ: then the boy drank the tea
+
+SEQ: the cat slept
+SEQ: the dog barked
+SEQ: then the cat woke
+
+SEQ: the wind moved
+SEQ: the cloud moved
+SEQ: then the rain fell
+
+SEQ: the cook boiled the water
+SEQ: the cook made tea
+SEQ: then the girl drank the tea
+
+SEQ: the car moved
+SEQ: the car stopped
+SEQ: then the boy opened the door
+
+SEQ: the dog ate the bread
+SEQ: the dog drank water
+SEQ: then the dog slept
+
+SEQ: the boy pushed the cart
+SEQ: the cart moved
+SEQ: then the boy stopped pushing
+the boy walked => EVENT: walk | boy |  | past | +
+the girl walked => EVENT: walk | girl |  | past | +
+the boy walks => EVENT: walk | boy |  | present | +
+the girl will walk => EVENT: walk | girl |  | future | +
+the dog jumped => EVENT: jump | dog |  | past | +
+the cat jumped => EVENT: jump | cat |  | past | +
+the dog jumps => EVENT: jump | dog |  | present | +
+the cat will jump => EVENT: jump | cat |  | future | +
+the boy sat => EVENT: sit | boy |  | past | +
+the girl sat => EVENT: sit | girl |  | past | +
+the boy sits => EVENT: sit | boy |  | present | +
+the girl will sit => EVENT: sit | girl |  | future | +
+the boy stood => EVENT: stand | boy |  | past | +
+the girl stood => EVENT: stand | girl |  | past | +
+the boy stands => EVENT: stand | boy |  | present | +
+the girl will stand => EVENT: stand | girl |  | future | +
+the boy looked at the tree => EVENT: look | boy | tree | past | +
+the girl looked at the bird => EVENT: look | girl | bird | past | +
+the boy looks at the tree => EVENT: look | boy | tree | present | +
+the girl will look at the bird => EVENT: look | girl | bird | future | +
+the boy held the book => EVENT: hold | boy | book | past | +
+the girl held the cup => EVENT: hold | girl | cup | past | +
+the boy holds the book => EVENT: hold | boy | book | present | +
+the girl will hold the cup => EVENT: hold | girl | cup | future | +
+the boy dropped the ball => EVENT: drop | boy | ball | past | +
+the girl dropped the pencil => EVENT: drop | girl | pencil | past | +
+the boy drops the ball => EVENT: drop | boy | ball | present | +
+the girl will drop the pencil => EVENT: drop | girl | pencil | future | +
+the cook cut the bread => EVENT: cut | cook | bread | past | +
+the cook cut the apple => EVENT: cut | cook | apple | past | +
+the cook cuts the bread => EVENT: cut | cook | bread | present | +
+the cook will cut the apple => EVENT: cut | cook | apple | future | +
+the cook boiled the water => EVENT: boil | cook | water | past | +
+the cook boils the water => EVENT: boil | cook | water | present | +
+the cook will boil the water => EVENT: boil | cook | water | future | +
+the boy drank the tea => EVENT: drink | boy | tea | past | +
+the girl drank the milk => EVENT: drink | girl | milk | past | +
+the boy drinks the tea => EVENT: drink | boy | tea | present | +
+the girl will drink the milk => EVENT: drink | girl | milk | future | +
+
+ISA: air | object
+ISA: ice | mineral
+ISA: oxygen | element
+ISA: hydrogen | element
+ISA: carbon | element
+ISA: iron | element
+ISA: copper | element
+ISA: element | mineral
+ISA: clock | object
+ISA: road | object
+ISA: pot | object
+ISA: pan | object
+ISA: sugar | food
+ISA: salt | mineral
+ISA: living_thing | object
+
+SEQ: the boy held the ball
+SEQ: the boy dropped the ball
+SEQ: then the ball moved
+
+SEQ: the cook cut the bread
+SEQ: the boy ate the bread
+SEQ: then the boy drank tea
+
+SEQ: the bird flew to the tree
+SEQ: the bird sat on the tree
+SEQ: then the bird slept
+
+SEQ: the girl walked to the door
+SEQ: the girl opened the door
+SEQ: then the girl entered
+
+SEQ: the wind moved
+SEQ: the tree moved
+SEQ: then the bird flew away
