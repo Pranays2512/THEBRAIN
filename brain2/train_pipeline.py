@@ -33,6 +33,7 @@ import synth_engine as SE
 from neural_lm import NeuralLM
 
 
+import json
 import re
 
 TOPICS = ["speed", "mass", "force", "energy", "gravity", "momentum", "acceleration", "heat",
@@ -55,12 +56,15 @@ def _clean_sentences(text):
 class UnifiedTrainer:
     def __init__(self, corpus=None, use_teacher=False, seeds=None,
                  teacher_model="qwen3-coder:480b-cloud", lm_epochs=120,
-                 lm_dim=128, lm_layers=2, lm_ctx=32):
+                 lm_dim=128, lm_layers=2, lm_ctx=32, refresh=False,
+                 cache_path=os.path.join("trained", "teacher_cache.json")):
         self.corpus = list(corpus or CE.CORPUS)
         self.use_teacher = use_teacher
         self.seeds = seeds or ("speed", "mass", "force", "energy")
         self.teacher_model = teacher_model
         self.lm_epochs, self.lm_dim, self.lm_layers, self.lm_ctx = lm_epochs, lm_dim, lm_layers, lm_ctx
+        self.refresh = refresh            # re-query the teacher even if a cache entry exists
+        self.cache_path = cache_path      # teacher output cached here: teach ONCE, scale offline
         self.report = {}
         import knowledge_distill as KD
         from means_ends import PolicyMemory
@@ -76,28 +80,57 @@ class UnifiedTrainer:
     #     brain learns the STRUCTURE (facts + VERIFIED laws); the student LM learns the PARSING
     #     itself (map a sentence to its structured form). The student's whole job is parsing —
     #     text -> the structure the symbolic core verifies — so it trains on parse pairs only.
+    _PROMPT = ("For the topic '%s', output ONLY lines of the form  <sentence> => <structure>  where\n"
+               "structure is  FACT: object | property | number   or   LAW: quantity = expression\n"
+               "(expression uses the properties and + - * / and numbers). Use one object per line.\n"
+               "Example:  the box has mass 5 => FACT: box | mass | 5\n"
+               "Give 12-15 such lines. Vary the object and the numbers across lines. No prose.")
+
+    def _teach_topic(self, teacher, topic):
+        """One teacher call -> {'pairs':[sentence=>structure], 'structs':[structure]}."""
+        pairs, structs = [], []
+        for ln in teacher.complete(self._PROMPT % topic).splitlines():
+            if "=>" not in ln:
+                continue
+            left, right = (x.strip() for x in ln.split("=>", 1))
+            if len(left.split()) >= 3 and (right.startswith("FACT:") or right.startswith("LAW:")):
+                pairs.append("%s => %s" % (left.lower(), right))
+                structs.append(right)
+        return {"pairs": pairs, "structs": structs}
+
+    def _load_cache(self):
+        if os.path.exists(self.cache_path):
+            with open(self.cache_path) as fh:
+                return json.load(fh)
+        return {}
+
     def stage_teach_knowledge(self):
-        if not self.use_teacher:
-            return
-        from llm_adapter import OllamaClient, SafeClient
+        """Cache-first + resumable. Teacher is queried ONLY for topics missing from the cache
+        (or all, if refresh); each topic is written back immediately so a slow/rate-limited
+        run can be killed and resumed without losing progress. With a full cache this makes
+        zero teacher calls, so scaling the model (dim/layers/epochs) is a cheap offline loop."""
         import knowledge_distill as KD
-        teacher = SafeClient(OllamaClient(self.teacher_model))
-        prompt = ("For the topic '%s', output ONLY lines of the form  <sentence> => <structure>  where\n"
-                  "structure is  FACT: object | property | number   or   LAW: quantity = expression\n"
-                  "(expression uses the properties and + - * / and numbers). Use one object.\n"
-                  "Example:  the box has mass 5 => FACT: box | mass | 5\n"
-                  "Give 6-8 such lines, no prose.")
+        cache = self._load_cache()
+        teacher = None
+        need = self.refresh or any(t not in cache for t in self.seeds)
+        if need and self.use_teacher:
+            from llm_adapter import OllamaClient, SafeClient
+            teacher = SafeClient(OllamaClient(self.teacher_model))
         parse_pairs, struct_lines = [], []
         for topic in self.seeds:
-            raw = teacher.complete(prompt % topic)
-            for ln in raw.splitlines():
-                if "=>" not in ln:
-                    continue
-                left, right = ln.split("=>", 1)
-                left, right = left.strip(), right.strip()
-                if len(left.split()) >= 3 and (right.startswith("FACT:") or right.startswith("LAW:")):
-                    parse_pairs.append("%s => %s" % (left.lower(), right))  # STUDENT: the parsing
-                    struct_lines.append(right)                              # BRAIN: the structure
+            if teacher is not None and (self.refresh or topic not in cache):
+                cache[topic] = self._teach_topic(teacher, topic)
+                os.makedirs(os.path.dirname(self.cache_path) or ".", exist_ok=True)
+                with open(self.cache_path, "w") as fh:          # incremental: survive a kill
+                    json.dump(cache, fh, indent=1)
+            entry = cache.get(topic)
+            if not entry:
+                continue
+            parse_pairs += entry["pairs"]
+            struct_lines += entry["structs"]
+        self.report["teacher_calls"] = 0 if teacher is None else sum(
+            1 for t in self.seeds if self.refresh or t in cache)
+        self.report["cache_topics"] = len([t for t in self.seeds if t in cache])
         # BRAIN learns the structure (facts taught, laws verified before admit)
         f, l, _ = KD.parse_teacher("\n".join(struct_lines))
         adm, rej = KD.teach(self.fkb, self.mem, f, l)
@@ -195,7 +228,9 @@ class UnifiedTrainer:
         self.report["verified_answers"] = shown or ["(none computed)"]
 
     def run(self, tasks):
-        if self.use_teacher:
+        # teacher OR a cached teach set -> the knowledge/parse path (cache lets us train from
+        # a prior teach without re-querying); otherwise the plain distill corpus.
+        if self.use_teacher or os.path.exists(self.cache_path):
             self.stage_teach_knowledge()   # teacher parses -> brain(structure) + student(parsing)
         else:
             self.stage_distill()
@@ -217,14 +252,19 @@ def _demo(real=False):
     print("=== train_pipeline — %s run (brain + student, one pass) ===\n"
           % ("REAL (qwen-coder teacher, scaled)" if real else "tiny wiring proof"))
     if real:
-        t = UnifiedTrainer(use_teacher=True, seeds=TOPICS,
-                           lm_epochs=250, lm_dim=256, lm_layers=4, lm_ctx=48)
+        # scale knobs (env-overridable): teach ONCE into the cache, then rerun to scale the
+        # model for free. LM_DIM/LM_LAYERS/LM_CTX/LM_EPOCHS tune the owned Transformer.
+        cfg = dict(lm_dim=int(os.environ.get("LM_DIM", 384)),
+                   lm_layers=int(os.environ.get("LM_LAYERS", 6)),
+                   lm_ctx=int(os.environ.get("LM_CTX", 64)),
+                   lm_epochs=int(os.environ.get("LM_EPOCHS", 300)))
+        t = UnifiedTrainer(use_teacher=True, seeds=TOPICS, refresh="--refresh" in sys.argv, **cfg)
     else:
         t = UnifiedTrainer(use_teacher=False)
     rep = t.run(tasks)
-    for k in ["parse_pairs", "facts_learned", "laws_admitted", "laws_rejected",
-              "verified_answers", "corpus_sentences", "lm_backend", "lm_vocab", "lm_sample",
-              "brain_trained", "grounding_acc", "proposer_attempts"]:
+    for k in ["cache_topics", "teacher_calls", "parse_pairs", "facts_learned", "laws_admitted",
+              "laws_rejected", "verified_answers", "corpus_sentences", "lm_backend", "lm_vocab",
+              "lm_sample", "brain_trained", "grounding_acc", "proposer_attempts"]:
         if k in rep:
             print("  %-18s %s" % (k, rep.get(k)))
     print("\n  STUDENT (owned LM) + BRAIN (SOM/predictor) + grounding + proposer all trained from")
@@ -233,5 +273,19 @@ def _demo(real=False):
     print("  a large corpus, more epochs, a GPU. The pipeline is connected; only scale changes.")
 
 
+def _cache_only():
+    """Teacher phase ONLY: build/extend trained/teacher_cache.json, resumable. Run this
+    (optionally in the background) so the slow/rate-limited qwen-coder calls happen once and
+    survive interruption; then `--real` trains from the cache with zero teacher calls."""
+    t = UnifiedTrainer(use_teacher=True, seeds=TOPICS, refresh="--refresh" in sys.argv)
+    t.stage_teach_knowledge()
+    print("cache: %d/%d topics | facts=%s laws=%s -> %s" % (
+        t.report.get("cache_topics", 0), len(TOPICS), t.report.get("facts_learned"),
+        t.report.get("laws_admitted"), t.cache_path))
+
+
 if __name__ == "__main__":
-    _demo(real="--real" in sys.argv)
+    if "--cache-only" in sys.argv:
+        _cache_only()
+    else:
+        _demo(real="--real" in sys.argv)

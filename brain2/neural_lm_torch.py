@@ -78,8 +78,12 @@ class NeuralLMTorch:
         lossf = nn.CrossEntropyLoss()
         self.model.train()
         n = X.size(0)
+        import time as _time
+        _t0 = _time.time()
+        _every = max(1, self.epochs // 10)
         for ep in range(self.epochs):
             perm = torch.randperm(n, device=self.device)
+            _el = 0.0
             for i in range(0, n, self.batch):          # MINI-BATCH: caps memory regardless of corpus
                 idx = perm[i:i + self.batch]
                 logits = self.model(X[idx])[:, -1, :]  # predict next from last position
@@ -87,6 +91,10 @@ class NeuralLMTorch:
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
+                _el = loss.item()
+            if ep % _every == 0 or ep == self.epochs - 1:
+                print("    epoch %d/%d  loss %.3f  (%.1fs)" % (
+                    ep + 1, self.epochs, _el, _time.time() - _t0), flush=True)
         self.model.eval()
         self._pad = pad
         return self
