@@ -288,7 +288,13 @@ here, crisp all the way, built in dependency order:
   appraisal catches negation, and compute/factual/event/code all still verify — perceive → feel
   → answer in one call. (The C++ Brain's rich `PerceiveResult` scalars are side-effecting; the
   front reads robust projections for now.) This closes the front half of the "two halves +
-  membrane" — previously joined only in `train_pipeline`.
+  membrane" — previously joined only in `train_pipeline`. `sense()` also carries
+  **self-extension + verification faculties** that were built-but-orphaned, now wired:
+  `self_check()` (synthesize a task's invariants and audit their health via `synth_invariant`
+  + `verifier_monitor`), `self_extend()` (autonomous conjecture→sandbox-test→bank verified
+  laws via `autonomous_loop` — it re-learned the shared shape `0.5·a·b²` across energy gaps),
+  and a `CheckLibrary` of code-checks learned from breaks. The 4 formerly-orphaned
+  self-improve/verifier components are now reachable from the front.
 - **Wired into the front** (`whole_brain.ask`): a declarative (not a question) now routes to
   `EventReader` — the running brain reads prose into verified events through the same membrane
   as compute. "the dog ate the fish" → *learned + verified*; "the dog did not eat the fish" →

@@ -6,7 +6,11 @@ VERDICT
 ------------------------------------------------------------------------
 The brain's ESSENTIAL loops are wired and CLOSED (front, open-language,
 training, guards). But NOT everything ever built is in the loop: of 169 .py
-files, 75 are USED (reachable from an entry point) and 94 are ORPHANED.
+files, 79 are USED (reachable from an entry point) and 90 are ORPHANED.
+(Update: the 4 documented self-improve/verifier components — autonomous_loop,
+verifier_monitor, check_library, synth_invariant — are now wired into
+whole_brain via self_extend()/self_check()/introspect(), so they moved from
+ORPHANED to USED. 90 orphans remain: superseded alternates + standalone tools.)
 The orphans are superseded alternates, documented-but-unwired components,
 and standalone tools — see the ORPHANED section for the honest breakdown.
 

@@ -109,6 +109,13 @@ class WholeBrain:
             self._perceive_mode = brain2.ErrorMode.FULL
         except Exception:
             self.brain = None
+        # SELF-EXTENSION + VERIFICATION faculties (were built + tested but orphaned; wired now):
+        # a persistent library of code checks learned from breaks.
+        try:
+            from check_library import CheckLibrary
+            self.checks = CheckLibrary(path=os.path.join(os.path.dirname(__file__), "brain_store"))
+        except Exception:
+            self.checks = None
         import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
@@ -208,6 +215,44 @@ class WholeBrain:
         perc = self._perceive(text)
         kind, msg, ok = self.ask(text)
         return {"perception": perc, "answer": {"kind": kind, "msg": msg, "verified": ok}}
+
+    # ── self-extension + verification faculties (formerly orphaned, now wired in) ──
+    def self_check(self):
+        """Verification-health introspection: synthesize a task's invariants and audit them —
+        are they catching wrong answers, or spuriously rejecting correct ones? Wires
+        synth_invariant + verifier_monitor + invariant_miner into the front."""
+        import synth_invariant as SI, verifier_monitor as VM
+        mine, hold = [0, 1, 2, 3, 4], [5, 6, 7]
+        inv = SI.task_invariants(math.factorial, mine, hold)
+        correct = [(x, math.factorial(x)) for x in mine + hold]
+        wrong = [lambda n: n * n, lambda n: n + 1]                 # known-wrong candidates
+        report = VM.audit(inv, correct, wrong, list(range(8)))
+        return {"task": "factorial", "invariants": sorted(inv),
+                "health": {k: v[0] for k, v in report.items()}}
+
+    def self_extend(self):
+        """Autonomous self-improvement: conjecture -> sandbox-test against a trusted principle
+        -> bank verified laws, learning which shapes work. Wires autonomous_loop into the
+        front. The membrane holds: only sandbox-verified conjectures are banked."""
+        import autonomous_loop as AL
+        prop, banked, total = AL.Proposer(), {}, 0
+        for gap, true_law in AL.GAPS:
+            for name, fn, shape in prop.order():
+                total += 1
+                if AL.sandbox_test(fn, true_law):
+                    banked[gap] = name
+                    prop.reward_shape(shape)
+                    break
+        return {"banked": banked, "conjectures_tested": total}
+
+    def introspect(self):
+        """The whole brain's self-report: known symbols, learned verbs, cached code checks,
+        and live verification health — the faculties that were orphaned, now reachable."""
+        base = {"eat", "chase", "like", "see", "run", "catch", "drink"}
+        return {"entities": sorted(self.entities), "relations": sorted(self.relations),
+                "verbs_learned": sorted(self.reader.verbs - base),
+                "code_checks": (dict(self.checks.inv) if self.checks else {}),
+                "verification": self.self_check()}
 
     def _code(self, toks):
         name = next((t for t in toks if t in CODE_TASKS), None)
