@@ -261,8 +261,9 @@ ISA: mammal | animal
 MORPH: teach | taught | teaches
 SEQ: the dog chased the cat"""
 _bd = BrainData.parse(_SAMPLE)
-ok("loader counts by tag", _bd.report() == {"facts": 1, "laws": 1, "events": 2, "isa": 2,
-   "morph": 1, "sequences": 1, "units": 0, "questions": 0, "chains": 0, "parse_pairs": 4})
+ok("loader counts by tag", _bd.report() == {"facts": 1, "props": 0, "parts": 0, "laws": 1,
+   "events": 2, "isa": 2, "morph": 1, "sequences": 1, "units": 0, "questions": 0, "chains": 0,
+   "parse_pairs": 4})
 ok("loader event: negation parsed", _bd.events[1][1].polarity == NEG and _bd.events[1][1].verb == "eat")
 ok("loader grounds types from ISA", "animal" in (_bd.type_oracle()("dog") or frozenset()))
 ok("loader predictor learns transitions",

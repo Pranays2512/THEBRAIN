@@ -1,0 +1,71 @@
+PROMPT FOR EXTRACTING NCERT/CBSE BOOK TEXT -> brain training data (brain_data format).
+Paste this prompt, then paste the book's text. Save the LLM output per subject/grade, e.g.
+data/g1_science.txt, and train with:  train_from_data.py data/g1_science.txt --lm --brain
+Go grade 1 -> 12, subject by subject (curriculum order: the brain grounds each layer on the last).
+------------------------------------------------------------------------------------------
+
+You are EXTRACTING structured knowledge from a textbook page for a symbolic "brain" that
+learns facts, relations, processes, and language. You will be given a book's text. Output ONLY
+tagged data lines drawn STRICTLY from what the text states. Do NOT add outside knowledge, do
+NOT infer beyond the page — if the book doesn't say it, don't write it. One item per line. No
+prose, no markdown, no numbering. Use the book's own simple words; reuse the same words across
+lines. This is NCERT/CBSE material — extract at the grade's level.
+
+Map the book's content to these tags:
+
+FACT: object | property | number
+   (a MEASURED quantity the book gives)
+   ex:  FACT: water | boiling_point | 100     FACT: triangle | sides | 3
+
+PROP: object | property | value
+   (a QUALITATIVE property the book states — value is a word, not a number)
+   ex:  PROP: honey | taste | sweet     PROP: ice | state | solid     PROP: leaf | colour | green
+
+ISA: child | parent
+   (a classification / "is a kind of": build the chains the book gives)
+   ex:  ISA: cow | mammal     ISA: mammal | animal     ISA: rose | flower
+
+PART: whole | part
+   (a "has as a part" relation the book states)
+   ex:  PART: plant | root     PART: plant | stem     PART: body | heart
+
+EVENT: verb | agent | patient | tense | polarity(+/-)
+   (an action or process the book describes; verb LEMMA; blank patient if none)
+   ex:  EVENT: pump | heart | blood | present | +     EVENT: grow | plant |  | present | +
+
+SEQ: <sentence>
+   (an ordered process/story the book gives — a cycle, life-cycle, procedure, or narrative;
+    keep the book's order, one step per line, plain sentences)
+   ex:  SEQ: the water evaporates from the sea
+        SEQ: then the vapour forms clouds
+        SEQ: then the rain falls
+
+LAW: target = expression
+   (a formula/rule the book states, using + - * / over properties)
+   RULE: only if the text gives it; each input property should appear in a FACT.
+   ex:  LAW: area = length * breadth     LAW: speed = distance / time
+
+UNIT: property | M,L,T
+   (dimensions of a quantity used in a LAW: mass,length,time exponents)
+   ex:  UNIT: speed | 0,1,-1     UNIT: area | 0,2,0
+
+MORPH: lemma | past | present3sg
+   (for verbs the book uses — teaches the brain to speak correctly)
+   ex:  MORPH: grow | grew | grows     MORPH: pump | pumped | pumps
+
+ASK: entity | property
+   (a comprehension question the book/chapter asks, reduced to what is being asked about)
+   ex:  ASK: water | boiling_point     ASK: plant | root
+
+RULES:
+- EXTRACT, don't invent. Every line must be supported by the given text.
+- Prefer many small precise lines over few vague ones.
+- Every noun used in an EVENT/PART should get an ISA line if the book classifies it.
+- Every EVENT verb should get a MORPH line.
+- Keep vocabulary small and consistent with the book.
+- English/grammar chapters: MORPH for verbs, ISA for word categories (ISA: apple | noun),
+  PROP for word properties the lesson teaches.
+- Maths chapters: FACT (numbers/counts), LAW (formulas), UNIT (measures).
+- Story/history chapters: EVENT for what happened, SEQ for the order.
+
+Begin. I will paste the book text next. Output only the tagged data lines for it.

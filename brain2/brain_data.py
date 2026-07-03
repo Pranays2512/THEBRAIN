@@ -45,6 +45,8 @@ class BrainData:
         self.units = {}          # prop -> (M,L,T)   [UNIT]  (dimensional verifier)
         self.questions = []      # (sentence, {"entity","rel"})   [ASK]
         self.chains = []         # documented multi-step derivations   [CHAIN]
+        self.props = []          # (object, property, value_word)   [PROP]  qualitative facts
+        self.parts = []          # (whole, part)   [PART]  has-a relations
 
     # ── parse ────────────────────────────────────────────────────────────────
     @classmethod
@@ -72,6 +74,16 @@ class BrainData:
                         pass
             elif ln.startswith("CHAIN:"):
                 d.chains.append(ln[6:].strip())
+            elif ln.startswith("PROP:"):
+                p = [x.strip() for x in ln[5:].split("|")]
+                if len(p) == 3 and all(p):
+                    d.props.append((p[0], p[1], p[2]))
+                    d.parse_pairs.append("the %s %s is %s => PROP: %s | %s | %s"
+                                         % (p[0], p[1], p[2], p[0], p[1], p[2]))
+            elif ln.startswith("PART:"):
+                p = [x.strip() for x in ln[5:].split("|")]
+                if len(p) == 2 and all(p):
+                    d.parts.append((p[0], p[1]))
             elif ln.startswith("MORPH:"):
                 p = [x.strip() for x in ln[6:].split("|")]
                 if len(p) == 3 and p[0]:
@@ -152,8 +164,10 @@ class BrainData:
             structs.append(s)
         f, l, _ = KD.parse_teacher("\n".join(structs))
         adm, rej = KD.teach(fkb, mem, f, l)
-        return {"facts": len(f), "laws_admitted": len(adm), "laws_rejected": len(rej),
-                "dim_dropped": dim_dropped}
+        for obj, prop, val in self.props:          # qualitative facts stored directly (string vals)
+            fkb.learn(obj, prop, val)
+        return {"facts": len(f), "props": len(self.props), "laws_admitted": len(adm),
+                "laws_rejected": len(rej), "dim_dropped": dim_dropped}
 
     def train_predictor(self, predictor):
         """Feed the ordered EVENT stream so the predictor learns verb transitions."""
@@ -214,10 +228,11 @@ class BrainData:
         return res
 
     def report(self):
-        return {"facts": len(self.facts), "laws": len(self.laws), "events": len(self.events),
-                "isa": len(self.isa), "morph": len(self.morph), "sequences": len(self.sequences),
-                "units": len(self.units), "questions": len(self.questions),
-                "chains": len(self.chains), "parse_pairs": len(self.parse_pairs)}
+        return {"facts": len(self.facts), "props": len(self.props), "parts": len(self.parts),
+                "laws": len(self.laws), "events": len(self.events), "isa": len(self.isa),
+                "morph": len(self.morph), "sequences": len(self.sequences), "units": len(self.units),
+                "questions": len(self.questions), "chains": len(self.chains),
+                "parse_pairs": len(self.parse_pairs)}
 
 
 def _symbols(tree):
