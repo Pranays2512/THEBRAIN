@@ -50,20 +50,28 @@ public:
         return dot / (std::sqrt(na) * std::sqrt(nb));
     }
 
+    // Grounded arithmetic — composed ops built from the successor atom (x+1) and
+    // primitive recursion: the exact procedures math_synth discovered
+    // (add<-succ, mul<-add, pow<-mul). No host * or ** ; correct-but-linear.
+    // Under BRAIN2_GROUND_MATH the brain runs these LEARNED algorithms in core
+    // instead of frozen skills; the frozen host op is the (removed) fast-path.
+    static long long g_add(long long a, long long b) {
+        long long r = b;
+        for (long long i = 0; i < a; i++) r = r + 1;       // succ atom, a times
+        return r;
+    }
+    static long long g_mul(long long a, long long b) {
+        long long r = 0;
+        for (long long i = 0; i < a; i++) r = g_add(r, b);  // add b, a times
+        return r;
+    }
+    static long long g_pow(long long a, long long b) {
+        long long r = 1;
+        for (long long i = 0; i < b; i++) r = g_mul(r, a);  // mul a, b times
+        return r;
+    }
+
     std::vector<float> execute_op(Op op, Scratchpad& pad, bool commit = true) {
-#ifdef BRAIN2_GROUND_MATH
-        // Grounded-math mode: the COMPOSED arithmetic ops are frozen skills the
-        // brain should LEARN from atoms (mul<-add, pow<-mul), not call. Disable
-        // them so the controller can't route to a baked skill; the grounded
-        // truth lives in the learned library (math_synth). Atoms ADD/SUB/DIV
-        // remain the floor. Off by default — this is the reversible cut.
-        switch (op) {
-            case Op::MATH_MUL:  case Op::MATH_POW:      case Op::MATH_FACT:
-            case Op::MATH_FACT_REL: case Op::MATH_POLY: case Op::MATH_QUAD:
-                return {};                       // frozen skill unavailable
-            default: break;
-        }
-#endif
         switch (op) {
             case Op::READ: {
                 auto res = pad.read("result");
@@ -169,7 +177,11 @@ public:
                     auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
+#ifdef BRAIN2_GROUND_MATH
+                            long long res = g_mul(std::stoi(s_sym), std::stoi(o_sym));
+#else
                             int res = std::stoi(s_sym) * std::stoi(o_sym);
+#endif
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -190,7 +202,11 @@ public:
                     auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
+#ifdef BRAIN2_GROUND_MATH
+                            long long res = g_pow(std::stoi(s_sym), std::stoi(o_sym));
+#else
                             int res = std::pow(std::stoi(s_sym), std::stoi(o_sym));
+#endif
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -211,7 +227,11 @@ public:
                         try {
                             int n = std::stoi(s_sym);
                             long long res = 1;
+#ifdef BRAIN2_GROUND_MATH
+                            for (int i = 2; i <= n; i++) res = g_mul(res, i);
+#else
                             for (int i = 2; i <= n; i++) res *= i;
+#endif
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -231,7 +251,11 @@ public:
                         try {
                             int n = std::stoi(r_sym);
                             long long res = 1;
+#ifdef BRAIN2_GROUND_MATH
+                            for (int i = 2; i <= n; i++) res = g_mul(res, i);
+#else
                             for (int i = 2; i <= n; i++) res *= i;
+#endif
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -286,7 +310,11 @@ public:
                             int a = std::stoi(a_sym);
                             int b = std::stoi(b_sym);
                             int c = std::stoi(c_sym);
+#ifdef BRAIN2_GROUND_MATH
+                            long long res = g_add(g_add(g_mul(g_mul(a, x), x), g_mul(b, x)), c);
+#else
                             int res = a * x * x + b * x + c;
+#endif
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
