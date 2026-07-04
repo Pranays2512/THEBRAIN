@@ -51,6 +51,19 @@ public:
     }
 
     std::vector<float> execute_op(Op op, Scratchpad& pad, bool commit = true) {
+#ifdef BRAIN2_GROUND_MATH
+        // Grounded-math mode: the COMPOSED arithmetic ops are frozen skills the
+        // brain should LEARN from atoms (mul<-add, pow<-mul), not call. Disable
+        // them so the controller can't route to a baked skill; the grounded
+        // truth lives in the learned library (math_synth). Atoms ADD/SUB/DIV
+        // remain the floor. Off by default — this is the reversible cut.
+        switch (op) {
+            case Op::MATH_MUL:  case Op::MATH_POW:      case Op::MATH_FACT:
+            case Op::MATH_FACT_REL: case Op::MATH_POLY: case Op::MATH_QUAD:
+                return {};                       // frozen skill unavailable
+            default: break;
+        }
+#endif
         switch (op) {
             case Op::READ: {
                 auto res = pad.read("result");
