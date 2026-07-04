@@ -41,10 +41,21 @@ class SimpleKB:
         return self.facts.get((subj.lower(), rel.lower())), 1.0
 
 
+_SUP = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+        "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9"}
+
+
+def _desuper(s):
+    """Rewrite unicode superscript exponents to caret form: 2¹⁰ -> 2^10."""
+    return re.sub("[" + "".join(_SUP) + "]+",
+                  lambda m: "^" + "".join(_SUP[c] for c in m.group(0)), s)
+
+
 def infix_to_tree(s):
-    """Parse an infix expression ('mass * accel', '0.5 * m * v') to a nested-tuple tree."""
-    toks = re.findall(r"[a-zA-Z_]\w*|\d+\.?\d*|[+\-*/()]", s)
-    prec = {"+": 1, "-": 1, "*": 2, "/": 2}
+    """Parse an infix expression ('mass * accel', '0.5 * m * v', '2^10') to a tree."""
+    toks = re.findall(r"[a-zA-Z_]\w*|\d+\.?\d*|[+\-*/^()]", _desuper(s))
+    prec = {"+": 1, "-": 1, "*": 2, "/": 2, "^": 3}
+    right = {"^"}                              # power is right-associative
     out, ops = [], []
     for t in toks:
         if re.match(r"[a-zA-Z_]", t):
@@ -52,7 +63,9 @@ def infix_to_tree(s):
         elif re.match(r"\d", t):
             out.append(float(t) if "." in t else int(t))
         elif t in prec:
-            while ops and ops[-1] in prec and prec[ops[-1]] >= prec[t]:
+            while ops and ops[-1] in prec and (
+                    prec[ops[-1]] > prec[t]
+                    or (prec[ops[-1]] == prec[t] and t not in right)):
                 out.append(ops.pop())
             ops.append(t)
         elif t == "(":
@@ -100,10 +113,10 @@ def parse_teacher(text):
             continue
         m = re.match(r"FACT:\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(-?\d+\.?\d*)", ln)
         if m:
-            e = re.findall(r"[a-z_]+", m.group(1).lower())
-            r = re.findall(r"[a-z_]+", m.group(2).lower())
+            e = m.group(1).strip().lower()
+            r = m.group(2).strip().lower()
             if e and r:
-                facts.append((e[0], r[0], m.group(3)))
+                facts.append((e, r, m.group(3)))
             continue
         m = re.match(r"LAW:\s*([a-zA-Z_]\w*)\s*=\s*(.+)", ln)
         if m:
@@ -118,7 +131,54 @@ def parse_teacher(text):
 
 
 _OPS = {"+": lambda a, b: a + b, "-": lambda a, b: a - b,
-        "*": lambda a, b: a * b, "/": lambda a, b: a / b if b else 0.0}
+        "*": lambda a, b: a * b, "/": lambda a, b: a / b if b else 0.0,
+        "^": lambda a, b: a ** b}
+
+# ── learned arithmetic (grounded in succ/pred), lazily synthesised once ───────
+# The brain COMPUTES +,-,* with procedures it learned (math_synth), not host
+# operators. Only +,-,* on non-negative integers route to the learned library;
+# division / floats / negatives fall back to host (no learned div yet). Every
+# op records which path it took, so we can report how much runs on learned math.
+_LA = None
+_LA_FAILED = False
+ARITH_STATS = {"learned": 0, "host": 0}
+
+
+def _learned_lib():
+    global _LA, _LA_FAILED
+    if _LA is None and not _LA_FAILED:
+        try:
+            from math_synth import LearnedArithmetic
+            _LA = LearnedArithmetic()
+        except Exception:
+            _LA_FAILED = True
+    return _LA
+
+
+def reset_arith_stats():
+    ARITH_STATS["learned"] = ARITH_STATS["host"] = 0
+
+
+def _arith(op, a, b):
+    """Compute a op b. Route +,-,* on non-neg ints to LEARNED procedures; else host."""
+    la = _learned_lib()
+    is_nat = (la is not None and float(a).is_integer() and float(b).is_integer()
+              and a >= 0 and b >= 0)
+    if is_nat:
+        ia, ib = int(a), int(b)
+        name = {"+": "add", "*": "mul", "^": "pow"}.get(op)
+        if op == "-" and ia >= ib:                 # learned sub is truncated (monus)
+            name = "sub"
+        if name in la.lib:
+            try:
+                from math_synth import safe_call
+                val = safe_call(la.lib[name], ia, ib, budget=5_000_000)
+                ARITH_STATS["learned"] += 1
+                return float(val)
+            except Exception:                      # too big for grounded (WorkExceeded) → host
+                pass
+    ARITH_STATS["host"] += 1
+    return _OPS[op](a, b)
 
 
 def _eval(tree, env):
@@ -126,7 +186,7 @@ def _eval(tree, env):
         return env[tree]                    # KeyError if a var isn't a known fact -> caller guards
     if not isinstance(tree, tuple):
         return float(tree)
-    return _OPS[tree[0]](_eval(tree[1], env), _eval(tree[2], env))
+    return _arith(tree[0], _eval(tree[1], env), _eval(tree[2], env))
 
 
 def teach(fkb, mem, facts, laws):
