@@ -139,28 +139,31 @@ These aren't bugs to hide — they're the true shape of the system.
 ## Module wiring status (as of 2026-07-05)
 
 Import-reachability from the live entry points (`whole_brain`, `exam`, `train_pipeline`,
-`reading_loop`, `autonomous_loop`, `nl_front`): **126 modules, 64 wired (51%), 42 orphan
-(built, zero importers), 16 semi-wired (reachable only via tests).** A passing
+`reading_loop`, `autonomous_loop`, `nl_front`): **126 modules, 70 wired (56%).** A passing
 `__main__` demo is not a wire — the system's real behavior is only what the front reaches.
 
 **Wired into the live `ask()` path:** `reasoning_engine`, `means_ends`, `synth_engine`,
 `brain_store`, `appraisal_engine`, `reading_loop`, `type_oracle`, `verb_learn`,
 `event_*`, `mouth`, `synth_invariant`, `verifier_monitor`, `autonomous_loop`,
-`context_embed`, `check_library`, `+ C++ core`.
+`context_embed`, `check_library`, `+ C++ core`, and the **creativity faculties** (below).
 
-**Built + verified to run, NOT wired into the front (orphans):**
+**Creativity / origination — NOW WIRED** (`whole_brain` methods, membrane-gated):
+`curiosity_cross` (`cross_domain()`), `concept_blend` (`blend()`), `analogy_engine`
+(`analogize()`), `inductive_engine` (`induce()`), `learn_by_reading` (`read_to_law()`),
+composed in `create()`. The front reads episodes → originates verified rules → uses them.
+
+**Still orphaned (built + run, NOT wired):**
 
 | Group | Modules | Note |
 |---|---|---|
-| A. Creativity / origination | `curiosity_cross`, `curiosity_loop`, `analogy_engine`, `concept_blend`, `composable_proposer`, `online_proposer2`, `learned_guidance`, `learn_by_reading`, `inductive_engine`, `conjecture_sandbox` | all run; the highest-value wiring targets |
 | B. Alternate fronts | `brain_chat`, `chat`, `brain_repl`, `brain_session`, `math_chat`, `server`, `agent`, `brain_planner`, `planning_engine` | never chosen as THE front |
 | C. Grounding | `ground_blend`, `ground_numeric`, `ground_reason`, `ground_to_binding`, `crispify_bridge` | perception→symbol, disconnected |
 | D. Synthesis variants | `program_synth`, `synthesis_engine`, `loop_synth`, `loop_synth2`, `dp_greedy_synth`, `stress_synth`, `compositional` | likely superseded by `synth_engine`; audit + prune |
-| E. Language / memory | `semantic_memory`, `conceptnet_taxonomy`, `knowledge_pack`, `dual_process`, `dual_process_engine` | disconnected |
+| E. Search accelerators | `learned_guidance`, `composable_proposer`, `online_proposer2` | speed search; need synth backends to expose a prior hook (distinct refactor, not an ask()-path capability) |
+| F. Language / memory | `semantic_memory`, `conceptnet_taxonomy`, `knowledge_pack`, `dual_process`, `dual_process_engine` | disconnected |
 
 Regenerate: import-reachability BFS from the entry points over local imports
-(see the graphify graph at `../graphify-out/`). Closing the Group-A gap is
-integration work (wire the faculty into the front / a background loop), not training.
+(see the graphify graph at `../graphify-out/`, `graphify update .`).
 
 ---
 
