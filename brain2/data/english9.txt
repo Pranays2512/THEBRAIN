@@ -1,0 +1,4894 @@
+ASK: grandparent | technology
+ASK: trip | language spoken locally
+ASK: communication | management
+ISA: smartphone | technology
+ISA: online newspaper | newspaper
+ISA: internet | technology
+ISA: show | entertainment
+ISA: village | place
+ISA: north Karnataka | place
+ISA: grandparent | family member
+ISA: bus | transport
+ISA: paper | publication
+ISA: weekly magazine | magazine
+ISA: post | mail
+ISA: Triveni | writer
+ISA: Kannada | language
+ISA: Kashi Yatre | novel
+ISA: Karmaveera | weekly magazine
+ISA: Kashi | place
+ISA: Varanasi | place
+ISA: Lord Vishweshwara | deity
+ISA: orphan girl | girl
+ISA: grandmother | family member
+ISA: Krishtakka | grandmother
+ISA: temple courtyard | place
+ISA: wedding | event
+ISA: cousin | family member
+ISA: Avva | mother
+FACT: narrator | age | 12
+FACT: weekly magazine | arrival delay | 1 day
+FACT: grandmother | age | 62
+PROP: transport system | quality | poor
+PROP: Triveni | popularity | popular
+PROP: Triveni | writing | wonderful
+PROP: Triveni style | readability | easy
+PROP: Triveni style | quality | convincing
+PROP: stories | interest | interesting
+PROP: grandmother | literacy | illiterate
+PROP: grandmother | concentration | great
+PROP: grandmother | interest | greatest
+PROP: wedding | nature | great
+PROP: summer night | moon | full
+PROP: father | occupation | busy
+PROP: grandmother | appearance | good-looking
+PROP: grandmother | expression | worried
+PROP: grandmother | feeling | dependent
+PROP: grandmother | feeling | helpless
+PROP: family | status | well-off
+PROP: grandmother | determination | determined
+PROP: grandmother | student | wonderful
+EVENT: stay | narrator | village | past | +
+MORPH: stay | stayed | stays
+EVENT: get | family | morning papers | past | +
+MORPH: get | got | gets
+EVENT: wait | family | bus | past | +
+MORPH: wait | waited | waits
+EVENT: write | Triveni | stories | past | +
+MORPH: write | wrote | writes
+EVENT: deal | stories | complex psychological problems | past | +
+MORPH: deal | dealt | deals
+EVENT: die | Triveni |  | past | +
+MORPH: die | died | dies
+EVENT: appreciate | people | novels | present | +
+MORPH: appreciate | appreciated | appreciates
+EVENT: appear | Kashi Yatre | serial | past | +
+MORPH: appear | appeared | appears
+EVENT: believe | most Hindus | going to Kashi | present | +
+MORPH: believe | believed | believes
+EVENT: worship | people | Lord Vishweshwara | present | +
+MORPH: worship | worshipped | worships
+EVENT: give | old lady | savings | present | +
+MORPH: give | gave | gives
+EVENT: go | grandmother | school | past | -
+MORPH: go | went | goes
+EVENT: read | narrator | story | past | +
+MORPH: read | read | reads
+EVENT: repeat | grandmother | text | past | +
+MORPH: repeat | repeated | repeats
+EVENT: identify | grandmother | protagonist | past | +
+MORPH: identify | identified | identifies
+EVENT: insist | grandmother | narrator | past | +
+MORPH: insist | insisted | insists
+EVENT: join | grandmother | friends | past | +
+MORPH: join | joined | joins
+EVENT: discuss | grandmother | latest episode | past | +
+MORPH: discuss | discussed | discusses
+EVENT: go | narrator | wedding | past | +
+EVENT: enjoy | children | freedom | past | +
+MORPH: enjoy | enjoyed | enjoys
+EVENT: cry | grandmother |  | past | +
+MORPH: cry | cried | cries
+EVENT: nod | grandmother |  | past | +
+MORPH: nod | nodded | nods
+EVENT: touch | hands | forehead | past | +
+MORPH: touch | touched | touches
+EVENT: lose | grandmother | mother | past | +
+MORPH: lose | lost | loses
+EVENT: marry | father | again | past | +
+MORPH: marry | married | marries
+EVENT: consider | people | education for girls | past | -
+MORPH: consider | considered | considers
+EVENT: marry | grandmother |  | past | +
+EVENT: have | grandmother | children | past | +
+MORPH: have | had | has
+EVENT: regret | grandmother | not going to school | past | +
+MORPH: regret | regretted | regrets
+EVENT: study | children and grandchildren |  | past | +
+MORPH: study | studied | studies
+EVENT: decide | grandmother | learn Kannada alphabet | past | +
+MORPH: decide | decided | decides
+EVENT: laugh | narrator | grandmother | past | +
+MORPH: laugh | laughed | laughs
+EVENT: smile | grandmother |  | past | +
+MORPH: smile | smiled | smiles
+EVENT: overcome | person | obstacle | present | +
+MORPH: overcome | overcame | overcomes
+EVENT: start | narrator | tuition | past | +
+MORPH: start | started | starts
+EVENT: read | grandmother |  | past | +
+EVENT: repeat | grandmother |  | past | +
+EVENT: write | grandmother |  | past | +
+EVENT: recite | grandmother |  | past | +
+MORPH: recite | recited | recites
+SEQ: the narrator stayed in a village in north Karnataka with her grandparents
+SEQ: the family waited eagerly for the bus carrying papers, magazines and post
+SEQ: the narrator read each new episode of Kashi Yatre to her grandmother
+SEQ: the grandmother discussed the story with her friends
+SEQ: the narrator went to a wedding and stayed for a week
+SEQ: the grandmother could not read the new episode by herself
+SEQ: the grandmother decided to learn the Kannada alphabet
+SEQ: the narrator started teaching her grandmother
+SEQ: the grandmother read repeated wrote and recited every day
+EVENT: come | Dassara festival |  | past | +
+MORPH: come | came | comes
+EVENT: buy | narrator | Kashi Yatre | past | +
+MORPH: buy | bought | buys
+EVENT: publish | Kashi Yatre | novel | past | +
+MORPH: publish | published | publishes
+EVENT: call | grandmother | narrator | past | +
+MORPH: call | called | calls
+EVENT: make | grandmother | narrator sit on a stool | past | +
+MORPH: make | made | makes
+EVENT: gift | grandmother | frock | past | +
+MORPH: gift | gifted | gifts
+EVENT: bend | grandmother |  | past | +
+MORPH: bend | bent | bends
+EVENT: touch | grandmother | narrator's feet | past | +
+EVENT: consider | people | touching feet as a mark of respect | past | +
+EVENT: respect | teacher |  | present | +
+MORPH: respect | respected | respects
+EVENT: read | grandmother | title | past | +
+EVENT: pass | student |  | past | +
+MORPH: pass | passed | passes
+ISA: Dassara | festival
+ISA: Saraswati Pooja | festival
+ISA: teacher | person
+ISA: student | person
+ISA: frock | gift
+ISA: stool | furniture
+ISA: scriptures | holy writings
+ISA: Sudha Murty | writer
+ISA: Shiggaon | place
+ISA: North Karnataka | place
+ISA: novel | book
+ISA: technical book | book
+ISA: travelogue | book
+ISA: short story collection | book
+ISA: Wise and Otherwise | book
+PROP: grandmother | independence | independent
+PROP: teacher | respect | respected
+PROP: grandmother | gratitude | grateful
+PROP: narrator | student | first
+PROP: grandmother | student result | successful
+PROP: Sudha Murty | writing | prolific
+PROP: stories | subject | common lives
+PROP: stories | values | human values
+PROP: writer | nature | sensitive
+PROP: main characters | education | highly educated
+PROP: main characters | nature | non compromising
+PROP: main characters | principles | highly principled
+SEQ: the Dassara festival came
+SEQ: the narrator secretly bought Kashi Yatre
+SEQ: the grandmother called the narrator to the pooja place
+SEQ: the grandmother gifted a frock to the narrator
+SEQ: the grandmother touched the feet of the narrator
+SEQ: the grandmother said she was touching the feet of a teacher
+SEQ: the narrator returned namaskara by touching the grandmother's feet
+SEQ: the grandmother read the title Kashi Yatre and the publisher's name
+SEQ: the narrator knew the student had passed with flying colours
+FACT: Sudha Murty | birth year | 1950
+FACT: Sudha Murty | novels | 7
+FACT: Sudha Murty | technical books | 4
+FACT: Sudha Murty | travelogues | 3
+FACT: Sudha Murty | short story collections | 2
+FACT: Wise and Otherwise | Indian languages translated into | 13
+ASK: grandmother | relation to Kashi Yatre
+ASK: women | discussion of latest episode
+ASK: grandmother | reason for tears
+ASK: grandmother | touching granddaughter's feet
+ASK: grandmother | desire to read
+ASK: grandmother | relevant traits
+ASK: Kashi Yatre | transformation of grandmother
+ASK: story | message
+ASK: grandmother | achievement emotion
+ASK: speaker | quotation
+ASK: quotation | quality highlighted
+ASK: grandmother | inadequacy
+ASK: grandmother | relevant context
+ASK: grandmother | progression of emotions
+ASK: response | touching the feet of a teacher
+ASK: teacher | respect
+ASK: confidently | meaning
+ASK: flying colours | meaning
+ASK: grandmother | dependence on granddaughter
+ASK: grandmother | desperation to know the story
+ASK: grandmother | accomplishment of desire
+ASK: grandmother | determination
+ASK: fiction | effect
+ASK: Kashi Yatre | role in transformation
+ASK: story | message for present generation
+ASK: grandmother | online post response
+ASK: narrator | concern
+ASK: grandmother | regret
+ASK: grandmother | help
+ASK: grandmother | independence
+ASK: teacher | gender
+ASK: teacher | age
+PROP: grandmother | emotion | embarrassed
+PROP: grandmother | feeling | inadequate
+PROP: grandmother | desire | independent
+PROP: grandmother | effort | hard
+PROP: grandmother | learning | successful
+PROP: grandmother | respect | respectful
+PROP: narrator | nature | concerned
+PROP: narrator | nature | helpful
+PROP: grandmother | nature | emotional
+PROP: grandmother | nature | diligent
+PROP: grandmother | nature | humble
+PROP: grandmother | nature | grateful
+PROP: grandmother | nature | wise
+PROP: grandmother | nature | determined
+PROP: teacher | importance | respected
+ISA: confidence | quality
+ISA: independence | quality
+ISA: determination | quality
+ISA: respect | value
+ISA: gratitude | value
+ISA: diligence | quality
+ISA: humility | quality
+ISA: emotion | feeling
+EVENT: wait | grandmother | granddaughter | past | +
+EVENT: feel | grandmother | embarrassment | past | +
+MORPH: feel | felt | feels
+EVENT: depend | grandmother | granddaughter | past | +
+MORPH: depend | depended | depends
+EVENT: learn | grandmother | Kannada alphabet | past | +
+MORPH: learn | learnt | learns
+EVENT: work | grandmother | hard | future | +
+MORPH: work | worked | works
+EVENT: become | grandmother | independent | future | +
+MORPH: become | became | becomes
+EVENT: teach | narrator | grandmother | past | +
+MORPH: teach | taught | teaches
+EVENT: respect | grandmother | teacher | present | +
+EVENT: return | narrator | namaskara | past | +
+MORPH: return | returned | returns
+EVENT: open | grandmother | gift | past | +
+MORPH: open | opened | opens
+EVENT: know | narrator | student passed | past | +
+MORPH: know | knew | knows
+EVENT: answer | reader | questions | present | +
+MORPH: answer | answered | answers
+EVENT: choose | reader | correct option | present | +
+MORPH: choose | chose | chooses
+SEQ: the grandmother waited eagerly for the narrator
+SEQ: the grandmother felt dependent and helpless
+SEQ: the grandmother decided to become independent
+SEQ: the narrator became the grandmother's teacher
+SEQ: the grandmother learned to read
+SEQ: the grandmother respected her teacher
+SEQ: the grandmother read the novel by herself
+SEQ: the narrator recognised that her student had passed with flying colours
+ASK: narrator | feelings while teaching grandmother
+ASK: narrator | reason for laughter
+ASK: grandmother | decision to learn
+ASK: grandmother | deadline
+ASK: grandmother | homework
+ASK: narrator | first student
+ASK: narrator | future profession
+ASK: Triveni | popularity
+ASK: Kashi Yatre | story
+ASK: old lady | sacrifice
+ASK: Lord Vishweshwara | worship
+ASK: Kashi | importance
+ASK: grandmother | school education
+ASK: grandmother | identification with protagonist
+ASK: grandmother | discussions with friends
+ASK: narrator | surprise
+ASK: narrator | worry
+ASK: Avva | meaning
+ASK: grandmother | childhood
+ASK: girls | education
+ASK: learning | age
+
+FACT: narrator | stay duration at wedding | 1 week
+FACT: grandmother | learning deadline | Dassara
+FACT: narrator | first student count | 1
+FACT: narrator | future students | hundreds
+FACT: Triveni appreciation | years | 40
+
+PROP: Triveni | language | Kannada
+PROP: Kashi Yatre | form | serial
+PROP: old lady | desire | ardent
+PROP: orphan girl | status | young
+PROP: grandmother | memory | strong
+PROP: grandmother | affection | affectionate
+PROP: grandmother | resolve | firm
+PROP: learning | age limit | none
+PROP: narrator | love | immense
+PROP: grandmother | smile | constant
+
+ISA: Karmaveera | magazine
+ISA: Kashi Yatre | serial
+ISA: Kashi | pilgrimage place
+ISA: Lord Vishweshwara | god
+ISA: protagonist | character
+ISA: temple | place
+ISA: Computer Science | subject
+ISA: alphabet | writing system
+ISA: Kannada alphabet | alphabet
+ISA: homework | school work
+ISA: tuition | teaching
+
+EVENT: listen | grandmother | story | past | +
+MORPH: listen | listened | listens
+EVENT: forget | grandmother | work | past | +
+MORPH: forget | forgot | forgets
+EVENT: identify | grandmother | novel protagonist | past | +
+EVENT: return | narrator | village | past | +
+EVENT: worry | narrator | grandmother | past | +
+MORPH: worry | worried | worries
+EVENT: ask | narrator | grandmother | past | +
+MORPH: ask | asked | asks
+EVENT: realize | narrator | grandmother wanted to speak | past | +
+MORPH: realize | realized | realizes
+EVENT: guide | mother | grandmother | past | -
+MORPH: guide | guided | guides
+EVENT: cook | grandmother | food | past | +
+MORPH: cook | cooked | cooks
+EVENT: feed | grandmother | family | past | +
+MORPH: feed | fed | feeds
+EVENT: rub | grandmother | hands over pages | past | +
+MORPH: rub | rubbed | rubs
+EVENT: understand | grandmother | writing | past | -
+MORPH: understand | understood | understands
+EVENT: decide | grandmother | become independent | past | +
+EVENT: keep | grandmother | Saraswati Pooja day as deadline | future | +
+MORPH: keep | kept | keeps
+EVENT: overcome | determined person | obstacle | present | +
+EVENT: write | grandmother | homework | past | +
+EVENT: become | narrator | teacher | future | +
+
+SEQ: the grandmother listened to every episode carefully
+SEQ: the narrator went away for a week
+SEQ: the grandmother could not read the new episode
+SEQ: the grandmother felt helpless because she could not read
+SEQ: the grandmother decided to learn the Kannada alphabet
+SEQ: the grandmother fixed Dassara as the deadline
+SEQ: the narrator taught the grandmother every day
+SEQ: the grandmother completed her homework faithfully
+SEQ: the narrator later became a Computer Science teacher
+ASK: narrator | personal response
+ASK: reader | understanding
+ASK: reader | appreciation
+ASK: reader | enjoyment
+ASK: reader | interpretation
+ASK: reader | point of view
+ASK: reader | justification
+ASK: teacher | role
+ASK: literature | purpose
+ASK: poetry | features
+ASK: fiction | features
+ASK: drama | features
+
+ISA: literature | reading material
+ISA: poetry | literature
+ISA: fiction | literature
+ISA: drama | literature
+ISA: plot | story element
+ISA: character | story element
+ISA: theme | literary element
+ISA: personal response | response
+ISA: interpretation | response
+ISA: point of view | opinion
+
+PROP: literature | purpose | enjoyable
+PROP: literature | purpose | meaningful
+PROP: teacher | role | supportive
+PROP: learning | responsibility | personal
+PROP: reading | value | lifelong
+PROP: response | nature | personal
+PROP: interpretation | nature | personal
+PROP: poetry | interpretation | varied
+
+EVENT: understand | reader | literature | present | +
+MORPH: understand | understood | understands
+EVENT: appreciate | reader | literature | present | +
+EVENT: enjoy | reader | literature | present | +
+EVENT: relate | reader | literature | present | +
+MORPH: relate | related | relates
+EVENT: laugh | reader |  | present | +
+EVENT: cry | reader |  | present | +
+EVENT: interpret | reader | literature | present | +
+MORPH: interpret | interpreted | interprets
+EVENT: express | reader | point of view | present | +
+MORPH: express | expressed | expresses
+EVENT: justify | reader | point of view | present | +
+MORPH: justify | justified | justifies
+EVENT: encourage | teacher | students | present | +
+MORPH: encourage | encouraged | encourages
+EVENT: stimulate | teacher | students | present | +
+MORPH: stimulate | stimulated | stimulates
+EVENT: support | teacher | students | present | +
+MORPH: support | supported | supports
+EVENT: explain | teacher | literary piece | present | +
+MORPH: explain | explained | explains
+EVENT: explore | student | literary piece | present | +
+MORPH: explore | explored | explores
+EVENT: monitor | teacher | activities | present | +
+MORPH: monitor | monitored | monitors
+EVENT: review | teacher | class activities | present | +
+MORPH: review | reviewed | reviews
+
+SEQ: the reader reads the literary piece
+SEQ: the reader makes a personal response
+SEQ: the reader explores the literary piece
+SEQ: the reader interprets the literary piece
+SEQ: the reader expresses a point of view
+SEQ: the reader justifies the point of view
+SEQ: the teacher encourages and supports the students
+SEQ: the students develop understanding appreciation and enjoyment of literature
+ISA: short story | fiction
+ISA: play | drama
+ISA: poem | poetry
+ISA: voice modulation | speaking skill
+ISA: gesture | movement
+ISA: facial expression | movement
+ISA: stage direction | guidance
+ISA: costume | drama feature
+ISA: prop | drama feature
+ISA: light | drama feature
+ISA: music | drama feature
+ISA: audience | people
+ISA: class | audience
+
+FACT: poetry | poems | 6
+FACT: fiction | short stories | 5
+FACT: drama | plays | 2
+
+PROP: short stories | writers | Indian and non-Indian
+PROP: short stories | interest level | interesting
+PROP: short stories | content | values
+PROP: short stories | content | social issues
+PROP: drama | purpose | dramatised
+PROP: voice modulation | importance | important
+PROP: physical movement | manner | natural
+PROP: costumes | importance | important
+PROP: props | importance | important
+PROP: reader | learning | lifelong
+PROP: literature reader | purpose | develop love for reading
+
+PART: drama | voice modulation
+PART: drama | movement
+PART: drama | costumes
+PART: drama | props
+PART: drama | lights
+PART: drama | music
+PART: movement | gestures
+PART: movement | facial expressions
+
+EVENT: dramatise | student | play | present | +
+MORPH: dramatise | dramatised | dramatises
+EVENT: memorise | student | lines | present | +
+MORPH: memorise | memorised | memorises
+EVENT: speak | student | part | present | +
+MORPH: speak | spoke | speaks
+EVENT: express | emotions | voice | present | +
+EVENT: raise | speaker | voice | present | +
+MORPH: raise | raised | raises
+EVENT: lower | speaker | voice | present | +
+MORPH: lower | lowered | lowers
+EVENT: vary | speaker | pace | present | +
+MORPH: vary | varied | varies
+EVENT: know | student | character | present | +
+EVENT: study | student | character lines | present | +
+EVENT: study | student | stage directions | present | +
+EVENT: move | actor |  | present | +
+MORPH: move | moved | moves
+EVENT: use | actor | gestures | present | +
+MORPH: use | used | uses
+EVENT: use | actor | facial expressions | present | +
+EVENT: follow | actor | stage directions | present | +
+MORPH: follow | followed | follows
+EVENT: contribute | clothes and props | play | present | +
+MORPH: contribute | contributed | contributes
+EVENT: enjoy | reader | Literature Reader | present | +
+
+SEQ: the student studies the character
+SEQ: the student studies the stage directions
+SEQ: the student speaks the part with voice modulation
+SEQ: the student moves naturally
+SEQ: the student uses gestures and facial expressions
+SEQ: the student uses costumes props lights and music
+SEQ: the play comes alive for the audience
+ISA: How I Taught My Grandmother to Read | fiction
+ISA: Sudha Murty | author
+ISA: grandmother | teacher's student
+ISA: granddaughter | teacher
+ISA: Kashi Yatre | Kannada novel
+ISA: Kashi Yatre | serial
+ISA: Karmaveera | Kannada weekly magazine
+ISA: Triveni | Kannada writer
+ISA: Kashi | Varanasi
+
+PROP: grandmother | goal | read independently
+PROP: grandmother | attitude | determined
+PROP: granddaughter | attitude | caring
+PROP: teacher | quality | respected
+PROP: education | value | important
+PROP: learning | age bar | none
+PROP: grandmother | confidence | confident
+PROP: narrator | pride | proud
+
+EVENT: identify | grandmother | herself with the protagonist | past | +
+EVENT: admire | people | Triveni's novels | present | +
+MORPH: admire | admired | admires
+EVENT: accompany | picture | story | present | +
+MORPH: accompany | accompanied | accompanies
+EVENT: embarrass | grandmother |  | past | +
+MORPH: embarrass | embarrassed | embarrasses
+EVENT: determine | grandmother | learn to read | past | +
+MORPH: determine | determined | determines
+EVENT: overcome | determined person | obstacle | present | +
+EVENT: repeat | grandmother | lesson | past | +
+EVENT: recite | grandmother | lesson | past | +
+EVENT: complete | grandmother | homework | past | +
+MORPH: complete | completed | completes
+EVENT: honour | grandmother | teacher | past | +
+MORPH: honour | honoured | honours
+EVENT: receive | narrator | frock | past | +
+MORPH: receive | received | receives
+EVENT: return | narrator | respect | past | +
+EVENT: achieve | grandmother | independence | past | +
+MORPH: achieve | achieved | achieves
+
+SEQ: the grandmother realised that she could not read by herself
+SEQ: the grandmother decided to learn to read
+SEQ: the granddaughter taught the Kannada alphabet
+SEQ: the grandmother practised every day
+SEQ: the grandmother read the novel on her own
+SEQ: the grandmother thanked her teacher with respect
+SEQ: the narrator realised that her first student had succeeded
+
+ASK: grandmother | independence
+ASK: teacher | respect
+ASK: narrator | first student
+ASK: Karmaveera | role
+ASK: Triveni | novels
+ASK: Kashi Yatre | protagonist
+ASK: learning | importance
+ASK: education | value
+ASK: determination | result
+ASK: grandmother | confidence
+ASK: narrator | village life
+ASK: bus | arrival
+ASK: weekly magazine | arrival
+ASK: Triveni | writing style
+ASK: Triveni | stories
+ASK: old lady | sacrifice
+ASK: orphan girl | wedding
+ASK: grandmother | concentration
+ASK: grandmother | memory
+ASK: grandmother | discussion with friends
+ASK: narrator | grandmother's tears
+ASK: grandmother | dependence
+ASK: grandmother | determination
+ASK: grandmother | respect for teacher
+
+PROP: bus | arrival | afternoon
+PROP: weekly magazine | arrival | late
+PROP: stories | subject | psychological problems
+PROP: people | appreciation | continued
+PROP: old lady | sacrifice | selfless
+PROP: grandmother | listening | attentive
+PROP: grandmother | memory | by heart
+PROP: narrator | reaction | surprised
+PROP: narrator | reaction | worried
+PROP: grandmother | resolve | strong
+PROP: teacher | affection | affectionate
+
+EVENT: arrive | bus | village | past | +
+MORPH: arrive | arrived | arrives
+EVENT: bring | bus | papers magazines and post | past | +
+MORPH: bring | brought | brings
+EVENT: continue | people | appreciate novels | present | +
+MORPH: continue | continued | continues
+EVENT: describe | novel | old lady's struggle | past | +
+MORPH: describe | described | describes
+EVENT: fall | orphan girl | love | present | +
+MORPH: fall | fell | falls
+EVENT: save | old lady | orphan girl | present | +
+MORPH: save | saved | saves
+EVENT: accompany | picture | story | present | +
+EVENT: rub | grandmother | pages | past | +
+EVENT: wait | grandmother | Karmaveera | past | +
+EVENT: decide | grandmother | study | past | +
+EVENT: practise | grandmother | reading and writing | past | +
+MORPH: practise | practised | practises
+EVENT: respect | narrator | grandmother | past | +
+EVENT: read | grandmother | novel independently | past | +
+
+SEQ: the bus brought the papers magazines and post
+SEQ: the narrator read the weekly serial to the grandmother
+SEQ: the grandmother memorised the story
+SEQ: the grandmother discussed the story with her friends
+SEQ: the grandmother missed one episode
+SEQ: the grandmother felt helpless because she could not read
+SEQ: the grandmother resolved to learn
+SEQ: the grandmother practised until Dassara
+SEQ: the grandmother became an independent reader
+ASK: narrator | technology experience
+ASK: narrator | communication in unfamiliar place
+ASK: Triveni | popularity
+ASK: Triveni | writing style
+ASK: Kashi Yatre | central idea
+ASK: grandmother | inability to read
+ASK: grandmother | reason for learning
+ASK: grandmother | success in learning
+ASK: narrator | future career
+ASK: respect | teacher
+ASK: education | importance
+ASK: learning | age limit
+
+ISA: reading | skill
+ISA: writing | skill
+ISA: education | learning
+ISA: independence | value
+ISA: determination | quality
+ISA: respect | value
+ISA: affection | feeling
+ISA: helplessness | feeling
+ISA: embarrassment | feeling
+ISA: confidence | quality
+ISA: tuition | learning
+
+PART: learning | reading
+PART: learning | writing
+PART: learning | repeating
+PART: learning | reciting
+
+PROP: education | importance | essential
+PROP: reading | result | independence
+PROP: teacher | status | respected
+PROP: grandmother | effort | amazing
+PROP: narrator | teaching | affectionate
+PROP: grandmother | learning | confident
+PROP: grandmother | gratitude | respectful
+PROP: narrator | profession | teacher
+
+EVENT: teach | granddaughter | grandmother | past | +
+EVENT: study | grandmother | Kannada alphabet | past | +
+EVENT: practise | grandmother | alphabet | past | +
+EVENT: repeat | grandmother | alphabet | past | +
+EVENT: recite | grandmother | alphabet | past | +
+EVENT: read | grandmother | Kashi Yatre | past | +
+EVENT: thank | grandmother | teacher | past | +
+MORPH: thank | thanked | thanks
+EVENT: respect | grandmother | scriptures | present | +
+EVENT: become | narrator | Computer Science teacher | future | +
+EVENT: inspire | grandmother | narrator | past | +
+MORPH: inspire | inspired | inspires
+
+SEQ: the grandmother wanted to become independent
+SEQ: the granddaughter agreed to teach her
+SEQ: the grandmother learned the Kannada alphabet
+SEQ: the grandmother practised every lesson
+SEQ: the grandmother achieved her goal on Dassara
+SEQ: the grandmother thanked her teacher
+SEQ: the narrator understood the value of teaching
+SEQ: the grandmother became an independent reader
+ASK: adult literacy | improvement
+ASK: illiterate people | number
+ASK: women | percentage
+ASK: youth | role in adult illiteracy
+ASK: blog | meaning
+ASK: blog | purpose
+ASK: blog | features
+
+FACT: illiterate people | number | 313 million
+FACT: women among illiterate people | percentage | 59
+
+ISA: adult literacy | literacy
+ISA: adult illiteracy | literacy
+ISA: blog | online personal journal
+ISA: blog | diary
+ISA: blog | platform
+ISA: youth brigade | people
+
+PROP: blog | update | regular
+PROP: blog | purpose | express yourself
+PROP: grandmother | status | self-sufficient
+PROP: story | message | moral obligation
+PROP: India | status | potential superpower
+
+EVENT: improve | country | adult literacy | present perfect | +
+MORPH: improve | improved | improves
+EVENT: continue | country | home to illiterate people | present | +
+EVENT: help | young girl | grandmother | present | +
+MORPH: help | helped | helps
+EVENT: grow | grandmother | self-sufficient | present | +
+MORPH: grow | grew | grows
+EVENT: realise | youth | moral obligation | present | +
+EVENT: take | youth | country to greater heights | present | +
+MORPH: take | took | takes
+EVENT: pen | reader | thoughts | present | +
+MORPH: pen | penned | pens
+EVENT: alleviate | youth brigade | adult illiteracy | present | +
+MORPH: alleviate | alleviated | alleviates
+EVENT: update | person | blog | present | +
+MORPH: update | updated | updates
+EVENT: express | person | yourself | present | +
+
+SEQ: the young girl helps her unlettered grandmother
+SEQ: the grandmother grows self-sufficient
+SEQ: the youth realise their moral obligation
+SEQ: the youth help alleviate adult illiteracy
+SEQ: the country reaches greater heights
+SEQ: the writer writes a blog to express thoughts
+ISA: A Dog Named Duke | fiction
+ISA: Duke | dog
+ISA: Chuck Hooper | man
+ISA: Marcy | wife
+ISA: chemical company | company
+ISA: Zone Sales Manager | job
+ISA: hospital | place
+ISA: wheelchair | equipment
+ISA: walker | equipment
+ISA: kennel | place
+ISA: subdural haemorrhage | medical condition
+ISA: brain | body part
+
+FACT: Hooper | height | 6 foot 1
+FACT: hospital stay before wheelchair | weeks | 6
+FACT: critical list | duration | 1 month
+FACT: leave from work | duration | 1 year
+
+PROP: Hooper | nature | competitive
+PROP: grin | quality | genuine
+PROP: Hooper | condition | paralysed
+PROP: vision | state | double
+PROP: Duke | loyalty | loyal
+PROP: Hooper | feeling | alone
+
+PART: body | brain
+PART: brain | motor section
+
+EVENT: play | Hooper | university football | past | +
+MORPH: play | played | plays
+EVENT: drive | Hooper | home | past | +
+MORPH: drive | drove | drives
+EVENT: speed | car | in front of Hooper | past | +
+MORPH: speed | sped | speeds
+EVENT: take | hospital | Hooper | past | +
+EVENT: paralyse | subdural haemorrhage | left side | present | +
+MORPH: paralyse | paralysed | paralyses
+EVENT: phone | Marcy | neighbour | past | +
+MORPH: phone | phoned | phones
+EVENT: put | neighbour | Duke in kennel | past | +
+MORPH: put | put | puts
+EVENT: remain | Hooper | critical list | past | +
+MORPH: remain | remained | remains
+EVENT: tell | company men | Hooper | past | +
+MORPH: tell | told | tells
+EVENT: create | company | desk job | future | +
+MORPH: create | created | creates
+EVENT: put | hospital | Hooper in wheelchair | past | +
+EVENT: work | therapist | paralysed arm and leg | past | +
+EVENT: exercise | Hooper |  | past | +
+MORPH: exercise | exercised | exercises
+EVENT: leave | hospital | Hooper | past | +
+MORPH: leave | left | leaves
+
+SEQ: Hooper worked as a Zone Sales Manager
+SEQ: a car sped out in front of him
+SEQ: Hooper was taken to the hospital
+SEQ: the haemorrhage paralysed his left side
+SEQ: Duke was put in a kennel
+SEQ: Hooper remained on the critical list
+SEQ: the company gave Hooper a year off
+SEQ: the hospital put Hooper in a wheelchair
+SEQ: Hooper returned home
+SEQ: Hooper felt alone without Duke
+EVENT: come | Duke | home | past | +
+MORPH: come | came | comes
+EVENT: lift | Duke | Hooper's spirits | past | +
+MORPH: lift | lifted | lifts
+EVENT: make | Duke | Hooper take first step | past | +
+EVENT: lead | Duke | Hooper | past | +
+MORPH: lead | led | leads
+EVENT: walk | Hooper | with Duke | past | +
+MORPH: walk | walked | walks
+EVENT: recover | Hooper |  | past | +
+MORPH: recover | recovered | recovers
+EVENT: return | Hooper | office | past | +
+EVENT: appoint | company | Hooper | past | +
+MORPH: appoint | appointed | appoints
+EVENT: receive | Hooper | promotion | past | +
+EVENT: die | Duke |  | past | +
+EVENT: remember | Hooper | Duke | past | +
+MORPH: remember | remembered | remembers
+EVENT: cope | Hooper | challenges | past | +
+MORPH: cope | coped | copes
+EVENT: accept | Hooper | changed life | past | +
+MORPH: accept | accepted | accepts
+EVENT: inspire | Duke | Hooper | past | +
+EVENT: achieve | Hooper | success | past | +
+
+PROP: Duke | behaviour | faithful
+PROP: Duke | role | companion
+PROP: Duke | role | helper
+PROP: Hooper | hope | renewed
+PROP: Hooper | life | changed
+PROP: Hooper | work | successful
+PROP: Duke | importance | unforgettable
+
+FACT: diary entry | time | 10 pm
+FACT: diary entry | date | March 1
+FACT: Duke re-entry year | 1957 | 1957
+
+ISA: diary entry | writing
+ISA: article | writing
+ISA: loss | experience
+ISA: hope | feeling
+ISA: acceptance | response
+ISA: challenge | difficulty
+ISA: promotion | achievement
+
+ASK: Duke | role in recovery
+ASK: Hooper | recovery
+ASK: Hooper | promotion
+ASK: Duke | importance
+ASK: coping with loss | meaning
+ASK: Hooper | acceptance
+ASK: diary entry | feelings
+ASK: article | coping with loss
+
+SEQ: Duke returned home
+SEQ: Duke encouraged Hooper to walk
+SEQ: Hooper took his first step
+SEQ: Duke continued to lead Hooper
+SEQ: Hooper returned to work
+SEQ: Hooper received a promotion
+SEQ: Hooper remembered Duke as part of every achievement
+SEQ: Hooper accepted the changed way of life
+SEQ: Hooper worked successfully again
+ISA: A Dog Named Duke | short story
+ISA: Duke | Doberman
+ISA: Hooper | football player
+ISA: Marcy | wife
+ISA: company | employer
+ISA: wheelchair | mobility aid
+ISA: walker | mobility aid
+ISA: rehabilitation | recovery
+
+PROP: Duke | nature | intelligent
+PROP: Duke | behaviour | devoted
+PROP: Hooper | attitude | determined
+PROP: Marcy | nature | caring
+PROP: recovery | process | gradual
+PROP: friendship | value | meaningful
+PROP: perseverance | result | success
+
+EVENT: visit | Marcy | hospital | past | +
+MORPH: visit | visited | visits
+EVENT: breathe | Hooper |  | past | +
+MORPH: breathe | breathed | breathes
+EVENT: see | Hooper |  | past | +
+MORPH: see | saw | sees
+EVENT: improve | Hooper | health | past | +
+EVENT: accompany | Duke | Hooper | past | +
+EVENT: encourage | Duke | Hooper | past | +
+EVENT: regain | Hooper | confidence | past | +
+MORPH: regain | regained | regains
+EVENT: work | Hooper | company | past | +
+EVENT: honour | company | Hooper | past | +
+EVENT: dedicate | Hooper | achievement to Duke | past | +
+MORPH: dedicate | dedicated | dedicates
+
+SEQ: Hooper met with an accident
+SEQ: Hooper became paralysed
+SEQ: Hooper returned home
+SEQ: Duke came back into Hooper's life
+SEQ: Duke motivated Hooper to walk every day
+SEQ: Hooper slowly recovered
+SEQ: Hooper resumed his work
+SEQ: Hooper earned a promotion
+SEQ: Hooper dedicated his success to Duke
+
+ASK: Hooper | accident
+ASK: Duke | loyalty
+ASK: Duke | encouragement
+ASK: Hooper | confidence
+ASK: Hooper | work
+ASK: Marcy | support
+ASK: company | promotion
+ASK: Duke | contribution
+ASK: story | message
+ASK: perseverance | importance
+ASK: Duke | kennel
+ASK: Hooper | paralysis
+ASK: Hooper | hospital treatment
+ASK: Marcy | support
+ASK: Duke | companionship
+ASK: Hooper | hope
+ASK: company | desk job
+ASK: rehabilitation | progress
+ASK: walker | purpose
+ASK: Duke | impact on recovery
+
+FACT: accident | year | 1953
+FACT: hospital stay before discharge | months | 6
+
+ISA: football team | team
+ISA: desk job | job
+ISA: neighbour | person
+ISA: district manager | job
+ISA: accident | event
+ISA: recovery | process
+ISA: hope | emotion
+ISA: despair | emotion
+ISA: helplessness | emotion
+
+PART: body | left side
+PART: body | arm
+PART: body | leg
+
+PROP: left side | condition | paralysed
+PROP: Hooper | speech | unable
+PROP: Hooper | breathing | possible
+PROP: Hooper | vision | double
+PROP: Duke | presence | comforting
+PROP: rehabilitation | outcome | positive
+
+EVENT: admit | hospital | Hooper | past | +
+MORPH: admit | admitted | admits
+EVENT: breathe | Hooper |  | past | +
+EVENT: see | Hooper |  | past | +
+EVENT: ask | Marcy | neighbour | past | +
+EVENT: kennel | neighbour | Duke | past | +
+MORPH: kennel | kenneled | kennels
+EVENT: recover | Hooper | movement | past | +
+EVENT: bathe | hospital staff | Hooper | past | +
+MORPH: bathe | bathed | bathes
+EVENT: wheel | hospital staff | Hooper | past | +
+MORPH: wheel | wheeled | wheels
+EVENT: hope | Hooper | recovery | past | +
+MORPH: hope | hoped | hopes
+EVENT: accompany | Duke | Hooper during walks | past | +
+
+SEQ: Hooper suffered a serious accident
+SEQ: Hooper was admitted to the hospital
+SEQ: Hooper received treatment and therapy
+SEQ: Hooper returned home after treatment
+SEQ: Hooper felt lonely without Duke
+SEQ: Duke returned to Hooper
+SEQ: Duke encouraged Hooper during recovery
+SEQ: Hooper regained confidence through steady practice
+SEQ: Hooper resumed his professional life
+SEQ: Hooper credited Duke for his recovery and success
+ISA: The Man Who Knew Too Much | fiction
+ISA: Alexander Baron | author
+ISA: Private Quelch | soldier
+ISA: instructor | soldier
+ISA: recruit | soldier
+ISA: training camp | place
+ISA: squad | group
+ISA: rifle | weapon
+ISA: sergeant | soldier
+
+PROP: Private Quelch | nickname | Professor
+PROP: Private Quelch | knowledge | extensive
+PROP: Private Quelch | behaviour | confident
+PROP: instructor | attitude | strict
+PROP: training | nature | disciplined
+
+EVENT: train | instructor | recruits | past | +
+MORPH: train | trained | trains
+EVENT: answer | Private Quelch | question | past | +
+MORPH: answer | answered | answers
+EVENT: interrupt | Private Quelch | instructor | past | +
+MORPH: interrupt | interrupted | interrupts
+EVENT: explain | Private Quelch | answer | past | +
+MORPH: explain | explained | explains
+EVENT: observe | narrator | Private Quelch | past | +
+MORPH: observe | observed | observes
+EVENT: march | soldiers |  | past | +
+MORPH: march | marched | marches
+EVENT: carry | soldiers | rifles | past | +
+MORPH: carry | carried | carries
+
+SEQ: the recruits attended military training
+SEQ: the instructor questioned the recruits
+SEQ: Private Quelch answered confidently
+SEQ: Private Quelch corrected the instructor
+SEQ: the other recruits observed his behaviour
+
+ASK: Private Quelch | nickname
+ASK: Private Quelch | behaviour
+ASK: instructor | reaction
+ASK: recruits | training
+ASK: rifle | use
+ASK: narrator | opinion
+ASK: story | message
+FACT: rifle | muzzle velocity | 2440 feet per second
+
+PROP: Private Quelch | appearance | lanky
+PROP: Private Quelch | posture | stooping
+PROP: Private Quelch | expression | frowning
+PROP: spectacles | type | horn-rimmed
+PROP: Sergeant | appearance | dark
+PROP: Sergeant | appearance | sun-dried
+PROP: Sergeant | appearance | experienced
+PROP: Private Quelch | habit | correcting others
+
+ISA: Private Quelch | private
+ISA: Professor | nickname
+ISA: Sergeant | instructor
+ISA: service rifle | rifle
+ISA: muzzle velocity | speed
+ISA: bullet | ammunition
+ISA: training depot | army camp
+ISA: Army | organisation
+
+EVENT: meet | narrator | Private Quelch | past | +
+MORPH: meet | met | meets
+EVENT: acquire | soldier | nickname | present | +
+MORPH: acquire | acquired | acquires
+EVENT: acquire | soldier | uniform | present | +
+EVENT: acquire | soldier | rifle | present | +
+EVENT: acquire | soldier | equipment | present | +
+MORPH: acquire | acquired | acquires
+EVENT: understand | people | nickname | past | +
+EVENT: lose | people | doubts | past | +
+EVENT: teach | Sergeant | musketry | past | +
+EVENT: stand | recruits | attentive circle | past | +
+MORPH: stand | stood | stands
+EVENT: describe | Sergeant | mechanism of service rifle | past | +
+EVENT: interrupt | Private Quelch | Sergeant | past | +
+EVENT: correct | Private Quelch | muzzle velocity | past | +
+MORPH: correct | corrected | corrects
+
+SEQ: the narrator met Private Quelch at the training depot
+SEQ: the soldiers acquired their uniforms rifles and equipment
+SEQ: Private Quelch received the nickname Professor
+SEQ: the Sergeant began the musketry lesson
+SEQ: the Sergeant explained the service rifle
+SEQ: Private Quelch interrupted with the correct muzzle velocity
+
+ASK: Private Quelch | nickname
+ASK: Sergeant | musketry lesson
+ASK: service rifle | muzzle velocity
+ASK: Private Quelch | appearance
+ASK: Professor | reason for nickname
+PROP: Private Quelch | memory | excellent
+PROP: Private Quelch | ambition | strong
+PROP: Corporal Turnbull | nature | tough
+PROP: Corporal Turnbull | attention | focused
+PROP: squad | reaction | horrified
+PROP: Private Quelch | confidence | unflinching
+
+ISA: Corporal Turnbull | corporal
+ISA: hand grenade | weapon
+ISA: cookhouse | place
+ISA: cookhouse duties | duty
+ISA: lecture | lesson
+ISA: squad | soldiers
+
+EVENT: lecture | Corporal Turnbull | squad | past | +
+MORPH: lecture | lectured | lectures
+EVENT: ask | Corporal Turnbull | Private Quelch | past | +
+EVENT: deliver | Private Quelch | lesson | past | +
+MORPH: deliver | delivered | delivers
+EVENT: impress | Private Quelch | officers | present | +
+MORPH: impress | impressed | impresses
+EVENT: anger | Private Quelch | Corporal Turnbull | past | +
+MORPH: anger | angered | angers
+EVENT: assign | Corporal Turnbull | cookhouse duties | past | +
+MORPH: assign | assigned | assigns
+EVENT: peel | Private Quelch | potatoes | past | +
+MORPH: peel | peeled | peels
+EVENT: work | Private Quelch | cookhouse | past | +
+EVENT: exhibit | Private Quelch | knowledge | past | +
+MORPH: exhibit | exhibited | exhibits
+EVENT: flee | narrator and Trower | scene | past | +
+MORPH: flee | fled | flees
+
+SEQ: Corporal Turnbull questioned the squad
+SEQ: Private Quelch answered confidently
+SEQ: Corporal Turnbull asked Private Quelch to deliver the lesson
+SEQ: Private Quelch delivered the lecture
+SEQ: Corporal Turnbull assigned Private Quelch to cookhouse duties
+SEQ: Private Quelch worked in the cookhouse
+
+ASK: Corporal Turnbull | character
+ASK: hand grenade | lesson
+ASK: cookhouse duties | assignment
+ASK: Private Quelch | ambitions
+ASK: Private Quelch | social intelligence
+ASK: knowledge | quality
+ASK: narrator | reaction
+ASK: squad | reaction
+ASK: Corporal Turnbull | retaliation
+ASK: Professor | first day in cookhouse
+ASK: Private Quelch | positive traits
+ASK: Private Quelch | negative traits
+ASK: Private Quelch | character sketch
+ASK: diary entry | first day in cookhouse
+ASK: Private Quelch | thoughts
+ASK: Private Quelch | feelings
+ASK: superior officers | admiration
+ASK: colleagues | admiration
+ASK: Corporal Turnbull | character trait
+ASK: squad | reaction to lecture
+
+PROP: Private Quelch | trait | knowledgeable
+PROP: Private Quelch | trait | hardworking
+PROP: Private Quelch | trait | ambitious
+PROP: Private Quelch | trait | overconfident
+PROP: Private Quelch | trait | boastful
+PROP: Private Quelch | trait | insensitive
+PROP: Corporal Turnbull | trait | observant
+PROP: Corporal Turnbull | trait | disciplined
+
+ISA: diary entry | personal writing
+ISA: character sketch | writing task
+ISA: positive trait | quality
+ISA: negative trait | quality
+
+EVENT: admire | superior officers | Private Quelch | past | -
+MORPH: admire | admired | admires
+EVENT: admire | colleagues | Private Quelch | past | -
+EVENT: prove | student | reasons | present | +
+MORPH: prove | proved | proves
+EVENT: quote | student | instances | present | +
+MORPH: quote | quoted | quotes
+EVENT: attempt | student | character sketch | present | +
+MORPH: attempt | attempted | attempts
+EVENT: describe | writer | events | present | +
+EVENT: express | writer | thoughts and feelings | present | +
+EVENT: lead | events | assignment | past | +
+EVENT: assign | Corporal Turnbull | Private Quelch to cookhouse | past | +
+
+SEQ: Private Quelch displayed his knowledge repeatedly
+SEQ: the superior officers were not impressed
+SEQ: the colleagues did not admire him
+SEQ: Corporal Turnbull assigned him to the cookhouse
+SEQ: Private Quelch reflected on the events of the day
+SEQ: the student writes a character sketch of Private Quelch
+SEQ: the student writes a diary entry about the first day in the cookhouse
+EVENT: nominate | platoon officer | recruit | past | +
+MORPH: nominate | nominated | nominates
+EVENT: pause | Corporal Turnbull |  | past | +
+MORPH: pause | paused | pauses
+EVENT: look | Corporal Turnbull | ranks | past | +
+MORPH: look | looked | looks
+EVENT: stand | Private Quelch | to attention | past | +
+EVENT: stare | Private Quelch | straight in front | past | +
+MORPH: stare | stared | stares
+EVENT: decide | Corporal Turnbull | Private Quelch for permanent cookhouse duties | past | +
+EVENT: protest | Private Quelch | method of peeling potatoes | past | +
+MORPH: protest | protested | protests
+EVENT: draw | Private Quelch | attention | past | +
+MORPH: draw | drew | draws
+EVENT: peel | cooks | potatoes | past | +
+EVENT: waste | method | vitamin values | present | +
+MORPH: waste | wasted | wastes
+EVENT: flee | narrator and Trower |  | past | +
+
+ISA: platoon officer | officer
+ISA: permanent cookhouse duties | duty
+ISA: potato | vegetable
+ISA: vitamin | nutrient
+ISA: cook | person
+
+PROP: Private Quelch | expression | self-conscious innocence
+PROP: cookhouse duties | type | permanent
+PROP: method of peeling potatoes | quality | unscientific
+PROP: method of peeling potatoes | quality | unhygienic
+PROP: joke | duration | days
+
+SEQ: the platoon officer asked for one recruit to be nominated
+SEQ: Corporal Turnbull looked along the ranks
+SEQ: Private Quelch stood rigidly to attention
+SEQ: Corporal Turnbull nominated Private Quelch for permanent cookhouse duties
+SEQ: the soldiers joked about the assignment
+SEQ: the narrator later saw Private Quelch in the cookhouse
+SEQ: Private Quelch protested against the method of peeling potatoes
+SEQ: Private Quelch pointed out the waste of vitamin values
+
+ASK: muzzle velocity | example
+ASK: thirty mile walk | example
+ASK: salute on payday | example
+ASK: high flying invisible aeroplane | example
+ASK: hand grenades | example
+ASK: cookhouse duties | example
+ASK: Private Quelch | permanent cookhouse duties
+ASK: method of peeling potatoes | protest
+ISA: Alexander Baron | writer
+ISA: There’s No Home | novel
+ISA: The Human Kind | novel
+ISA: Queen of the East | novel
+ISA: Seeing Life | novel
+ISA: The How Life | novel
+ISA: film script | writing
+ISA: television play | writing
+ISA: assistant editor | job
+ISA: editor | job
+ISA: The Tribune | publication
+ISA: New Theatre | publication
+ISA: Second World War | war
+
+EVENT: write | Alexander Baron | novels | past | +
+MORPH: write | wrote | writes
+EVENT: write | Alexander Baron | film scripts | past | +
+EVENT: write | Alexander Baron | television plays | past | +
+EVENT: start | Alexander Baron | life as assistant editor | past | +
+MORPH: start | started | starts
+EVENT: edit | Alexander Baron | The Tribune | past | +
+MORPH: edit | edited | edits
+EVENT: edit | Alexander Baron | New Theatre | past | +
+EVENT: serve | Alexander Baron | army | past | +
+MORPH: serve | served | serves
+
+FACT: Alexander Baron | birth year | 1917
+FACT: Alexander Baron | death year | 1999
+
+ASK: Private Quelch | nickname
+ASK: Private Quelch | appearance
+ASK: Sergeant | appearance
+ASK: Private Quelch | intelligent reading
+ASK: Private Quelch | ambitions
+ASK: Private Quelch | day to day practices
+ASK: Corporal Turnbull | character trait
+ASK: Private Quelch | lesson from cookhouse duties
+ASK: squad | horror
+ASK: knowledge | quality
+ASK: social and emotional intelligence | importance
+ASK: positive traits | Private Quelch
+ASK: negative traits | Private Quelch
+ASK: character sketch | Private Quelch
+ASK: diary entry | Professor's first day in the cookhouse
+ISA: Keeping It from Harold | fiction
+ISA: P. G. Wodehouse | writer
+ISA: Mrs. Bramble | mother
+ISA: Mr. Bramble | father
+ISA: Harold | son
+ISA: Bill | Mr. Bramble
+ISA: professional boxer | boxer
+ISA: Major Percy Stokes | brother
+ISA: White Hart | place
+ISA: John L. Sullivan | boxer
+ISA: Marie Lloyd | music hall artist
+
+PROP: Mrs. Bramble | nature | domestic
+PROP: Mrs. Bramble | expression | beaming
+PROP: Harold | brain | powerful
+PROP: Harold | expression | grave
+PROP: Mr. Bramble | nature | mild
+PROP: Mr. Bramble | nature | obliging
+PROP: Mr. Bramble | attitude | good-humoured
+PROP: Percy | nature | persuasive
+PROP: Percy | habit | likes the sound of his own voice
+PROP: Mr. Bramble | profession | professional boxer
+
+EVENT: look up | Mrs. Bramble |  | past | +
+MORPH: look up | looked up | looks up
+EVENT: sit | Harold | table | past | +
+MORPH: sit | sat | sits
+EVENT: read | Harold | book | past | +
+EVENT: hope | Major Percy Stokes | secret kept from Harold | past | +
+MORPH: hope | hoped | hopes
+EVENT: persuade | Percy | Mr. Bramble | past | +
+MORPH: persuade | persuaded | persuades
+EVENT: yield | Mr. Bramble | everybody | past | +
+MORPH: yield | yielded | yields
+EVENT: become | Mrs. Bramble | mother | past | +
+EVENT: express | Mr. Bramble | desire | past | +
+EVENT: name | Mrs. Bramble | Harold | past | +
+MORPH: name | named | names
+EVENT: withdraw | Mr. Bramble | suggestion | past | +
+MORPH: withdraw | withdrew | withdraws
+EVENT: keep | family | profession from Harold | past | +
+EVENT: be | Mr. Bramble | professional boxer | past | +
+
+SEQ: Harold sat at the table with an open book
+SEQ: Major Percy advised that the truth should be kept from Harold
+SEQ: Mr. Bramble accepted the suggestion
+SEQ: Mrs. Bramble chose the name Harold
+SEQ: Mr. Bramble withdrew his own choice of names
+SEQ: the family kept Mr. Bramble's profession from Harold
+SEQ: Mr. Bramble had been proud of being a professional boxer
+SEQ: Harold changed Mr. Bramble's life
+
+ASK: weight categories | boxing
+ASK: greatest boxer | original name
+ASK: World Heavyweight Belt | wins
+ASK: favourite wrestler | reason
+ASK: sports | hard work
+ASK: sports | respect
+ASK: Mr. Bramble | profession
+ASK: Harold | reason for secrecy
+FACT: Harold | age | 10
+FACT: Harold | Sunday-school prizes | 2
+FACT: prize money | pounds | 500
+
+PROP: Harold | behaviour | admirable
+PROP: Harold | intelligence | intelligent
+PROP: Harold | goodness | model
+PROP: Harold | devotion | devoted to books
+PROP: Mrs. Bramble | feeling | amazed
+PROP: Mr. Bramble | voice | small
+PROP: Mrs. Bramble | temper | ruffled
+PROP: Major Percy | mood | joyful
+PROP: Major Percy | nature | resilient
+PROP: Mrs. Bramble | opinion of profession | disliked
+
+EVENT: hear | Mrs. Bramble | Harold | past | +
+MORPH: hear | heard | hears
+EVENT: recite | Harold | poetry | past | +
+EVENT: study | Harold | hard | past | +
+EVENT: arrange | Harold | books | past | +
+MORPH: arrange | arranged | arranges
+EVENT: go | Harold | walk by the river | past | +
+EVENT: realize | Mr. and Mrs. Bramble | truth must be sacrificed | past | +
+EVENT: keep | Mr. and Mrs. Bramble | profession from Harold | past | +
+EVENT: take | Harold | spelling prize | past | +
+EVENT: take | Harold | dictation prize | past | +
+EVENT: advise | senior curate | Mr. Bramble | past | +
+MORPH: advise | advised | advises
+EVENT: come home | Mr. Bramble |  | past | +
+MORPH: come home | came home | comes home
+EVENT: refuse | Mr. Bramble | fight | past | +
+MORPH: refuse | refused | refuses
+EVENT: ask | Mrs. Bramble | money | past | +
+EVENT: earn | profession | good money | past | +
+MORPH: earn | earned | earns
+EVENT: give | parents | Harold good education | past | +
+EVENT: borrow | Major Percy | money | past | +
+MORPH: borrow | borrowed | borrows
+
+SEQ: Harold recited his poem
+SEQ: Harold went for a walk by the river
+SEQ: Mrs. Bramble admired Harold's goodness and intelligence
+SEQ: the parents decided to hide the truth from Harold
+SEQ: the senior curate advised Mr. Bramble to keep it from Harold
+SEQ: Major Percy came to the house with Bill
+SEQ: Bill said that he was not going to fight
+SEQ: Mrs. Bramble asked about the money
+SEQ: Mrs. Bramble said the profession had given Harold a good education
+
+ASK: Harold | behaviour
+ASK: Harold | prizes
+ASK: Mr. Bramble | reason for returning home
+ASK: Mrs. Bramble | concern about money
+ASK: Mr. Bramble | decision not to fight
+ASK: truth | sacrifice
+ASK: Harold | education
+ASK: Mr. Bramble | profession
+FACT: Mr. Bramble | fight prize | 500 pounds
+FACT: Mr. Bramble | weight | 8 stone 4
+FACT: contest | rounds | 20
+FACT: Harold | bet | 2 bob
+
+ISA: Jerry Fisher | trainer
+ISA: Jimmy Murphy | boxer
+ISA: Young Porky | boxer
+ISA: National Sporting Club | place
+ISA: Lonsdale belt | title
+ISA: Phil Scott | boxer
+ISA: Sid Sampson | boxer
+ISA: Ted Richards | boxer
+ISA: Dicky Saunders | schoolmate
+ISA: The Mail | newspaper
+
+PROP: Jerry Fisher | emotions | violent
+PROP: Bill | feeling | miserable
+PROP: Bill | feeling | unhappy
+PROP: Harold | voice | gentlemanly
+PROP: Harold | feeling | surprised
+PROP: Harold | feeling | angry
+PROP: Jerry Fisher | feeling | revengeful
+PROP: Mr. Fisher | voice | metallic
+
+EVENT: think over | Bill | decision | past | +
+MORPH: think over | thought over | thinks over
+EVENT: report | The Mail | fight | future | +
+MORPH: report | reported | reports
+EVENT: read | Harold | The Mail | present | +
+EVENT: persuade | Jerry Fisher | Bill | past | +
+EVENT: enter | Harold | room | past | +
+MORPH: enter | entered | enters
+EVENT: reveal | Mr. Fisher | Bill's profession | past | +
+MORPH: reveal | revealed | reveals
+EVENT: threaten | Bill | Jerry Fisher | past | +
+MORPH: threaten | threatened | threatens
+EVENT: retreat | Jerry Fisher |  | past | +
+MORPH: retreat | retreated | retreats
+EVENT: beg | Mrs. Bramble | Mr. Fisher | past | +
+MORPH: beg | begged | begs
+EVENT: respect | Percy | father's feelings | present | +
+EVENT: give up | Bill | boxing | past | +
+MORPH: give up | gave up | gives up
+EVENT: bet | Harold | Jimmy Murphy losing | past | +
+MORPH: bet | bet | bets
+EVENT: save up | Harold | pocket money | past | +
+MORPH: save up | saved up | saves up
+EVENT: look up to | school fellows | Harold | future | +
+MORPH: look up to | looked up to | looks up to
+
+SEQ: Bill decided not to fight Jimmy Murphy
+SEQ: Jerry Fisher tried to change Bill's mind
+SEQ: Harold entered the room
+SEQ: Mr. Fisher told Harold that Bill was Young Porky
+SEQ: Bill admitted the truth
+SEQ: Harold revealed that he had bet on Jimmy Murphy losing
+SEQ: Harold said he wished he had known his father was Young Porky
+SEQ: Harold wanted Bill to continue boxing
+
+ASK: Bill | reason for not fighting
+ASK: Jerry Fisher | reaction
+ASK: Harold | reaction to the truth
+ASK: Young Porky | identity
+ASK: Harold | bet
+ASK: Lonsdale belt | opportunity
+ASK: Phil Scott | autograph
+ASK: school fellows | opinion of Harold
+FACT: Mr. Bramble | nickname | Young Porky
+FACT: Jimmy Murphy | nationality | American
+
+PROP: Harold | reaction | delighted
+PROP: Harold | admiration | proud
+PROP: Harold | opinion | disappointed with secrecy
+PROP: Bill | feeling | relieved
+PROP: Mrs. Bramble | feeling | anxious
+PROP: Percy | manner | tactless
+PROP: Jerry Fisher | feeling | emotional
+
+ISA: Young Porky | boxer
+ISA: Jimmy Murphy | boxer
+ISA: National Sporting Club | sporting club
+ISA: The Mail | newspaper
+ISA: Lonsdale belt | boxing title
+ISA: Phil Scott | boxer
+ISA: Sid Sampson | boxer
+
+EVENT: tell | Jerry Fisher | Harold the truth | past | +
+MORPH: tell | told | tells
+EVENT: stare | Harold | Bill | past | +
+MORPH: stare | stared | stares
+EVENT: revive | Bill | hope | past | +
+MORPH: revive | revived | revives
+EVENT: draw | Harold | deep breath | past | +
+EVENT: complain | Harold | secrecy | past | +
+MORPH: complain | complained | complains
+EVENT: save up | Harold | pocket money | past | +
+EVENT: call | schoolmates | Harold Goggles | present | +
+MORPH: call | called | calls
+EVENT: look up to | schoolmates | Phil Scott | present | +
+EVENT: beat | Jimmy Murphy | Ted Richards | past | +
+MORPH: beat | beat | beats
+EVENT: fight | Bill | Jimmy Murphy | future | -
+MORPH: fight | fought | fights
+
+SEQ: Jerry Fisher revealed Bill's identity as Young Porky
+SEQ: Bill admitted he had decided not to fight
+SEQ: Harold revealed that he had bet on Jimmy Murphy losing
+SEQ: Harold complained that his parents had hidden the truth
+SEQ: Harold said his classmates would have looked up to him
+SEQ: Harold urged Bill not to give up boxing
+
+ASK: Harold | feelings after learning the truth
+ASK: Young Porky | identity
+ASK: Bill | decision to give up boxing
+ASK: Harold | disappointment
+ASK: schoolmates | reaction
+ASK: Lonsdale belt | opportunity
+ASK: Jimmy Murphy | fight
+ASK: Phil Scott | importance
+ISA: Best Seller | fiction
+ISA: O. Henry | writer
+ISA: John A. Escott | travelling salesman
+ISA: Miss Asher | customer
+ISA: Colonel Allyn | person
+ISA: Virginia | place
+ISA: Louisville | place
+ISA: Cincinnati | place
+ISA: Lexington | place
+ISA: Shelbyville | place
+ISA: Bay View House | hotel
+
+PROP: John A. Escott | profession | travelling salesman
+PROP: Miss Asher | appearance | beautiful
+PROP: Colonel Allyn | appearance | proud
+PROP: Colonel Allyn | clothes | frazzled
+PROP: house | size | huge
+
+EVENT: travel | John A. Escott | after Miss Asher | past | +
+MORPH: travel | travelled | travels
+EVENT: change | Miss Asher | trains | past | +
+MORPH: change | changed | changes
+EVENT: follow | John A. Escott | Miss Asher | past | +
+MORPH: follow | followed | follows
+EVENT: keep | John A. Escott | out of her sight | past | +
+EVENT: lose | John A. Escott | track of Miss Asher | past | -
+EVENT: meet | Colonel Allyn | Miss Asher | past | +
+EVENT: carry | Colonel Allyn | satchel | past | +
+EVENT: enter | Colonel Allyn and Miss Asher | gate | past | +
+EVENT: go | John A. Escott | village | past | +
+EVENT: ask | John A. Escott | landlord for information | past | +
+EVENT: tell | landlord | John A. Escott about Colonel Allyn | past | +
+
+SEQ: Miss Asher changed trains at Cincinnati
+SEQ: she travelled through Louisville Shelbyville Frankford and Lexington
+SEQ: John A. Escott followed her without being seen
+SEQ: Colonel Allyn met Miss Asher at the station
+SEQ: they went to the large house on the hill
+SEQ: John A. Escott went to the village hotel
+SEQ: the landlord identified the owner of the large house
+
+ASK: Miss Asher | journey
+ASK: Colonel Allyn | identity
+ASK: large house | owner
+ASK: John A. Escott | purpose
+ASK: Bay View House | role
+ASK: landlord | information
+ASK: Miss Asher | destination
+ASK: Colonel Allyn | family
+PROP: John A. Pescud | appearance | small
+PROP: John A. Pescud | smile | wide
+PROP: John A. Pescud | profession | travelling salesman
+PROP: John A. Pescud | belief | plate-glass is the most important commodity
+PROP: John A. Pescud | behaviour | decent
+PROP: John A. Pescud | behaviour | law-abiding
+PROP: John A. Pescud | opinion | best-sellers are unreal
+PROP: girl | appearance | finest looking
+PROP: girl | behaviour | minded her business
+
+ISA: John A. Pescud | travelling salesman
+ISA: plate-glass | commodity
+ISA: Princess Alwyna | princess
+ISA: Trevelyan | hero
+ISA: Schutzenfestenstein | kingdom
+ISA: Chicago | place
+ISA: Cincinnati | place
+
+EVENT: know | narrator | John A. Pescud | past | +
+EVENT: believe | John A. Pescud | plate-glass is the most important commodity | present | +
+MORPH: believe | believed | believes
+EVENT: criticize | John A. Pescud | best-sellers | present | +
+MORPH: criticize | criticized | criticizes
+EVENT: marry | people | somebody in their own station | present | +
+MORPH: marry | married | marries
+EVENT: raise | company | John A. Pescud's salary | past | +
+EVENT: buy | John A. Pescud | real estate | past | +
+MORPH: buy | bought | buys
+EVENT: see | John A. Pescud | girl | past | +
+EVENT: read | girl | book | past | +
+EVENT: mind | girl | her business | past | +
+MORPH: mind | minded | minds
+
+SEQ: John A. Pescud criticized best-sellers
+SEQ: John A. Pescud said people marry somebody in their own station
+SEQ: John A. Pescud said his salary had been raised
+SEQ: John A. Pescud bought real estate
+SEQ: John A. Pescud saw the finest looking girl on the train
+SEQ: the girl read a book and minded her business
+
+ASK: John A. Pescud | opinion about best-sellers
+ASK: John A. Pescud | beliefs
+ASK: John A. Pescud | success
+ASK: girl | first impression
+ASK: narrator | opinion of John A. Pescud
+ASK: people | marriage
+ASK: plate-glass | importance
+ASK: John A. Pescud | romance
+ASK: John A. Pescud | co-passengers
+ASK: John A. Pescud | opinion about best sellers
+ASK: John A. Pescud | success
+ASK: John A. Pescud | first meeting with Jessie's father
+ASK: John A. Pescud | reason for getting off at Coketown
+ASK: John A. Pescud | profession
+ASK: John A. Pescud | first impression of his wife
+ASK: John A. Pescud | philosophy on behaviour
+ASK: Colonel Allyn | company
+ASK: irony | title Best Seller
+ASK: John A. Pescud | qualities of a good salesman
+ASK: Andrew Smith | conversation with John A. Pescud
+ASK: elderly | importance
+ASK: Colonel Allyn | patience
+ASK: elderly | attention
+ASK: younger members of family | company
+
+ISA: Andrew Smith | writer
+ISA: article | writing
+ISA: conversation | dialogue
+ISA: reporter | writer
+ISA: newspaper | publication
+ISA: elderly | people
+ISA: family | people
+
+PROP: elderly | need | attention
+PROP: elderly | need | company
+PROP: Colonel Allyn | relation | Jessie's father
+PROP: John A. Pescud | behaviour | respectful
+PROP: John A. Pescud | behaviour | patient
+
+EVENT: seek | elderly | attention and company | present | +
+MORPH: seek | sought | seeks
+EVENT: listen | younger members | elderly | present | +
+MORPH: listen | listened | listens
+EVENT: share | elderly | life experiences | present | +
+MORPH: share | shared | shares
+EVENT: enjoy | Colonel Allyn | John A. Pescud's company | past | +
+MORPH: enjoy | enjoyed | enjoys
+EVENT: write | reporter | article | present | +
+EVENT: describe | student | John A. Pescud | present | +
+EVENT: imagine | student | conversation | present | +
+MORPH: imagine | imagined | imagines
+
+SEQ: the elderly seek attention and company from younger members of their family
+SEQ: the elderly are eager to listen
+SEQ: the elderly long to share their life experiences
+SEQ: John A. Pescud treats Colonel Allyn with respect and patience
+SEQ: the reporter writes an article on the importance of the elderly in our lives
+EVENT: marry | John A. Pescud | Jessie | past | +
+MORPH: marry | married | marries
+EVENT: build | John A. Pescud | house | past | +
+MORPH: build | built | builds
+EVENT: wait | Colonel Allyn | John A. Pescud | present | +
+MORPH: wait | waited | waits
+EVENT: hear | Colonel Allyn | new story | present | +
+EVENT: take | John A. Pescud | Jessie to Philadelphia | past | +
+EVENT: think | Jessie | she saw petunias | past | +
+MORPH: think | thought | thinks
+EVENT: drop off | John A. Pescud | Coketown | past | +
+MORPH: drop off | dropped off | drops off
+EVENT: dig up | John A. Pescud | petunia cuttings or blossoms | future | +
+MORPH: dig up | dug up | digs up
+EVENT: move | train | forward | past | +
+MORPH: move | moved | moves
+EVENT: light | porter | car | past | +
+MORPH: light | lit | lights
+EVENT: pick up | narrator | best-seller | past | +
+MORPH: pick up | picked up | picks up
+EVENT: set | narrator | best-seller farther along on the floor | past | +
+MORPH: set | set | sets
+EVENT: smile | narrator |  | past | +
+MORPH: smile | smiled | smiles
+EVENT: see | narrator | life has no geographical bounds | past | +
+
+PROP: Coketown | appearance | ragged
+PROP: huts | appearance | black
+PROP: weather | condition | rainy
+PROP: John A. Pescud | nature | thoughtful
+PROP: Colonel Allyn | habit | waits at the gate
+PROP: Jessie | interest | petunias
+
+ISA: Jessie | wife
+ISA: petunia | flower
+ISA: Philadelphia | place
+ISA: Coketown | place
+ISA: train | transport
+ISA: porter | railway worker
+
+SEQ: John A. Pescud married Jessie
+SEQ: John A. Pescud built a house in the East End
+SEQ: Colonel Allyn waited at the gate for new stories
+SEQ: Jessie remembered the petunias
+SEQ: John A. Pescud got off at Coketown to find petunia cuttings
+SEQ: the train moved forward
+SEQ: the narrator picked up the best-seller
+SEQ: the narrator smiled and thought that life has no geographical bounds
+
+ASK: Jessie | petunias
+ASK: John A. Pescud | reason for getting off at Coketown
+ASK: Colonel Allyn | waiting at the gate
+ASK: narrator | life has no geographical bounds
+ASK: best-seller | ending
+ASK: John A. Pescud | marriage
+ASK: Coketown | visit
+ASK: petunia cuttings | purpose
+ISA: The Brook | poem
+ISA: brook | stream
+ISA: brook | small river
+ISA: coot | water bird
+ISA: hern | heron
+ISA: thorpe | village
+ISA: mallow | plant
+ISA: willow-weed | plant
+ISA: fern | plant
+ISA: river | natural source of water
+
+EVENT: come | brook | haunts of coot and hern | present | +
+MORPH: come | came | comes
+EVENT: make | brook | sudden sally | present | +
+MORPH: make | made | makes
+EVENT: sparkle | brook | among the fern | present | +
+MORPH: sparkle | sparkled | sparkles
+EVENT: bicker | brook | down a valley | present | +
+MORPH: bicker | bickered | bickers
+EVENT: hurry | brook | down by thirty hills | present | +
+MORPH: hurry | hurried | hurries
+EVENT: slip | brook | between the ridges | present | +
+MORPH: slip | slipped | slips
+EVENT: flow | brook | by Philip's farm | present | +
+MORPH: flow | flowed | flows
+EVENT: join | brook | brimming river | present | +
+MORPH: join | joined | joins
+EVENT: chatter | brook | over stony ways | present | +
+MORPH: chatter | chattered | chatters
+EVENT: bubble | brook | into eddying bays | present | +
+MORPH: bubble | bubbled | bubbles
+EVENT: babble | brook | on the pebbles | present | +
+MORPH: babble | babbled | babbles
+EVENT: fret | brook | banks | present | +
+MORPH: fret | fretted | frets
+
+FACT: hills | number | 30
+FACT: thorpes | number | 20
+FACT: bridges | number | 50
+
+PART: brook | banks
+PART: brook | pebbles
+
+PROP: river | state | brimming
+PROP: brook | movement | sudden
+PROP: brook | sound | chatter
+PROP: brook | sound | babble
+
+SEQ: the brook comes from the haunts of coot and hern
+SEQ: the brook sparkles out among the fern
+SEQ: the brook bickers down a valley
+SEQ: the brook hurries down by thirty hills
+SEQ: the brook slips between the ridges
+SEQ: the brook flows by Philip's farm
+SEQ: the brook chatters over stony ways
+SEQ: the brook bubbles into eddying bays
+SEQ: the brook babbles on the pebbles
+SEQ: the brook joins the brimming river
+
+ASK: brook | journey
+ASK: brook | sparkle
+ASK: brook | chatter
+ASK: brook | brimming river
+ASK: brook | eternal nature
+EVENT: wind | brook | about | present | +
+MORPH: wind | wound | winds
+EVENT: travel | brook |  | present | +
+MORPH: travel | travelled | travels
+EVENT: draw | brook | foamy flake | present | +
+MORPH: draw | drew | draws
+EVENT: steal | brook | by lawns and grassy plots | present | +
+MORPH: steal | stole | steals
+EVENT: slide | brook | by hazel covers | present | +
+MORPH: slide | slid | slides
+EVENT: move | brook | forget-me-nots | present | +
+EVENT: gloom | brook | among skimming swallows | present | +
+MORPH: gloom | gloomed | glooms
+EVENT: glance | brook | among skimming swallows | present | +
+MORPH: glance | glanced | glances
+EVENT: make | brook | netted sunbeam dance | present | +
+EVENT: murmur | brook | under moon and stars | present | +
+MORPH: murmur | murmured | murmurs
+EVENT: linger | brook | by shingly bars | present | +
+MORPH: linger | lingered | lingers
+EVENT: loiter | brook | round cresses | present | +
+MORPH: loiter | loitered | loiters
+EVENT: curve | brook |  | present | +
+MORPH: curve | curved | curves
+
+ISA: trout | fish
+ISA: grayling | fish
+ISA: hazel | tree
+ISA: forget-me-not | flower
+ISA: swallow | bird
+ISA: moon | celestial body
+ISA: star | celestial body
+ISA: cresses | plant
+ISA: shingly bars | river bank
+
+PROP: trout | quality | lusty
+PROP: waterbreak | colour | silvery
+PROP: gravel | colour | golden
+PROP: river | state | brimming
+
+PART: brook | sandy shallows
+PART: brook | golden gravel
+PART: brook | shingly bars
+
+SEQ: the brook winds about
+SEQ: blossoms sail on the brook
+SEQ: trout and grayling appear in the brook
+SEQ: the brook draws the foamy flakes along
+SEQ: the brook steals by lawns and grassy plots
+SEQ: the brook slides by hazel covers
+SEQ: the brook moves the forget-me-nots
+SEQ: the brook makes the netted sunbeam dance
+SEQ: the brook murmurs under moon and stars
+SEQ: the brook lingers by shingly bars
+SEQ: the brook loiters round cresses
+SEQ: the brook curves and flows to join the brimming river
+
+ASK: brook | linger
+ASK: brook | loiter
+ASK: brook | steal
+ASK: brook | slide
+ASK: brook | netted sunbeam
+ASK: brook | refrain
+ASK: brook | brimming river
+ASK: brook | parallel with human life
+ISA: The Road Not Taken | poem
+ISA: Robert Frost | poet
+ISA: road | path
+ISA: wood | forest
+ISA: traveller | person
+ISA: undergrowth | vegetation
+ISA: leaves | plant part
+
+EVENT: diverge | roads |  | past | +
+MORPH: diverge | diverged | diverges
+EVENT: stand | traveller |  | past | +
+MORPH: stand | stood | stands
+EVENT: look | traveller | down one road | past | +
+MORPH: look | looked | looks
+EVENT: bend | road | into undergrowth | past | +
+MORPH: bend | bent | bends
+EVENT: take | traveller | other road | past | +
+EVENT: want | road | wear | past | +
+MORPH: want | wanted | wants
+EVENT: wear | passing | roads | past | +
+MORPH: wear | wore | wears
+EVENT: lie | roads | equally | past | +
+MORPH: lie | lay | lies
+EVENT: tread | step | leaves black | past | -
+MORPH: tread | trod | treads
+EVENT: keep | traveller | first road for another day | past | +
+MORPH: keep | kept | keeps
+EVENT: know | traveller | one way leads on to way | past | +
+MORPH: know | knew | knows
+EVENT: doubt | traveller | come back | past | +
+MORPH: doubt | doubted | doubts
+EVENT: tell | traveller | story | future | +
+EVENT: make | road | all the difference | past | +
+
+FACT: roads | number | 2
+
+PROP: wood | colour | yellow
+PROP: other road | quality | fair
+PROP: road | condition | grassy
+PROP: both roads | condition | equally worn
+PROP: leaves | colour | black
+
+SEQ: two roads diverged in a yellow wood
+SEQ: the traveller looked down one road
+SEQ: the traveller took the other road
+SEQ: both roads had been worn about the same
+SEQ: both roads lay equally that morning
+SEQ: the traveller kept the first road for another day
+SEQ: the traveller doubted that he would ever come back
+SEQ: the traveller would tell the story in the future
+SEQ: the traveller took the one less travelled by
+SEQ: that made all the difference
+
+ASK: traveller | choice of road
+ASK: two roads | description
+ASK: chosen road | reason
+ASK: speaker | decision
+ASK: difference | meaning
+ASK: road | metaphor
+ASK: Robert Frost | momentous decision
+ASK: poem | rhyme scheme
+ISA: The Solitary Reaper | poem
+ISA: William Wordsworth | poet
+ISA: Highland Lass | girl
+ISA: reaper | farm worker
+ISA: nightingale | bird
+ISA: cuckoo | bird
+ISA: traveller | person
+ISA: Arabian Sands | desert
+ISA: Hebrides | islands
+ISA: vale | valley
+ISA: field | place
+ISA: grain | crop
+
+PROP: Highland Lass | state | solitary
+PROP: Highland Lass | activity | reaping
+PROP: song | quality | melancholy
+PROP: sound | effect | overflowing
+PROP: song | quality | plaintive
+PROP: voice | quality | thrilling
+PROP: song | effect | unforgettable
+
+EVENT: reap | Highland Lass | grain | present | +
+MORPH: reap | reaped | reaps
+EVENT: sing | Highland Lass |  | present | +
+MORPH: sing | sang | sings
+EVENT: cut | Highland Lass | grain | present | +
+MORPH: cut | cut | cuts
+EVENT: bind | Highland Lass | grain | present | +
+MORPH: bind | bound | binds
+EVENT: overflow | song | vale | present | +
+MORPH: overflow | overflowed | overflows
+EVENT: chant | nightingale | notes | past | +
+MORPH: chant | chanted | chants
+EVENT: break | cuckoo | silence | present | +
+MORPH: break | broke | breaks
+EVENT: stop | passer-by |  | present | +
+MORPH: stop | stopped | stops
+EVENT: pass | passer-by | gently | present | +
+MORPH: pass | passed | passes
+EVENT: hear | poet | song | past | +
+MORPH: hear | heard | hears
+EVENT: carry | poet | music in heart | past | +
+MORPH: carry | carried | carries
+
+PROP: valley | state | profound
+PROP: notes | quality | welcome
+PROP: silence | quality | profound
+PROP: song | sound | thrilling
+
+SEQ: the solitary Highland Lass reaps alone
+SEQ: the solitary Highland Lass sings by herself
+SEQ: the valley overflows with the sound
+SEQ: the poet compares the song with the nightingale
+SEQ: the poet compares the song with the cuckoo
+SEQ: the poet listens motionless and still
+SEQ: the poet carries the music in his heart
+
+ASK: Highland Lass | song
+ASK: song | theme
+ASK: nightingale | comparison
+ASK: cuckoo | comparison
+ASK: poet | memory of the song
+ASK: song | effect
+ASK: valley | sound
+ASK: solitary reaper | imagery
+ISA: The Seven Ages | poem
+ISA: William Shakespeare | poet
+ISA: world | stage
+ISA: man | player
+ISA: woman | player
+ISA: infant | stage of life
+ISA: schoolboy | stage of life
+ISA: lover | stage of life
+ISA: soldier | stage of life
+ISA: justice | stage of life
+ISA: pantaloon | stage of life
+ISA: second childishness | stage of life
+ISA: nurse | person
+ISA: satchel | school bag
+
+FACT: ages of man | number | 7
+
+PROP: infant | behaviour | mewling
+PROP: infant | behaviour | puking
+PROP: schoolboy | face | shining
+PROP: schoolboy | movement | creeping
+PROP: schoolboy | attitude | unwilling
+PROP: lover | behaviour | sighing
+PROP: soldier | appearance | bearded
+PROP: soldier | nature | jealous in honour
+PROP: soldier | behaviour | quick in quarrel
+PROP: reputation | quality | bubble
+
+EVENT: play | man | many parts | present | +
+MORPH: play | played | plays
+EVENT: have | men and women | exits and entrances | present | +
+MORPH: have | had | has
+EVENT: mewl | infant |  | present | +
+MORPH: mewl | mewled | mewls
+EVENT: puke | infant |  | present | +
+MORPH: puke | puked | pukes
+EVENT: creep | schoolboy | to school | present | +
+MORPH: creep | crept | creeps
+EVENT: sigh | lover |  | present | +
+MORPH: sigh | sighed | sighs
+EVENT: make | lover | woeful ballad | present | +
+EVENT: seek | soldier | bubble reputation | present | +
+MORPH: seek | sought | seeks
+EVENT: quarrel | soldier |  | present | +
+MORPH: quarrel | quarrelled | quarrels
+
+SEQ: all the world is a stage
+SEQ: all the men and women are merely players
+SEQ: one man plays many parts
+SEQ: the first age is the infant
+SEQ: then comes the schoolboy
+SEQ: then comes the lover
+SEQ: then comes the soldier
+
+ASK: seven ages | stages
+ASK: infant | characteristics
+ASK: schoolboy | characteristics
+ASK: lover | characteristics
+ASK: soldier | characteristics
+ASK: world | stage
+ASK: man | many parts
+ISA: justice | stage of life
+ISA: pantaloon | stage of life
+ISA: second childishness | stage of life
+ISA: spectacles | object
+ISA: pouch | body part
+ISA: slippers | footwear
+
+PROP: justice | appearance | fair
+PROP: justice | beard | formal
+PROP: justice | wisdom | wise
+PROP: pantaloon | appearance | lean
+PROP: pantaloon | stockings | loose
+PROP: nose | condition | shrinking
+PROP: voice | condition | childish
+PROP: second childishness | condition | forgetfulness
+
+EVENT: be | justice | full of wise saws and modern instances | present | +
+EVENT: play | man | justice | present | +
+EVENT: wear | pantaloon | spectacles | present | +
+MORPH: wear | wore | wears
+EVENT: wear | pantaloon | slippers | present | +
+EVENT: shrink | legs |  | present | +
+MORPH: shrink | shrank | shrinks
+EVENT: turn | voice | childish treble | present | +
+MORPH: turn | turned | turns
+EVENT: end | life | second childishness | present | +
+MORPH: end | ended | ends
+EVENT: lose | second childishness | teeth | present | +
+MORPH: lose | lost | loses
+EVENT: lose | second childishness | eyes | present | +
+EVENT: lose | second childishness | taste | present | +
+EVENT: lose | second childishness | everything | present | +
+
+SEQ: then comes the justice
+SEQ: then comes the lean and slippered pantaloon
+SEQ: the pantaloon wears spectacles
+SEQ: the pantaloon's youthful hose become too wide
+SEQ: the big manly voice turns to childish treble
+SEQ: the last scene ends in second childishness
+SEQ: second childishness is without teeth
+SEQ: second childishness is without eyes
+SEQ: second childishness is without taste
+SEQ: second childishness is without everything
+
+ASK: justice | characteristics
+ASK: pantaloon | characteristics
+ASK: second childishness | characteristics
+ASK: spectacles | significance
+ASK: voice | change
+ASK: last stage of life | features
+ASK: seven ages | final stage
+ISA: Song of the Rain | poem
+ISA: Kahlil Gibran | poet
+ISA: rain | messenger
+ISA: field | lover
+ISA: cloud | lover
+ISA: sea | water body
+ISA: thunder | sound
+ISA: rainbow | natural phenomenon
+ISA: heaven | place
+
+PROP: rain | appearance | dotted silver threads
+PROP: rain | appearance | beautiful pearls
+PROP: rain | role | messenger of mercy
+PROP: rain | touch | gentle
+PROP: announcement | quality | welcome
+PROP: hills | feeling | laughing
+PROP: flowers | feeling | rejoicing
+PROP: rain | comparison | earthly life
+
+EVENT: adorn | rain | fields and valleys | present | +
+MORPH: adorn | adorned | adorns
+EVENT: embellish | rain | gardens | present | +
+MORPH: embellish | embellished | embellishes
+EVENT: cry | rain |  | present | +
+MORPH: cry | cried | cries
+EVENT: laugh | hills |  | present | +
+MORPH: laugh | laughed | laughs
+EVENT: humble | rain | itself | present | +
+MORPH: humble | humbled | humbles
+EVENT: rejoice | flowers |  | present | +
+MORPH: rejoice | rejoiced | rejoices
+EVENT: bow | rain |  | present | +
+MORPH: bow | bowed | bows
+EVENT: quench | rain | thirst of the field | present | +
+MORPH: quench | quenched | quenches
+EVENT: cure | rain | ailment of the cloud | present | +
+MORPH: cure | cured | cures
+EVENT: declare | thunder | arrival of rain | present | +
+MORPH: declare | declared | declares
+EVENT: announce | rainbow | departure of rain | present | +
+MORPH: announce | announced | announces
+EVENT: emerge | rain | heart of the sea | present | +
+MORPH: emerge | emerged | emerges
+EVENT: soar | rain | with the breeze | present | +
+MORPH: soar | soared | soars
+EVENT: descend | rain | field | present | +
+MORPH: descend | descended | descends
+EVENT: embrace | rain | flowers and trees | present | +
+MORPH: embrace | embraced | embraces
+EVENT: touch | rain | windows | present | +
+MORPH: touch | touched | touches
+EVENT: hear | all | welcome song | present | +
+MORPH: hear | heard | hears
+EVENT: understand | sensitive | welcome song | present | +
+MORPH: understand | understood | understands
+
+SEQ: the rain emerges from the heart of the sea
+SEQ: the rain soars with the breeze
+SEQ: the rain descends on a field in need
+SEQ: the rain embraces the flowers and the trees
+SEQ: the rain touches the windows gently
+SEQ: thunder declares the arrival of the rain
+SEQ: the rainbow announces the departure of the rain
+
+ASK: rain | messenger of mercy
+ASK: rain | earthly life
+ASK: thunder | arrival
+ASK: rainbow | departure
+ASK: rain | functions
+ASK: rain | sigh of the sea
+ASK: rain | laughter of the field
+ASK: rain | tears of heaven
+ISA: Kahlil Gibran | Lebanese-American artist
+ISA: Kahlil Gibran | poet
+ISA: Kahlil Gibran | writer
+ISA: Sand and Foam | book
+
+FACT: Kahlil Gibran | birth year | 1883
+FACT: Kahlil Gibran | death year | 1931
+FACT: Sand and Foam | year | 1926
+
+PROP: Kahlil Gibran | poetry | notable
+PROP: poetry | language | formal
+PROP: poetry | topics | life
+PROP: poetry | terms | spiritual
+
+EVENT: use | Kahlil Gibran | formal language | past | +
+MORPH: use | used | uses
+EVENT: write | Kahlil Gibran | poetry | past | +
+MORPH: write | wrote | writes
+EVENT: read | line of poetry | Half of what I say is meaningless | present | +
+MORPH: read | read | reads
+
+ASK: rain | dotted silver threads
+ASK: rain | tone and mood
+ASK: rain | elated
+ASK: rain | earthly life
+ASK: rain | arrival
+ASK: rain | departure
+ASK: rain | divine nature
+ASK: rain | functions
+ASK: rain | cry
+ASK: rain | humble
+ASK: rain | bow
+ASK: sigh of the sea | meaning
+ASK: laughter of the field | meaning
+ASK: tears of heaven | meaning
+ASK: rain | messenger of mercy
+ASK: rain | arrival and departure
+ASK: poem | personification
+ASK: rain | autobiography
+ASK: rain | importance
+ASK: antithesis | examples
+ASK: rain | dotted silver threads
+ASK: rain | beautiful pearls
+ASK: rain | messenger of mercy
+ASK: rain | thunder
+ASK: rain | rainbow
+ASK: rain | visual image
+ASK: rain | adorn fields and valleys
+ASK: rain | embellish gardens
+ASK: rain | gentle touch
+ASK: rain | arrival
+ASK: rain | departure
+ASK: poem | antithesis
+ASK: poem | visual imagery
+ASK: poem | personification
+ASK: rain | love for the earth
+ASK: rain | tone and mood
+
+PROP: rain | tone | loving
+PROP: rain | mood | joyful
+
+EVENT: decorate | rain | fields and valleys | present | +
+MORPH: decorate | decorated | decorates
+EVENT: embellish | rain | gardens | present | +
+EVENT: drop | gods | silver threads | present | +
+MORPH: drop | dropped | drops
+EVENT: pluck | daughter of Dawn | beautiful pearls | present | +
+MORPH: pluck | plucked | plucks
+EVENT: announce | rainbow | departure of rain | present | +
+EVENT: declare | voice of thunder | arrival of rain | present | +
+EVENT: touch | rain | windows | present | +
+EVENT: bow | rain | all things | present | +
+EVENT: cry | rain |  | present | +
+EVENT: laugh | hills |  | present | +
+EVENT: rejoice | flowers |  | present | +
+
+SEQ: the gods drop the rain as dotted silver threads from heaven
+SEQ: nature adorns her fields and valleys with the rain
+SEQ: the daughter of Dawn plucks beautiful pearls to embellish the gardens
+SEQ: the voice of thunder declares the arrival of the rain
+SEQ: the rainbow announces the departure of the rain
+PROP: rain | comparison | earthly life
+PROP: field | state | in need
+PROP: announcement | quality | welcome
+PROP: listener | quality | sensitive
+
+ISA: Ishtar | goddess
+ISA: daughter of Dawn | person
+ISA: field | lover
+ISA: cloud | lover
+ISA: sea | water body
+ISA: heaven | place
+
+EVENT: adorn | nature | fields and valleys | present | +
+EVENT: pluck | daughter of Dawn | beautiful pearls | present | +
+EVENT: humble | rain | itself | present | +
+EVENT: elate | all things |  | present | +
+MORPH: elate | elated | elates
+EVENT: quench | rain | thirst of the field | present | +
+EVENT: cure | rain | ailment of the cloud | present | +
+EVENT: begin | earthly life | at the feet of the mad elements | present | +
+MORPH: begin | began | begins
+EVENT: end | earthly life | under the upraised wings of death | present | +
+EVENT: soar | rain | with the breeze | present | +
+EVENT: descend | rain | field | present | +
+EVENT: embrace | rain | flowers and trees | present | +
+EVENT: understand | sensitive | announcement | present | +
+
+SEQ: the rain is dotted silver threads dropped from heaven
+SEQ: nature adorns her fields and valleys with the rain
+SEQ: the rain is a messenger of mercy between the field and the cloud
+SEQ: the rain quenches the thirst of the field
+SEQ: the rain cures the ailment of the cloud
+SEQ: the rain emerges from the heart of the sea
+SEQ: the rain soars with the breeze
+SEQ: the rain descends on a field in need
+SEQ: the rain embraces the flowers and the trees
+SEQ: the rain touches the windows with soft fingers
+SEQ: all can hear the welcome song
+SEQ: only the sensitive can understand
+SEQ: the rain is the sigh of the sea
+SEQ: the rain is the laughter of the field
+SEQ: the rain is the tears of heaven
+ISA: Villa for Sale | play
+ISA: Sacha Guitry | writer
+ISA: Juliette | owner of the villa
+ISA: Maid | maid
+ISA: Gaston | businessman
+ISA: Jeanne | wife
+ISA: Mrs Al Smith | American lady
+ISA: villa | house
+ISA: salon | room
+ISA: Nogent-sur-Marne | place
+
+PROP: Gaston | nature | shrewd
+PROP: Mrs Al Smith | wealth | rich
+PROP: Jeanne | age | young
+PROP: villa | size | small
+
+EVENT: represent | scene | salon of a small villa | present | +
+MORPH: represent | represented | represents
+EVENT: rise | curtain |  | present | +
+MORPH: rise | rose | rises
+EVENT: discover | curtain | Maid and Juliette | present | +
+MORPH: discover | discovered | discovers
+
+PART: villa | salon
+
+SEQ: the scene represents the salon of a small villa near Nogent-sur-Marne
+SEQ: the curtain rises
+SEQ: the Maid and Juliette are discovered
+
+ASK: dream house | features
+ASK: dream houses | similarities
+ASK: dream houses | differences
+ASK: Juliette | role
+ASK: Gaston | role
+ASK: Jeanne | role
+ASK: Mrs Al Smith | role
+ASK: villa | location
+ISA: villa | place
+ISA: Joinville | place
+ISA: French Hollywood | place
+ISA: agency people | people
+ISA: lady | customer
+
+FACT: sign on the gate | duration | 1 month
+FACT: asking price | francs | 100000
+FACT: cost | multiple | 2
+FACT: expected price | francs | 200000
+FACT: almost buyers | number | 4
+FACT: years | number | 15
+
+PROP: Juliette | feeling | fed up
+PROP: place | quality | nice
+PROP: times | condition | hard
+PROP: business | condition | bad
+PROP: place | state | wretched
+PROP: amount | quality | paltry
+
+EVENT: buy | someone | villa | past | +
+MORPH: buy | bought | buys
+EVENT: place | Juliette | villa for sale | past | +
+MORPH: place | placed | places
+EVENT: hang | sign | gate | past | +
+MORPH: hang | hung | hangs
+EVENT: wait | Juliette | until night | past | +
+MORPH: wait | waited | waits
+EVENT: hang | Juliette | sign | past | +
+EVENT: belong | house | Juliette | past | +
+MORPH: belong | belonged | belongs
+EVENT: fight | world | purchase the house | future | +
+MORPH: fight | fought | fights
+EVENT: pass | Juliette | Villa for Sale sign | past | +
+MORPH: pass | passed | passes
+EVENT: look | neighbours | Juliette | past | +
+MORPH: look | looked | looks
+EVENT: sacrifice | Juliette | place | future | +
+MORPH: sacrifice | sacrificed | sacrifices
+EVENT: cut | Juliette | loss | future | +
+MORPH: cut | cut | cuts
+EVENT: buy | people | place | past | -
+EVENT: wait | Juliette | lady | present | +
+EVENT: spend | Juliette | weekends | past | +
+MORPH: spend | spent | spends
+EVENT: sell | everybody | past | -
+MORPH: sell | sold | sells
+EVENT: have | everybody | money | past | +
+MORPH: have | had | has
+EVENT: have | nobody | money | present | -
+EVENT: want | nobody | buy | present | +
+
+SEQ: Juliette placed the villa for sale
+SEQ: Juliette waited until night
+SEQ: Juliette hung the sign herself
+SEQ: Juliette thought the world would fight to purchase the house
+SEQ: the sign remained on the gate for over a month
+SEQ: Juliette decided to sacrifice the place at any price
+SEQ: Juliette waited for the lady from the agency
+SEQ: Juliette said there are moments when it is the right time to buy
+SEQ: Juliette said it is never the right time to sell
+PROP: Juliette | attitude | flattering
+PROP: villa | appearance | delightful
+PROP: villa | appearance | modest
+PROP: villa | quality | charming
+PROP: bathroom | condition | beautifully fitted
+PROP: garden | size | small
+PROP: roof | condition | repaired
+PROP: Jeanne | feeling | flattered
+
+FACT: asking price | francs | 250000
+FACT: Gaston's offer | francs | 60000
+FACT: reduced price | francs | 200000
+
+ISA: Carot | painter
+ISA: picture | fixture
+ISA: bathroom | room
+ISA: garden | place
+ISA: roof | part
+
+PART: villa | bathroom
+PART: villa | garden
+PART: villa | roof
+PART: villa | electricity
+PART: villa | gas
+PART: villa | water
+PART: villa | telephone
+PART: villa | drainage
+
+EVENT: enter | Juliette | room | past | +
+MORPH: enter | entered | enters
+EVENT: greet | Juliette | Gaston and Jeanne | past | +
+MORPH: greet | greeted | greets
+EVENT: praise | Juliette | villa | present | +
+MORPH: praise | praised | praises
+EVENT: possess | villa | advantages | present | +
+MORPH: possess | possessed | possesses
+EVENT: repair | roof | last year | past | +
+MORPH: repair | repaired | repairs
+EVENT: ask | Juliette | price offer | past | +
+MORPH: ask | asked | asks
+EVENT: admit | Juliette | she does not want to sell | past | +
+MORPH: admit | admitted | admits
+EVENT: agree | Juliette | sell the villa | present | +
+MORPH: agree | agreed | agrees
+EVENT: keep | Juliette | little picture | present | +
+EVENT: offer | Gaston | sixty thousand francs | past | +
+MORPH: offer | offered | offers
+EVENT: refuse | Juliette | offer | past | +
+MORPH: refuse | refused | refuses
+EVENT: show | Juliette | upper floor | future | +
+MORPH: show | showed | shows
+EVENT: ring | door bell |  | past | +
+MORPH: ring | rang | rings
+
+SEQ: Juliette welcomed Gaston and Jeanne
+SEQ: Juliette described the advantages of the villa
+SEQ: Jeanne asked the price
+SEQ: Juliette first asked two hundred and fifty thousand francs
+SEQ: Gaston offered sixty thousand francs
+SEQ: Juliette reduced the price to two hundred thousand francs
+SEQ: Jeanne went upstairs with Juliette
+SEQ: Gaston stayed downstairs
+SEQ: the door bell rang
+FACT: asking price | francs | 300000
+FACT: cheque amount | francs | 300000
+FACT: Gaston's profit | francs | 100000
+
+PROP: Mrs Al Smith | feeling | delighted
+PROP: Gaston | feeling | delighted
+PROP: Gaston | behaviour | clever
+PROP: Gaston | opinion | business is good when everyone is delighted
+PROP: Jeanne | opinion | villa not suitable
+
+ISA: Paramount | film studio
+ISA: architect | profession
+ISA: lawyer | profession
+ISA: Ritz Hotel | hotel
+ISA: bungalow | house
+ISA: cheque | payment
+
+EVENT: knock down | Mrs Al Smith | house | future | +
+MORPH: knock down | knocked down | knocks down
+EVENT: build | Mrs Al Smith | bungalow | future | +
+EVENT: shoot | Mrs Al Smith | films | future | +
+EVENT: quote | Gaston | three hundred thousand francs | past | +
+MORPH: quote | quoted | quotes
+EVENT: pay | Mrs Al Smith | cash | past | +
+MORPH: pay | paid | pays
+EVENT: write | Mrs Al Smith | cheque | past | +
+EVENT: fill in | Gaston | name on cheque | past | +
+MORPH: fill in | filled in | fills in
+EVENT: leave | Mrs Al Smith | house | past | +
+MORPH: leave | left | leaves
+EVENT: return | Jeanne and Juliette | room | past | +
+MORPH: return | returned | returns
+EVENT: change | Gaston | mind | past | +
+MORPH: change | changed | changes
+EVENT: buy | Gaston | villa | past | +
+EVENT: sign | Juliette | receipt | past | +
+MORPH: sign | signed | signs
+EVENT: exchange | Juliette | receipt for cheque | past | +
+MORPH: exchange | exchanged | exchanges
+EVENT: keep | Gaston | little picture | past | +
+EVENT: show | Juliette | garden | future | +
+EVENT: make | Gaston | one hundred thousand francs and a Carot | past | +
+
+SEQ: Mrs Al Smith wanted the land
+SEQ: Gaston asked three hundred thousand francs
+SEQ: Mrs Al Smith wrote a cheque
+SEQ: Mrs Al Smith left delighted
+SEQ: Jeanne and Juliette returned
+SEQ: Gaston decided to buy the villa for two hundred thousand francs
+SEQ: Juliette signed the receipt
+SEQ: Gaston gave the cheque to Juliette
+SEQ: Juliette agreed to leave the next day
+SEQ: Gaston took the little picture
+SEQ: Jeanne asked what Gaston had done
+SEQ: Gaston said he had made one hundred thousand francs and a Carot
+
+ASK: Gaston | business deal
+ASK: Mrs Al Smith | reason for buying
+ASK: Gaston | profit
+ASK: villa | final price
+ASK: little picture | importance
+ASK: ending | outcome
+ISA: Sacha Guitry | playwright
+ISA: Sacha Guitry | film writer
+ISA: Sacha Guitry | producer
+ISA: Sacha Guitry | director
+ISA: French theatre | theatre
+ISA: St. Petersburg | place
+ISA: Leningrad | place
+ISA: French actor | actor
+
+FACT: Sacha Guitry | birth year | 1885
+FACT: Sacha Guitry | death year | 1957
+
+PROP: Sacha Guitry | nature | clever
+PROP: Sacha Guitry | nature | irrepressible
+PROP: Sacha Guitry | nature | amusing
+PROP: Sacha Guitry | success | successful
+PROP: French theatre | condition | dismal
+
+EVENT: bear | St. Petersburg | Sacha Guitry | past | +
+MORPH: bear | bore | bears
+EVENT: become | Sacha Guitry | writer of plays and films | past | +
+MORPH: become | became | becomes
+EVENT: reflect | experiences | Villa for Sale | present | +
+MORPH: reflect | reflected | reflects
+EVENT: claim | Sacha Guitry | one-man revolt | past | +
+MORPH: claim | claimed | claims
+EVENT: stage | Sacha Guitry | one-man revolt | past | +
+MORPH: stage | staged | stages
+EVENT: earn | Sacha Guitry | recognition | past | +
+MORPH: earn | earned | earns
+
+SEQ: Sacha Guitry was born in St. Petersburg
+SEQ: Sacha Guitry became a writer of plays and films
+SEQ: Sacha Guitry claimed that he staged a one-man revolt against the dismal French theatre
+SEQ: Sacha Guitry was successful on screen and stage
+SEQ: Sacha Guitry earned recognition as a producer and director
+
+ASK: Juliette | reason for selling the villa
+ASK: Gaston | reason for not buying the villa
+ASK: Mrs Al Smith | statements about the French
+ASK: Juliette | change in decision
+ASK: Gaston | business skill
+ASK: ending | win-win situation
+ASK: play | social satire
+ASK: maid and Jeanne | role
+ASK: Sacha Guitry | life
+ASK: Sacha Guitry | profession
+ISA: Bishop | clergy
+ISA: Persome | Bishop's sister
+ISA: Marie | household helper
+ISA: Convict | prisoner
+ISA: Sergeant of Gendarmes | policeman
+ISA: kitchen | room
+ISA: cottage | house
+ISA: candlesticks | candle holder
+ISA: crucifix | wooden image
+ISA: gendarmes | police
+
+PART: cottage | kitchen
+PART: kitchen | fireplace
+PART: kitchen | mantelpiece
+PART: kitchen | window
+PART: kitchen | table
+PART: kitchen | chairs
+PART: kitchen | books
+PART: mantelpiece | candlesticks
+
+PROP: kitchen | condition | plainly furnished
+PROP: kitchen | condition | substantially furnished
+PROP: candlesticks | appearance | handsome
+PROP: surroundings | quality | plain
+PROP: soup | state | boiling
+PROP: Persome | manner | rude
+PROP: Marie | manner | obedient
+
+EVENT: stir | Marie | soup | present | +
+MORPH: stir | stirred | stirs
+EVENT: boil | soup |  | present | +
+MORPH: boil | boiled | boils
+EVENT: tend | Marie | fire | past | -
+MORPH: tend | tended | tends
+EVENT: answer | Marie | Persome | present | +
+MORPH: answer | answered | answers
+EVENT: rebuke | Persome | Marie | future | -
+MORPH: rebuke | rebuked | rebukes
+EVENT: leave | Bishop | message | past | -
+MORPH: leave | left | leaves
+EVENT: tell | Bishop | Marie where he was going | past | +
+MORPH: tell | told | tells
+EVENT: ask | Persome | Marie | past | +
+MORPH: ask | asked | asks
+EVENT: think | Marie |  | past | +
+MORPH: think | thought | thinks
+EVENT: look | Persome | clock | present | +
+MORPH: look | looked | looks
+
+SEQ: Marie stirs the soup on the fire
+SEQ: Persome asks whether the soup is boiling
+SEQ: Persome asks where the Bishop is
+SEQ: Marie says the Bishop left no message
+SEQ: Marie says the Bishop told her where he was going
+SEQ: Persome says Marie did not tell her because she did not ask
+SEQ: Persome tells Marie not to answer back
+SEQ: Persome waits for the Bishop
+
+ASK: Bishop | whereabouts
+ASK: Persome | concern
+ASK: Marie | behaviour
+ASK: candlesticks | importance
+ASK: kitchen | description
+ASK: Bishop | message
+ASK: Marie | reply
+ASK: Persome | attitude
+ISA: Mere Gringoire | woman
+ISA: Jean | child
+ISA: Monseigneur Gervais | person
+ISA: bailiff | court officer
+ISA: salt-cellars | silver objects
+ISA: rent | payment
+
+PROP: Persome | feeling | shocked
+PROP: Mere Gringoire | condition | bedridden
+PROP: Marie's mother | condition | poorly
+PROP: Bishop | nature | generous
+PROP: soup | state | boiling
+
+EVENT: go | Bishop | Marie's mother | past | +
+MORPH: go | went | goes
+EVENT: feel | Marie's mother | poorly | past | +
+MORPH: feel | felt | feels
+EVENT: pour | Marie | soup | present | +
+MORPH: pour | poured | pours
+EVENT: sell | Marie | silver salt-cellars | past | +
+MORPH: sell | sold | sells
+EVENT: admire | Monseigneur Gervais | salt-cellars | past | +
+MORPH: admire | admired | admires
+EVENT: threaten | bailiff | turn Mere Gringoire out | past | +
+MORPH: threaten | threatened | threatens
+EVENT: send | Mere Gringoire | little Jean to the Bishop | past | +
+MORPH: send | sent | sends
+EVENT: ask | little Jean | Bishop for help | past | +
+EVENT: pay | Bishop | rent | past | +
+MORPH: pay | paid | pays
+EVENT: enter | Bishop | kitchen | past | +
+MORPH: enter | entered | enters
+EVENT: pray | Bishop | with Marie's mother | past | +
+MORPH: pray | prayed | prays
+EVENT: visit | doctor | Marie's mother | past | +
+MORPH: visit | visited | visits
+EVENT: give | Bishop | comforter to Marie | past | +
+MORPH: give | gave | gives
+EVENT: wear | Marie | comforter | past | +
+MORPH: wear | wore | wears
+
+SEQ: Marie tells Persome the Bishop went to her mother's house
+SEQ: Persome learns that the silver salt-cellars were sold
+SEQ: Marie says the money was for Mere Gringoire's rent
+SEQ: little Jean asks the Bishop for help
+SEQ: the Bishop enters the kitchen
+SEQ: the Bishop says he prayed with Marie's mother
+SEQ: the Bishop sends Marie home
+SEQ: the Bishop gives his comforter to Marie
+SEQ: Persome tells the Bishop to take his soup
+
+ASK: salt-cellars | sale
+ASK: Mere Gringoire | rent
+ASK: Bishop | generosity
+ASK: Marie's mother | illness
+ASK: little Jean | purpose
+ASK: comforter | use
+ASK: Persome | reaction
+ASK: Bishop | reason for selling salt-cellars
+PROP: Convict | condition | starving
+PROP: Convict | feeling | suspicious
+PROP: Convict | feeling | puzzled
+PROP: Convict | feeling | tired
+PROP: Bishop | manner | smiling
+PROP: Bishop | manner | eager
+
+ISA: passport | document
+ISA: Church | institution
+ISA: couch | furniture
+ISA: coverings | bedding
+ISA: bottle | container
+ISA: knife | weapon
+
+EVENT: read | Bishop | book | past | +
+MORPH: read | read | reads
+EVENT: seize | Convict | Bishop | past | +
+MORPH: seize | seized | seizes
+EVENT: threaten | Convict | Bishop | past | +
+MORPH: threaten | threatened | threatens
+EVENT: starve | Convict |  | present | +
+MORPH: starve | starved | starves
+EVENT: eat | Convict | food | past | -
+MORPH: eat | ate | eats
+EVENT: give | Bishop | food | Convict | future | +
+EVENT: escape | Convict | prison | past | +
+MORPH: escape | escaped | escapes
+EVENT: steal | Convict | rags | past | +
+EVENT: steal | Convict | food | past | +
+EVENT: sleep | Convict | in woods and barns | past | +
+MORPH: sleep | slept | sleeps
+EVENT: dare | Convict | ask for work | past | -
+MORPH: dare | dared | dares
+EVENT: beg | Convict | in town | past | -
+MORPH: beg | begged | begs
+EVENT: suffer | Convict |  | past | +
+MORPH: suffer | suffered | suffers
+EVENT: lie | Convict | on couch | future | +
+EVENT: admire | Convict | candlesticks | past | +
+EVENT: weigh | Convict | candlesticks | past | +
+MORPH: weigh | weighed | weighs
+EVENT: drop | Convict | candlestick | past | +
+MORPH: drop | dropped | drops
+EVENT: remind | candlesticks | Bishop of his mother | present | +
+MORPH: remind | reminded | reminds
+EVENT: convert | Bishop | Convict | future | -
+MORPH: convert | converted | converts
+EVENT: hate | Convict | Church | present | +
+MORPH: hate | hated | hates
+
+SEQ: the Bishop reads quietly
+SEQ: the Convict enters with a knife
+SEQ: the Convict asks for food
+SEQ: the Bishop offers food
+SEQ: the Convict tells his story
+SEQ: the Bishop asks the Convict to sleep
+SEQ: the Convict admires the silver candlesticks
+SEQ: the Bishop says the candlesticks were a gift from his mother
+SEQ: the Convict asks why the Bishop is kind to him
+SEQ: the Bishop offers the Convict a good sleep
+
+ASK: Convict | reason for stealing
+ASK: Convict | suffering
+ASK: Bishop | kindness
+ASK: candlesticks | importance
+ASK: Convict | opinion of the Church
+ASK: Convict | passport
+ASK: Bishop | friendship
+ASK: Convict | hunger
+PROP: Bishop | feeling | sorry
+PROP: Persome | feeling | distressed
+PROP: Persome | opinion | charity begins at home
+PROP: Bishop | opinion | people who lie are poorer
+PROP: Bishop | feeling | grieved
+PROP: Convict | identity | 15729
+PROP: Convict | feeling | ashamed
+PROP: Convict | feeling | amazed
+PROP: Convict | feeling | grateful
+PROP: Convict | feeling | awed
+
+ISA: Paris | place
+ISA: Temple of the Living God | belief
+ISA: prison | Hell
+ISA: chain-mates | prisoners
+
+EVENT: suffer | people |  | present | +
+EVENT: give away | Bishop | everything | present | +
+MORPH: give away | gave away | gives away
+EVENT: hurt | Bishop | Persome | past | +
+MORPH: hurt | hurt | hurts
+EVENT: dispose of | Bishop | salt-cellars | past | +
+MORPH: dispose of | disposed of | disposes of
+EVENT: seize | Convict | candlesticks | past | +
+EVENT: stow | Convict | candlesticks in coat | past | +
+MORPH: stow | stowed | stows
+EVENT: discover | Persome | missing candlesticks | past | +
+EVENT: inform | Persome | police | future | +
+MORPH: inform | informed | informs
+EVENT: arrest | Sergeant | Convict | past | +
+MORPH: arrest | arrested | arrests
+EVENT: release | Sergeant | Convict | past | +
+MORPH: release | released | releases
+EVENT: bless | Bishop | Convict | past | +
+MORPH: bless | blessed | blesses
+EVENT: remember | Convict | Temple of the Living God | future | +
+MORPH: remember | remembered | remembers
+EVENT: sob | Convict |  | past | +
+MORPH: sob | sobbed | sobs
+
+SEQ: Persome says charity begins at home
+SEQ: the Convict steals the candlesticks
+SEQ: Persome discovers the theft
+SEQ: the Sergeant brings back the Convict
+SEQ: the Bishop says he gave the candlesticks to the Convict
+SEQ: the Sergeant releases the Convict
+SEQ: the Convict asks the Bishop to bless him
+SEQ: the Bishop gives the Convict the candlesticks
+SEQ: the Bishop shows the lonely path to Paris
+SEQ: the Convict promises to remember that his body is the Temple of the Living God
+
+ASK: charity | begins at home
+ASK: Convict | identity number
+ASK: Bishop | kindness
+ASK: Persome | attitude
+ASK: Convict | reformation
+ASK: candlesticks | significance
+ASK: Paris | reason
+ASK: Temple of the Living God | meaning
+ISA: Norman Mckinnel | actor
+ISA: Norman Mckinnel | dramatist
+ISA: Victor Hugo | writer
+ISA: Les Miserables | book
+ISA: Jean Valjean | Convict
+ISA: reformatory | institution
+ISA: ex-convict | prisoner
+
+FACT: Norman Mckinnel | birth year | 1870
+FACT: Norman Mckinnel | death year | 1932
+
+PROP: play | theme | love
+PROP: play | theme | kindness
+PROP: Bishop | nature | benevolent
+PROP: Convict | condition | reformed
+PROP: Convict | belief | spirit of God
+
+EVENT: break into | Convict | Bishop's house | past | +
+MORPH: break into | broke into | breaks into
+EVENT: clothe | Bishop | Convict | past | +
+MORPH: clothe | clothed | clothes
+EVENT: warm | Bishop | Convict | past | +
+MORPH: warm | warmed | warms
+EVENT: soften | benevolence of the Bishop | Convict | present | +
+MORPH: soften | softened | softens
+EVENT: capture | police | Convict | past | +
+MORPH: capture | captured | captures
+EVENT: inform | Bishop | police | past | +
+EVENT: reform | Bishop | Convict | past | +
+MORPH: reform | reformed | reforms
+EVENT: dwell | spirit of God | heart of every human being | present | +
+MORPH: dwell | dwelt | dwells
+EVENT: kneel | Bishop | before the prie-dieu | past | +
+MORPH: kneel | knelt | kneels
+EVENT: bow | Bishop | head | past | +
+EVENT: pray | Bishop |  | past | +
+
+SEQ: the Convict breaks into the Bishop's house
+SEQ: the Bishop clothes and warms the Convict
+SEQ: the Convict steals the silver candlesticks
+SEQ: the Convict is captured and brought back
+SEQ: the Bishop tells the police the candlesticks are a gift
+SEQ: the Bishop reforms the Convict
+SEQ: the Convict believes in the spirit of God
+SEQ: the Bishop kneels in prayer
+
+ASK: play | theme
+ASK: Norman Mckinnel | profession
+ASK: Victor Hugo | Les Miserables
+ASK: Convict | reformation
+ASK: Bishop | benevolence
+ASK: spirit of God | dwelling place
+ASK: Jean Valjean | letter to the Bishop
+ASK: irony | examples
+ASK: Persome | charity begins at home
+ASK: Convict | identity number
+ASK: Bishop | selling the salt-cellars
+ASK: punishment | Convict
+ASK: Convict | eagerness to reach Paris
+ASK: Bishop | change in the Convict
+ASK: Bishop | right in selling the salt-cellars
+ASK: Persome | people pretending to be sick
+ASK: Convict | meaning of too old a bird to be caught with chaff
+ASK: Convict | reason for imprisonment
+ASK: Convict | punishment
+ASK: punishment | justification
+ASK: Convict | reason for reaching Paris
+ASK: Convict | change before leaving
+ASK: Persome | meaning of charity begins at home
+ASK: Convict | identity number
+ASK: Persome | role as mother hen
+ASK: Bishop | change in perspective
+ASK: irony | examples
+ASK: Convict | letter to the Bishop
+ASK: Persome | capacity to care
+
+PROP: play | theme | kindness
+PROP: play | theme | love
+PROP: Bishop | nature | benevolent
+PROP: Convict | state | reformed
+
+EVENT: soften | benevolence of the Bishop | Convict | present | +
+EVENT: steal | Convict | silver candlesticks | past | +
+EVENT: capture | police | Convict | past | +
+EVENT: bring back | police | Convict | past | +
+MORPH: bring back | brought back | brings back
+EVENT: inform | Bishop | police that the candlesticks are a gift | past | +
+EVENT: seek | Convict | Bishop's blessing | past | +
+EVENT: start | Jean Valjean | business | future | +
+MORPH: start | started | starts
+EVENT: prosper | business |  | future | +
+MORPH: prosper | prospered | prospers
+EVENT: start | Jean Valjean | reformatory for ex-convicts | future | +
+EVENT: write | Jean Valjean | letter to the Bishop | future | +
+EVENT: seek | Jean Valjean | Bishop's blessings | future | +
+
+ISA: Jean Valjean | Convict
+ISA: reformatory | institution
+ISA: ex-convict | prisoner
+
+SEQ: the Convict steals the silver candlesticks
+SEQ: the police capture the Convict
+SEQ: the Bishop tells the police the candlesticks are a gift
+SEQ: the Convict seeks the Bishop's blessing
+SEQ: Jean Valjean starts a business
+SEQ: the business prospers
+SEQ: Jean Valjean starts a reformatory for ex-convicts
+SEQ: Jean Valjean writes a letter to the Bishop
+SEQ: Jean Valjean seeks the Bishop's blessings
+ASK: Bishop | selling the salt-cellars
+ASK: Persome | people pretending to be sick
+ASK: Convict | meaning of too old a bird to be caught with chaff
+ASK: Convict | reason for imprisonment
+ASK: Convict | punishment
+ASK: punishment | justification
+ASK: Convict | reason for reaching Paris
+ASK: Convict | reason for asking the Bishop's blessing
+ASK: charity | meaning of charity begins at home
+ASK: Convict | identity number
+ASK: Persome | role as mother hen
+ASK: Bishop | change in the Convict
+ASK: irony | examples
+ASK: Jean Valjean | letter to the Bishop
+ASK: Bishop | perspective
+ASK: Bishop | capacity to care
+
+PROP: Bishop | nature | generous
+PROP: Bishop | nature | kind
+PROP: Convict | state | reformed
+PROP: play | theme | kindness
+PROP: play | theme | love
+
+EVENT: lend | Bishop | hand to anyone in distress | present | +
+MORPH: lend | lent | lends
+EVENT: warm | Bishop | Convict | past | +
+EVENT: soften | benevolence of the Bishop | Convict | present | +
+EVENT: steal | Convict | silver candlesticks | past | +
+EVENT: capture | police | Convict | past | +
+EVENT: bring back | police | Convict | past | +
+MORPH: bring back | brought back | brings back
+EVENT: inform | Bishop | police that the candlesticks are a gift | past | +
+EVENT: seek | Convict | Bishop's blessing | past | +
+EVENT: transform | change in perspective | life | present | +
+MORPH: transform | transformed | transforms
+
+SEQ: the Bishop lends a hand to anyone in distress
+SEQ: the Convict is clothed and warmed
+SEQ: the Convict steals the silver candlesticks
+SEQ: the police capture the Convict
+SEQ: the Bishop tells the police the candlesticks are a gift
+SEQ: the Convict seeks the Bishop's blessing
+SEQ: the Bishop's kindness reforms the Convict
+SEQ: the smallest change in perspective transforms a life
+ISA: Oh, I Wish I'd Looked After Me Teeth | poem
+ISA: Pam Ayres | poet
+ISA: dentist | person
+ISA: toothbrush | object
+ISA: toothpaste | object
+ISA: tooth | friend
+ISA: cavities | dental problem
+ISA: caps | dental treatment
+ISA: decay | dental problem
+ISA: fillings | dental treatment
+ISA: injections | dental treatment
+ISA: drill | dental instrument
+ISA: molars | teeth
+ISA: false teeth | teeth
+
+PROP: toothbrush | condition | hairless
+PROP: speaker | feeling | regretful
+PROP: conscience | state | pricked
+PROP: dentist's drill | sound | whining
+
+EVENT: show | speaker | toothpaste | past | +
+MORPH: show | showed | shows
+EVENT: brush | speaker | teeth | past | -
+MORPH: brush | brushed | brushes
+EVENT: poke | speaker | teeth | past | -
+MORPH: poke | poked | pokes
+EVENT: pave | speaker | way to cavities, caps and decay | past | +
+MORPH: pave | paved | paves
+EVENT: throw | speaker | sherbet away | conditional | +
+MORPH: throw | threw | throws
+EVENT: lie | speaker | dentist's chair | past | +
+MORPH: lie | lay | lies
+EVENT: gaze | speaker | dentist's nose | present | +
+MORPH: gaze | gazed | gazes
+EVENT: whine | drill | in molars | present | +
+MORPH: whine | whined | whines
+EVENT: laugh | speaker | mother's false teeth | past | +
+EVENT: beckon | false teeth | speaker | present | +
+MORPH: beckon | beckoned | beckons
+EVENT: wish | speaker | looked after teeth | present | +
+MORPH: wish | wished | wishes
+
+SEQ: the speaker did not brush her teeth properly
+SEQ: the speaker paved the way to cavities, caps and decay
+SEQ: the speaker lay in the dentist's chair
+SEQ: the speaker gazed up the dentist's nose in despair
+SEQ: the dentist's drill whined in the speaker's molars
+SEQ: the speaker remembered laughing at her mother's false teeth
+SEQ: the speaker wished she had looked after her teeth
+
+ASK: speaker | regret
+ASK: speaker | dentist
+ASK: tooth | friend
+ASK: brushing | importance
+ASK: cavities | cause
+ASK: poem | message
+ASK: speaker | false teeth
+ASK: amalgum | spelling
+ISA: Pam Ayres | writer
+ISA: Pam Ayres | entertainer
+ISA: comic verse | poetry
+ISA: book | collection
+ISA: record album | album
+
+FACT: Pam Ayres | birth year | 1947
+FACT: Pam Ayres | books of poems | 6
+FACT: Pam Ayres | record albums | 7
+FACT: collection | poems | 50
+
+PROP: Pam Ayres | writing | comic
+PROP: Pam Ayres | status | contemporary
+PROP: poems | quality | humorous
+
+EVENT: write | Pam Ayres | poems and verses | past | +
+MORPH: write | wrote | writes
+EVENT: perform | Pam Ayres | comic verse | present | +
+MORPH: perform | performed | performs
+EVENT: start | Pam Ayres | writing poems and verses as a hobby | past | +
+MORPH: start | started | starts
+EVENT: appear | Pam Ayres | television shows | past | +
+MORPH: appear | appeared | appears
+EVENT: publish | Pam Ayres | books of poems | past | +
+MORPH: publish | published | publishes
+EVENT: include | record albums | collection of 50 best known poems | present | +
+MORPH: include | included | includes
+
+ASK: title | expression
+ASK: speaker | conscience
+ASK: cavities and decay | cause
+ASK: narrator | tone
+ASK: brushing | meaning
+ASK: dentist | reason for visit
+ASK: tooth | meaning of friend
+ASK: looking after teeth | methods
+ASK: poem | message
+ASK: amalgum | misspelling
+ASK: Jack | diary entry
+ASK: proverb | message of the poem
+ASK: sleep a wink | idiom
+ASK: give me the willies | idiom
+ASK: crack the whip | idiom
+ASK: take the horse to the water | idiom
+ASK: turn tail | idiom
+ASK: wonders will never cease | idiom
+ASK: past can't be undone | idiom
+ASK: reap what I had sown | idiom
+ASK: Doki | toothache
+ASK: Moki | advice
+ASK: dentist | waiting room
+ASK: mother | discipline
+
+ISA: Doki | brother
+ISA: Moki | sister
+ISA: dentist | person
+ISA: toothache | dental problem
+ISA: waiting room | room
+ISA: surgery | place
+
+PROP: Doki | feeling | agony
+PROP: tooth | condition | sore
+PROP: Moki | manner | reassuring
+
+EVENT: sleep | Doki |  | past | -
+MORPH: sleep | slept | sleeps
+EVENT: go | Doki | dentist | future | +
+MORPH: go | went | goes
+EVENT: give | dentist's waiting room | Doki the willies | present | +
+MORPH: give | gave | gives
+EVENT: get | Moki | mother | future | +
+MORPH: get | got | gets
+EVENT: make | mother | Doki go to the dentist | future | +
+EVENT: save | Moki | Doki | future | +
+MORPH: save | saved | saves
+EVENT: turn | Doki | tail | future | +
+EVENT: lead | Doki | dentist | future | +
+MORPH: lead | led | leads
+EVENT: wish | Doki | taken proper care of teeth | past | +
+EVENT: pay | Doki | attention to discipline | past | -
+EVENT: undo | past |  | present | -
+MORPH: undo | undid | undoes
+EVENT: reap | Doki | what he had sown | present | +
+MORPH: reap | reaped | reaps
+
+SEQ: Doki has a toothache
+SEQ: Moki tells Doki to go to the dentist
+SEQ: Doki says the dentist's waiting room gives him the willies
+SEQ: Moki says their mother will make him go to the dentist
+SEQ: Doki agrees to go
+SEQ: Doki wishes he had taken proper care of his teeth
+SEQ: Moki reminds Doki of their mother's discipline
+SEQ: Doki says the past cannot be undone
+SEQ: Doki says he has to reap what he had sown
+ASK: autumn | personification
+ASK: autumn | close bosom-friend of the maturing sun
+ASK: autumn | fruitfulness
+ASK: autumn | ripeness
+ASK: autumn | bees
+ASK: autumn | granary floor
+ASK: autumn | winnowing wind
+ASK: autumn | gleaner
+ASK: autumn | hook
+ASK: autumn | reaped furrow
+
+ISA: Ode to Autumn | poem
+ISA: John Keats | poet
+ISA: autumn | season
+ISA: sun | star
+ISA: vines | plant
+ISA: apples | fruit
+ISA: cottage-trees | trees
+ISA: gourd | fruit
+ISA: hazel | plant
+ISA: bees | insect
+ISA: granary | place
+ISA: furrow | field
+ISA: gleaner | worker
+ISA: hook | tool
+ISA: poppies | flower
+
+PROP: autumn | quality | mellow
+PROP: fruitfulness | quality | mellow
+PROP: kernel | quality | sweet
+PROP: days | quality | warm
+PROP: wind | quality | winnowing
+PROP: autumn | appearance | careless
+PROP: autumn | state | drowsed
+
+EVENT: conspire | autumn | maturing sun | present | +
+MORPH: conspire | conspired | conspires
+EVENT: load | autumn | vines with fruit | present | +
+MORPH: load | loaded | loads
+EVENT: bless | autumn | vines | present | +
+MORPH: bless | blessed | blesses
+EVENT: bend | autumn | cottage-trees with apples | present | +
+EVENT: fill | autumn | fruit with ripeness | present | +
+MORPH: fill | filled | fills
+EVENT: swell | autumn | gourd | present | +
+MORPH: swell | swelled | swells
+EVENT: plump | autumn | hazel shells | present | +
+MORPH: plump | plumped | plumps
+EVENT: set | autumn | later flowers | present | +
+MORPH: set | set | sets
+EVENT: think | bees | warm days will never cease | present | +
+EVENT: sit | autumn | granary floor | present | +
+MORPH: sit | sat | sits
+EVENT: sleep | autumn | on a half-reaped furrow | present | +
+EVENT: spare | hook | next swath | present | +
+MORPH: spare | spared | spares
+ASK: villa | sketch
+ASK: island | location of villa
+ASK: villa | colour
+ASK: roof | colour
+ASK: chimney | colour
+ASK: lawn | palm trees
+ASK: lawn | shrubs
+ASK: ground floor | windows
+ASK: birds | enclosed area
+ASK: backyard | tree
+ASK: backyard | pool
+ASK: tree | relaxing chair
+
+ISA: island | landform
+ISA: lake | water body
+ISA: villa | house
+ISA: palm trees | trees
+ISA: shrubs | plants
+ISA: lawn | garden
+ISA: roof | part
+ISA: chimney | part
+ISA: door | part
+ISA: window | part
+ISA: birds | animals
+ISA: backyard | place
+ISA: pool | water body
+ISA: chair | furniture
+
+FACT: villa | floors | 2
+FACT: ground floor | windows | 4
+FACT: ground floor | doors | 1
+
+PART: villa | roof
+PART: villa | chimney
+PART: villa | front lawn
+PART: villa | backyard
+PART: villa | door
+PART: villa | windows
+PART: lawn | enclosed area
+PART: backyard | tree
+PART: backyard | pool
+PART: tree | relaxing chair
+
+PROP: villa | colour | white
+PROP: roof | colour | red
+PROP: chimney | colour | green
+PROP: flowers | colour | multi-colored
+PROP: tree | size | huge
+
+EVENT: stand | villa | in the middle of the island | present | +
+MORPH: stand | stood | stands
+EVENT: tone | palm trees and shrubs | white colour of the villa | present | +
+MORPH: tone | toned | tones
+EVENT: greet | flowers | person | present | +
+MORPH: greet | greeted | greets
+EVENT: place | enclosed area | birds | present | +
+MORPH: place | placed | places
+EVENT: place | chair | under the tree | present | +
+
+SEQ: there is an island in the middle of a lake
+SEQ: there is a two floor villa in the middle of the island
+SEQ: rows of palm trees and shrubs are in the front lawn
+SEQ: the villa has a big door and four windows on the ground floor
+SEQ: there is an enclosed area for the birds in the lawn
+SEQ: there is a huge tree beside the small pool in the backyard
+SEQ: there is a relaxing chair under the tree
+ASK: literature | personal response
+ASK: literature | enjoyment
+ASK: drama | voice modulation
+ASK: drama | movement
+ASK: drama | costumes
+ASK: drama | props
+ASK: drama | lights
+ASK: drama | music
+ASK: character | study
+ASK: stage directions | purpose
+
+ISA: literature reader | book
+ISA: fiction | literature
+ISA: poetry | literature
+ISA: drama | literature
+ISA: listening tasks | annexure
+ISA: voice modulation | speaking skill
+ISA: stage directions | guidance
+ISA: costumes | drama feature
+ISA: props | drama feature
+ISA: lights | drama feature
+ISA: music | drama feature
+
+PART: literature reader | fiction
+PART: literature reader | poetry
+PART: literature reader | drama
+PART: literature reader | annexure
+
+FACT: fiction pieces | number | 5
+
+PROP: drama | nature | mobile
+PROP: voice modulation | importance | important
+PROP: props | contribution | significant
+
+EVENT: dramatise | students | plays | present | +
+MORPH: dramatise | dramatised | dramatises
+EVENT: memorise | students | lines | present | +
+MORPH: memorise | memorised | memorises
+EVENT: read | students | play | present | +
+MORPH: read | read | reads
+EVENT: express | voice | emotions | present | +
+MORPH: express | expressed | expresses
+EVENT: vary | speaker | pace | present | +
+MORPH: vary | varied | varies
+EVENT: know | students | character | present | +
+EVENT: study | students | character's lines | present | +
+MORPH: study | studied | studies
+EVENT: follow | students | stage directions | present | +
+MORPH: follow | followed | follows
+EVENT: involve | drama | physical movement | present | +
+MORPH: involve | involved | involves
+EVENT: make | clothes and props | play come alive | present | +
+
+SEQ: read the poem, short story or play
+SEQ: give a personal response
+SEQ: dramatise the plays
+SEQ: memorise the lines if possible
+SEQ: use voice modulation
+SEQ: move naturally
+SEQ: use costumes, props, lights and music
+SEQ: make the play come alive for the audience
+ISA: literature | text
+ISA: communicative competence | language skill
+ISA: language | functional tool
+ISA: language | medium
+ISA: students | learners
+ISA: teachers | educators
+ISA: creativity | quality
+ISA: imagination | ability
+ISA: experiences | knowledge source
+ISA: knowledge | learning source
+
+FACT: academic session | year | 1993
+FACT: revision | year | 1995
+FACT: revision | year | 1997
+FACT: revision | year | 2003
+FACT: revision | year | 2009
+
+PROP: book | purpose | communicative
+PROP: extracts | purpose | thought-provoking
+PROP: activities | purpose | communicative
+PROP: feedback | quality | welcome
+
+EVENT: implement | Board | English Communicative Curriculum | past | +
+MORPH: implement | implemented | implements
+EVENT: revise | Board | book | past | +
+MORPH: revise | revised | revises
+EVENT: receive | Board | feedback | past | +
+MORPH: receive | received | receives
+EVENT: design | book | communicative competence | past | +
+MORPH: design | designed | designs
+EVENT: encourage | teachers | students to think on their own | present | +
+MORPH: encourage | encouraged | encourages
+EVENT: express | students | ideas | present | +
+EVENT: interact | students | world around them | present | +
+MORPH: interact | interacted | interacts
+EVENT: adopt | teachers | pedagogical practices | present | +
+MORPH: adopt | adopted | adopts
+EVENT: enhance | pedagogical practices | creativity | present | +
+MORPH: enhance | enhanced | enhances
+EVENT: acknowledge | book | effort of material developers and editorial board | present | +
+MORPH: acknowledge | acknowledged | acknowledges
+EVENT: welcome | Team CBSE | feedback and suggestions | present | +
+MORPH: welcome | welcomed | welcomes
+
+SEQ: the English Communicative Curriculum was implemented
+SEQ: the book was revised
+SEQ: feedback was received
+SEQ: the book was designed to develop communicative competence
+SEQ: teachers encourage students to think on their own
+SEQ: students express their ideas using experiences, knowledge and imagination
+SEQ: teachers adopt appropriate pedagogical practices
+SEQ: feedback and suggestions are welcome
+ASK: title | expression of regret
+ASK: speaker | conscience
+ASK: cavities and decay | cause
+ASK: narrator | tone
+ASK: brushing | meaning
+ASK: dentist | reason for visit
+ASK: tooth | meaning of friend
+ASK: looking after teeth | methods
+ASK: proverb | message of the poem
+ASK: Jack | diary entry
+ASK: amalgum | misspelling
+ASK: sleep a wink | idiom
+ASK: give someone the willies | idiom
+ASK: crack the whip | idiom
+ASK: take the horse to the water | idiom
+ASK: turn tail | idiom
+ASK: wonders will never cease | idiom
+ASK: past can't be undone | idiom
+ASK: reap what I had sown | idiom
+
+PROP: title | expression | regret
+PROP: narrator | tone | regret
+PROP: speaker | condition | careless
+PROP: toothbrush | condition | hairless
+PROP: drill | sound | whining
+
+EVENT: chew | speaker | toffees | past | +
+MORPH: chew | chewed | chews
+EVENT: lick | speaker | lollies | past | +
+MORPH: lick | licked | licks
+EVENT: pick | speaker | liquorice all sorts | past | +
+MORPH: pick | picked | picks
+EVENT: prick | conscience | speaker | present | +
+MORPH: prick | pricked | pricks
+EVENT: tell | mother | speaker | past | +
+EVENT: flash | speaker | toothpaste | past | +
+MORPH: flash | flashed | flashes
+EVENT: brush | speaker | teeth | past | -
+EVENT: pave | speaker | way to cavities and decay | past | +
+EVENT: gaze | speaker | dentist's nose | present | +
+EVENT: laugh | speaker | mother's false teeth | past | +
+EVENT: beckon | false teeth | speaker | present | +
+
+SEQ: the speaker chewed toffees and sweet sticky food
+SEQ: the speaker licked lollies and picked liquorice all sorts
+SEQ: the speaker did not brush her teeth properly
+SEQ: the speaker paved the way to cavities, caps and decay
+SEQ: the speaker lay in the dentist's chair
+SEQ: the speaker gazed up the dentist's nose in despair
+SEQ: the speaker laughed at her mother's false teeth
+SEQ: the speaker wished she had looked after her teeth
+ISA: Old Age Home | place
+ISA: grandparents | people
+ISA: teacher | person
+ISA: students | people
+ISA: caretaker | person
+ISA: cake | food
+ISA: balloons | decoration
+ISA: chart paper | material
+ISA: hall | room
+ISA: fruit | food
+ISA: diabetic people | people
+ISA: grandchildren | people
+ISA: son | person
+ISA: U.S. | place
+
+EVENT: announce | teacher | surprise | past | +
+MORPH: announce | announced | announces
+EVENT: ask | teacher | students to bring pocket money | past | +
+EVENT: buy | students | cake | past | +
+MORPH: buy | bought | buys
+EVENT: enter | students | Old Age Home | past | +
+MORPH: enter | entered | enters
+EVENT: decorate | students | hall | past | +
+MORPH: decorate | decorated | decorates
+EVENT: blow | students | balloons | past | +
+MORPH: blow | blew | blows
+EVENT: hang | students | balloons | past | +
+EVENT: write | students | quotes | past | +
+EVENT: draw | students | pictures | past | +
+MORPH: draw | drew | draws
+EVENT: stick | students | pictures on wall | past | +
+MORPH: stick | stuck | sticks
+EVENT: greet | Robert | grandparents | past | +
+EVENT: sing | students | songs | past | +
+EVENT: smile | grandparents |  | past | +
+MORPH: smile | smiled | smiles
+EVENT: distribute | students | cake | past | +
+MORPH: distribute | distributed | distributes
+EVENT: inform | caretaker | students | past | +
+MORPH: inform | informed | informs
+EVENT: have | diabetic people | fruit | past | +
+EVENT: miss | grandparents | grandchildren | past | +
+MORPH: miss | missed | misses
+EVENT: leave | son | mother at Old Age Home | past | +
+EVENT: realize | students | grandparents are lonely and insecure | past | +
+MORPH: realize | realized | realizes
+EVENT: spend | grandparents | second childhood in old age homes | present | +
+MORPH: spend | spent | spends
+EVENT: complain | people in old age homes |  | present | -
+MORPH: complain | complained | complains
+EVENT: tell | people | grandparents they are loved | present | +
+MORPH: tell | told | tells
+
+SEQ: the teacher announced a surprise
+SEQ: the students bought a cake, chart paper and balloons
+SEQ: the students went to an Old Age Home
+SEQ: the students decorated the hall
+SEQ: the students welcomed the grandparents
+SEQ: the students sang songs
+SEQ: the students distributed cake and fruit
+SEQ: the students learned that many grandparents missed their grandchildren
+SEQ: the students realized that grandparents are lonely and insecure
+SEQ: the students should tell their grandparents that they love them
+
+ASK: grandparents | feelings
+ASK: Old Age Home | visit
+ASK: grandparents | loneliness
+ASK: students | responsibility
+ASK: old age | happiness
+ASK: grandparents | worth
+ISA: Brave Hearts | children
+ISA: President | person
+ISA: Rashtrapati Bhavan | place
+ISA: National Bravery Awards | award
+ISA: Indira Gandhi Scholarship Scheme | scholarship
+ISA: Prime Minister | person
+ISA: Indian Council for Child Welfare | organization
+ISA: railway officials | people
+ISA: police | organization
+ISA: terrorists | people
+ISA: robbers | people
+ISA: farmer | person
+
+FACT: brave children | number | 20
+FACT: boy | age | 12
+FACT: child | age | 13
+FACT: child | age | 14
+FACT: awards | year | 2008
+
+EVENT: help | Manish Bansal | elder brother | past | +
+MORPH: help | helped | helps
+EVENT: nab | brothers | armed miscreants | past | +
+MORPH: nab | nabbed | nabs
+EVENT: fight off | Kritika Jhanwar | robbers | past | +
+MORPH: fight off | fought off | fights off
+EVENT: host | President | brave children | past | +
+MORPH: host | hosted | hosts
+EVENT: provide | Indira Gandhi Scholarship Scheme | financial assistance | present | +
+MORPH: provide | provided | provides
+EVENT: reserve | centre | seats | present | +
+MORPH: reserve | reserved | reserves
+EVENT: identify | boy | terrorists | past | +
+MORPH: identify | identified | identifies
+EVENT: save | child | lives | past | +
+MORPH: save | saved | saves
+EVENT: raise | child | alarm | past | +
+MORPH: raise | raised | raises
+EVENT: dodge | child | marriage | past | +
+MORPH: dodge | dodged | dodges
+EVENT: announce | President of the Indian Council for Child Welfare | names of brave children | past | +
+MORPH: announce | announced | announces
+EVENT: foil | Saumik Mishra | theft attempt | past | +
+MORPH: foil | foiled | foils
+EVENT: rescue | Prachi Santosh Sen | four children | past | +
+MORPH: rescue | rescued | rescues
+EVENT: injure | accident | Prachi Santosh Sen | past | +
+MORPH: injure | injured | injures
+EVENT: oppose | Asu Kanwar | marriage | past | +
+MORPH: oppose | opposed | opposes
+EVENT: identify | Rahul | bomb planters | past | +
+EVENT: provide | Rahul | vital information | past | +
+EVENT: alert | M. Marudu Pandi | railway officials | past | +
+MORPH: alert | alerted | alerts
+EVENT: avert | M. Marudu Pandi | accident | past | +
+MORPH: avert | averted | averts
+
+SEQ: brave children were selected for the National Bravery Awards
+SEQ: the President hosted the brave children
+SEQ: financial assistance was provided under the Indira Gandhi Scholarship Scheme
+SEQ: Rahul identified the bomb planters
+SEQ: M. Marudu Pandi alerted railway officials about a fractured rail track
+SEQ: brave children were honoured for courage
+ISA: Sanjay Chopra Award | award
+ISA: Geeta Chopra Award | award
+ISA: Bapu Gaidhani Award | award
+ISA: electrocution | accident
+ISA: kitchen fire | accident
+ISA: self-help group | organization
+ISA: District Women Development Agency | organization
+ISA: balloon seller | occupation
+ISA: eyewitness | witness
+ISA: fracture | rail track damage
+
+FACT: children saved by Prachi Santosh Sen | number | 4
+FACT: inmates saved by Kavita Kanwar and Seema Kanwar | number | 3
+FACT: man's age | years | 40
+FACT: years Asu Kanwar opposed the marriage | number | 2
+FACT: date of bomb blasts | day | 13
+
+EVENT: receive | Saumik Mishra | Sanjay Chopra Award | past | +
+MORPH: receive | received | receives
+EVENT: receive | Prachi Santosh Sen | Geeta Chopra Award | past | +
+EVENT: save | Prachi Santosh Sen | four children from electrocution | past | +
+EVENT: injure | electrocution | Prachi Santosh Sen | past | +
+EVENT: amputate | doctors | fingers | past | +
+MORPH: amputate | amputated | amputates
+EVENT: receive | Kavita Kanwar | Bapu Gaidhani Award | past | +
+EVENT: save | Kavita Kanwar and Seema Kanwar | three inmates | past | +
+EVENT: catch | kitchen fire | inmates | past | +
+MORPH: catch | caught | catches
+EVENT: receive | Asu Kanwar | Bapu Gaidhani Award | past | +
+EVENT: oppose | Asu Kanwar | marriage | past | +
+EVENT: save | self-help group | Asu Kanwar | past | +
+EVENT: approach | self-help group | District Women Development Agency | past | +
+MORPH: approach | approached | approaches
+EVENT: call off | District Women Development Agency | wedding | past | +
+MORPH: call off | called off | calls off
+EVENT: identify | Rahul | men who planted bombs | past | +
+EVENT: provide | Rahul | vital information | past | +
+EVENT: help | Rahul's statement | police | past | +
+EVENT: make | police | sketches of the suspects | past | +
+EVENT: map | police | suspects | past | +
+EVENT: alert | M. Marudu Pandi | railway officials | past | +
+EVENT: avert | M. Marudu Pandi | accident | past | +
+
+SEQ: Saumik Mishra received the Sanjay Chopra Award
+SEQ: Prachi Santosh Sen received the Geeta Chopra Award
+SEQ: Prachi Santosh Sen saved four children from electrocution
+SEQ: Kavita Kanwar received the Bapu Gaidhani Award posthumously
+SEQ: Asu Kanwar opposed the marriage for two years
+SEQ: a self-help group approached the District Women Development Agency
+SEQ: the wedding was called off
+SEQ: Rahul identified the men who planted bombs
+SEQ: Rahul provided vital information to the police
+SEQ: M. Marudu Pandi alerted railway officials about the fractured rail track
+ISA: Gagan | child
+ISA: Bhoomika J. Murthy | child
+ISA: Silver Kharbani | child
+ISA: Yumkhaibam Addison Singh | child
+ISA: Vishal Suryaji Patil | child
+ISA: Shahanshah | child
+ISA: Dinu K.G. | child
+ISA: Anita Kaura | child
+ISA: Reena Kaura | child
+ISA: Majjusha A | child
+ISA: Hina Quereshi | child
+ISA: baby | child
+ISA: cousin | child
+ISA: pond | water body
+ISA: elephant | animal
+ISA: Republic Day Parade | event
+
+FACT: twins | age | 6
+FACT: rescued child | age | 8
+FACT: Republic Day | date | 26
+
+EVENT: reward | authorities | Gagan and Bhoomika J. Murthy | past | +
+MORPH: reward | rewarded | rewards
+EVENT: save | Gagan and Bhoomika J. Murthy | baby | past | +
+EVENT: rescue | Gagan and Bhoomika J. Murthy | baby | past | +
+EVENT: watch | crowds | bull fight | past | +
+MORPH: watch | watched | watches
+EVENT: save | Silver Kharbani | young cousin | past | +
+EVENT: trap | fire | young cousin | past | +
+MORPH: trap | trapped | traps
+EVENT: receive | Silver Kharbani | pride of place in Republic Day Parade | future | +
+MORPH: receive | received | receives
+EVENT: ride | Silver Kharbani | elephant | future | +
+MORPH: ride | rode | rides
+EVENT: rescue | Yumkhaibam Addison Singh | eight-year-old | past | +
+EVENT: drown | eight-year-old | pond | past | +
+MORPH: drown | drowned | drowns
+EVENT: rescue | Vishal Suryaji Patil | woman and her child | past | +
+EVENT: save | Shahanshah | people from drowning | past | +
+EVENT: save | Dinu K.G. | people from drowning | past | +
+EVENT: save | Anita Kaura | people from drowning | past | +
+EVENT: save | Reena Kaura | people from drowning | past | +
+EVENT: save | Majjusha A | people from drowning | past | +
+EVENT: save | Hina Quereshi | people from drowning | past | +
+
+SEQ: Gagan and Bhoomika J. Murthy saved a baby caught in a bull fight
+SEQ: Silver Kharbani saved her young cousin trapped in a fire
+SEQ: Silver Kharbani received a pride of place in the Republic Day Parade
+SEQ: Yumkhaibam Addison Singh rescued an eight-year-old from drowning
+SEQ: Vishal Suryaji Patil rescued a woman and her child from drowning
+SEQ: Shahanshah saved people from drowning
+SEQ: Dinu K.G. saved people from drowning
+SEQ: Anita Kaura and Reena Kaura saved people from drowning
+SEQ: Majjusha A saved people from drowning
+SEQ: Hina Quereshi saved people from drowning
+ISA: Kane | wrestler
+ISA: Chris | interviewer
+ISA: Xbox Live | game service
+ISA: Halo 2 | video game
+ISA: Ghost Recon | video game
+ISA: Raw vs. Smackdown 2006 | video game
+ISA: PSP | game console
+ISA: Wrestlemania | event
+ISA: Summer Slam | wrestling event
+ISA: Hulk Hogan | wrestler
+ISA: Randy Savage | wrestler
+ISA: Ricky Steamboat | wrestler
+ISA: Ric Flair | wrestler
+ISA: Four Horsemen | wrestling group
+ISA: Undertaker | wrestler
+ISA: Bret Hart | wrestler
+ISA: Hall of Fame | honour
+ISA: World Championship | title
+ISA: WWE | wrestling company
+ISA: WCW | wrestling company
+
+PROP: Kane | preference | without the mask
+PROP: television product | quality | stronger
+PROP: Kane | feeling | happy
+PROP: mask | quality | mysterious
+
+EVENT: play | Kane | Halo 2 | past | +
+MORPH: play | played | plays
+EVENT: play | Kane | Ghost Recon | past | +
+EVENT: play | Kane | Raw vs. Smackdown 2006 | present | +
+EVENT: aspire | Kane | wrestler | past | +
+MORPH: aspire | aspired | aspires
+EVENT: inspire | Hulk Hogan | Kane | past | +
+MORPH: inspire | inspired | inspires
+EVENT: become | Kane | wrestling fan | past | +
+MORPH: become | became | becomes
+EVENT: broadcast | local stations | wrestling | past | -
+MORPH: broadcast | broadcast | broadcasts
+EVENT: introduce | WWE | Kane as Undertaker's brother | past | +
+MORPH: introduce | introduced | introduces
+EVENT: evolve | WWE |  | past | +
+MORPH: evolve | evolved | evolves
+EVENT: strengthen | television products |  | past | +
+MORPH: strengthen | strengthened | strengthens
+EVENT: overcome | WWE | competition from WCW | past | +
+MORPH: overcome | overcame | overcomes
+EVENT: prefer | Kane | performing without the mask | present | +
+MORPH: prefer | preferred | prefers
+EVENT: rely | Kane | body language | past | +
+MORPH: rely | relied | relies
+EVENT: beat | Bret Hart | Ric Flair | past | +
+MORPH: beat | beat | beats
+EVENT: entertain | Kane | people | present | +
+MORPH: entertain | entertained | entertains
+EVENT: respect | fans | Kane | present | +
+MORPH: respect | respected | respects
+
+SEQ: Kane played Halo 2 and Ghost Recon online
+SEQ: Kane played Raw vs. Smackdown 2006 on the PSP
+SEQ: Kane wanted to become a wrestler in college
+SEQ: Hulk Hogan inspired Kane
+SEQ: the Undertaker became Kane's favourite wrestler
+SEQ: WWE television products became stronger
+SEQ: Kane preferred performing without the mask
+SEQ: Kane continued wrestling because he enjoyed entertaining people
+ISA: Keeping It From Harold | story
+ISA: Bill Bramble | professional boxer
+ISA: Mrs. Bramble | wife
+ISA: Harold | son
+ISA: Major Percy Stokes | Mrs. Bramble's brother
+ISA: Jerry Fisher | trainer
+ISA: Jimmy Murphy | boxer
+ISA: Young Porky | boxer
+ISA: Phil Scott | boxer
+ISA: Sid Simpson | boxer
+ISA: Lonsdale belt | boxing title
+ISA: Murphy | boxer
+ISA: Mr. John L. Sullivan | boxer
+ISA: Marie Lloyd | music hall artist
+
+PROP: Mrs. Bramble | nature | proud
+PROP: Harold | quality | child prodigy
+PROP: Mr. Bramble | nature | mild
+PROP: Mr. Bramble | nature | obliging
+PROP: Harold | nature | little gentleman
+PROP: Jerry Fisher | feeling | angry
+PROP: Major Percy Stokes | nature | persuasive
+
+EVENT: keep | Bramble family | Bill's profession from Harold | present | +
+MORPH: keep | kept | keeps
+EVENT: decide | Bill Bramble | not to fight | past | +
+MORPH: decide | decided | decides
+EVENT: convince | Jerry Fisher | Bill Bramble | past | +
+MORPH: convince | convinced | convinces
+EVENT: think | Bill Bramble | Harold | present | +
+EVENT: reveal | Jerry Fisher | truth to Harold | future | +
+MORPH: reveal | revealed | reveals
+EVENT: hear | Harold | conversation | past | +
+MORPH: hear | heard | hears
+EVENT: know | Harold | father's profession | past | +
+MORPH: know | knew | knows
+EVENT: admire | Harold | Jimmy Murphy | past | +
+MORPH: admire | admired | admires
+EVENT: bet | Harold | on Murphy losing | past | +
+MORPH: bet | bet | bets
+EVENT: resume | Mrs. Bramble | darning the sock | past | +
+MORPH: resume | resumed | resumes
+
+SEQ: Mrs. Bramble is proud of Harold
+SEQ: Bill Bramble decides not to fight
+SEQ: Jerry Fisher tries to change Bill's decision
+SEQ: Harold hears the conversation
+SEQ: Harold learns that his father is a professional boxer
+SEQ: Harold asks about the money he had bet on Murphy losing
+SEQ: Mrs. Bramble resumes darning the sock
+
+ASK: Mrs. Bramble | pride
+ASK: Harold | heredity
+ASK: Mr. Bramble | profession
+ASK: Bill Bramble | reason for not fighting
+ASK: Harold | reaction to father's profession
+ASK: Jerry Fisher | revenge
+ASK: Harold | bet on Murphy
+ASK: Major Percy Stokes | role
+ASK: Private Quelch | character sketch
+ASK: Keeping It From Harold | sequence of events
+ASK: Harold's father | profession
+ASK: Mr. Bramble | character
+ASK: Jerry Fisher | attempt to convince Bill
+ASK: Harold | reaction to father's true identity
+ASK: Harold's parents | decision to hide truth
+ASK: Mr. Bramble | reason for not fighting Murphy
+ASK: truth | sacrifice
+ASK: Mr. Bramble | personality
+ASK: Harold | reaction to father's profession
+ASK: Harold | letter to father
+ASK: Mrs. and Mr. Bramble | preconceived notions
+ASK: Bill Bramble | diary entry
+ASK: Mrs. Bramble | character
+ASK: Mr. Bramble | character
+ASK: Percy | character
+ASK: Jerry Fisher | character
+ASK: Kane | favourite video games
+ASK: Kane | favourite wrestler
+ASK: WWE | changes
+ASK: Kane | preference for mask
+ASK: Kane | reason for wrestling
+ASK: Kane | personality
+ASK: violent sports | opinion
+ASK: Keeping It From Harold | play adaptation
+
+PROP: Mrs. Bramble | nature | concerned
+PROP: Mr. Bramble | nature | honest
+PROP: Mr. Bramble | nature | open
+PROP: Jerry Fisher | feeling | hurt
+PROP: Harold | feeling | proud
+PROP: Harold | feeling | upset
+
+EVENT: hide | Mrs. and Mr. Bramble | Bill's profession from Harold | past | +
+MORPH: hide | hid | hides
+EVENT: convince | Jerry Fisher | Bill to change his mind | past | +
+EVENT: decide | Bill Bramble | not fight Murphy | past | +
+EVENT: discover | Harold | father's profession | past | +
+MORPH: discover | discovered | discovers
+EVENT: admire | Harold | Young Porky | past | +
+EVENT: write | Harold | letter to father | conditional | +
+EVENT: express | Bill Bramble | feelings in diary | conditional | +
+MORPH: express | expressed | expresses
+EVENT: answer | students | questions | present | +
+MORPH: answer | answered | answers
+EVENT: adapt | students | story into play | present | +
+MORPH: adapt | adapted | adapts
+EVENT: present | students | play before class | present | +
+MORPH: present | presented | presents
+EVENT: decide | students | cast, props and costumes | present | +
+
+SEQ: answer questions about the story
+SEQ: describe the characters
+SEQ: listen to Kane's interview
+SEQ: answer the listening questions
+SEQ: write about violent sports
+SEQ: convert the story into a play
+SEQ: decide the cast, props and costumes
+SEQ: present the play before the class
+ASK: Mrs. Bramble | reason for pride
+ASK: writer | tone
+ASK: Harold | defying the laws of heredity
+ASK: Harold | respect from classmates
+ASK: Mr. Fisher | meaning of "It's hard"
+ASK: Major Percy Stokes | character
+ASK: Harold | father's profession
+ASK: Mr. Bramble | reason for keeping profession secret
+ASK: Mr. Fisher | reason for revenge
+ASK: Mr. Fisher | plan for revenge
+ASK: violent sports | opinion
+ASK: Kane | favourite wrestler
+ASK: Kane | favourite video games
+ASK: WWE | changes
+ASK: Kane | preference for the mask
+ASK: Kane | reason for wrestling
+
+PROP: Mrs. Bramble | feeling | proud
+PROP: Harold | quality | child prodigy
+PROP: Harold | quality | intelligent
+PROP: Mr. Fisher | feeling | offended
+PROP: Major Percy Stokes | quality | persuasive
+PROP: Major Percy Stokes | quality | self-important
+PROP: Mr. Bramble | nature | truthful
+
+EVENT: keep | Mr. and Mrs. Bramble | Mr. Bramble's profession from Harold | present | +
+MORPH: keep | kept | keeps
+EVENT: sacrifice | Mr. and Mrs. Bramble | truth | past | +
+MORPH: sacrifice | sacrificed | sacrifices
+EVENT: feel | Harold | ashamed | conditional | +
+MORPH: feel | felt | feels
+EVENT: take | Mr. Fisher | revenge | future | +
+MORPH: take | took | takes
+EVENT: tell | Mr. Fisher | Harold the truth | future | +
+EVENT: persuade | Jerry Fisher | Bill Bramble | past | +
+MORPH: persuade | persuaded | persuades
+EVENT: answer | students | interview questions | present | +
+EVENT: write | students | opinion on violent sports | present | +
+EVENT: convert | students | story into a play | present | +
+MORPH: convert | converted | converts
+EVENT: decide | students | cast, props and costumes | present | +
+
+SEQ: read the story carefully
+SEQ: answer the comprehension questions
+SEQ: identify the characters
+SEQ: listen to Kane's interview
+SEQ: answer the listening questions
+SEQ: write an opinion on violent sports
+SEQ: convert the story into a play
+SEQ: decide the cast, props and costumes
+SEQ: present the play before the class
+ASK: Mr. Fisher | meaning of "It's hard"
+ASK: Mr. Bramble | reason for refusing to fight
+ASK: Harold | reason for shame
+ASK: Jerry Fisher | concern about the purse
+ASK: Mrs. Bramble | reaction to the purse
+ASK: Major Percy Stokes | reaction to Bill's decision
+ASK: Harold | reading The Mail
+ASK: Jimmy Murphy | fight
+ASK: Bill Bramble | profession
+ASK: truth | sacrifice
+
+ISA: The Mail | newspaper
+ISA: purse | prize money
+ISA: Jimmy Murphy | boxer
+ISA: Jerry Fisher | trainer
+
+PROP: Jerry Fisher | feeling | shocked
+PROP: Bill Bramble | feeling | unhappy
+PROP: Jerry Fisher | feeling | emotional
+PROP: Harold | habit | regular reader
+PROP: Bill Bramble | concern | Harold
+
+EVENT: tell | Bill Bramble | Jerry Fisher about his decision | past | +
+EVENT: refuse | Bill Bramble | fight on Monday | past | +
+MORPH: refuse | refused | refuses
+EVENT: surprise | Jerry Fisher | Bill Bramble's decision | past | +
+MORPH: surprise | surprised | surprises
+EVENT: think of | Bill Bramble | Harold | present | +
+EVENT: report | The Mail | fight | future | +
+MORPH: report | reported | reports
+EVENT: read | Harold | The Mail | present | +
+EVENT: keep | Bill Bramble | profession from Harold | past | +
+EVENT: know | Harold | Bill Bramble's profession | future | -
+EVENT: die | Harold | of shame | conditional | +
+MORPH: die | died | dies
+EVENT: appear | tears | in Jerry Fisher's eyes | past | +
+EVENT: think of | Jerry Fisher | purse | present | +
+
+SEQ: Bill Bramble tells Jerry Fisher he will not fight on Monday
+SEQ: Jerry Fisher is shocked
+SEQ: Bill Bramble says he must think of Harold
+SEQ: Bill Bramble says the fight will be reported in The Mail
+SEQ: Bill Bramble says Harold reads The Mail regularly
+SEQ: Bill Bramble says Harold would die of shame if he knew the truth
+SEQ: tears appear in Jerry Fisher's eyes
+SEQ: Jerry Fisher asks Bill Bramble to think of the purse
+PROP: Jerry Fisher | feeling | angry
+PROP: Bill Bramble | feeling | frightened
+PROP: Harold | feeling | surprised
+PROP: Harold | appearance | innocent
+PROP: Mr. Fisher | nature | revengeful
+PROP: Mrs. Bramble | manner | pleading
+PROP: Major Percy Stokes | manner | persuasive
+
+EVENT: think of | Jerry Fisher | swells | present | +
+EVENT: think of | Jerry Fisher | papers | present | +
+EVENT: hear | Harold | conversation | past | +
+MORPH: hear | heard | hears
+EVENT: freeze | Bill Bramble's blood |  | past | +
+MORPH: freeze | froze | freezes
+EVENT: stand | Harold | at the door | past | +
+MORPH: stand | stood | stands
+EVENT: survey | four adults | Harold | past | +
+MORPH: survey | surveyed | surveys
+EVENT: dislike | Mr. Fisher | Bill Bramble | past | +
+MORPH: dislike | disliked | dislikes
+EVENT: seek | Mr. Fisher | revenge | past | +
+EVENT: tell | Mr. Fisher | Harold the truth | future | +
+EVENT: threaten | Bill Bramble | Mr. Fisher | past | +
+EVENT: retreat | Mr. Fisher |  | past | +
+MORPH: retreat | retreated | retreats
+EVENT: grasp | Mr. Fisher | chair | past | +
+MORPH: grasp | grasped | grasps
+EVENT: swing | Mr. Fisher | chair | past | +
+MORPH: swing | swung | swings
+EVENT: entreat | Mrs. Bramble | Mr. Fisher | past | +
+MORPH: entreat | entreated | entreats
+EVENT: respect | Major Percy Stokes | father's feelings | present | +
+
+SEQ: Jerry Fisher asks Bill Bramble to think of the crowd
+SEQ: Bill Bramble says he must think of Harold
+SEQ: Harold returns from his walk
+SEQ: Harold asks what they were saying about him
+SEQ: the adults remain silent
+SEQ: Mr. Fisher decides to take revenge
+SEQ: Mr. Fisher begins to tell Harold the truth
+SEQ: Bill Bramble threatens Mr. Fisher
+SEQ: Mr. Fisher grabs a chair
+SEQ: Mrs. Bramble and Major Percy Stokes try to stop Mr. Fisher
+EVENT: plead | Major Percy Stokes | Mr. Fisher | past | +
+MORPH: plead | pleaded | pleads
+EVENT: respect | Mr. Fisher | father's feelings | present | +
+EVENT: tell | Mr. Fisher | Harold the truth | past | +
+EVENT: know | Harold | father's profession | past | +
+EVENT: admire | Harold | Young Porky | past | +
+EVENT: admire | Harold | Jimmy Murphy | past | +
+EVENT: ask | Harold | money bet on Murphy | past | +
+MORPH: ask | asked | asks
+EVENT: laugh | Bill Bramble |  | past | +
+MORPH: laugh | laughed | laughs
+EVENT: remove | Bill Bramble | anxiety | past | +
+MORPH: remove | removed | removes
+EVENT: resume | Mrs. Bramble | darning the sock | past | +
+MORPH: resume | resumed | resumes
+
+PROP: Harold | feeling | delighted
+PROP: Bill Bramble | feeling | relieved
+PROP: Mrs. Bramble | feeling | relieved
+PROP: Harold | opinion | proud
+
+SEQ: Mr. Fisher tells Harold the truth
+SEQ: Harold learns that his father is Young Porky
+SEQ: Harold says he has always admired Young Porky
+SEQ: Harold asks what will happen to the money he had bet on Murphy losing
+SEQ: Bill Bramble realizes Harold is proud of him
+SEQ: the family's anxiety comes to an end
+SEQ: Mrs. Bramble resumes darning the sock
+
+ASK: Harold | reaction to father's profession
+ASK: Harold | admiration for Young Porky
+ASK: Harold | money bet on Murphy
+ASK: Bill Bramble | feelings after Harold knows the truth
+ASK: Mrs. Bramble | reaction after the truth is revealed
+ASK: ending | message
+ASK: latest book | title
+ASK: latest book | author
+ASK: latest book | main characters
+ASK: latest book | reading time
+ASK: latest book | completion time
+ASK: latest book | genre
+ASK: latest book | recommendation
+
+ISA: Best Seller | story
+ISA: O. Henry | writer
+ISA: narrator | traveller
+ISA: John A. Pescud | travelling salesman
+ISA: Pittsburgh | place
+ISA: chair-car | railway coach
+ISA: plate-glass company | company
+ISA: best-seller | novel
+ISA: The Rose Lady and Trevelyan | novel
+
+PROP: chair-car | condition | well-filled
+PROP: narrator | curiosity | tepid
+PROP: John A. Pescud | appearance | small
+PROP: John A. Pescud | smile | wide
+PROP: John A. Pescud | belief | plate-glass is the most important commodity
+PROP: John A. Pescud | opinion | best-sellers are all alike
+
+EVENT: go | narrator | Pittsburgh | past | +
+MORPH: go | went | goes
+EVENT: throw | John A. Pescud | book | past | +
+MORPH: throw | threw | throws
+EVENT: recognize | narrator | John A. Pescud | past | +
+MORPH: recognize | recognized | recognizes
+EVENT: shake | narrator and John A. Pescud | hands | past | +
+MORPH: shake | shook | shakes
+EVENT: tell | John A. Pescud | narrator about business | past | +
+MORPH: tell | told | tells
+EVENT: criticize | John A. Pescud | best-sellers | present | +
+MORPH: criticize | criticized | criticizes
+EVENT: believe | John A. Pescud | people marry in their own station | present | +
+MORPH: believe | believed | believes
+EVENT: pick up | John A. Pescud | best-seller | past | +
+MORPH: pick up | picked up | picks up
+EVENT: read | John A. Pescud | passage from the novel | past | +
+MORPH: read | read | reads
+
+SEQ: the narrator travels to Pittsburgh
+SEQ: John A. Pescud throws a best-seller on the floor
+SEQ: the narrator recognizes John A. Pescud
+SEQ: they greet each other
+SEQ: John A. Pescud talks about business
+SEQ: John A. Pescud criticizes best-seller novels
+SEQ: John A. Pescud says people usually marry in their own station
+SEQ: John A. Pescud begins reading from the novel
+ISA: John A. Pescud | travelling salesman
+ISA: Jessie Allyn | person
+ISA: Colonel Allyn | person
+ISA: Coketown | place
+ISA: Cambria Steel Works | company
+ISA: best-seller | novel
+
+PROP: John A. Pescud | nature | practical
+PROP: John A. Pescud | belief | people marry in their own station
+PROP: Colonel Allyn | manner | courteous
+PROP: Jessie | appearance | simple
+
+EVENT: read | John A. Pescud | passage from the best-seller | past | +
+MORPH: read | read | reads
+EVENT: meet | John A. Pescud | Jessie | past | +
+MORPH: meet | met | meets
+EVENT: follow | John A. Pescud | Jessie | past | +
+MORPH: follow | followed | follows
+EVENT: get off | John A. Pescud | Coketown | past | +
+MORPH: get off | got off | gets off
+EVENT: introduce | John A. Pescud | himself to Colonel Allyn | past | +
+MORPH: introduce | introduced | introduces
+EVENT: tell | John A. Pescud | Colonel Allyn about himself | past | +
+EVENT: ask | Colonel Allyn | John A. Pescud to stay | past | +
+EVENT: laugh | family | together | past | +
+MORPH: laugh | laughed | laughs
+
+SEQ: John A. Pescud criticizes best-seller romances
+SEQ: John A. Pescud tells his own love story
+SEQ: John A. Pescud meets Jessie
+SEQ: John A. Pescud follows Jessie to Coketown
+SEQ: John A. Pescud introduces himself to Colonel Allyn
+SEQ: Colonel Allyn welcomes John A. Pescud
+SEQ: John A. Pescud and Jessie become close
+ISA: Colonel Allyn | person
+ISA: Jessie Allyn | person
+ISA: John A. Pescud | travelling salesman
+ISA: train | transport
+ISA: station | place
+ISA: house | building
+ISA: dog | animal
+
+PROP: Colonel Allyn | nature | hospitable
+PROP: Jessie Allyn | nature | gentle
+PROP: John A. Pescud | feeling | nervous
+PROP: Colonel Allyn | manner | friendly
+PROP: family | atmosphere | cheerful
+
+EVENT: invite | Colonel Allyn | John A. Pescud to stay | past | +
+MORPH: invite | invited | invites
+EVENT: stay | John A. Pescud | at Colonel Allyn's house | past | +
+MORPH: stay | stayed | stays
+EVENT: explain | John A. Pescud | purpose of visit | past | +
+MORPH: explain | explained | explains
+EVENT: ask | Colonel Allyn | John A. Pescud questions | past | +
+MORPH: ask | asked | asks
+EVENT: answer | John A. Pescud | Colonel Allyn's questions | past | +
+MORPH: answer | answered | answers
+EVENT: approve | Colonel Allyn | John A. Pescud | past | +
+MORPH: approve | approved | approves
+EVENT: marry | John A. Pescud | Jessie Allyn | past | +
+MORPH: marry | married | marries
+EVENT: continue | John A. Pescud | plate-glass business | present | +
+MORPH: continue | continued | continues
+EVENT: finish | John A. Pescud | story | past | +
+MORPH: finish | finished | finishes
+EVENT: smile | narrator | | past | +
+MORPH: smile | smiled | smiles
+
+SEQ: Colonel Allyn invites John A. Pescud to stay at his house
+SEQ: John A. Pescud explains why he came
+SEQ: Colonel Allyn asks John A. Pescud about himself
+SEQ: John A. Pescud answers honestly
+SEQ: Colonel Allyn approves of John A. Pescud
+SEQ: John A. Pescud marries Jessie Allyn
+SEQ: John A. Pescud continues his work as a travelling salesman
+SEQ: the narrator reflects on John A. Pescud's story
+
+ASK: John A. Pescud | code of living
+ASK: narrator | co-passengers
+ASK: John A. Pescud | opinion about best-sellers
+ASK: John A. Pescud | first meeting with Jessie
+ASK: John A. Pescud | first meeting with Colonel Allyn
+ASK: John A. Pescud | reason for getting off at Coketown
+ASK: John A. Pescud | character
+ASK: Colonel Allyn | opinion of John A. Pescud
+ASK: Best Seller | theme
+ASK: Best Seller | irony
+ISA: The Brook | poem
+ISA: Lord Alfred Tennyson | poet
+ISA: brook | stream
+ISA: river | water body
+ISA: hill | landform
+ISA: valley | landform
+ISA: boulder | rock
+ISA: pebble | stone
+ISA: fern | plant
+ISA: fish | animal
+
+PROP: brook | movement | restless
+PROP: brook | voice | cheerful
+PROP: brook | course | winding
+
+EVENT: come | brook | from haunts of coot and hern | present | +
+MORPH: come | came | comes
+EVENT: make | brook | sudden sally | present | +
+MORPH: make | made | makes
+EVENT: flow | brook | down the valley | present | +
+MORPH: flow | flowed | flows
+EVENT: hurry | brook | down | present | +
+MORPH: hurry | hurried | hurries
+EVENT: slip | brook | between ridges | present | +
+MORPH: slip | slipped | slips
+EVENT: glide | brook | by fields | present | +
+MORPH: glide | glided | glides
+EVENT: chatter | brook | over stony ways | present | +
+MORPH: chatter | chattered | chatters
+EVENT: bubble | brook | over pebbles | present | +
+MORPH: bubble | bubbled | bubbles
+EVENT: join | brook | river | present | +
+MORPH: join | joined | joins
+EVENT: go | men |  | present | +
+MORPH: go | went | goes
+EVENT: remain | brook |  | present | +
+MORPH: remain | remained | remains
+
+SEQ: the brook comes from the haunts of coot and hern
+SEQ: the brook flows down the valley
+SEQ: the brook passes fields and ridges
+SEQ: the brook bubbles over pebbles
+SEQ: the brook joins the river
+SEQ: men may come and men may go
+SEQ: the brook goes on forever
+
+ASK: brook | journey
+ASK: brook | movement
+ASK: brook | message
+ASK: brook | comparison with human life
+ASK: repetition | purpose
+ASK: brook | destination
+ISA: brook | stream
+ISA: trout | fish
+ISA: grayling | fish
+ISA: willow-weed | plant
+ISA: mallow | plant
+ISA: willow-tree | tree
+ISA: sunbeam | light
+
+PROP: brook | nature | eternal
+PROP: brook | movement | winding
+PROP: brook | sound | chattering
+PROP: brook | movement | slow
+
+EVENT: chatter | brook |  | present | +
+MORPH: chatter | chattered | chatters
+EVENT: bubble | brook |  | present | +
+MORPH: bubble | bubbled | bubbles
+EVENT: babble | brook | on pebbles | present | +
+MORPH: babble | babbled | babbles
+EVENT: fret | brook | banks | present | +
+MORPH: fret | fretted | frets
+EVENT: linger | brook | by shingly bars | present | +
+MORPH: linger | lingered | lingers
+EVENT: loiter | brook | round cresses | present | +
+MORPH: loiter | loitered | loiters
+EVENT: curve | brook | toward the river | present | +
+MORPH: curve | curved | curves
+EVENT: join | brook | brimming river | present | +
+
+SEQ: the brook chatters over stony ways
+SEQ: the brook bubbles into eddying bays
+SEQ: the brook babbles on the pebbles
+SEQ: the brook winds through fields and fallow land
+SEQ: the brook lingers by shingly bars
+SEQ: the brook loiters round cresses
+SEQ: the brook joins the brimming river
+SEQ: men may come and men may go
+SEQ: the brook goes on forever
+
+ASK: brook | sparkle
+ASK: brook | bicker
+ASK: chatter | repetition
+ASK: brook | winding path
+ASK: steal and slide | meaning
+ASK: netted sunbeam | meaning
+ASK: refrain | effect
+ASK: brimming river | meaning
+ASK: brook | symbol of life
+ASK: poem | rhyme scheme
+ISA: The Road Not Taken | poem
+ISA: Robert Frost | poet
+ISA: traveller | person
+ISA: road | path
+ISA: wood | forest
+
+PROP: wood | colour | yellow
+PROP: speaker | feeling | thoughtful
+PROP: road | condition | grassy
+PROP: road | condition | less travelled
+
+EVENT: come | traveller | fork in the road | past | +
+MORPH: come | came | comes
+EVENT: diverge | roads |  | past | +
+MORPH: diverge | diverged | diverges
+EVENT: stand | traveller | at the fork | past | +
+MORPH: stand | stood | stands
+EVENT: look | traveller | down one road | past | +
+MORPH: look | looked | looks
+EVENT: choose | traveller | other road | past | +
+MORPH: choose | chose | chooses
+EVENT: take | traveller | less travelled road | past | +
+MORPH: take | took | takes
+EVENT: keep | traveller | first road for another day | past | +
+MORPH: keep | kept | keeps
+EVENT: know | traveller | he may not come back | past | +
+MORPH: know | knew | knows
+EVENT: make | choice | all the difference | past | +
+MORPH: make | made | makes
+
+SEQ: the traveller comes to a fork in the road
+SEQ: the traveller studies both roads
+SEQ: the traveller chooses the less travelled road
+SEQ: the traveller keeps the first road for another day
+SEQ: the traveller knows he may never return
+SEQ: the traveller says the choice has made all the difference
+
+ASK: two roads | description
+ASK: speaker | chosen road
+ASK: chosen road | reason
+ASK: speaker | happiness
+ASK: difference | meaning
+ASK: nature | connection with human situation
+ASK: poem | tinge of regret
+ASK: poem | rhyme scheme
+ASK: road | metaphor for life
+ASK: traveller | decision
+ASK: choices | consequences
+ASK: choices | importance
+ASK: choices | determining factors
+ASK: risky choices | opinion
+ASK: teenager | common dilemmas
+ASK: poet | choice
+ASK: poet | regret
+ASK: two roads | meaning
+ASK: less travelled road | reason
+ASK: speaker | happiness
+ASK: difference | meaning
+ASK: nature | human situation
+ASK: poem | regret
+ASK: poem | rhyme scheme
+ASK: road | metaphor for life
+ASK: Robert Frost | momentous decision
+ASK: Robert Frost | age
+ASK: Robert Frost | popularity
+
+ISA: road | metaphor
+ISA: fork | metaphor
+ISA: road | choice
+ISA: choice | decision
+
+PROP: road | meaning | life
+PROP: fork | meaning | choice
+PROP: poem | theme | choices
+PROP: poem | tone | thoughtful
+
+EVENT: make | people | choices | present | +
+MORPH: make | made | makes
+EVENT: affect | choices | future | present | +
+MORPH: affect | affected | affects
+EVENT: choose | people | direction | present | +
+MORPH: choose | chose | chooses
+EVENT: represent | fork | choices in life | present | +
+MORPH: represent | represented | represents
+EVENT: compare | students | poems | present | +
+MORPH: compare | compared | compares
+EVENT: identify | students | rhyme scheme | present | +
+MORPH: identify | identified | identifies
+EVENT: present | students | skit | present | +
+MORPH: present | presented | presents
+
+SEQ: think about everyday choices
+SEQ: identify factors affecting choices
+SEQ: read the poem
+SEQ: answer the comprehension questions
+SEQ: compare the poem with another poem
+SEQ: identify the rhyme scheme
+SEQ: relate roads to life
+SEQ: prepare a skit on decision making
+SEQ: learn about Robert Frost's life
+ISA: The Solitary Reaper | poem
+ISA: William Wordsworth | poet
+ISA: Highland Lass | girl
+ISA: reaper | farm worker
+ISA: field | place
+ISA: valley | place
+ISA: nightingale | bird
+ISA: cuckoo | bird
+ISA: Arabian Sands | place
+
+PROP: lass | state | solitary
+PROP: song | tone | melancholy
+PROP: song | sound | melodious
+PROP: valley | state | overflowing
+
+EVENT: reap | Highland Lass | grain | present | +
+MORPH: reap | reaped | reaps
+EVENT: sing | Highland Lass | song | present | +
+MORPH: sing | sang | sings
+EVENT: bind | Highland Lass | grain | present | +
+MORPH: bind | bound | binds
+EVENT: fill | song | valley | present | +
+MORPH: fill | filled | fills
+EVENT: listen | poet | song | past | +
+MORPH: listen | listened | listens
+EVENT: compare | poet | song with nightingale and cuckoo | past | +
+MORPH: compare | compared | compares
+EVENT: remember | poet | song | past | +
+MORPH: remember | remembered | remembers
+EVENT: carry | poet | music in his heart | past | +
+MORPH: carry | carried | carries
+
+SEQ: the poet sees a solitary Highland Lass
+SEQ: the lass reaps and sings by herself
+SEQ: the valley fills with her song
+SEQ: the poet compares the song with the nightingale and the cuckoo
+SEQ: the poet cannot understand the words
+SEQ: the poet carries the music in his heart
+
+ASK: poem | central idea
+ASK: poet | stop here or gently pass
+ASK: poet | lament
+ASK: reaper | sorrowful song
+ASK: song | theme
+ASK: imagery | effect
+ASK: language of music | universality
+ASK: comparison with nightingale and cuckoo
+ASK: alliteration | examples
+ASK: solitary reaper | lasting impression
+ISA: William Wordsworth | poet
+ISA: Highland Lass | reaper
+ISA: sickle | tool
+ISA: nightingale | bird
+ISA: cuckoo | bird
+ISA: Hebrides | islands
+
+PROP: song | quality | thrilling
+PROP: song | quality | plaintive
+PROP: song | quality | endless
+PROP: music | effect | unforgettable
+
+EVENT: hear | poet | cuckoo | past | +
+MORPH: hear | heard | hears
+EVENT: wonder | poet | theme of the song | present | +
+MORPH: wonder | wondered | wonders
+EVENT: sing | maiden | old unhappy far-off things | present | +
+EVENT: sing | maiden | battles long ago | present | +
+EVENT: sing | maiden | familiar matter of today | present | +
+EVENT: bend | maiden | over the sickle | present | +
+MORPH: bend | bent | bends
+EVENT: stand | poet | motionless | past | +
+EVENT: mount | poet | hill | past | +
+MORPH: mount | mounted | mounts
+EVENT: bear | poet | music in his heart | past | +
+MORPH: bear | bore | bears
+
+SEQ: the poet compares the song with the cuckoo
+SEQ: the poet wonders about the theme of the song
+SEQ: the poet imagines old unhappy far-off things
+SEQ: the poet imagines battles long ago
+SEQ: the poet imagines familiar matter of today
+SEQ: the poet listens motionless
+SEQ: the poet climbs the hill
+SEQ: the poet carries the music in his heart long after it is heard no more
+
+ASK: song | theme
+ASK: old unhappy far-off things | meaning
+ASK: battles long ago | meaning
+ASK: familiar matter of today | meaning
+ASK: song | lasting effect
+ASK: poet | memorable experience
+ASK: imagery | impact
+ASK: music | universality
+ASK: nightingale and cuckoo | comparison
+ASK: alliteration | purpose
+ISA: The Seven Ages | poem
+ISA: William Shakespeare | poet
+ISA: world | stage
+ISA: men | players
+ISA: women | players
+ISA: infant | stage of life
+ISA: schoolboy | stage of life
+ISA: lover | stage of life
+ISA: soldier | stage of life
+
+FACT: man's acts | ages | 7
+
+PROP: schoolboy | movement | unwilling
+PROP: lover | feeling | woeful
+PROP: soldier | quality | jealous in honour
+PROP: soldier | quality | quick in quarrel
+
+EVENT: play | man | many parts | present | +
+MORPH: play | played | plays
+EVENT: cry | infant |  | present | +
+MORPH: cry | cried | cries
+EVENT: puke | infant |  | present | +
+MORPH: puke | puked | pukes
+EVENT: creep | schoolboy | to school | present | +
+MORPH: creep | crept | creeps
+EVENT: sigh | lover |  | present | +
+MORPH: sigh | sighed | sighs
+EVENT: make | lover | woeful ballad | present | +
+MORPH: make | made | makes
+EVENT: seek | soldier | bubble reputation | present | +
+MORPH: seek | sought | seeks
+
+SEQ: all the world's a stage
+SEQ: men and women are merely players
+SEQ: one man plays many parts
+SEQ: the first age is infancy
+SEQ: the second age is the schoolboy
+SEQ: the third age is the lover
+SEQ: the fourth age is the soldier
+
+ASK: world | stage
+ASK: seven ages | meaning
+ASK: infant | characteristics
+ASK: schoolboy | characteristics
+ASK: lover | characteristics
+ASK: soldier | characteristics
+ASK: seven stages | ranking
+ASK: metaphor and simile | examples
+ISA: justice | stage of life
+ISA: pantaloon | stage of life
+ISA: second childishness | stage of life
+ISA: cannon | gun
+
+PROP: justice | eyes | severe
+PROP: justice | beard | formal
+PROP: justice | belly | round
+PROP: pantaloon | body | lean
+PROP: pantaloon | footwear | slippered
+PROP: voice | state | childish
+PROP: second childishness | state | oblivion
+
+EVENT: play | justice | part | present | +
+MORPH: play | played | plays
+EVENT: shift | sixth age | into pantaloon | present | +
+MORPH: shift | shifted | shifts
+EVENT: wear | pantaloon | spectacles | present | +
+MORPH: wear | wore | wears
+EVENT: turn | voice | toward childish treble | present | +
+MORPH: turn | turned | turns
+EVENT: pipe | voice |  | present | +
+MORPH: pipe | piped | pipes
+EVENT: whistle | voice |  | present | +
+MORPH: whistle | whistled | whistles
+EVENT: end | last scene | strange eventful history | present | +
+MORPH: end | ended | ends
+
+SEQ: the fifth age is the justice
+SEQ: the sixth age is the lean and slippered pantaloon
+SEQ: the pantaloon's voice turns toward childish treble
+SEQ: the last scene is second childishness
+SEQ: second childishness ends in mere oblivion
+SEQ: the last stage is without teeth, eyes, taste and everything
+
+ASK: justice | characteristics
+ASK: pantaloon | characteristics
+ASK: second childishness | meaning
+ASK: all the world's a stage | extended metaphor
+ASK: exits and entrances | meaning
+ASK: seven roles | correspondence
+ASK: seven stages | characteristics
+ASK: life | comparison with a play
+ISA: Song of the Rain | poem
+ISA: Kahlil Gibran | poet
+ISA: rain | water
+ISA: sea | water body
+ISA: cloud | sky object
+ISA: rainbow | natural phenomenon
+ISA: thunder | natural phenomenon
+ISA: flower | plant
+ISA: field | land
+
+PROP: rain | appearance | silver
+PROP: rain | origin | sea
+PROP: rain | nature | gentle
+PROP: rain | purpose | life-giving
+
+EVENT: emerge | rain | from the heart of the sea | present | +
+MORPH: emerge | emerged | emerges
+EVENT: rise | rain | to the sky | present | +
+MORPH: rise | rose | rises
+EVENT: descend | rain | on flowers | present | +
+MORPH: descend | descended | descends
+EVENT: embrace | rain | flowers | present | +
+MORPH: embrace | embraced | embraces
+EVENT: announce | rainbow | departure of rain | present | +
+MORPH: announce | announced | announces
+EVENT: declare | thunder | arrival of rain | present | +
+MORPH: declare | declared | declares
+EVENT: adorn | rain | nature | present | +
+MORPH: adorn | adorned | adorns
+EVENT: quench | rain | thirst of earth | present | +
+MORPH: quench | quenched | quenches
+
+SEQ: the rain emerges from the heart of the sea
+SEQ: the rain rises to the sky
+SEQ: the rain becomes dotted silver threads from heaven
+SEQ: the rain descends and embraces the flowers
+SEQ: thunder declares the arrival of the rain
+SEQ: the rainbow announces the departure of the rain
+
+ASK: rain | identity
+ASK: rain | origin
+ASK: thunder | role
+ASK: rainbow | role
+ASK: rain | relationship with flowers
+ASK: rain | characteristics
+ISA: rain | narrator
+ISA: moon | celestial body
+ISA: sea | water body
+ISA: earth | planet
+ISA: flower | plant
+ISA: hill | landform
+ISA: field | farmland
+
+PROP: rain | voice | soft
+PROP: rain | function | purifier
+PROP: rain | cycle | eternal
+PROP: earth | condition | thirsty
+
+EVENT: fall | rain | from clouds | present | +
+MORPH: fall | fell | falls
+EVENT: kiss | rain | earth | present | +
+MORPH: kiss | kissed | kisses
+EVENT: crown | rain | fields | present | +
+MORPH: crown | crowned | crowns
+EVENT: awaken | rain | seeds | present | +
+MORPH: awaken | awakened | awakens
+EVENT: purify | rain | air | present | +
+MORPH: purify | purified | purifies
+EVENT: laugh | hills | with rain | present | +
+MORPH: laugh | laughed | laughs
+EVENT: weep | flowers | for joy | present | +
+MORPH: weep | wept | weeps
+EVENT: return | rain | sea | present | +
+MORPH: return | returned | returns
+
+SEQ: rain falls from the clouds
+SEQ: rain kisses the earth
+SEQ: rain nourishes flowers and fields
+SEQ: rain purifies the atmosphere
+SEQ: rain completes the water cycle by returning to the sea
+
+ASK: rain | role in nature
+ASK: rain | water cycle
+ASK: rain | personification
+ASK: rain | symbolism
+ASK: rain | relationship with earth
+ASK: imagery | effect
+ASK: poem | central idea
+ISA: Ishtar | goddess
+ISA: Dawn | deity
+ISA: rain | messenger
+ISA: thunder | natural phenomenon
+ISA: rainbow | natural phenomenon
+ISA: field | land
+ISA: cloud | sky object
+ISA: sea | water body
+ISA: heaven | sky
+
+PROP: rain | comparison | earthly life
+PROP: rain | nature | divine
+PROP: rain | touch | gentle
+PROP: rain | understanding | only by the sensitive
+
+EVENT: adorn | rain | fields and valleys | present | +
+MORPH: adorn | adorned | adorns
+EVENT: embellish | rain | gardens | present | +
+MORPH: embellish | embellished | embellishes
+EVENT: laugh | hills | when rain cries | present | +
+MORPH: laugh | laughed | laughs
+EVENT: rejoice | flowers | when rain humbles itself | present | +
+MORPH: rejoice | rejoiced | rejoices
+EVENT: quench | rain | thirst of the field | present | +
+MORPH: quench | quenched | quenches
+EVENT: cure | rain | ailment of the cloud | present | +
+MORPH: cure | cured | cures
+EVENT: touch | rain | windows | present | +
+MORPH: touch | touched | touches
+EVENT: understand | sensitive people | rain's message | present | +
+MORPH: understand | understood | understands
+EVENT: soar | rain | with the breeze | present | +
+MORPH: soar | soared | soars
+
+SEQ: rain adorns fields and valleys
+SEQ: rain embellishes gardens
+SEQ: rain becomes the messenger between the field and the cloud
+SEQ: thunder announces the rain's arrival
+SEQ: rainbow announces the rain's departure
+SEQ: rain touches windows with soft fingers
+SEQ: only sensitive people understand the rain
+SEQ: rain emerges from the sea and returns to it
+
+ASK: rain | divine nature
+ASK: rain | messenger of mercy
+ASK: rain | functions
+ASK: cry, humble and bow | meaning
+ASK: sigh of the sea | meaning
+ASK: laughter of the field | meaning
+ASK: tears of heaven | meaning
+ASK: arrival and departure of rain | contrast
+ISA: Villa for Sale | play
+ISA: Sacha Guitry | playwright
+ISA: Juliette | villa owner
+ISA: Maid | servant
+ISA: Gaston | businessman
+ISA: Jeanne | Gaston's wife
+ISA: Mrs. Al Smith | American customer
+ISA: villa | house
+
+PROP: Juliette | feeling | disappointed
+PROP: Juliette | need | money
+PROP: Gaston | nature | practical
+PROP: Gaston | nature | witty
+PROP: Jeanne | feeling | enthusiastic
+PROP: Mrs. Al Smith | nature | wealthy
+
+EVENT: decide | Juliette | sell villa | present | +
+MORPH: decide | decided | decides
+EVENT: wait | Juliette | buyer | present | +
+MORPH: wait | waited | waits
+EVENT: visit | Jeanne and Gaston | villa | past | +
+MORPH: visit | visited | visits
+EVENT: refuse | Gaston | buy villa | past | +
+MORPH: refuse | refused | refuses
+EVENT: describe | Juliette | advantages of villa | past | +
+MORPH: describe | described | describes
+EVENT: mistake | Mrs. Al Smith | Gaston for Juliette's husband | past | +
+MORPH: mistake | mistook | mistakes
+EVENT: negotiate | Gaston | sale price | past | +
+MORPH: negotiate | negotiated | negotiates
+EVENT: agree | Mrs. Al Smith | buy villa | past | +
+MORPH: agree | agreed | agrees
+
+SEQ: Juliette decides to sell the villa
+SEQ: Jeanne and Gaston visit the villa
+SEQ: Gaston refuses to buy it
+SEQ: Mrs. Al Smith mistakes Gaston for the owner
+SEQ: Gaston negotiates with Mrs. Al Smith
+SEQ: Mrs. Al Smith agrees to purchase the villa
+
+ASK: Juliette | reason for selling villa
+ASK: Gaston | reason for refusing villa
+ASK: Jeanne | interest in buying villa
+ASK: Mrs. Al Smith | first impression
+ASK: Gaston | character
+ASK: Villa for Sale | theme
+ISA: villa | property
+ISA: Nogent-sur-Marne | place
+ISA: Joinville | place
+ISA: French Hollywood | place
+ISA: cheque | payment
+ISA: bungalow | house
+
+PROP: Gaston | quality | opportunistic
+PROP: Gaston | quality | clever
+PROP: Juliette | feeling | desperate
+PROP: Mrs. Al Smith | manner | impatient
+PROP: Mrs. Al Smith | goal | build bungalow
+
+EVENT: offer | Juliette | villa for one hundred thousand francs | past | +
+MORPH: offer | offered | offers
+EVENT: reject | Gaston | buying villa | past | +
+MORPH: reject | rejected | rejects
+EVENT: mistake | Mrs. Al Smith | Gaston for owner | past | +
+EVENT: decide | Mrs. Al Smith | demolish villa | past | +
+MORPH: decide | decided | decides
+EVENT: build | Mrs. Al Smith | bungalow | future | +
+MORPH: build | built | builds
+EVENT: demand | Gaston | three hundred thousand francs | past | +
+MORPH: demand | demanded | demands
+EVENT: write | Mrs. Al Smith | cheque | past | +
+MORPH: write | wrote | writes
+EVENT: earn | Gaston | one hundred thousand francs | past | +
+MORPH: earn | earned | earns
+
+SEQ: Mrs. Al Smith mistakes Gaston for the owner
+SEQ: Mrs. Al Smith says she wants the land
+SEQ: Gaston raises the price to three hundred thousand francs
+SEQ: Mrs. Al Smith accepts the price immediately
+SEQ: Mrs. Al Smith writes a cheque
+SEQ: Gaston profits from the transaction
+
+ASK: Gaston | business strategy
+ASK: Mrs. Al Smith | reason for buying land
+ASK: Gaston | reason for increasing price
+ASK: Juliette | original asking price
+ASK: irony | Villa for Sale
+ASK: Gaston | opportunistic behaviour
+ISA: Villa for Sale | drama
+ISA: Juliette | villa owner
+ISA: Gaston | businessman
+ISA: Jeanne | wife
+ISA: Mrs. Al Smith | American actress
+ISA: cheque | payment
+ISA: Carot | painting
+
+PROP: Gaston | quality | shrewd
+PROP: Gaston | quality | humorous
+PROP: Jeanne | feeling | confused
+PROP: Juliette | feeling | satisfied
+PROP: Mrs. Al Smith | feeling | delighted
+
+EVENT: accept | Juliette | two hundred thousand francs | past | +
+MORPH: accept | accepted | accepts
+EVENT: receive | Juliette | cheque | past | +
+MORPH: receive | received | receives
+EVENT: keep | Gaston | one hundred thousand francs | past | +
+MORPH: keep | kept | keeps
+EVENT: surprise | Jeanne | Gaston's actions | past | +
+MORPH: surprise | surprised | surprises
+EVENT: ask | Jeanne | Gaston what he had done | past | +
+MORPH: ask | asked | asks
+EVENT: explain | Gaston | later | future | +
+MORPH: explain | explained | explains
+EVENT: end | play | with Gaston's success | past | +
+MORPH: end | ended | ends
+
+SEQ: Mrs. Al Smith buys the villa for three hundred thousand francs
+SEQ: Gaston receives the cheque
+SEQ: Jeanne and Juliette return
+SEQ: Gaston persuades Juliette to sell the villa
+SEQ: Juliette accepts two hundred thousand francs
+SEQ: Gaston keeps one hundred thousand francs as profit
+SEQ: Jeanne asks Gaston what he has done
+SEQ: Gaston replies that he has made one hundred thousand francs and kept the Carot painting
+SEQ: the play ends
+
+ASK: Gaston | profit from the deal
+ASK: Jeanne | reaction at the end
+ASK: Juliette | final selling price
+ASK: Mrs. Al Smith | purchase price
+ASK: ending | irony
+ASK: Gaston | character
+ASK: Villa for Sale | social satire
+ASK: win-win ending | explanation
+
+END_OF_DRAMA: Villa for Sale
+ISA: The Bishop's Candlesticks | play
+ISA: Norman McKinnel | playwright
+ISA: Bishop | clergyman
+ISA: Persome | Bishop's sister
+ISA: Marie | servant
+ISA: Convict | prisoner
+ISA: Sergeant of Gendarmes | policeman
+ISA: candlesticks | silver heirloom
+
+PROP: Bishop | nature | kind
+PROP: Persome | nature | strict
+PROP: Marie | nature | obedient
+PROP: Convict | condition | starving
+PROP: candlesticks | value | precious
+
+EVENT: prepare | Persome and Marie | meal | present | +
+MORPH: prepare | prepared | prepares
+EVENT: wait | Persome | for the Bishop | present | +
+MORPH: wait | waited | waits
+EVENT: return | Bishop | home late | past | +
+MORPH: return | returned | returns
+EVENT: worry | Persome | about the Bishop | present | +
+MORPH: worry | worried | worries
+EVENT: enter | Convict | Bishop's house | past | +
+MORPH: enter | entered | enters
+EVENT: threaten | Convict | Bishop with a knife | past | +
+MORPH: threaten | threatened | threatens
+EVENT: ask | Convict | for food | past | +
+MORPH: ask | asked | asks
+EVENT: offer | Bishop | food to the Convict | past | +
+MORPH: offer | offered | offers
+
+SEQ: Persome waits for the Bishop
+SEQ: the Bishop returns home late
+SEQ: the Convict enters the Bishop's house
+SEQ: the Convict threatens the Bishop
+SEQ: the Convict says he is starving
+SEQ: the Bishop offers him food
+SEQ: the Bishop treats the Convict with kindness
+
+ASK: Persome | concern for the Bishop
+ASK: Bishop | treatment of the Convict
+ASK: Convict | reason for entering the house
+ASK: candlesticks | significance
+ASK: Bishop | character
+ASK: theme | kindness and compassion
+ISA: Bishop | clergyman
+ISA: Convict | escaped prisoner
+ISA: silver candlesticks | gift
+ISA: Paris | city
+ISA: Temple of the Living God | human body
+
+PROP: Bishop | nature | forgiving
+PROP: Convict | feeling | ashamed
+PROP: Convict | feeling | grateful
+PROP: Convict | transformation | reformed
+PROP: candlesticks | purpose | symbol of compassion
+
+EVENT: release | Bishop | Convict | past | +
+MORPH: release | released | releases
+EVENT: forgive | Bishop | Convict | past | +
+MORPH: forgive | forgave | forgives
+EVENT: bless | Bishop | Convict | past | +
+MORPH: bless | blessed | blesses
+EVENT: give | Bishop | silver candlesticks to Convict | past | +
+MORPH: give | gave | gives
+EVENT: advise | Bishop | Convict to take lonely path to Paris | past | +
+MORPH: advise | advised | advises
+EVENT: thank | Convict | Bishop | past | +
+MORPH: thank | thanked | thanks
+EVENT: promise | Convict | remember Bishop's words | past | +
+MORPH: promise | promised | promises
+EVENT: leave | Convict | Bishop's house | past | +
+MORPH: leave | left | leaves
+
+SEQ: the Bishop asks Persome to leave
+SEQ: the Convict admits he is glad he did not escape with the candlesticks
+SEQ: the Convict asks the Bishop to bless him
+SEQ: the Bishop blesses the Convict
+SEQ: the Bishop gives the candlesticks to the Convict
+SEQ: the Bishop shows the safe path to Paris
+SEQ: the Convict feels like a man again instead of a wild beast
+SEQ: the Convict leaves with a transformed heart
+
+ASK: Convict | reason for asking the Bishop's blessing
+ASK: Bishop | reason for giving the candlesticks
+ASK: Temple of the Living God | meaning
+ASK: Convict | transformation
+ASK: silver candlesticks | symbolism
+ASK: Bishop's Candlesticks | central theme
+
+ISA: Text for Listening Tasks | annexure
+ISA: listening task | assessment
+ISA: transcript | teacher resource
+
+PROP: listening task | purpose | improve listening skills
+PROP: transcript | audience | teacher
+
+EVENT: listen | students | audio/text | present | +
+MORPH: listen | listened | listens
+EVENT: identify | students | key information | present | +
+MORPH: identify | identified | identifies
+EVENT: answer | students | listening questions | present | +
+MORPH: answer | answered | answers
+EVENT: arrange | students | events in sequence | present | +
+MORPH: arrange | arranged | arranges
+EVENT: complete | students | missing information | present | +
+MORPH: complete | completed | completes
+
+SEQ: listen to the passage
+SEQ: identify important details
+SEQ: arrange events in order
+SEQ: answer comprehension questions
+SEQ: complete the listening exercise
+

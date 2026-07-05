@@ -22,12 +22,12 @@ from event_verify import EventStore, admit, classify
 
 ALL_FILES = [
     "data/math1.txt","data/math2.txt","data/math3.txt","data/math4.txt","data/math5.txt",
-    "data/math6.txt","data/math7.txt","data/math8.txt",
+    "data/math6.txt","data/math7.txt","data/math8.txt","data/math9.txt",
     "data/english1.txt","data/english2.txt","data/english3.txt","data/english4.txt","data/english5.txt",
-    "data/english6.txt","data/english7.txt","data/english8.txt",
+    "data/english6.txt","data/english7.txt","data/english8.txt","data/english9.txt",
     "data/science3.txt","data/science4.txt","data/science5.txt",
-    "data/science6.txt","data/science7.txt","data/science8.txt",
-    "data/ssc6.txt","data/ssc7.txt","data/ssc8.txt",
+    "data/science6.txt","data/science7.txt","data/science8.txt","data/science9.txt",
+    "data/ssc6.txt","data/ssc7.txt","data/ssc8.txt","data/ssc9.txt",
 ]
 
 # ── build brain ────────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import knowledge_distill as KD
 
-MATH_FILES = [f"data/math{i}.txt" for i in range(1, 9)]
+MATH_FILES = [f"data/math{i}.txt" for i in range(1, 10)]
 
 _NUM = re.compile(r"^-?\d+(\.\d+)?$")
 
@@ -48,6 +48,8 @@ def collect_identities(paths):
                 body = ln[4:].strip()
                 if "=" not in body:
                     continue
+                if "√" in body or "∠" in body or "∞" in body:
+                    continue                # irrational / geometric — not integer arithmetic
                 lhs, rhs = (x.strip() for x in body.rsplit("=", 1))
                 if not _NUM.match(rhs):
                     continue

@@ -151,6 +151,9 @@ accumulation cannot drift into confident-wrong knowledge.
 
 - C++ core builds via `build/` (~30s); `import brain2` works under **venv2's** python
   (the `.so`'s ABI). venv2 has numpy + sympy + brain2 → full stack in one process.
+  **SymPy lever:** SymPy is scaffolding — a fast-path stand-in for symbolic reasoning the
+  brain hasn't grounded yet.  Same pattern as `BRAIN2_GROUND_MATH`: cut it once the brain
+  can verify the same class of expressions without it; reattach as accelerator only.
 - Run brain2-dependent scripts with `venv2/bin/python3`.
 - Roadmap + status: `architecture_roadmap.md`. Real `--real` LLM paths need the Ollama
   server up (teacher = `qwen3-coder:480b-cloud`).

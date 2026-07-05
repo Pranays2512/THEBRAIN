@@ -1,0 +1,4154 @@
+ISA: air | matter
+ISA: food | matter
+ISA: stone | matter
+ISA: cloud | matter
+ISA: star | matter
+ISA: plant | matter
+ISA: animal | matter
+ISA: drop of water | matter
+ISA: particle of sand | matter
+FACT: matter | properties | 2
+PROP: matter | occupies | space
+PROP: matter | has | mass
+PROP: matter | has | volume
+FACT: Panch Tatva | elements | 5
+PART: Panch Tatva | air
+PART: Panch Tatva | earth
+PART: Panch Tatva | fire
+PART: Panch Tatva | sky
+PART: Panch Tatva | water
+PROP: everything | composition | five basic elements
+PROP: modern day scientists | classification of matter | two types
+PROP: matter | basis of classification | physical properties
+PROP: matter | basis of classification | chemical nature
+PROP: chapter | topic | physical properties of matter
+PROP: matter | nature | particulate
+EVENT: classify | early Indian philosophers | matter | past | +
+EVENT: classify | ancient Greek philosophers | matter | past | +
+EVENT: evolve | modern day scientists | two types of classification of matter | past | +
+EVENT: learn | we | matter based on its physical properties | future | +
+MORPH: classify | classified | classifies
+MORPH: evolve | evolved | evolves
+MORPH: learn | learnt | learns
+PROP: matter | composition | particles
+EVENT: dissolve | particles of salt | water | present | +
+EVENT: spread | particles of salt | water | present | +
+MORPH: dissolve | dissolved | dissolves
+MORPH: spread | spread | spreads
+PART: water | particles
+PART: salt | particles
+PROP: particles of salt | position | spaces between particles of water
+FACT: beaker | capacity | 100
+FACT: solution | volume | 100
+FACT: litre | millilitres | 1000
+FACT: litre | cubic decimetres | 1
+FACT: millilitre | cubic centimetres | 1
+UNIT: mass | 1,0,0
+UNIT: volume | 0,3,0
+LAW: litre = 1000 * millilitre
+LAW: litre = 1 * cubic decimetre
+LAW: millilitre = 1 * cubic centimetre
+ASK: salt | disappearance
+ASK: water | level change
+ASK: matter | nature
+ASK: particles of matter | size
+FACT: solution | volume | 10
+FACT: clear water | volume | 90
+FACT: water | volume | 1000
+FACT: Dettol | volume | 2
+PROP: particles of matter | size | very small
+PROP: particles of matter | size | beyond our imagination
+PROP: particles of matter | have | space between them
+PROP: particles of sugar | distribution in water | even
+PROP: particles of salt | distribution in water | even
+PROP: particles of Dettol | distribution in water | even
+PROP: particles of potassium permanganate | distribution in water | even
+PROP: particles of one type of matter | position | spaces between particles of the other
+EVENT: dissolve | crystals of potassium permanganate | water | present | +
+EVENT: dilute | solution |  | present | +
+EVENT: colour | crystals of potassium permanganate | water | present | +
+EVENT: divide | particles of potassium permanganate | smaller particles | present | +
+EVENT: distribute | particles of sugar | water | present | +
+EVENT: distribute | particles of salt | water | present | +
+EVENT: distribute | particles of Dettol | water | present | +
+EVENT: distribute | particles of potassium permanganate | water | present | +
+EVENT: get | particles of one type of matter | spaces between particles of the other | present | +
+EVENT: move | particles of matter |  | present | +
+EVENT: put | incense stick | class corner | present | +
+EVENT: light | student | incense stick | present | +
+EVENT: smell | student | incense stick | present | +
+EVENT: put | student | ink drop | present | +
+EVENT: put | student | honey | present | +
+EVENT: spread | colour of ink | water | present | +
+EVENT: drop | student | crystal of copper sulphate | present | +
+EVENT: drop | student | crystal of potassium permanganate | present | +
+EVENT: settle | crystals | bottom | present | +
+EVENT: mix | particles |  | present | +
+MORPH: dissolve | dissolved | dissolves
+MORPH: dilute | diluted | dilutes
+MORPH: colour | coloured | colours
+MORPH: divide | divided | divides
+MORPH: distribute | distributed | distributes
+MORPH: get | got | gets
+MORPH: move | moved | moves
+MORPH: put | put | puts
+MORPH: light | lit | lights
+MORPH: smell | smelt | smells
+MORPH: spread | spread | spreads
+MORPH: drop | dropped | drops
+MORPH: settle | settled | settles
+MORPH: mix | mixed | mixes
+ASK: water | colour
+ASK: particles of matter | size
+ASK: particles of solid and liquid | behaviour
+ASK: rate of mixing | temperature change
+PROP: particles of matter | motion | continuous
+PROP: particles of matter | possess | kinetic energy
+PROP: particles of matter | attraction | present
+PROP: force of attraction | strength | varies
+PROP: diffusion | nature | intermixing of particles
+PROP: diffusion | speed on heating | faster
+EVENT: move | particles of matter |  | present | +
+EVENT: increase | temperature | kinetic energy of particles | present | +
+EVENT: intermix | particles of matter |  | present | +
+EVENT: get | particles | spaces between particles | present | +
+EVENT: call | intermixing of particles | diffusion | present | +
+EVENT: become | diffusion | faster | present | +
+EVENT: attract | particles of matter | each other | present | +
+EVENT: act | force | particles | present | +
+EVENT: keep | force | particles together | present | +
+MORPH: move | moved | moves
+MORPH: increase | increased | increases
+MORPH: intermix | intermixed | intermixes
+MORPH: get | got | gets
+MORPH: call | called | calls
+MORPH: become | became | becomes
+MORPH: attract | attracted | attracts
+MORPH: act | acted | acts
+MORPH: keep | kept | keeps
+ASK: matter | examples
+ASK: smell of hot sizzling food | reason
+ASK: diver | property of matter
+ASK: particles of matter | characteristics
+PROP: matter | states | three
+ISA: solid | state of matter
+ISA: liquid | state of matter
+ISA: gas | state of matter
+PROP: states of matter | cause | variation in characteristics of particles of matter
+PROP: solid | shape | definite
+PROP: solid | boundaries | distinct
+PROP: solid | volume | fixed
+PROP: solid | compressibility | negligible
+PROP: solid | tendency | maintain shape
+PROP: solid | nature | rigid
+PROP: liquid | shape | no fixed shape
+PROP: liquid | volume | fixed
+PROP: liquid | nature | fluid
+PROP: liquid | flow | easy
+PROP: liquid | shape | takes shape of container
+PROP: gases | diffusion into liquids | possible
+PROP: oxygen | importance | essential for survival of aquatic animals and plants
+PROP: carbon dioxide | importance | essential for survival of aquatic animals and plants
+PROP: aquatic animals | breathing | dissolved oxygen in water
+PROP: solids | diffusion into liquids | possible
+PROP: liquids | diffusion into liquids | possible
+PROP: gases | diffusion into liquids | possible
+PROP: rate of diffusion of liquids | comparison | higher than solids
+EVENT: exist | matter | solid | present | +
+EVENT: exist | matter | liquid | present | +
+EVENT: exist | matter | gas | present | +
+EVENT: maintain | solid | shape | present | +
+EVENT: flow | liquid |  | present | +
+EVENT: change | liquid | shape | present | +
+EVENT: take | liquid | shape of container | present | +
+EVENT: diffuse | solid | liquid | present | +
+EVENT: diffuse | liquid | liquid | present | +
+EVENT: diffuse | gas | liquid | present | +
+EVENT: dissolve | gases | water | present | +
+EVENT: breathe | aquatic animals | dissolved oxygen | present | +
+MORPH: exist | existed | exists
+MORPH: maintain | maintained | maintains
+MORPH: flow | flowed | flows
+MORPH: change | changed | changes
+MORPH: take | took | takes
+MORPH: diffuse | diffused | diffuses
+MORPH: dissolve | dissolved | dissolves
+MORPH: breathe | breathed | breathes
+FACT: liquid | volume used in activity | 50
+ASK: solid | properties
+ASK: liquid | properties
+ASK: liquid | shape
+ASK: liquid | volume
+PROP: gas | compressibility | high
+PROP: gas | diffusion | very fast
+PROP: gas | motion | random
+PROP: gas | speed of particles | high
+PROP: gas particles | space between them | large
+PROP: gas | pressure | force exerted by gas particles per unit area on the walls of the container
+PROP: liquefied petroleum gas | state | compressed gas
+PROP: oxygen supplied to hospitals | state | compressed gas
+PROP: compressed natural gas | use | fuel
+PROP: compressed gas | transport | easy
+PROP: large volume of gas | compression | small cylinder
+PROP: smell of hot cooked food | diffusion | fast
+PROP: rate of diffusion of gases | comparison | higher than solids and liquids
+EVENT: compress | gas |  | present | +
+EVENT: fill | balloon seller | balloons | present | +
+EVENT: use | compressed natural gas | fuel | present | +
+EVENT: transport | compressed gas |  | present | +
+EVENT: mix | particles of aroma of food | particles of air | present | +
+EVENT: reach | smell of food | nostrils | present | +
+EVENT: diffuse | gases | other gases | present | +
+EVENT: move | particles | randomly | present | +
+EVENT: hit | particles | each other | present | +
+EVENT: hit | particles | walls of container | present | +
+EVENT: exert | gas particles | force | present | +
+MORPH: compress | compressed | compresses
+MORPH: fill | filled | fills
+MORPH: use | used | uses
+MORPH: transport | transported | transports
+MORPH: mix | mixed | mixes
+MORPH: reach | reached | reaches
+MORPH: diffuse | diffused | diffuses
+MORPH: move | moved | moves
+MORPH: hit | hit | hits
+MORPH: exert | exerted | exerts
+ISA: liquefied petroleum gas | gas
+ISA: oxygen | gas
+ISA: compressed natural gas | gas
+FACT: syringe | capacity | 100
+PART: gas | particles
+ASK: balloon seller | gas in cylinder
+ASK: gas | compressibility
+ASK: gas | pressure
+SEQ: take three 100 mL syringes and close their nozzles with rubber corks
+SEQ: remove the pistons from all the syringes
+SEQ: leave one syringe untouched
+SEQ: fill the second syringe with water
+SEQ: fill the third syringe with pieces of chalk
+SEQ: insert the pistons back into the syringes
+SEQ: push the piston to compress the contents
+SEQ: observe in which syringe the piston is pushed easily
+SEQ: infer that gases are highly compressible compared to solids and liquids
+PROP: water | states | three
+ISA: ice | solid
+ISA: water | liquid
+ISA: water vapour | gas
+EVENT: exist | water | ice | present | +
+EVENT: exist | water | liquid water | present | +
+EVENT: exist | water | water vapour | present | +
+MORPH: exist | existed | exists
+ASK: matter | change of state
+ASK: particles of matter | change during change of state
+ASK: change of state | process
+FACT: ice | mass used | 150
+EVENT: suspend | laboratory thermometer | beaker | present | +
+EVENT: heat | student | beaker | present | +
+EVENT: note | student | melting temperature | present | +
+EVENT: note | student | boiling temperature | present | +
+EVENT: record | student | observations | present | +
+EVENT: stir | student | water | present | +
+EVENT: vaporise | water |  | present | +
+MORPH: suspend | suspended | suspends
+MORPH: heat | heated | heats
+MORPH: note | noted | notes
+MORPH: record | recorded | records
+MORPH: stir | stirred | stirs
+MORPH: vaporise | vaporised | vaporises
+PROP: kinetic energy of particles | effect of increasing temperature | increases
+PROP: particles | vibration | greater speed
+PROP: heat energy | effect | overcomes forces of attraction between particles
+PROP: particles | movement after heating | more free
+PROP: melting point | meaning | minimum temperature at which a solid melts into a liquid at atmospheric pressure
+PROP: melting point | indication | strength of force of attraction between particles
+FACT: melting point of ice | kelvin | 273.15
+ISA: fusion | change of state
+PROP: latent | meaning | hidden
+PROP: latent heat of fusion | meaning | heat energy required to change 1 kg of a solid into liquid at atmospheric pressure at its melting point
+FACT: latent heat of fusion | solid mass | 1
+PROP: particles in water at 273 K | energy | more than particles in ice at the same temperature
+PROP: boiling point | meaning | temperature at which a liquid starts boiling at atmospheric pressure
+PROP: boiling | nature | bulk phenomenon
+PROP: particles from bulk of liquid | change | vapour state
+FACT: boiling point of water | kelvin | 373
+PROP: particles in steam at 373 K | energy | more than water at the same temperature
+PROP: particles in steam | absorbed | latent heat of vaporisation
+EVENT: increase | temperature | kinetic energy of particles | present | +
+EVENT: vibrate | particles |  | present | +
+EVENT: overcome | heat energy | forces of attraction | present | +
+EVENT: leave | particles | fixed positions | present | +
+EVENT: melt | solid | liquid | present | +
+EVENT: absorb | ice | heat energy | present | +
+EVENT: boil | liquid |  | present | +
+EVENT: change | liquid | gas | present | +
+EVENT: gain | particles from bulk of liquid | enough energy | present | +
+EVENT: absorb | particles in steam | latent heat of vaporisation | present | +
+MORPH: increase | increased | increases
+MORPH: vibrate | vibrated | vibrates
+MORPH: overcome | overcame | overcomes
+MORPH: leave | left | leaves
+MORPH: melt | melted | melts
+MORPH: absorb | absorbed | absorbs
+MORPH: boil | boiled | boils
+MORPH: change | changed | changes
+MORPH: gain | gained | gains
+SEQ: heat the beaker containing ice
+SEQ: then the particles vibrate with greater speed
+SEQ: then heat overcomes the forces of attraction
+SEQ: then the particles leave their fixed positions
+SEQ: then the solid melts into a liquid
+SEQ: continue heating the water
+SEQ: then the particles move faster
+SEQ: then the particles break free from the forces of attraction
+SEQ: then the liquid changes into gas 
+ISA: sublimation | change of state
+ISA: deposition | change of state
+PROP: sublimation | change | solid directly to gas
+PROP: deposition | change | gas directly to solid
+EVENT: crush | student | camphor | present | +
+EVENT: crush | student | ammonium chloride | present | +
+EVENT: put | student | camphor in china dish | present | +
+EVENT: put | student | inverted funnel over china dish | present | +
+EVENT: put | student | cotton plug on funnel stem | present | +
+EVENT: heat | student | camphor | present | +
+EVENT: heat | student | ammonium chloride | present | +
+MORPH: crush | crushed | crushes
+MORPH: put | put | puts
+MORPH: heat | heated | heats
+PROP: pressure | effect | changes state of matter
+PROP: reducing temperature | effect | liquefies gases
+EVENT: compress | pressure | gas | present | +
+EVENT: bring | pressure | particles closer | present | +
+EVENT: liquefy | pressure and reducing temperature | gases | present | +
+MORPH: compress | compressed | compresses
+MORPH: bring | brought | brings
+MORPH: liquefy | liquefied | liquefies
+ISA: solid carbon dioxide | solid
+PROP: solid carbon dioxide | storage | high pressure
+PROP: solid carbon dioxide | name | dry ice
+EVENT: convert | solid carbon dioxide | gaseous state | present | +
+EVENT: decrease | pressure | 1 atmosphere | present | +
+MORPH: convert | converted | converts
+MORPH: decrease | decreased | decreases
+FACT: atmosphere | pressure | 1.01 × 10^5
+FACT: atmospheric pressure at sea level | atmosphere | 1
+PROP: atmospheric pressure at sea level | type | normal atmospheric pressure
+PROP: pressure and temperature | determine | state of a substance
+PROP: substance | states | solid
+PROP: substance | states | liquid
+PROP: substance | states | gas
+SEQ: crush camphor or ammonium chloride
+SEQ: then put it in a china dish
+SEQ: then place an inverted funnel over the china dish
+SEQ: then put a cotton plug on the funnel stem
+SEQ: then heat slowly
+SEQ: then the solid changes directly into gas
+SEQ: gas can change directly into solid
+ASK: pressure | effect on state of matter
+ASK: sublimation | meaning
+ASK: deposition | meaning 
+ISA: evaporation | change of state
+PROP: evaporation | change | liquid to vapour below boiling point
+PROP: evaporation | nature | surface phenomenon
+PROP: particles of matter | motion | always moving
+PROP: particles of matter | rest | never at rest
+PROP: particles at surface of liquid | kinetic energy | higher
+EVENT: change | water | vapour | present | +
+EVENT: dry | wet clothes |  | present | +
+EVENT: break away | particles at surface | forces of attraction | present | +
+EVENT: convert | particles at surface | vapour | present | +
+MORPH: change | changed | changes
+MORPH: dry | dried | dries
+MORPH: break away | broke away | breaks away
+MORPH: convert | converted | converts
+FACT: water | volume in test tube | 5
+FACT: water | volume in china dish | 5
+PROP: rate of evaporation | increases with | increase of surface area
+PROP: rate of evaporation | increases with | increase of temperature
+PROP: rate of evaporation | increases with | increase in wind speed
+PROP: rate of evaporation | decreases with | increase in humidity
+PROP: humidity | meaning | amount of water vapour present in air
+EVENT: increase | surface area | rate of evaporation | present | +
+EVENT: increase | temperature | rate of evaporation | present | +
+EVENT: decrease | humidity | rate of evaporation | present | +
+EVENT: increase | wind speed | rate of evaporation | present | +
+EVENT: absorb | particles of liquid | energy from surroundings | present | +
+EVENT: make | absorption of energy | surroundings cold | present | +
+MORPH: increase | increased | increases
+MORPH: decrease | decreased | decreases
+MORPH: absorb | absorbed | absorbs
+MORPH: make | made | makes
+PROP: surroundings | temperature | cold during evaporation
+SEQ: keep water in a test tube near a window or under a fan
+SEQ: keep water in an open china dish near a window or under a fan
+SEQ: record the room temperature
+SEQ: record the time taken for evaporation
+SEQ: repeat the activity on a rainy day
+SEQ: compare the effect of temperature surface area and wind speed on evaporation
+ASK: temperature | celsius scale
+ASK: water | physical state
+ASK: temperature | constant during change of state
+ASK: atmospheric gases | liquefaction method 
+FACT: temperature | kelvin value | 300
+FACT: temperature | celsius value | 27
+FACT: temperature | kelvin value | 573
+FACT: temperature | celsius value | 300
+PROP: water at 250°C | state | gas
+PROP: water at 100°C | state | liquid
+PROP: water at 100°C | state | gas
+PROP: temperature during change of state | value | constant
+PROP: atmospheric gases | liquefaction | by applying pressure and reducing temperature
+EVENT: remain | temperature | constant | present | +
+EVENT: change | substance | state | present | +
+EVENT: apply | pressure | atmospheric gases | present | +
+EVENT: reduce | temperature | atmospheric gases | present | +
+EVENT: liquefy | atmospheric gases |  | present | +
+EVENT: pour | acetone | palm | present | +
+EVENT: gain | particles | energy from palm or surroundings | present | +
+EVENT: evaporate | acetone |  | present | +
+EVENT: feel | palm | cool | present | +
+EVENT: sprinkle | people | water on roof or open ground | present | +
+EVENT: cool | water | hot surface | present | +
+EVENT: perspire | body |  | present | +
+EVENT: absorb | cotton | sweat | present | +
+EVENT: expose | cotton | sweat to atmosphere | present | +
+EVENT: lose | water vapour | energy | present | +
+EVENT: convert | water vapour | liquid state | present | +
+EVENT: see | we | water droplets | present | +
+MORPH: remain | remained | remains
+MORPH: change | changed | changes
+MORPH: apply | applied | applies
+MORPH: reduce | reduced | reduces
+MORPH: liquefy | liquefied | liquefies
+MORPH: pour | poured | pours
+MORPH: gain | gained | gains
+MORPH: evaporate | evaporated | evaporates
+MORPH: feel | felt | feels
+MORPH: sprinkle | sprinkled | sprinkles
+MORPH: cool | cooled | cools
+MORPH: perspire | perspired | perspires
+MORPH: absorb | absorbed | absorbs
+MORPH: expose | exposed | exposes
+MORPH: lose | lost | loses
+MORPH: convert | converted | converts
+MORPH: see | saw | sees
+PROP: cotton | property | good absorber of water
+PROP: evaporation | effect | cooling
+PROP: water vapour | contact with cold glass | loses energy
+PROP: water droplets | origin | water vapour in air
+ASK: desert cooler | better cooling
+ASK: earthen pot | cooling
+ASK: acetone on palm | cooling
+ASK: hot tea in saucer | cooling
+ASK: clothes in summer | type
+ISA: plasma | state of matter
+ISA: Bose-Einstein Condensate | state of matter
+FACT: states of matter | number | 5
+PROP: plasma | particles | super energetic
+PROP: plasma | particles | super excited
+PROP: plasma | form | ionised gases
+PROP: fluorescent tube | contains | plasma
+PROP: neon sign bulb | contains | plasma
+PROP: Sun | glow | plasma
+PROP: stars | glow | plasma
+PROP: Bose-Einstein Condensate | formation | cooling a gas of extremely low density to super low temperatures
+EVENT: ionise | gas |  | present | +
+EVENT: flow | electrical energy | through gas | present | +
+EVENT: create | charging | plasma | present | +
+EVENT: glow | plasma |  | present | +
+EVENT: cool | gas | extremely low temperatures | present | +
+MORPH: ionise | ionised | ionises
+MORPH: flow | flowed | flows
+MORPH: create | created | creates
+MORPH: glow | glowed | glows
+MORPH: cool | cooled | cools
+PROP: matter | composition | small particles
+PROP: matter | states | solid
+PROP: matter | states | liquid
+PROP: matter | states | gas
+PROP: force of attraction between particles | solids | maximum
+PROP: force of attraction between particles | liquids | intermediate
+PROP: force of attraction between particles | gases | minimum
+PROP: spaces between particles | solids | minimum
+PROP: spaces between particles | liquids | intermediate
+PROP: spaces between particles | gases | maximum
+PROP: kinetic energy of particles | solids | minimum
+PROP: kinetic energy of particles | liquids | intermediate
+PROP: kinetic energy of particles | gases | maximum
+PROP: arrangement of particles in solids | order | most ordered
+PROP: arrangement of particles in liquids | behaviour | layers slip and slide over each other
+PROP: arrangement of particles in gases | order | no order
+PROP: particles in gases | motion | random
+PROP: states of matter | property | inter-convertible
+PROP: state of matter | change | by changing temperature
+PROP: state of matter | change | by changing pressure
+PROP: sublimation | change | solid directly to gaseous state without going through liquid state
+PROP: deposition | change | gaseous state directly to solid state without going through liquid state
+PROP: boiling | nature | bulk phenomenon
+PROP: evaporation | nature | surface phenomenon
+PROP: rate of evaporation | depends on | surface area exposed to the atmosphere
+PROP: rate of evaporation | depends on | temperature
+PROP: rate of evaporation | depends on | humidity
+PROP: rate of evaporation | depends on | wind speed
+PROP: evaporation | effect | cooling
+PROP: latent heat of vaporisation | meaning | heat energy required to change 1 kg of a liquid to gas at atmospheric pressure at its boiling point
+PROP: latent heat of fusion | meaning | heat energy required to change 1 kg of solid into liquid at its melting point
+FACT: latent heat of vaporisation | liquid mass | 1
+FACT: latent heat of fusion | solid mass | 1
+EVENT: slip | layers of particles in liquids | over each other | present | +
+EVENT: move | particles in gases | randomly | present | +
+EVENT: change | state of matter |  | present | +
+EVENT: depend | rate of evaporation | surface area exposed to the atmosphere | present | +
+EVENT: depend | rate of evaporation | temperature | present | +
+EVENT: depend | rate of evaporation | humidity | present | +
+EVENT: depend | rate of evaporation | wind speed | present | +
+EVENT: cause | evaporation | cooling | present | +
+MORPH: slip | slipped | slips
+MORPH: move | moved | moves
+MORPH: change | changed | changes
+MORPH: depend | depended | depends
+MORPH: cause | caused | causes
+ASK: density | increasing order
+ASK: states of matter | differences
+ASK: rigidity | comment
+ASK: compressibility | comment
+ASK: fluidity | comment
+ASK: filling a gas container | comment
+ASK: shape | comment
+ASK: kinetic energy | comment
+ASK: density | comment
+ASK: gas | filling vessel
+ASK: gas | pressure on walls of container
+ASK: wooden table | solid
+ASK: movement through wood | reason
+ASK: ice | floating on water
+ASK: temperature | celsius scale
+ASK: temperature | kelvin scale
+ASK: naphthalene balls | disappearance
+ASK: smell of perfume | reason
+ASK: forces of attraction between particles | increasing order
+ASK: water | physical state at 25°C
+ASK: water | physical state at 0°C
+ASK: water | physical state at 100°C
+ASK: water at room temperature | reason for liquid state
+ASK: iron almirah at room temperature | reason for solid state
+ASK: ice at 273 K | cooling effect
+ASK: boiling water or steam | severe burns
+ASK: change of state diagram | names of A
+ASK: change of state diagram | names of B
+ASK: change of state diagram | names of C
+ASK: change of state diagram | names of D
+ASK: change of state diagram | names of E
+ASK: change of state diagram | names of F
+UNIT: temperature | 0,0,0
+UNIT: length | 0,1,0
+UNIT: mass | 1,0,0
+UNIT: weight | 1,1,-2
+UNIT: volume | 0,3,0
+UNIT: density | 1,-3,0
+UNIT: pressure | 1,-1,-2
+PROP: temperature | SI unit | kelvin
+PROP: length | SI unit | metre
+PROP: mass | SI unit | kilogram
+PROP: weight | SI unit | newton
+PROP: volume | SI unit | cubic metre
+PROP: density | SI unit | kilogram per cubic metre
+PROP: pressure | SI unit | pascal
+ASK: milk | purity
+ASK: ghee | purity
+ASK: butter | purity
+ASK: salt | purity
+ASK: spices | purity
+ASK: mineral water | purity
+ASK: juice | purity
+PROP: pure for a common person | meaning | having no adulteration
+PROP: milk | nature | mixture
+PART: milk | water
+PART: milk | fat
+PART: milk | proteins
+PROP: pure for a scientist | meaning | all constituent particles are the same in their chemical nature
+PROP: pure substance | particles | single type of particles
+PROP: pure substance | form | pure single form of matter
+PROP: sea water | nature | mixture
+PROP: minerals | nature | mixture
+PROP: soil | nature | mixture
+ISA: mixture | matter
+ISA: pure substance | matter
+EVENT: write | packs of consumables | pure | present | +
+EVENT: consist | pure substance | single type of particles | present | +
+EVENT: exist | matter around us | mixtures | present | +
+EVENT: constitute | mixtures | more than one kind of pure form of matter | present | +
+EVENT: separate | physical process of evaporation | dissolved sodium chloride from water | present | +
+EVENT: separate | physical process | sodium chloride into its chemical constituents | present | -
+EVENT: contain | sugar | one kind of pure matter | present | +
+EVENT: contain | mixture | more than one pure substance | present | +
+EVENT: divide | class | groups A, B, C and D | present | +
+EVENT: take | group A | 50 mL of water and one spatula full of copper sulphate powder | present | +
+EVENT: take | group B | 50 mL of water and two spatula full of copper sulphate powder | present | +
+EVENT: take | groups C and D | different amounts of copper sulphate and potassium permanganate or common salt | present | +
+EVENT: mix | groups C and D | given components | present | +
+EVENT: report | groups | observations on uniformity in colour and texture | present | +
+EVENT: obtain | groups A and B | homogeneous mixture | present | +
+EVENT: call | homogeneous mixtures | solutions | present | +
+MORPH: write | wrote | writes
+MORPH: consist | consisted | consists
+MORPH: exist | existed | exists
+MORPH: constitute | constituted | constitutes
+MORPH: separate | separated | separates
+MORPH: contain | contained | contains
+MORPH: divide | divided | divides
+MORPH: take | took | takes
+MORPH: mix | mixed | mixes
+MORPH: report | reported | reports
+MORPH: obtain | obtained | obtains
+MORPH: call | called | calls
+FACT: water in group A | volume | 50
+FACT: water in group B | volume | 50
+PROP: homogeneous mixture | composition | uniform
+ISA: solution | homogeneous mixture
+PROP: salt dissolved in water | example | homogeneous mixture
+PROP: sugar dissolved in water | example | homogeneous mixture
+ISA: homogeneous mixture | mixture
+ISA: heterogeneous mixture | mixture
+ISA: solution | homogeneous mixture
+PROP: homogeneous mixture | composition | uniform
+PROP: heterogeneous mixture | composition | non-uniform
+PROP: solution | components | solute and solvent
+PROP: solvent | proportion in solution | major
+PROP: solute | proportion in solution | minor
+EVENT: obtain | groups C and D | heterogeneous mixture | present | +
+EVENT: compare | groups | mixtures | present | +
+EVENT: classify | mixtures | homogeneous mixtures | present | +
+EVENT: classify | mixtures | heterogeneous mixtures | present | +
+EVENT: dissolve | solute | solvent | present | +
+EVENT: call | major component of solution | solvent | present | +
+EVENT: call | minor component of solution | solute | present | +
+MORPH: obtain | obtained | obtains
+MORPH: compare | compared | compares
+MORPH: classify | classified | classifies
+MORPH: dissolve | dissolved | dissolves
+MORPH: call | called | calls
+FACT: water in first beaker | volume | 50
+FACT: water in second beaker | volume | 50
+PROP: dilute solution | solute amount | less
+PROP: concentrated solution | solute amount | more
+PROP: saturated solution | dissolved solute | maximum
+PROP: unsaturated solution | dissolved solute | less than saturation level
+PROP: solubility | meaning | amount of solute present in the saturated solution at a particular temperature
+PROP: different substances | solubility in same solvent | different
+PROP: concentration of solution | meaning | amount of solute present in a given amount of solution
+EVENT: add | student | salt | present | +
+EVENT: add | student | sugar | present | +
+EVENT: add | student | barium chloride | present | +
+EVENT: stir | student | solution | present | +
+EVENT: dissolve | solute | water | present | +
+EVENT: heat | student | beaker | present | +
+EVENT: raise | heating | temperature | present | +
+EVENT: add | student | solute again | present | +
+EVENT: cool | student | saturated solution | present | +
+EVENT: vary | relative proportion of solute and solvent | solution | present | +
+MORPH: add | added | adds
+MORPH: stir | stirred | stirs
+MORPH: dissolve | dissolved | dissolves
+MORPH: heat | heated | heats
+MORPH: raise | raised | raises
+MORPH: cool | cooled | cools
+MORPH: vary | varied | varies
+FACT: temperature increase | celsius | 5
+LAW: mass by mass percentage of solution = mass of solute / mass of solution * 100
+ASK: saturated solution | meaning
+ASK: unsaturated solution | meaning
+ASK: solubility | meaning
+ASK: concentration of solution | meaning
+LAW: mass by volume percentage of solution = mass of solute / volume of solution * 100
+LAW: volume by volume percentage of solution = volume of solute / volume of solution * 100
+FACT: common salt | mass | 40
+FACT: water | mass | 320
+FACT: solution | mass | 360
+FACT: mass by mass percentage of solution | percentage | 11.1
+ISA: suspension | heterogeneous mixture
+ISA: colloid | heterogeneous mixture
+ISA: colloidal solution | colloid
+PROP: suspension | particles | visible to naked eye
+PROP: suspension | stability | unstable
+PROP: suspension | filtration | separable
+PROP: suspension | particles | remain suspended throughout the bulk of the medium
+PROP: colloid | particles | uniformly spread throughout the solution
+PROP: colloid | appearance | homogeneous
+PROP: colloid | nature | heterogeneous
+PROP: milk | nature | colloid
+PROP: colloid | particles | too small to be individually seen by naked eyes
+PROP: colloid | stability | stable
+PROP: colloid | filtration | not separable
+PROP: colloid | separation | centrifugation
+PROP: Tyndall effect | meaning | scattering of a beam of light
+PROP: sunlight through dense forest | shows | Tyndall effect
+PROP: mist | contains | tiny droplets of water
+PROP: tiny droplets of water | act as | particles of colloid dispersed in air
+EVENT: dissolve | common salt | water | present | +
+EVENT: calculate | student | mass by mass percentage | present | +
+EVENT: remain | particles of suspension | suspended | present | +
+EVENT: scatter | particles of suspension | beam of light | present | +
+EVENT: settle | particles of suspension | down | present | +
+EVENT: separate | filtration | suspension | present | +
+EVENT: break | suspension |  | present | +
+EVENT: scatter | colloidal particles | beam of visible light | present | +
+EVENT: call | scattering of a beam of light | Tyndall effect | present | +
+EVENT: observe | Tyndall effect | sunlight through dense forest | present | +
+EVENT: separate | centrifugation | colloidal particles | present | +
+MORPH: dissolve | dissolved | dissolves
+MORPH: calculate | calculated | calculates
+MORPH: remain | remained | remains
+MORPH: scatter | scattered | scatters
+MORPH: settle | settled | settles
+MORPH: separate | separated | separates
+MORPH: break | broke | breaks
+MORPH: call | called | calls
+MORPH: observe | observed | observes
+ISA: aerosol | colloid
+ISA: foam | colloid
+ISA: emulsion | colloid
+ISA: sol | colloid
+ISA: gel | colloid
+ISA: solid sol | colloid
+PROP: fog | type | aerosol
+PROP: clouds | type | aerosol
+PROP: mist | type | aerosol
+PROP: smoke | type | aerosol
+PROP: automobile exhaust | type | aerosol
+PROP: shaving cream | type | foam
+PROP: milk | type | emulsion
+PROP: face cream | type | emulsion
+PROP: milk of magnesia | type | sol
+PROP: mud | type | sol
+PROP: sponge | type | foam
+PROP: pumice | type | foam
+PROP: jelly | type | gel
+PROP: cheese | type | gel
+PROP: butter | type | gel
+PROP: coloured gemstone | type | solid sol
+PROP: milky glass | type | solid sol
+ASK: homogeneous mixture | difference from heterogeneous mixture
+ASK: sol | difference from solution
+ASK: suspension | difference from solution
+ASK: saturated solution | concentration at 293 K
+PROP: separation of mixture | purpose | obtain individual components
+PROP: separation of mixture | purpose | study individual components
+PROP: separation of mixture | purpose | use individual components
+PROP: heterogeneous mixtures | separation | simple physical methods
+PROP: ink | nature | mixture
+PROP: ink | solvent | water
+PROP: dye | solubility | soluble in water
+PROP: evaporation | separates | volatile solvent from non-volatile solute
+PROP: milk varieties | fat content | different
+PROP: filtration | limitation | cannot separate very small solid particles from liquid
+PROP: centrifugation | use | separate cream from milk
+EVENT: separate | physical methods | heterogeneous mixtures | present | +
+EVENT: fill | student | beaker with water | present | +
+EVENT: put | student | watch glass on beaker | present | +
+EVENT: put | student | drops of ink on watch glass | present | +
+EVENT: heat | student | beaker | present | +
+EVENT: evaporate | water |  | present | +
+EVENT: leave | residue | watch glass | present | +
+EVENT: separate | evaporation | solvent from solute | present | +
+EVENT: centrifuge | student | full-cream milk | present | +
+EVENT: churn | student | milk | present | +
+EVENT: separate | centrifugation | cream from milk | present | +
+MORPH: separate | separated | separates
+MORPH: fill | filled | fills
+MORPH: put | put | puts
+MORPH: heat | heated | heats
+MORPH: evaporate | evaporated | evaporates
+MORPH: leave | left | leaves
+MORPH: centrifuge | centrifuged | centrifuges
+MORPH: churn | churned | churns
+FACT: full-cream milk | centrifuging time | 2
+SEQ: fill half a beaker with water
+SEQ: then put a watch glass on the mouth of the beaker
+SEQ: then put a few drops of ink on the watch glass
+SEQ: then heat the beaker
+SEQ: then water evaporates
+SEQ: then the dye remains as residue
+SEQ: take full-cream milk in a test tube
+SEQ: then centrifuge the milk
+SEQ: then cream separates from milk
+ASK: ink | pure substance or mixture
+ASK: evaporation | evaporated component
+ASK: watch glass | residue
+ASK: cream | separation from milk
+FACT: line above lower edge of filter paper | distance | 3
+FACT: boiling point difference for fractional distillation | value | 25
+PROP: chromatography | use | separation of components of a mixture
+PROP: chromatography | use | separation of colours in a dye
+PROP: chromatography | use | separation of pigments from natural colours
+PROP: chromatography | use | separation of drugs from blood
+PROP: water | rises | filter paper
+PROP: coloured component more soluble in water | movement | rises faster
+PROP: dye | nature | mixture of two or more colours
+PROP: distillation | use | separation of two miscible liquids
+PROP: distillation | condition | liquids boil without decomposition
+PROP: distillation | condition | sufficient difference in boiling points
+PROP: fractional distillation | use | separation of two or more miscible liquids
+PROP: fractional distillation | use | separation of different gases from air
+PROP: fractional distillation | use | separation of different fractions from petroleum products
+PROP: air | nature | homogeneous mixture
+PROP: air | separation | fractional distillation
+PROP: fractionating column | packing | glass beads
+PROP: glass beads | function | provide surface for vapours to cool and condense repeatedly
+PROP: liquid air | formation | compressing air and cooling it
+PROP: gases | separation in fractional distillation column | at different heights
+PROP: gases | separation basis | boiling points
+EVENT: draw | student | line on filter paper | present | +
+EVENT: put | student | drop of ink | present | +
+EVENT: lower | student | filter paper into water | present | +
+EVENT: rise | water | filter paper | present | +
+EVENT: take | water | dye particles | present | +
+EVENT: separate | chromatography | colours | present | +
+EVENT: heat | student | mixture of acetone and water | present | +
+EVENT: vaporise | acetone |  | present | +
+EVENT: condense | acetone | condenser | present | +
+EVENT: collect | student | acetone | present | +
+EVENT: leave | water | distillation flask | present | +
+EVENT: compress | process | air | present | +
+EVENT: cool | process | air | present | +
+EVENT: obtain | process | liquid air | present | +
+EVENT: warm up | liquid air |  | present | +
+EVENT: separate | gases | fractional distillation column | present | +
+EVENT: cool | vapours | glass beads | present | +
+EVENT: condense | vapours | glass beads | present | +
+MORPH: draw | drew | draws
+MORPH: put | put | puts
+MORPH: lower | lowered | lowers
+MORPH: rise | rose | rises
+MORPH: take | took | takes
+MORPH: separate | separated | separates
+MORPH: heat | heated | heats
+MORPH: vaporise | vaporised | vaporises
+MORPH: condense | condensed | condenses
+MORPH: collect | collected | collects
+MORPH: leave | left | leaves
+MORPH: compress | compressed | compresses
+MORPH: cool | cooled | cools
+MORPH: obtain | obtained | obtains
+MORPH: warm up | warmed up | warms up
+SEQ: draw a line on the filter paper
+SEQ: then put a drop of ink on the line
+SEQ: then lower the filter paper into water
+SEQ: then water rises on the filter paper
+SEQ: then the colours separate
+SEQ: take the acetone and water mixture in a distillation flask
+SEQ: then heat the mixture slowly
+SEQ: then acetone vaporises
+SEQ: then acetone condenses in the condenser
+SEQ: then collect acetone from the condenser outlet
+SEQ: then water is left behind in the distillation flask
+SEQ: compress the air
+SEQ: then cool the air to get liquid air
+SEQ: then allow the liquid air to warm up slowly
+SEQ: then gases separate at different heights in the fractional distillation column
+ASK: chromatography | observations
+ASK: boiling point of acetone | value
+ASK: components | reason for separation
+ASK: gases in air | increasing order of boiling points
+ASK: gas | forms liquid first as air is cooled
+FACT: impure sample of copper sulphate | mass | 5
+PROP: crystallisation | purpose | separates a pure solid in the form of its crystals from a solution
+PROP: crystallisation | better than simple evaporation | yes
+PROP: sugar | effect on heating to dryness | gets charred
+PROP: simple evaporation | limitation | some solids decompose
+PROP: simple evaporation | limitation | impurities may remain dissolved
+PROP: evaporation | effect | impurities contaminate the solid
+PROP: crystallisation | application | purification of salt from sea water
+PROP: crystallisation | application | separation of crystals of alum from impure samples
+PROP: separation technique | selection | according to the nature of the components of a mixture
+EVENT: take | student | impure sample of copper sulphate | present | +
+EVENT: dissolve | student | copper sulphate in minimum amount of water | present | +
+EVENT: filter | student | impurities | present | +
+EVENT: evaporate | student | water from copper sulphate solution | present | +
+EVENT: get | student | saturated solution | present | +
+EVENT: cover | student | solution with filter paper | present | +
+EVENT: leave | student | solution undisturbed | present | +
+EVENT: cool | solution | slowly | present | +
+EVENT: obtain | student | crystals of copper sulphate | present | +
+EVENT: call | process | crystallisation | present | +
+EVENT: purify | crystallisation | solids | present | +
+MORPH: take | took | takes
+MORPH: dissolve | dissolved | dissolves
+MORPH: filter | filtered | filters
+MORPH: evaporate | evaporated | evaporates
+MORPH: get | got | gets
+MORPH: cover | covered | covers
+MORPH: leave | left | leaves
+MORPH: cool | cooled | cools
+MORPH: obtain | obtained | obtains
+MORPH: call | called | calls
+MORPH: purify | purified | purifies
+SEQ: take approximately 5 g of impure copper sulphate
+SEQ: then dissolve it in the minimum amount of water
+SEQ: then filter the impurities
+SEQ: then evaporate water to get a saturated solution
+SEQ: then cover the solution with filter paper
+SEQ: then leave it undisturbed at room temperature for a day
+SEQ: then obtain crystals of copper sulphate
+ASK: china dish | observation
+ASK: crystals | appearance
+ASK: crystals | separation from liquid
+PROP: mixture | composition | more than one substance
+PROP: mixture | separation | appropriate separation techniques
+PROP: solution | nature | homogeneous mixture
+PROP: solvent | component | major
+PROP: solute | component | minor
+PROP: concentration of solution | meaning | amount of solute per unit volume or per unit mass of the solution
+PROP: suspension | particles | visible to naked eyes
+PROP: colloid | particle size | too small to be seen with naked eye
+PROP: colloid | particles | scatter light
+PROP: colloid | usefulness | industry and daily life
+PROP: dispersed phase | meaning | particles in a colloid
+PROP: dispersion medium | meaning | medium in which dispersed phase is distributed
+ISA: element | pure substance
+ISA: compound | pure substance
+PROP: element | definition | cannot be broken down by chemical reactions into simpler substances
+PROP: compound | composition | two or more different types of elements chemically combined in a fixed proportion
+PROP: compound | properties | different from constituent elements
+PROP: mixture | properties | properties of constituting elements or compounds
+PROP: matter | divisibility | considered long back in India
+FACT: idea of divisibility of matter in India | time | 500 BC
+PROP: Parmanu | property | smallest particles
+PROP: Parmanu | divisibility | further division not possible
+PROP: particles | existence | combined form
+PROP: atoms | property | indivisible
+PROP: elements | difference | recognised by scientists
+PROP: chemical sciences | foundation | two laws of chemical combination
+ISA: Parmanu | particle
+ISA: atom | particle
+EVENT: divide | Maharishi Kanad | matter | present | +
+EVENT: get | division of matter | smaller and smaller particles | future | +
+EVENT: name | Maharishi Kanad | smallest particles as Parmanu | past | +
+EVENT: elaborate | Pakudha Katyayama | doctrine | past | +
+EVENT: exist | particles | combined form | present | +
+EVENT: suggest | Democritus and Leucippus | indivisible particles | past | +
+EVENT: call | Democritus | indivisible particles atoms | past | +
+EVENT: recognise | scientists | difference between elements and compounds | past | +
+EVENT: establish | Antoine L. Lavoisier | two laws of chemical combination | past | +
+MORPH: divide | divided | divides
+MORPH: get | got | gets
+MORPH: name | named | names
+MORPH: elaborate | elaborated | elaborates
+MORPH: exist | existed | exists
+MORPH: suggest | suggested | suggests
+MORPH: call | called | calls
+MORPH: recognise | recognised | recognises
+MORPH: establish | established | establishes
+FACT: copper sulphate | mass | 1.25
+FACT: sodium carbonate | mass | 1.43
+FACT: barium chloride | mass | 1.22
+FACT: sodium sulphate | mass | 1.53
+FACT: lead nitrate | mass | 2.07
+FACT: sodium chloride | mass | 1.17
+FACT: solution concentration | percentage | 5
+FACT: solution volume | millilitres | 10
+PROP: law of conservation of mass | statement | mass can neither be created nor destroyed in a chemical reaction
+PROP: law of constant proportions | statement | elements are always present in definite proportions by mass
+FACT: hydrogen to oxygen mass ratio in water | ratio | 1:8
+FACT: water | mass | 9
+FACT: hydrogen | mass | 1
+FACT: oxygen | mass | 8
+FACT: nitrogen to hydrogen mass ratio in ammonia | ratio | 14:3
+EVENT: prepare | student | solution of X and Y | present | +
+EVENT: hang | student | ignition tube in flask | present | +
+EVENT: mix | student | solutions X and Y | present | +
+EVENT: weigh | student | flask | present | +
+EVENT: react | sodium carbonate | acetic acid | present | +
+MORPH: prepare | prepared | prepares
+MORPH: hang | hung | hangs
+MORPH: mix | mixed | mixes
+MORPH: weigh | weighed | weighs
+MORPH: react | reacted | reacts
+ISA: element | matter
+ISA: compound | matter
+ISA: mixture | matter
+PROP: matter | composition | atoms
+PROP: atom | participation | chemical reactions
+PROP: atom | divisibility | indivisible
+PROP: atom | creation | cannot be created
+PROP: atom | destruction | cannot be destroyed
+PROP: atoms of a given element | mass | identical
+PROP: atoms of a given element | chemical properties | identical
+PROP: atoms of different elements | masses | different
+PROP: atoms of different elements | chemical properties | different
+PROP: atoms | combination | ratio of small whole numbers
+PROP: compound | relative number and kinds of atoms | constant
+ASK: mass | change during chemical reaction
+ASK: law of conservation of mass | statement
+ASK: law of constant proportions | statement
+ASK: Dalton's atomic theory | postulates
+PROP: element | name | approved by IUPAC
+PROP: element | symbol | unique
+PROP: first letter of symbol | letter case | capital
+PROP: second letter of symbol | letter case | small
+PROP: atomic mass | property | characteristic for each element
+PROP: relative atomic masses | determination | using laws of chemical combinations and compounds formed
+PROP: atomic mass unit | symbol | u
+PROP: one atomic mass unit | definition | one-twelfth the mass of one atom of carbon-12
+PROP: relative atomic mass | comparison | with one-twelfth the mass of one carbon-12 atom
+PROP: atoms of most elements | independent existence | not possible
+PROP: atoms | form | molecules
+PROP: atoms | form | ions
+PROP: molecules | aggregation | form matter
+PROP: ions | aggregation | form matter
+PROP: molecule | definition | smallest particle capable of independent existence
+PROP: molecule | property | shows all the properties of the substance
+ISA: atom | building block of matter
+ISA: molecule | particle
+ISA: ion | particle
+FACT: carbon atomic mass | u | 12
+FACT: hydrogen atomic mass | u | 1
+FACT: nitrogen atomic mass | u | 14
+FACT: oxygen atomic mass | u | 16
+FACT: sodium atomic mass | u | 23
+FACT: magnesium atomic mass | u | 24
+FACT: sulphur atomic mass | u | 32
+FACT: chlorine atomic mass | u | 35.5
+FACT: calcium atomic mass | u | 40
+FACT: carbon in carbon monoxide | mass | 3
+FACT: oxygen in carbon monoxide | mass | 4
+FACT: carbon combines with oxygen | mass ratio | 4/3
+FACT: atomic radius unit | nanometre | 1
+FACT: metre | nanometres | 10^9
+FACT: hydrogen atom radius | metres | 10^-10
+FACT: water molecule radius | metres | 10^-9
+FACT: haemoglobin molecule radius | metres | 10^-8
+FACT: grain of sand radius | metres | 10^-4
+FACT: ant radius | metres | 10^-3
+FACT: apple radius | metres | 10^-1
+EVENT: approve | IUPAC | names symbols and units | present | +
+EVENT: derive | names of elements | place or colour | past | +
+EVENT: determine | scientists | relative atomic masses | past | +
+EVENT: form | atoms | molecules | present | +
+EVENT: form | atoms | ions | present | +
+EVENT: aggregate | molecules and ions | matter | present | +
+EVENT: join | atoms | molecules | present | +
+MORPH: approve | approved | approves
+MORPH: derive | derived | derives
+MORPH: determine | determined | determines
+MORPH: form | formed | forms
+MORPH: aggregate | aggregated | aggregates
+MORPH: join | joined | joins
+ASK: atomic mass unit | definition
+ASK: atom | visibility with naked eyes
+ASK: atom | size
+ASK: molecule | definition
+ISA: molecule of element | molecule
+ISA: molecule of compound | molecule
+ISA: ion | charged species
+ISA: anion | ion
+ISA: cation | ion
+ISA: polyatomic ion | ion
+ISA: argon | non-metal
+ISA: helium | non-metal
+ISA: oxygen | non-metal
+ISA: hydrogen | non-metal
+ISA: nitrogen | non-metal
+ISA: chlorine | non-metal
+ISA: phosphorus | non-metal
+ISA: sulphur | non-metal
+PROP: molecules of an element | constitution | same type of atoms
+PROP: molecules of compounds | composition | atoms of different elements
+PROP: atoms of different elements | combination | definite proportions
+PROP: oxygen molecule | type | diatomic
+PROP: ozone | composition | three atoms of oxygen
+PROP: atomicity | meaning | number of atoms constituting a molecule
+PROP: metals | structure | very large and indefinite number of atoms bonded together
+PROP: carbon | structure | very large and indefinite number of atoms bonded together
+PROP: ion | charge | positive or negative
+PROP: anion | charge | negative
+PROP: cation | charge | positive
+PROP: sodium chloride | constituent particles | sodium ions and chloride ions
+PROP: valency | meaning | combining power of an element
+PROP: chemical formula | representation | symbolic representation of composition
+PROP: formula of compound | condition | overall structure must be neutral
+PROP: formula | charges on ions | not indicated
+PROP: binary compounds | composition | two different elements
+FACT: water | hydrogen oxygen mass ratio | 1:8
+FACT: ammonia | nitrogen hydrogen mass ratio | 14:3
+FACT: carbon dioxide | carbon oxygen mass ratio | 3:8
+EVENT: constitute | same type of atoms | molecules of an element | present | +
+EVENT: join | atoms of different elements | molecules of compounds | present | +
+EVENT: unite | oxygen atoms | ozone | present | +
+EVENT: consist | sodium chloride | sodium ions and chloride ions | present | +
+EVENT: carry | polyatomic ion | charge | present | +
+EVENT: use | valency | chemical formula | present | +
+EVENT: write | symbol of metal | first | present | +
+EVENT: balance | positive and negative charges | each other | present | +
+MORPH: constitute | constituted | constitutes
+MORPH: join | joined | joins
+MORPH: unite | united | unites
+MORPH: consist | consisted | consists
+MORPH: carry | carried | carries
+MORPH: use | used | uses
+MORPH: write | wrote | writes
+MORPH: balance | balanced | balances
+ASK: atomicity | meaning
+ASK: ion | meaning
+ASK: valency | meaning
+ASK: chemical formula | meaning
+ASK: formula of hydrogen chloride | chemical formula
+ASK: formula of hydrogen sulphide | chemical formula
+ASK: formula of carbon tetrachloride | chemical formula
+ASK: formula of magnesium chloride | chemical formula
+ASK: formula of aluminium oxide | chemical formula
+ASK: formula of calcium oxide | chemical formula
+PROP: chemical formula | shows | constituent elements
+PROP: chemical formula | shows | number of atoms of each combining element
+PROP: valencies or charges on ions | condition | must balance
+PROP: compound of metal and non-metal | writing rule | metal written first
+PROP: polyatomic ion in formula | notation | enclosed in brackets when more than one ion is present
+PROP: one polyatomic ion | notation | brackets not required
+PROP: binary compound | composition | two different elements
+PROP: molecular mass | meaning | sum of atomic masses of all atoms in a molecule
+PROP: molecular mass | unit | atomic mass unit
+PROP: formula unit mass | meaning | sum of atomic masses of all atoms in a formula unit
+PROP: formula unit mass | calculation | same as molecular mass
+PROP: formula unit | use | substances whose constituent particles are ions
+FACT: molecular mass of water | u | 18
+FACT: molecular mass of nitric acid | u | 63
+FACT: formula unit mass of sodium chloride | u | 58.5
+FACT: formula unit mass of calcium chloride | u | 111
+EVENT: simplify | formula | Ca₂O₂ to CaO | present | +
+EVENT: write | metal | before non-metal | present | +
+EVENT: enclose | polyatomic ion | brackets | present | +
+EVENT: indicate | subscript | number of ions | present | +
+EVENT: calculate | molecular mass | by adding atomic masses | present | +
+EVENT: calculate | formula unit mass | by adding atomic masses | present | +
+EVENT: use | formula unit | ionic substances | present | +
+MORPH: simplify | simplified | simplifies
+MORPH: write | wrote | writes
+MORPH: enclose | enclosed | encloses
+MORPH: indicate | indicated | indicates
+MORPH: calculate | calculated | calculates
+MORPH: use | used | uses
+ASK: sodium oxide | chemical formula
+ASK: aluminium chloride | chemical formula
+ASK: sodium sulphide | chemical formula
+ASK: magnesium hydroxide | chemical formula
+ASK: Al₂(SO₄)₃ | compound name
+ASK: CaCl₂ | compound name
+ASK: K₂SO₄ | compound name
+ASK: KNO₃ | compound name
+ASK: CaCO₃ | compound name
+ASK: chemical formula | meaning
+ASK: H₂S molecule | number of atoms
+ASK: PO₄³⁻ ion | number of atoms
+ASK: molecular mass of H₂O | value
+ASK: molecular mass of HNO₃ | value
+ASK: formula unit mass | meaning
+PROP: mole | meaning | amount of substance
+PROP: mole | particles | atoms
+PROP: mole | particles | molecules
+PROP: mole | particles | ions
+PROP: mole | particles | formula units
+PROP: Avogadro constant | meaning | number of particles present in one mole
+PROP: molar mass | meaning | mass of one mole of a substance
+PROP: gram atomic mass | meaning | molar mass of atoms
+PROP: mole | counting unit | chemist's counting unit
+PROP: mole | accepted | 1967
+PROP: mole | origin of word | Latin word moles
+PROP: moles | meaning | heap or pile
+FACT: one mole | particles | 6.022 × 10^23
+FACT: one dozen | number | 12
+FACT: one gross | number | 144
+FACT: hydrogen gram atomic mass | g | 1
+FACT: oxygen gram atomic mass | g | 16
+FACT: water molecular mass | u | 18
+FACT: water molar mass | g | 18
+FACT: helium atomic mass | u | 4
+FACT: helium molar mass | g | 4
+FACT: helium mass | g | 52
+FACT: helium moles | number | 13
+FACT: helium atoms | number | 12.044 × 10^23
+FACT: helium moles from particles | number | 2
+FACT: nitrogen molecule molar mass | g | 28
+FACT: nitrogen atom molar mass | g | 14
+FACT: nitrogen gas | moles | 0.5
+FACT: nitrogen gas | mass | 14
+FACT: nitrogen atoms | moles | 0.5
+FACT: nitrogen atoms | mass | 7
+FACT: nitrogen atoms | number | 3.011 × 10^23
+FACT: nitrogen atoms | mass from particles | 7
+FACT: nitrogen molecules | number | 6.022 × 10^23
+FACT: nitrogen molecules | mass from particles | 28
+FACT: sodium atoms | mass | 46
+FACT: oxygen molecules | mass | 8
+FACT: oxygen molecules | number | 1.5055 × 10^23
+FACT: carbon atoms | moles | 0.1
+FACT: carbon atoms | number | 6.022 × 10^22
+EVENT: characterise | quantity of substance | mass or number of molecules | present | +
+EVENT: introduce | scientists | mole | past | +
+EVENT: relate | chemists | mass in grams to number | present | +
+EVENT: derive | Wilhelm Ostwald | word mole | past | +
+EVENT: calculate | student | number of moles | present | +
+EVENT: calculate | student | mass | present | +
+EVENT: calculate | student | number of particles | present | +
+MORPH: characterise | characterised | characterises
+MORPH: introduce | introduced | introduces
+MORPH: relate | related | relates
+MORPH: derive | derived | derives
+MORPH: calculate | calculated | calculates
+LAW: number of moles = given mass / molar mass
+LAW: number of moles = given number of particles / Avogadro number
+LAW: mass = molar mass * number of moles
+LAW: number of particles = number of moles * Avogadro number
+ASK: one atom of carbon | mass
+ASK: 100 g sodium | number of atoms
+ASK: 100 g iron | number of atoms
+PROP: law of conservation of mass | application | chemical reactions
+PROP: law of definite proportions | application | pure chemical compounds
+PROP: atom | definition | smallest particle of an element
+PROP: atom | independent existence | cannot usually exist independently
+PROP: atom | property | retains all chemical properties of the element
+PROP: molecule | definition | smallest particle of an element or a compound capable of independent existence under ordinary conditions
+PROP: molecule | property | shows all the properties of the substance
+PROP: chemical formula | shows | constituent elements
+PROP: chemical formula | shows | number of atoms of each combining element
+PROP: polyatomic ions | property | carry a fixed charge
+PROP: chemical formula of molecular compound | determination | valency of each element
+PROP: ionic compound | chemical formula | determined by charge on each ion
+PROP: relative atomic mass scale | use | compare masses of different atoms
+PROP: carbon-12 isotope | relative atomic mass | 12
+PROP: mole | contains | same number of particles as atoms in exactly 12 g of carbon-12
+PROP: molar mass | meaning | mass of 1 mole of a substance
+FACT: Avogadro constant | value | 6.022 × 10^23
+FACT: carbon-12 | mass | 12
+FACT: oxygen and boron compound sample | mass | 0.24
+FACT: boron in sample | mass | 0.096
+FACT: oxygen in sample | mass | 0.144
+FACT: carbon | mass | 3.0
+FACT: oxygen | mass | 8.00
+FACT: carbon dioxide | mass | 11.00
+EVENT: remain | sum of masses of reactants and products | unchanged | present | +
+EVENT: contain | mole | particles | present | +
+EVENT: compare | scientists | masses of different atoms | present | +
+EVENT: determine | valency | chemical formula | present | +
+MORPH: remain | remained | remains
+MORPH: contain | contained | contains
+MORPH: compare | compared | compares
+MORPH: determine | determined | determines
+ASK: oxygen and boron compound | percentage composition by weight
+ASK: carbon dioxide | mass produced
+ASK: 0.24 g oxygen | number of molecules
+ASK: sodium | number of atoms in 46 g
+ASK: 0.5 mole nitrogen gas | mass
+ASK: 3.011 × 10^23 nitrogen atoms | mass
+ASK: 100 g water | number of molecules
+ASK: 100 g sodium | number of atoms
+ASK: 100 g iron | number of atoms
+PROP: atom | divisibility | divisible
+PROP: atom | constituents | charged particles
+PROP: atom | structure | explained by atomic models
+PROP: charged objects | formation | by rubbing
+PROP: electron | charge | minus one
+PROP: proton | charge | plus one
+PROP: proton | mass | one unit
+PROP: electron | mass | negligible
+PROP: proton | charge | equal in magnitude and opposite in sign to electron
+PROP: atom | electrical nature | neutral
+PROP: atom | composition | protons and electrons
+PROP: protons | location | interior of atom
+PROP: electrons | removal | easy
+PROP: protons | removal | not easy
+ISA: electron | sub-atomic particle
+ISA: proton | sub-atomic particle
+ISA: canal rays | positively charged radiations
+EVENT: comb | person | dry hair | present | +
+EVENT: attract | comb | small pieces of paper | present | +
+EVENT: rub | person | glass rod with silk cloth | present | +
+EVENT: bring | person | glass rod near inflated balloon | present | +
+EVENT: become | objects | electrically charged | present | +
+EVENT: consist | atom | charged particles | present | +
+EVENT: identify | J. J. Thomson | electron | past | +
+EVENT: discover | E. Goldstein | canal rays | past | +
+EVENT: lead | canal rays | discovery of proton | past | +
+EVENT: balance | protons and electrons | charges | present | +
+MORPH: comb | combed | combs
+MORPH: attract | attracted | attracts
+MORPH: rub | rubbed | rubs
+MORPH: bring | brought | brings
+MORPH: become | became | becomes
+MORPH: consist | consisted | consists
+MORPH: identify | identified | identifies
+MORPH: discover | discovered | discovers
+MORPH: lead | led | leads
+MORPH: balance | balanced | balances
+FACT: proton mass relative to electron | times | 2000
+FACT: proton charge | value | +1
+FACT: electron charge | value | -1
+FACT: canal rays discovery | year | 1886
+FACT: electron identified | year | 1900
+ASK: canal rays | meaning
+ASK: atom with one electron and one proton | charge
+SEQ: comb dry hair
+SEQ: then bring the comb near small pieces of paper
+SEQ: observe that the comb attracts the paper
+SEQ: rub a glass rod with a silk cloth
+SEQ: then bring the rod near an inflated balloon
+SEQ: observe the effect of electrical charge
+PROP: Thomson model of atom | positive charge | spread throughout the atom
+PROP: Thomson model of atom | electrons | embedded in positively charged sphere
+PROP: Thomson model of atom | atom | electrically neutral
+PROP: Rutherford model | positively charged centre | nucleus
+PROP: nucleus | contains | nearly all the mass of the atom
+PROP: electrons | motion | revolve around nucleus in circular paths
+PROP: nucleus | size | very small compared to atom
+PROP: Rutherford model | limitation | could not explain stability of atom
+PROP: Bohr model | electrons | move in discrete orbits
+PROP: electrons in discrete orbits | energy radiation | do not radiate energy
+PROP: discrete orbits | name | energy levels
+PROP: energy levels | representation | K, L, M, N
+PROP: energy levels | representation | n = 1, 2, 3, 4
+PROP: neutron | charge | no charge
+PROP: neutron | mass | nearly equal to proton
+PROP: neutrons | location | nucleus
+PROP: hydrogen | neutrons | absent
+PROP: mass of atom | composition | masses of protons and neutrons
+ISA: nucleus | part of atom
+ISA: neutron | sub-atomic particle
+ISA: energy level | orbit
+EVENT: pass | most alpha-particles | gold foil | past | +
+EVENT: deflect | gold foil | some alpha-particles | past | +
+EVENT: rebound | one out of every 12000 alpha-particles |  | past | +
+EVENT: conclude | Rutherford | atom is mostly empty space | past | +
+EVENT: conclude | Rutherford | positive charge occupies very little space | past | +
+EVENT: propose | Rutherford | nuclear model of atom | past | +
+EVENT: revolve | electrons | nucleus | present | +
+EVENT: radiate | electrons in discrete orbits | energy | present | -
+EVENT: discover | J. Chadwick | neutron | past | +
+EVENT: represent | neutron | n | present | +
+MORPH: pass | passed | passes
+MORPH: deflect | deflected | deflects
+MORPH: rebound | rebounded | rebounds
+MORPH: conclude | concluded | concludes
+MORPH: propose | proposed | proposes
+MORPH: revolve | revolved | revolves
+MORPH: radiate | radiated | radiates
+MORPH: discover | discovered | discovers
+MORPH: represent | represented | represents
+FACT: gold foil | thickness | 1000 atoms
+FACT: alpha-particle | mass | 4
+FACT: rebounding alpha-particles | frequency | 1 out of 12000
+FACT: nucleus radius | comparison with atom radius | 10^5 times less
+FACT: neutron discovery | year | 1932
+ASK: Thomson model | atom neutrality
+ASK: Rutherford model | particle in nucleus
+ASK: Bohr model | three shells
+ASK: alpha-particle scattering with another metal foil | observation
+ASK: three sub-atomic particles | names
+ASK: helium atom | number of neutrons
+SEQ: fast-moving alpha-particles fall on a thin gold foil
+SEQ: then most alpha-particles pass through the foil
+SEQ: then some alpha-particles are deflected
+SEQ: then a very few alpha-particles rebound
+SEQ: then Rutherford concludes that most of the atom is empty space
+SEQ: then Rutherford proposes the nuclear model of the atom
+LAW: maximum number of electrons in a shell = 2 * n * n
+PROP: electron distribution | suggested by | Bohr and Bury
+PROP: outermost shell | maximum electrons | 8
+PROP: shells | filling | step-wise
+PROP: inner shells | condition | filled before outer shells
+PROP: valence electrons | location | outermost shell
+PROP: completely filled outermost shell | chemical activity | little
+PROP: inert elements | valency | zero
+PROP: helium | outermost shell | two electrons
+PROP: all other inert elements | outermost shell | eight electrons
+PROP: combining capacity | meaning | valency
+PROP: atoms | react | to achieve octet
+PROP: octet | meaning | eight electrons in outermost shell
+PROP: atoms | achieve octet | by sharing electrons
+PROP: atoms | achieve octet | by gaining electrons
+PROP: atoms | achieve octet | by losing electrons
+PROP: valency | determination | number of electrons gained lost or shared
+PROP: fluorine | outermost electrons | seven
+PROP: fluorine | valency | one
+PROP: oxygen | outermost electrons | six
+PROP: oxygen | valency | two
+PROP: nitrogen | outermost electrons | five
+PROP: nitrogen | valency | three
+FACT: K shell | maximum electrons | 2
+FACT: L shell | maximum electrons | 8
+FACT: M shell | maximum electrons | 18
+FACT: N shell | maximum electrons | 32
+FACT: outermost shell | maximum electrons | 8
+EVENT: fill | electrons | shells | present | +
+EVENT: accommodate | outermost shell | eight electrons | present | +
+EVENT: react | atoms | to achieve octet | present | +
+EVENT: share | atoms | electrons | present | +
+EVENT: gain | atoms | electrons | present | +
+EVENT: lose | atoms | electrons | present | +
+EVENT: determine | electrons gained lost or shared | valency | present | +
+MORPH: fill | filled | fills
+MORPH: accommodate | accommodated | accommodates
+MORPH: react | reacted | reacts
+MORPH: share | shared | shares
+MORPH: gain | gained | gains
+MORPH: lose | lost | loses
+MORPH: determine | determined | determines
+ASK: carbon atom | electron distribution
+ASK: sodium atom | electron distribution
+ASK: atom with full K and L shells | total number of electrons
+ASK: magnesium | valency
+ASK: aluminium | valency
+ASK: fluorine | valency
+ASK: oxygen | valency
+ASK: nitrogen | valency
+ASK: chlorine | valency
+ASK: sulphur | valency
+ASK: magnesium | valency
+PROP: atomic number | meaning | total number of protons present in the nucleus
+PROP: atomic number | symbol | Z
+PROP: atoms of an element | atomic number | same
+PROP: elements | definition | number of protons they possess
+PROP: mass of atom | due to | protons and neutrons
+PROP: protons and neutrons | name | nucleons
+PROP: mass of atom | location | nucleus
+PROP: mass number | meaning | sum of protons and neutrons
+PROP: mass number | symbol | A
+PROP: isotopes | definition | atoms of the same element having the same atomic number but different mass numbers
+PROP: isotopes | chemical properties | similar
+PROP: isotopes | physical properties | different
+PROP: average atomic mass | basis | average mass of naturally occurring atoms
+PROP: isobars | definition | atoms of different elements with different atomic numbers having the same mass number
+ISA: isotope | atom
+ISA: isobar | atom
+ISA: nucleon | particle
+FACT: hydrogen atomic number | value | 1
+FACT: carbon atomic number | value | 6
+FACT: carbon mass number | value | 12
+FACT: carbon | protons | 6
+FACT: carbon | neutrons | 6
+FACT: aluminium mass number | value | 27
+FACT: aluminium | protons | 13
+FACT: aluminium | neutrons | 14
+FACT: protium | atomic number | 1
+FACT: protium | mass number | 1
+FACT: deuterium | atomic number | 1
+FACT: deuterium | mass number | 2
+FACT: tritium | atomic number | 1
+FACT: tritium | mass number | 3
+FACT: chlorine isotopes | masses | 35 and 37
+FACT: chlorine isotope ratio | ratio | 3:1
+FACT: chlorine average atomic mass | u | 35.5
+FACT: calcium | atomic number | 20
+FACT: argon | atomic number | 18
+FACT: calcium | mass number | 40
+FACT: argon | mass number | 40
+EVENT: determine | number of protons | atomic number | present | +
+EVENT: define | mass number | sum of protons and neutrons | present | +
+EVENT: calculate | average atomic mass | isotopic abundance | present | +
+EVENT: use | isotope of uranium | fuel in nuclear reactors | present | +
+EVENT: use | isotope of cobalt | treatment of cancer | present | +
+EVENT: use | isotope of iodine | treatment of goitre | present | +
+MORPH: determine | determined | determines
+MORPH: define | defined | defines
+MORPH: calculate | calculated | calculates
+MORPH: use | used | uses
+ASK: atom with 8 electrons and 8 protons | atomic number
+ASK: atom with 8 electrons and 8 protons | charge
+ASK: oxygen | mass number
+ASK: sulphur | mass number
+ASK: hydrogen isotopes | sub-atomic particles
+ASK: isotope pair | electronic configuration
+ASK: isobar pair | electronic configuration
+ASK: atomic number | explanation
+ASK: mass number | explanation
+ASK: isotopes | explanation
+ASK: isobars | explanation
+ASK: isotopes | uses
+ISA: cell | fundamental unit of life
+ISA: onion peel cell | cell
+ISA: human cheek cell | cell
+ISA: Amoeba | unicellular organism
+ISA: Chlamydomonas | unicellular organism
+ISA: Paramoecium | unicellular organism
+ISA: bacteria | unicellular organism
+ISA: fungi | multicellular organism
+ISA: plant | multicellular organism
+ISA: animal | multicellular organism
+PROP: cork | source | bark of a tree
+PROP: cell | meaning | little room
+PROP: onion bulb | composition | cells
+PROP: living organisms | composition | cells
+PROP: cell | role | basic building unit
+PROP: cell | role | basic unit of life
+PROP: multicellular organisms | body | many cells
+PROP: cells | origin | pre-existing cells
+FACT: Robert Hooke cell discovery | year | 1665
+FACT: Leeuwenhoek free living cells discovery | year | 1674
+FACT: Robert Brown nucleus discovery | year | 1831
+FACT: Purkinje coined protoplasm | year | 1839
+FACT: Schleiden cell theory | year | 1838
+FACT: Schwann cell theory | year | 1839
+FACT: Virchow cell theory expansion | year | 1855
+FACT: electron microscope discovery | year | 1940
+EVENT: observe | Robert Hooke | cork slice | past | +
+EVENT: call | Robert Hooke | boxes as cells | past | +
+EVENT: constitute | single cell | whole organism | present | +
+EVENT: group | many cells | single body | present | +
+EVENT: assume | cells | different functions | present | +
+EVENT: divide | cells | cells of their own kind | present | +
+EVENT: discover | Leeuwenhoek | free living cells | past | +
+EVENT: discover | Robert Brown | nucleus | past | +
+EVENT: coin | Purkinje | protoplasm | past | +
+EVENT: present | Schleiden and Schwann | cell theory | past | +
+EVENT: suggest | Virchow | all cells arise from pre-existing cells | past | +
+EVENT: observe | electron microscope | complex structure of the cell | past | +
+MORPH: observe | observed | observes
+MORPH: call | called | calls
+MORPH: constitute | constituted | constitutes
+MORPH: group | grouped | groups
+MORPH: assume | assumed | assumes
+MORPH: divide | divided | divides
+MORPH: discover | discovered | discovers
+MORPH: coin | coined | coins
+MORPH: present | presented | presents
+MORPH: suggest | suggested | suggests
+ASK: cells | shape and size
+ASK: cells | structure
+ASK: plant cells | similarities
+ASK: plant cells | differences
+ASK: more unicellular organisms | names
+PART: cell | plasma membrane
+PART: cell | nucleus
+PART: cell | cytoplasm
+PART: cell | cell organelles
+ISA: prokaryotic cell | cell
+ISA: eukaryotic cell | cell
+ISA: cytoplasm | part of cell
+ISA: nucleus | part of cell
+ISA: plasma membrane | part of cell
+ISA: endoplasmic reticulum | cell organelle
+ISA: rough endoplasmic reticulum | endoplasmic reticulum
+ISA: smooth endoplasmic reticulum | endoplasmic reticulum
+ISA: ribosome | cell organelle
+PROP: cytoplasm | nature | fluid
+PROP: cytoplasm | location | inside the plasma membrane
+PROP: cell organelles | function | specific
+PROP: prokaryotic cells | membrane-bound cell organelles | absent
+PROP: eukaryotic cells | membrane-bound cell organelles | present
+PROP: eukaryotic cells | nuclear membrane | present
+PROP: viruses | membranes | absent
+PROP: viruses | characteristics of life | absent until entering a living body
+PROP: endoplasmic reticulum | structure | network of membrane-bound tubes and sheets
+PROP: endoplasmic reticulum membrane | structure | similar to plasma membrane
+PROP: rough endoplasmic reticulum | ribosomes | present
+PROP: smooth endoplasmic reticulum | ribosomes | absent
+PROP: ribosomes | function | protein manufacture
+PROP: smooth endoplasmic reticulum | function | manufacture of fat molecules
+PROP: membrane biogenesis | meaning | building the cell membrane
+PROP: endoplasmic reticulum | function | transport of materials
+PROP: endoplasmic reticulum | function | cytoplasmic framework
+EVENT: contain | cytoplasm | cell organelles | present | +
+EVENT: perform | cell organelles | specific function | present | +
+EVENT: multiply | viruses | living body | present | +
+EVENT: manufacture | ribosomes | proteins | present | +
+EVENT: send | endoplasmic reticulum | proteins | present | +
+EVENT: manufacture | smooth endoplasmic reticulum | fat molecules | present | +
+EVENT: build | proteins and lipids | cell membrane | present | +
+EVENT: serve | endoplasmic reticulum | transport of materials | present | +
+MORPH: contain | contained | contains
+MORPH: perform | performed | performs
+MORPH: multiply | multiplied | multiplies
+MORPH: manufacture | manufactured | manufactures
+MORPH: send | sent | sends
+MORPH: build | built | builds
+MORPH: serve | served | serves
+ASK: prokaryotic cell | difference from eukaryotic cell
+ASK: ribosomes | function
+ASK: endoplasmic reticulum | function
+ASK: smooth endoplasmic reticulum | function
+ASK: viruses | characteristics of life
+ISA: Golgi apparatus | cell organelle
+ISA: lysosome | cell organelle
+ISA: mitochondrion | cell organelle
+ISA: plastid | cell organelle
+ISA: chloroplast | plastid
+ISA: chromoplast | plastid
+ISA: leucoplast | plastid
+ISA: vacuole | cell organelle
+PART: mitochondrion | outer membrane
+PART: mitochondrion | inner membrane
+PART: chloroplast | stroma
+PROP: Golgi apparatus | structure | membrane-bound vesicles
+PROP: Golgi apparatus | arrangement | stacks called cisterns
+PROP: Golgi apparatus | function | storage
+PROP: Golgi apparatus | function | modification
+PROP: Golgi apparatus | function | packaging
+PROP: Golgi apparatus | function | formation of lysosomes
+PROP: lysosomes | structure | membrane-bound sacs
+PROP: lysosomes | contents | digestive enzymes
+PROP: lysosomes | function | waste disposal system
+PROP: lysosomes | name | suicide bags
+PROP: mitochondria | name | powerhouses of the cell
+PROP: mitochondria | membrane coverings | two
+PROP: outer membrane | nature | porous
+PROP: inner membrane | nature | deeply folded
+PROP: ATP | name | energy currency of the cell
+PROP: mitochondria | genetic material | own DNA
+PROP: mitochondria | ribosomes | own ribosomes
+PROP: plastids | presence | only in plant cells
+PROP: chloroplasts | function | photosynthesis
+PROP: leucoplasts | function | storage
+PROP: vacuoles | function | storage sacs
+PROP: vacuoles in animal cells | size | small
+PROP: vacuoles in plant cells | size | very large
+PROP: plant vacuoles | contents | cell sap
+PROP: vacuoles | function | provide turgidity and rigidity
+PROP: food vacuole | contents | food items
+FACT: central vacuole of some plant cells | cell volume | 50-90%
+EVENT: package | Golgi apparatus | products | present | +
+EVENT: dispatch | Golgi apparatus | products | present | +
+EVENT: make | Golgi apparatus | complex sugars | present | +
+EVENT: digest | lysosomes | foreign material | present | +
+EVENT: digest | lysosomes | worn-out cell organelles | present | +
+EVENT: break | lysosomes | complex substances | present | +
+EVENT: release | mitochondria | ATP molecules | present | +
+EVENT: use | body | energy stored in ATP | present | +
+EVENT: store | leucoplasts | starch oils and protein granules | present | +
+EVENT: perform | chloroplasts | photosynthesis | present | +
+EVENT: store | vacuoles | amino acids sugars organic acids and proteins | present | +
+EVENT: expel | specialised vacuoles | excess water and wastes | present | +
+MORPH: package | packaged | packages
+MORPH: dispatch | dispatched | dispatches
+MORPH: make | made | makes
+MORPH: digest | digested | digests
+MORPH: break | broke | breaks
+MORPH: release | released | releases
+MORPH: use | used | uses
+MORPH: store | stored | stores
+MORPH: perform | performed | performs
+MORPH: expel | expelled | expels
+ASK: organelles | genetic material
+ASK: lysosomes | suicide bags
+ASK: proteins | site of synthesis
+ASK: organisation of cell | destruction effect
+ISA: mitosis | cell division
+ISA: meiosis | cell division
+PROP: cell division | purpose | growth
+PROP: cell division | purpose | replacement of old dead and injured cells
+PROP: cell division | purpose | formation of gametes
+PROP: mitosis | purpose | growth
+PROP: mitosis | purpose | repair of tissues
+PROP: meiosis | purpose | formation of gametes
+PROP: meiosis | divisions | two consecutive divisions
+PROP: daughter cells after mitosis | chromosomes | same number as mother cell
+PROP: daughter cells after meiosis | chromosomes | half the number of mother cell
+FACT: daughter cells formed in mitosis | number | 2
+FACT: daughter cells formed in meiosis | number | 4
+EVENT: form | new cells | growth | present | +
+EVENT: replace | new cells | old dead and injured cells | present | +
+EVENT: form | new cells | gametes | present | +
+EVENT: divide | mother cell | two identical daughter cells | present | +
+EVENT: help | mitosis | growth and repair of tissues | present | +
+EVENT: divide | reproductive cells | gametes | present | +
+EVENT: give rise | fertilisation | offspring | present | +
+EVENT: produce | meiosis | four new cells | present | +
+MORPH: form | formed | forms
+MORPH: replace | replaced | replaces
+MORPH: divide | divided | divides
+MORPH: help | helped | helps
+MORPH: give rise | gave rise | gives rise
+MORPH: produce | produced | produces
+ASK: plant cells | difference from animal cells
+ASK: prokaryotic cell | difference from eukaryotic cell
+ASK: plasma membrane | rupture effect
+ASK: Golgi apparatus | absence effect
+ASK: mitochondrion | reason for powerhouse of the cell
+ASK: cell membrane lipids and proteins | site of synthesis
+ASK: Amoeba | food intake
+ASK: osmosis | meaning
+ASK: potato cup experiment | water in cups B and C
+ASK: potato cup experiment | purpose of cup A
+ASK: potato cup experiment | no water in cups A and D
+ASK: cell division for growth and repair | type
+ASK: cell division for gamete formation | type
+PROP: motion | observation | position changes with time
+PROP: air motion | inference | movement of dust and leaves
+PROP: motion | types | complex
+PROP: straight line motion | description | first in chapter
+PROP: circular motion | description | later in chapter
+PROP: reference point | name | origin
+ISA: railway station | reference point
+ISA: origin | reference point
+EVENT: fly | birds |  | present | +
+EVENT: swim | fish |  | present | +
+EVENT: flow | blood | veins and arteries | present | +
+EVENT: move | cars |  | present | +
+EVENT: move | atoms |  | present | +
+EVENT: move | molecules |  | present | +
+EVENT: move | planets |  | present | +
+EVENT: move | stars |  | present | +
+EVENT: move | galaxies |  | present | +
+EVENT: infer | people | motion of air | present | +
+EVENT: observe | people | movement of dust | present | +
+EVENT: observe | people | movement of leaves and branches | present | +
+EVENT: appear | roadside trees | moving backwards | present | +
+EVENT: perceive | person standing on roadside | bus and passengers as moving | present | +
+EVENT: see | passenger inside bus | fellow passengers at rest | present | +
+EVENT: describe | people | location of an object | present | +
+EVENT: specify | people | reference point | present | +
+MORPH: fly | flew | flies
+MORPH: swim | swam | swims
+MORPH: flow | flowed | flows
+MORPH: move | moved | moves
+MORPH: infer | inferred | infers
+MORPH: observe | observed | observes
+MORPH: appear | appeared | appears
+MORPH: perceive | perceived | perceives
+MORPH: see | saw | sees
+MORPH: describe | described | describes
+MORPH: specify | specified | specifies
+FACT: school distance from railway station | kilometre | 2
+PROP: school | direction from railway station | north
+ASK: classroom walls | state of motion
+ASK: train at rest | apparent motion
+ASK: sunrise | cause
+ASK: sunset | cause
+ASK: changing of seasons | cause
+ASK: position of object | reference point
+SEQ: choose a reference point
+SEQ: then specify the position of the object with respect to the reference point
+SEQ: then describe the motion of the object from changes in its position with time
+ISA: tissue | group of cells
+ISA: plant tissue | tissue
+ISA: animal tissue | tissue
+ISA: meristematic tissue | plant tissue
+ISA: permanent tissue | plant tissue
+PROP: unicellular organism | cell functions | one cell performs all basic functions
+PROP: multicellular organism | cells | specialised
+PROP: specialised cells | function | specific
+PROP: multicellular organisms | property | division of labour
+PROP: tissue | definition | group of cells similar in structure and function
+PROP: plants | movement | stationary
+PROP: plants | supportive tissue | large quantity
+PROP: supportive tissue in plants | cells | dead
+PROP: animals | movement | move around
+PROP: animals | energy consumption | more than plants
+PROP: animal tissues | cells | living
+PROP: plant growth | location | certain regions
+PROP: meristematic tissue | dividing tissue | yes
+PROP: meristematic tissue | location | certain regions
+PROP: permanent tissue | dividing capacity | absent
+PROP: animal cell growth | pattern | more uniform
+PROP: complex animal organisation | specialisation | more specialised than plants
+EVENT: perform | single cell | basic functions | present | +
+EVENT: carry out | Amoeba | movement | present | +
+EVENT: carry out | Amoeba | intake of food | present | +
+EVENT: carry out | Amoeba | gaseous exchange | present | +
+EVENT: carry out | Amoeba | excretion | present | +
+EVENT: contract | muscle cells |  | present | +
+EVENT: relax | muscle cells |  | present | +
+EVENT: cause | muscle cells | movement | present | +
+EVENT: carry | nerve cells | messages | present | +
+EVENT: flow | blood | oxygen food hormones and waste material | present | +
+EVENT: conduct | vascular tissues | food and water | present | +
+EVENT: group | specialised cells | tissue | present | +
+EVENT: divide | meristematic tissue |  | present | +
+MORPH: perform | performed | performs
+MORPH: carry out | carried out | carries out
+MORPH: contract | contracted | contracts
+MORPH: relax | relaxed | relaxes
+MORPH: cause | caused | causes
+MORPH: carry | carried | carries
+MORPH: flow | flowed | flows
+MORPH: conduct | conducted | conducts
+MORPH: group | grouped | groups
+MORPH: divide | divided | divides
+ASK: tissue | definition
+ASK: tissues | utility in multicellular organisms
+ASK: plant tissues | types
+ASK: plant tissues | difference from animal tissues
+ISA: apical meristem | meristematic tissue
+ISA: lateral meristem | meristematic tissue
+ISA: intercalary meristem | meristematic tissue
+PART: plant | apical meristem
+PART: plant | lateral meristem
+PART: plant | intercalary meristem
+PROP: apical meristem | location | growing tips of stems and roots
+PROP: apical meristem | function | increases length of stem and root
+PROP: lateral meristem | location | cambium
+PROP: lateral meristem | function | increases girth of stem and root
+PROP: intercalary meristem | location | near the node
+PROP: new cells from meristem | property | initially like meristem
+PROP: new cells | change | become differentiated
+PROP: meristematic cells | division | active
+PROP: meristematic cells | shape | similar
+PROP: meristematic cells | cell wall | thin
+PROP: meristematic cells | cytoplasm | dense
+PROP: meristematic cells | vacuole | absent
+PROP: permanent tissue | origin | meristematic tissue
+PROP: permanent tissue | dividing capacity | lost
+EVENT: fill | student | glass jars with water | present | +
+EVENT: place | student | onion bulbs on jars | present | +
+EVENT: observe | student | growth of roots | present | +
+EVENT: measure | student | root length | present | +
+EVENT: cut | student | root tips of onion bulb | present | +
+EVENT: stop | root tips | growing | present | +
+EVENT: produce | meristem | new cells | present | +
+EVENT: grow | new cells |  | present | +
+EVENT: mature | new cells |  | present | +
+EVENT: become | new cells | differentiated | present | +
+EVENT: increase | apical meristem | length of stem and root | present | +
+EVENT: increase | lateral meristem | girth of stem and root | present | +
+MORPH: fill | filled | fills
+MORPH: place | placed | places
+MORPH: observe | observed | observes
+MORPH: measure | measured | measures
+MORPH: cut | cut | cuts
+MORPH: stop | stopped | stops
+MORPH: produce | produced | produces
+MORPH: grow | grew | grows
+MORPH: mature | matured | matures
+MORPH: become | became | becomes
+MORPH: increase | increased | increases
+SEQ: fill two glass jars with water
+SEQ: then place one onion bulb on each jar
+SEQ: then observe the growth of roots
+SEQ: then measure the root length
+SEQ: then cut the root tips of one onion bulb
+SEQ: then continue observing the growth of roots
+ASK: onion roots | longer roots
+ASK: root tips | continued growth
+ASK: root tips | reason for stopping growth
+ASK: apical meristem | function
+ASK: lateral meristem | function
+ASK: intercalary meristem | location
+ISA: simple permanent tissue | permanent tissue
+ISA: parenchyma | simple permanent tissue
+ISA: chlorenchyma | parenchyma
+ISA: aerenchyma | parenchyma
+ISA: collenchyma | simple permanent tissue
+ISA: sclerenchyma | simple permanent tissue
+PROP: differentiation | meaning | taking up a permanent shape size and function
+PROP: parenchyma | abundance | most common simple permanent tissue
+PROP: parenchyma | cells | living
+PROP: parenchyma | cell walls | thin
+PROP: parenchyma | arrangement | loosely arranged
+PROP: parenchyma | function | stores food
+PROP: chlorenchyma | chlorophyll | present
+PROP: chlorenchyma | function | photosynthesis
+PROP: aerenchyma | air cavities | large
+PROP: aerenchyma | function | help aquatic plants float
+PROP: collenchyma | cells | living
+PROP: collenchyma | cells | elongated
+PROP: collenchyma | cell walls | irregularly thickened at the corners
+PROP: collenchyma | intercellular space | very little
+PROP: collenchyma | function | flexibility
+PROP: collenchyma | function | mechanical support
+PROP: collenchyma | location | leaf stalks below the epidermis
+PROP: sclerenchyma | cells | dead
+PROP: sclerenchyma | cell walls | thick
+PROP: sclerenchyma | cell walls | lignin
+PROP: sclerenchyma | function | make the plant hard and stiff
+PROP: coconut husk | composition | sclerenchymatous tissue
+EVENT: lose | cells formed by meristematic tissue | ability to divide | present | +
+EVENT: form | cells formed by meristematic tissue | permanent tissue | present | +
+EVENT: store | parenchyma | food | present | +
+EVENT: perform | chlorenchyma | photosynthesis | present | +
+EVENT: help | aerenchyma | aquatic plants float | present | +
+EVENT: allow | collenchyma | bending of plant parts | present | +
+EVENT: provide | collenchyma | mechanical support | present | +
+EVENT: make | sclerenchyma | plant hard and stiff | present | +
+MORPH: lose | lost | loses
+MORPH: form | formed | forms
+MORPH: store | stored | stores
+MORPH: perform | performed | performs
+MORPH: help | helped | helps
+MORPH: allow | allowed | allows
+MORPH: provide | provided | provides
+MORPH: make | made | makes
+ASK: cells | similarity in structure
+ASK: stem section | types of cells
+ASK: parenchyma | regions of occurrence
+ASK: collenchyma | function
+ASK: sclerenchyma | function
+ISA: epidermis | protective tissue
+ISA: stomata | pore
+ISA: guard cell | cell
+ISA: complex tissue | permanent tissue
+ISA: xylem | complex tissue
+ISA: phloem | complex tissue
+ISA: tracheid | xylem
+ISA: vessel | xylem
+ISA: xylem parenchyma | xylem
+ISA: xylem fibre | xylem
+ISA: sieve cell | phloem
+ISA: sieve tube | phloem
+ISA: companion cell | phloem
+ISA: phloem fibre | phloem
+ISA: phloem parenchyma | phloem
+ISA: cork | protective tissue
+PART: vascular bundle | xylem
+PART: vascular bundle | phloem
+PROP: epidermis | layers | single
+PROP: epidermis | function | protection
+PROP: epidermal tissue | intercellular spaces | absent
+PROP: epidermal cells | shape | relatively flat
+PROP: epidermal cells | outer wall | thicker
+PROP: stomata | function | exchange of gases
+PROP: stomata | function | transpiration
+PROP: guard cells | shape | kidney-shaped
+PROP: epidermal cells of roots | function | water absorption
+PROP: root epidermal cells | hair-like parts | present
+PROP: desert plant epidermis | cutin coating | thick
+PROP: cutin | quality | waterproof
+PROP: cork cells | nature | dead
+PROP: cork cells | arrangement | compact
+PROP: cork cells | intercellular spaces | absent
+PROP: cork cell walls | suberin | present
+PROP: suberin | property | impervious to gases and water
+PROP: complex tissue | composition | more than one type of cells
+PROP: xylem | function | transport water and minerals
+PROP: xylem fibres | function | support
+PROP: phloem | function | transport food
+PROP: phloem fibres | cells | dead
+PROP: other phloem cells | cells | living
+EVENT: protect | epidermis | plant parts | present | +
+EVENT: secrete | epidermal cells | waxy water-resistant layer | present | +
+EVENT: exchange | stomata | gases with atmosphere | present | +
+EVENT: transport | xylem | water and minerals | present | +
+EVENT: store | xylem parenchyma | food | present | +
+EVENT: transport | phloem | food | present | +
+EVENT: coordinate | cells of complex tissue | common function | present | +
+MORPH: protect | protected | protects
+MORPH: secrete | secreted | secretes
+MORPH: exchange | exchanged | exchanges
+MORPH: transport | transported | transports
+MORPH: store | stored | stores
+MORPH: coordinate | coordinated | coordinates
+ASK: epidermis | role
+ASK: cork | protective function
+ASK: stomata | function
+ASK: xylem | elements
+ASK: simple tissue | difference from complex tissue
+ISA: epithelial tissue | animal tissue
+ISA: connective tissue | animal tissue
+ISA: muscular tissue | animal tissue
+ISA: nervous tissue | animal tissue
+ISA: squamous epithelium | epithelial tissue
+ISA: stratified squamous epithelium | epithelial tissue
+ISA: columnar epithelium | epithelial tissue
+ISA: ciliated columnar epithelium | columnar epithelium
+ISA: cuboidal epithelium | epithelial tissue
+ISA: glandular epithelium | epithelial tissue
+ISA: blood | connective tissue
+ISA: bone | connective tissue
+ISA: ligament | connective tissue
+ISA: tendon | connective tissue
+ISA: cartilage | connective tissue
+ISA: areolar tissue | connective tissue
+ISA: adipose tissue | connective tissue
+PROP: epithelial tissue | function | protective
+PROP: epithelial tissue | cells | tightly packed
+PROP: epithelial tissue | intercellular spaces | almost absent
+PROP: squamous epithelium | cells | thin and flat
+PROP: stratified squamous epithelium | layers | many
+PROP: columnar epithelium | cells | tall
+PROP: ciliated columnar epithelium | cilia | present
+PROP: cuboidal epithelium | cells | cube-shaped
+PROP: glandular epithelium | function | secretion
+PROP: connective tissue | cells | loosely spaced
+PROP: blood | matrix | fluid
+PROP: blood matrix | name | plasma
+PROP: bone | property | strong
+PROP: bone | property | non-flexible
+PROP: ligament | property | elastic
+PROP: tendon | property | great strength
+PROP: tendon | flexibility | limited
+PROP: cartilage | cells | widely spaced
+PROP: adipose tissue | function | fat storage
+PROP: adipose tissue | function | insulation
+EVENT: cover | epithelial tissue | organs and cavities | present | +
+EVENT: regulate | epithelium | exchange of materials | present | +
+EVENT: push | cilia | mucus forward | present | +
+EVENT: transport | blood | gases | present | +
+EVENT: transport | blood | digested food | present | +
+EVENT: transport | blood | hormones | present | +
+EVENT: transport | blood | waste materials | present | +
+EVENT: support | bone | body | present | +
+EVENT: connect | ligament | bones | present | +
+EVENT: connect | tendon | muscles to bones | present | +
+EVENT: smoothen | cartilage | bone surfaces at joints | present | +
+EVENT: fill | areolar tissue | space inside organs | present | +
+EVENT: support | areolar tissue | internal organs | present | +
+EVENT: help | areolar tissue | repair of tissues | present | +
+MORPH: cover | covered | covers
+MORPH: regulate | regulated | regulates
+MORPH: push | pushed | pushes
+MORPH: transport | transported | transports
+MORPH: support | supported | supports
+MORPH: connect | connected | connects
+MORPH: smoothen | smoothened | smoothens
+MORPH: fill | filled | fills
+MORPH: help | helped | helps
+ASK: tissue responsible for movement | name
+ASK: areolar tissue | functions
+ASK: connective tissue with fluid matrix | name
+ASK: tissue that stores fat | name
+ASK: tissue that connects muscle to bone | name
+ISA: striated muscle | muscular tissue
+ISA: smooth muscle | muscular tissue
+ISA: cardiac muscle | muscular tissue
+ISA: voluntary muscle | striated muscle
+ISA: skeletal muscle | striated muscle
+ISA: involuntary muscle | smooth muscle
+ISA: neuron | nerve cell
+ISA: nerve cell | nervous tissue
+ISA: nerve impulse | signal
+PART: neuron | cell body
+PART: neuron | nucleus
+PART: neuron | cytoplasm
+PART: neuron | axon
+PART: neuron | dendrites
+PART: nerve | nerve fibres
+PROP: muscular tissue | cells | elongated
+PROP: muscular tissue | function | movement
+PROP: muscles | proteins | contractile proteins
+PROP: striated muscle | attachment | bones
+PROP: striated muscle | cells | long
+PROP: striated muscle | cells | cylindrical
+PROP: striated muscle | cells | unbranched
+PROP: striated muscle | nuclei | many
+PROP: smooth muscle | movement | involuntary
+PROP: smooth muscle | cells | spindle-shaped
+PROP: smooth muscle | nuclei | single
+PROP: smooth muscle | striations | absent
+PROP: cardiac muscle | movement | involuntary
+PROP: cardiac muscle | contraction | rhythmic
+PROP: cardiac muscle | cells | cylindrical
+PROP: cardiac muscle | cells | branched
+PROP: cardiac muscle | nuclei | single
+PROP: nervous tissue | function | receive stimuli
+PROP: nervous tissue | function | transmit stimulus
+PROP: neuron | length | up to a metre
+PROP: neuron | axon | single
+PROP: neuron | dendrites | many
+PROP: brain | composition | nervous tissue
+PROP: spinal cord | composition | nervous tissue
+PROP: nerves | composition | nervous tissue
+PROP: nerve and muscle tissue | function | rapid movement in response to stimuli
+EVENT: contract | contractile proteins |  | present | +
+EVENT: relax | contractile proteins |  | present | +
+EVENT: cause | contractile proteins | movement | present | +
+EVENT: attach | skeletal muscles | bones | present | +
+EVENT: control | smooth muscles | involuntary movements | present | +
+EVENT: show | heart muscles | rhythmic contraction and relaxation | present | +
+EVENT: respond | nervous tissue | stimuli | present | +
+EVENT: transmit | nervous tissue | stimulus | present | +
+EVENT: pass | nerve impulse | nerve fibre | present | +
+EVENT: allow | nerve impulses | move muscles | present | +
+MORPH: contract | contracted | contracts
+MORPH: relax | relaxed | relaxes
+MORPH: cause | caused | causes
+MORPH: attach | attached | attaches
+MORPH: control | controlled | controls
+MORPH: show | showed | shows
+MORPH: respond | responded | responds
+MORPH: transmit | transmitted | transmits
+MORPH: pass | passed | passes
+MORPH: allow | allowed | allows
+ASK: cardiac muscles | features
+ASK: neuron | structure
+ASK: cardiac muscle | specific function
+ASK: striated smooth and cardiac muscles | differences
+ASK: neuron | labelled diagram
+ISA: living organism | organism
+ISA: unicellular organism | living organism
+ISA: multicellular organism | living organism
+ISA: tissue | group of cells
+ISA: plant tissue | tissue
+ISA: animal tissue | tissue
+ISA: muscle cell | cell
+ISA: nerve cell | cell
+ISA: vascular tissue | plant tissue
+ISA: blood | tissue
+ISA: phloem | tissue
+ISA: muscle | tissue
+PROP: unicellular organism | cell number | single
+PROP: single cell | function | all basic functions
+PROP: multicellular organism | cells | specialised
+PROP: specialised cells | function | specific
+PROP: multicellular organisms | property | division of labour
+PROP: tissue | definition | group of cells similar in structure and function
+PROP: plants | movement | stationary
+PROP: plants | supportive tissue | large quantity
+PROP: supportive tissue | cells | dead
+PROP: animals | movement | move around
+PROP: animals | energy consumption | more than plants
+PROP: animal tissues | cells | living
+PROP: plant growth | location | certain regions
+PROP: meristematic tissue | dividing capacity | present
+PROP: permanent tissue | dividing capacity | absent
+PROP: animal growth | pattern | more uniform
+PROP: complex animal organisation | specialisation | more specialised
+EVENT: carry out | Amoeba | movement | present | +
+EVENT: carry out | Amoeba | intake of food | present | +
+EVENT: carry out | Amoeba | gaseous exchange | present | +
+EVENT: carry out | Amoeba | excretion | present | +
+EVENT: contract | muscle cells |  | present | +
+EVENT: relax | muscle cells |  | present | +
+EVENT: cause | muscle cells | movement | present | +
+EVENT: carry | nerve cells | messages | present | +
+EVENT: flow | blood | oxygen food hormones and waste material | present | +
+EVENT: conduct | vascular tissues | food and water | present | +
+EVENT: group | specialised cells | tissue | present | +
+MORPH: carry out | carried out | carries out
+MORPH: contract | contracted | contracts
+MORPH: relax | relaxed | relaxes
+MORPH: cause | caused | causes
+MORPH: carry | carried | carries
+MORPH: flow | flowed | flows
+MORPH: conduct | conducted | conducts
+MORPH: group | grouped | groups
+ASK: tissue | definition
+ASK: plants and animals | same types of tissues
+ASK: plant tissues | classification
+ASK: meristematic tissue | meaning
+ASK: permanent tissue | meaning
+ASK: tissue | definition
+ASK: xylem tissue | elements
+ASK: simple tissues | difference from complex tissues
+ASK: parenchyma collenchyma and sclerenchyma | difference based on cell wall
+ASK: stomata | functions
+ASK: muscle fibres | differences
+ASK: cardiac muscle | specific function
+ASK: striated unstriated and cardiac muscles | differences
+ASK: neuron | labelled diagram
+ASK: tissue forming inner lining of mouth | name
+ASK: tissue connecting muscle to bone | name
+ASK: tissue transporting food in plants | name
+ASK: tissue storing fat | name
+ASK: connective tissue with fluid matrix | name
+ASK: tissue present in brain | name
+ASK: skin | tissue type
+ASK: bark of tree | tissue type
+ASK: bone | tissue type
+ASK: lining of kidney tubule | tissue type
+ASK: vascular bundle | tissue type
+ASK: parenchyma tissue | regions of occurrence
+ASK: epidermis | role in plants
+ASK: cork | protective function
+ASK: tissue chart | completion
+ISA: distance | physical quantity
+ISA: displacement | physical quantity
+PROP: motion along a straight line | type | simplest
+PROP: distance | description | total path length covered
+PROP: distance | direction | not required
+PROP: displacement | description | shortest distance from initial position to final position
+PROP: displacement | reference | initial position
+PROP: displacement | reference | final position
+PROP: displacement | direction | required
+PROP: physical quantity | magnitude | numerical value
+PROP: distance | magnitude | scalar
+PROP: displacement | magnitude | scalar with direction
+FACT: distance OA | kilometre | 60
+FACT: distance AC | kilometre | 35
+FACT: distance OA plus AC | kilometre | 95
+FACT: distance OA plus AB | kilometre | 85
+FACT: displacement OC | kilometre | 35
+FACT: distance OA plus AO | kilometre | 120
+FACT: displacement after return to O | kilometre | 0
+EVENT: start | object | journey from O | present | +
+EVENT: move | object | A through C and B | present | +
+EVENT: move | object | C through B | present | +
+EVENT: cover | object | distance | present | +
+EVENT: measure | displacement | initial position to final position | present | +
+EVENT: coincide | final position | initial position | present | +
+MORPH: start | started | starts
+MORPH: move | moved | moves
+MORPH: cover | covered | covers
+MORPH: measure | measured | measures
+MORPH: coincide | coincided | coincides
+ASK: distance | meaning
+ASK: displacement | meaning
+ASK: distance | difference from displacement
+ASK: distance between Bhubaneshwar and New Delhi | displacement
+ASK: basketball court | distance and displacement
+SEQ: the object starts from O
+SEQ: then the object moves through C and B to A
+SEQ: then the object moves back through B to C
+SEQ: then determine the distance covered
+SEQ: then determine the displacement from the initial position to the final position
+PROP: speed | meaning | distance travelled per unit time
+PROP: average speed | meaning | total distance travelled divided by total time taken
+PROP: velocity | meaning | speed in a definite direction
+PROP: velocity | property | has direction
+PROP: velocity | change | by changing speed
+PROP: velocity | change | by changing direction
+PROP: velocity | change | by changing speed and direction
+PROP: average velocity | calculation | arithmetic mean of initial velocity and final velocity
+PROP: speed | SI unit | m s⁻¹
+PROP: velocity | SI unit | m s⁻¹
+EVENT: calculate | average speed | total distance travelled and total time taken | present | +
+EVENT: specify | velocity | direction of motion | present | +
+EVENT: change | velocity | speed | present | +
+EVENT: change | velocity | direction of motion | present | +
+EVENT: calculate | average velocity | initial velocity and final velocity | present | +
+MORPH: calculate | calculated | calculates
+MORPH: specify | specified | specifies
+MORPH: change | changed | changes
+FACT: object first distance | metre | 16
+FACT: object first time | second | 4
+FACT: object second distance | metre | 16
+FACT: object second time | second | 2
+FACT: total distance travelled | metre | 32
+FACT: total time taken | second | 6
+FACT: average speed | m s⁻¹ | 5.33
+LAW: speed = distance / time
+LAW: average speed = total distance travelled / total time taken
+LAW: average velocity = (initial velocity + final velocity) / 2
+UNIT: speed | 0,1,-1
+UNIT: velocity | 0,1,-1
+UNIT: distance | 0,1,0
+UNIT: time | 0,0,1
+ASK: average speed | calculation
+ASK: velocity | meaning
+ASK: speed | SI unit
+ASK: velocity | SI unit
+ASK: bus stop or school | estimated distance from house using average walking speed
+PROP: acceleration | meaning | change in velocity per unit time
+PROP: accelerated motion | property | velocity changes
+PROP: acceleration | sign | positive in the direction of velocity
+PROP: acceleration | sign | negative opposite to the direction of velocity
+PROP: acceleration | SI unit | m s⁻²
+PROP: uniform acceleration | property | velocity increases or decreases by equal amounts in equal intervals of time
+PROP: non-uniform acceleration | property | velocity changes at a non-uniform rate
+PROP: freely falling body | motion | uniformly accelerated motion
+EVENT: introduce | chapter | acceleration | present | +
+EVENT: measure | acceleration | change in velocity per unit time | present | +
+EVENT: change | object | velocity | present | +
+EVENT: increase | car | speed by unequal amounts | present | +
+EVENT: apply | Rahul | brakes | present | +
+EVENT: attain | Rahul bicycle | velocity | present | +
+MORPH: introduce | introduced | introduces
+MORPH: measure | measured | measures
+MORPH: change | changed | changes
+MORPH: increase | increased | increases
+MORPH: apply | applied | applies
+MORPH: attain | attained | attains
+FACT: Rahul initial velocity | m s⁻¹ | 0
+FACT: Rahul final velocity | m s⁻¹ | 6
+FACT: Rahul first time | second | 30
+FACT: Rahul first acceleration | m s⁻² | 0.2
+FACT: Rahul second initial velocity | m s⁻¹ | 6
+FACT: Rahul second final velocity | m s⁻¹ | 4
+FACT: Rahul second time | second | 5
+FACT: Rahul second acceleration | m s⁻² | -0.4
+LAW: acceleration = (final velocity - initial velocity) / time
+UNIT: acceleration | 0,1,-2
+ASK: uniform acceleration | meaning
+ASK: non-uniform acceleration | meaning
+ASK: bus | acceleration
+ASK: train | acceleration
+PROP: distance-time graph for uniform motion | shape | straight line
+PROP: distance-time graph for non-uniform motion | shape | non-linear
+PROP: velocity-time graph | x-axis | time
+PROP: velocity-time graph | y-axis | velocity
+PROP: velocity-time graph for uniform velocity | shape | straight line parallel to x-axis
+PROP: area under velocity-time graph | represents | magnitude of displacement
+PROP: uniformly accelerated motion | velocity-time graph | straight line
+PROP: velocity-time graph for non-uniform acceleration | shape | any shape
+EVENT: represent | distance-time graph | motion | present | +
+EVENT: represent | velocity-time graph | variation in velocity with time | present | +
+EVENT: plot | person | velocity-time graph | present | +
+EVENT: determine | area under velocity-time graph | distance moved | present | +
+EVENT: show | velocity-time graph | uniform acceleration | present | +
+EVENT: interpret | person | distance-time graph | present | +
+MORPH: represent | represented | represents
+MORPH: plot | plotted | plots
+MORPH: determine | determined | determines
+MORPH: show | showed | shows
+MORPH: interpret | interpreted | interprets
+FACT: uniform velocity of car | km h⁻¹ | 40
+FACT: time interval in velocity table | second | 5
+FACT: car velocity at 0 s | m s⁻¹ | 0
+FACT: car velocity at 5 s | m s⁻¹ | 2.5
+FACT: car velocity at 10 s | m s⁻¹ | 5.0
+FACT: car velocity at 15 s | m s⁻¹ | 7.5
+FACT: car velocity at 20 s | m s⁻¹ | 10.0
+FACT: car velocity at 25 s | m s⁻¹ | 12.5
+FACT: car velocity at 30 s | m s⁻¹ | 15.0
+ASK: distance-time graph for uniform motion | nature
+ASK: distance-time graph parallel to time axis | motion
+ASK: speed-time graph parallel to time axis | motion
+ASK: area below velocity-time graph | quantity measured
+ASK: train distance-time graph | interpretation
+ASK: speed-time graph | distance travelled
+ASK: speed-time graph | uniform motion part
+LAW: final velocity = initial velocity + acceleration * time
+LAW: distance = initial velocity * time + 1/2 * acceleration * time * time
+LAW: 2 * acceleration * distance = final velocity * final velocity - initial velocity * initial velocity
+UNIT: velocity | 0,1,-1
+UNIT: acceleration | 0,1,-2
+UNIT: distance | 0,1,0
+UNIT: time | 0,0,1
+PROP: equations of motion | condition | uniform acceleration
+PROP: equation (8.5) | relation | velocity-time
+PROP: equation (8.6) | relation | position-time
+PROP: equation (8.7) | relation | position and velocity
+PROP: equations of motion | derivation | graphical method
+EVENT: relate | equations of motion | velocity acceleration and distance | present | +
+EVENT: describe | equation (8.5) | velocity-time relation | present | +
+EVENT: describe | equation (8.6) | position-time relation | present | +
+EVENT: represent | equation (8.7) | position and velocity relation | present | +
+EVENT: obtain | equation (8.7) | equations (8.5) and (8.6) | present | +
+EVENT: eliminate | equation (8.7) | time | present | +
+EVENT: derive | equations of motion | graphical method | present | +
+MORPH: relate | related | relates
+MORPH: describe | described | describes
+MORPH: represent | represented | represents
+MORPH: obtain | obtained | obtains
+MORPH: eliminate | eliminated | eliminates
+MORPH: derive | derived | derives
+ASK: distance-time graph | nature for uniform motion
+ASK: distance-time graph | nature for non-uniform motion
+ASK: graph parallel to time axis | motion
+ASK: area below velocity-time graph | quantity measured
+ASK: distance-time graph of Feroz and Sania | interpretation
+ISA: uniform circular motion | motion
+ISA: circular path | path
+PROP: uniform circular motion | speed | uniform
+PROP: uniform circular motion | velocity magnitude | constant
+PROP: uniform circular motion | velocity direction | changes continuously
+PROP: uniform circular motion | motion | accelerated
+PROP: circular path | circumference | 2πr
+EVENT: run | athlete | rectangular track | present | +
+EVENT: change | athlete | direction of motion | present | +
+EVENT: approach | track shape | circle | present | +
+EVENT: move | athlete | circular path | present | +
+EVENT: change | velocity | direction of motion | present | +
+EVENT: release | person | stone | present | +
+EVENT: move | stone | straight line tangential to circular path | present | +
+EVENT: continue | stone | direction of motion at release | present | +
+EVENT: throw | athlete | hammer | present | +
+EVENT: throw | athlete | discus | present | +
+EVENT: rotate | athlete | own body | present | +
+EVENT: move | hammer or discus | direction at release | present | +
+MORPH: run | ran | runs
+MORPH: change | changed | changes
+MORPH: approach | approached | approaches
+MORPH: move | moved | moves
+MORPH: release | released | releases
+MORPH: continue | continued | continues
+MORPH: throw | threw | throws
+MORPH: rotate | rotated | rotates
+LAW: speed = 2 * π * radius / time
+UNIT: speed | 0,1,-1
+UNIT: radius | 0,1,0
+UNIT: time | 0,0,1
+ASK: constant acceleration with zero velocity | example
+ASK: acceleration with uniform speed | example
+ASK: acceleration perpendicular to direction of motion | example
+ASK: artificial satellite | speed
+SEQ: move the stone in a circular path with constant speed
+SEQ: then release the thread
+SEQ: then the stone moves along a straight line tangential to the circular path
+SEQ: then repeat the activity by releasing the stone at different positions
+ASK: motion | description
+ASK: reference point | need for describing position
+ASK: distance | meaning
+ASK: displacement | meaning
+ASK: speed | meaning
+ASK: velocity | meaning
+ASK: acceleration | meaning
+ASK: equations of motion | derivation by graphical method
+ASK: uniformly accelerated motion | velocity-time graph
+ASK: distance travelled | area under velocity-time graph
+ASK: uniform circular motion | meaning
+PROP: motion | description | change of position
+PROP: motion | description | by distance or displacement
+PROP: uniform motion | velocity | constant
+PROP: non-uniform motion | velocity | changing
+PROP: speed | meaning | distance per unit time
+PROP: velocity | meaning | displacement per unit time
+PROP: acceleration | meaning | change in velocity per unit time
+PROP: uniform motion | representation | graphs
+PROP: non-uniform motion | representation | graphs
+EVENT: describe | motion | distance or displacement | present | +
+EVENT: show | graphs | uniform motion | present | +
+EVENT: show | graphs | non-uniform motion | present | +
+EVENT: describe | equations of motion | uniformly accelerated motion | present | +
+MORPH: describe | described | describes
+MORPH: show | showed | shows
+LAW: final velocity = initial velocity + acceleration * time
+LAW: distance = initial velocity * time + 1/2 * acceleration * time * time
+LAW: 2 * acceleration * distance = final velocity * final velocity - initial velocity * initial velocity
+SEQ: describe motion by distance or displacement
+SEQ: then determine speed or velocity
+SEQ: then determine acceleration if velocity changes
+SEQ: then represent the motion using graphs
+SEQ: then use equations of motion for uniformly accelerated motion
+PROP: force | concept | push hit or pull
+PROP: force | effect | changes state of motion
+PROP: force | effect | changes magnitude of velocity
+PROP: force | effect | changes direction of motion
+PROP: force | effect | changes shape and size of objects
+PROP: balanced forces | effect | do not change the state of rest or motion
+PROP: unbalanced force | effect | brings an object in motion
+PROP: friction force | direction | opposite to the push
+PROP: friction force | direction | opposite to the direction of motion
+PROP: uniform velocity | condition | no net external force
+PROP: acceleration | requirement | unbalanced force
+EVENT: push | person | trolley | present | +
+EVENT: pull | person | drawer | present | +
+EVENT: hit | hockey stick | ball | present | +
+EVENT: move | trolley | direction of push | present | +
+EVENT: expand | spring |  | present | +
+EVENT: become | rubber ball | oblong | present | +
+EVENT: pull | person | string X | present | +
+EVENT: pull | person | string Y | present | +
+EVENT: move | block | direction of greater force | present | +
+EVENT: balance | friction force | pushing force | present | +
+EVENT: oppose | friction force | motion | present | +
+EVENT: slow down | bicycle |  | present | +
+EVENT: pedal | person | bicycle | present | +
+EVENT: change | unbalanced force | speed | present | +
+EVENT: change | unbalanced force | direction of motion | present | +
+MORPH: push | pushed | pushes
+MORPH: pull | pulled | pulls
+MORPH: hit | hit | hits
+MORPH: move | moved | moves
+MORPH: expand | expanded | expands
+MORPH: become | became | becomes
+MORPH: balance | balanced | balances
+MORPH: oppose | opposed | opposes
+MORPH: slow down | slowed down | slows down
+MORPH: pedal | pedalled | pedals
+MORPH: change | changed | changes
+ASK: balanced forces | effect
+ASK: unbalanced force | effect
+ASK: friction force | role
+ASK: force | effects on an object
+PROP: Galileo | observation | objects move with a constant speed when no force acts on them
+PROP: marble on inclined plane | velocity | increases while rolling down
+PROP: marble on inclined plane | velocity | decreases while climbing up
+PROP: marble on frictionless double inclined plane | motion | reaches the same height
+PROP: unbalanced force | requirement | change the motion of the marble
+PROP: net force | requirement | not needed to sustain uniform motion
+PROP: frictional force | direction | opposite to the direction of motion
+PROP: first law of motion | name | law of inertia
+PROP: inertia | meaning | tendency to resist a change in state of motion
+PROP: mass | measure | inertia
+EVENT: deduce | Galileo | objects move with constant speed | past | +
+EVENT: observe | Galileo | marble rolls down an inclined plane | past | +
+EVENT: increase | marble velocity |  | present | +
+EVENT: decrease | marble velocity |  | present | +
+EVENT: release | person | marble | present | +
+EVENT: roll | marble | down the slope | present | +
+EVENT: climb | marble | opposite side | present | +
+EVENT: continue | marble | travel forever | present | +
+EVENT: require | unbalanced force | change in motion | present | +
+EVENT: oppose | frictional force | direction of motion | present | +
+EVENT: minimise | smooth marble and lubricant | frictional force | present | +
+EVENT: remain | object | state of rest | present | +
+EVENT: remain | object | uniform motion in a straight line | present | +
+EVENT: resist | objects | change in state of motion | present | +
+EVENT: apply | driver | braking force | present | +
+EVENT: continue | body | same state of motion | present | +
+MORPH: deduce | deduced | deduces
+MORPH: observe | observed | observes
+MORPH: increase | increased | increases
+MORPH: decrease | decreased | decreases
+MORPH: release | released | releases
+MORPH: roll | rolled | rolls
+MORPH: climb | climbed | climbs
+MORPH: continue | continued | continues
+MORPH: require | required | requires
+MORPH: oppose | opposed | opposes
+MORPH: minimise | minimised | minimises
+MORPH: remain | remained | remains
+MORPH: resist | resisted | resists
+MORPH: apply | applied | applies
+FACT: Galileo birth year | year | 1564
+FACT: Galileo first scientific book | year | 1586
+FACT: Galileo professor appointment | year | 1592
+SEQ: the marble rolls down the inclined plane
+SEQ: then the marble climbs up the opposite side
+SEQ: then the angle of the opposite plane is decreased
+SEQ: then the marble travels a longer distance
+SEQ: then the opposite plane becomes horizontal
+SEQ: then the marble continues to travel with uniform motion
+ASK: inertia | meaning
+ASK: first law of motion | statement
+ASK: mass | relation with inertia
+ASK: safety belts | purpose
+ASK: carom coins activity | observation
+PROP: inertia | dependence | mass
+PROP: heavier object | inertia | more
+PROP: first law of motion | name | law of inertia
+PROP: momentum | definition | product of mass and velocity
+PROP: momentum | direction | same as velocity
+PROP: momentum | SI unit | kg m s⁻¹
+PROP: second law of motion | statement | rate of change of momentum is proportional to the applied unbalanced force
+PROP: force | SI unit | newton
+PROP: one newton | definition | force producing acceleration of 1 m s⁻² in a mass of 1 kg
+EVENT: define | Newton | momentum | present | +
+EVENT: calculate | momentum | mass and velocity | present | +
+EVENT: change | force | momentum | present | +
+EVENT: push | persons | motorcar | present | +
+EVENT: accelerate | continuous push | motorcar | present | +
+EVENT: depend | change of momentum | magnitude of force | present | +
+EVENT: depend | change of momentum | time of force | present | +
+EVENT: state | second law of motion | rate of change of momentum | present | +
+MORPH: define | defined | defines
+MORPH: calculate | calculated | calculates
+MORPH: change | changed | changes
+MORPH: push | pushed | pushes
+MORPH: accelerate | accelerated | accelerates
+MORPH: depend | depended | depends
+MORPH: state | stated | states
+LAW: momentum = mass * velocity
+LAW: force = mass * acceleration
+UNIT: momentum | 1,1,-1
+UNIT: force | 1,1,-2
+UNIT: mass | 1,0,0
+UNIT: acceleration | 0,1,-2
+FACT: one newton | mass | 1 kg
+FACT: one newton | acceleration | 1 m s⁻²
+ASK: inertia | dependence on mass
+ASK: momentum | definition
+ASK: momentum | SI unit
+ASK: second law of motion | statement
+ASK: force | SI unit
+ASK: one newton | definition
+PROP: third law of motion | statement | every action has an equal and opposite reaction
+PROP: action and reaction | magnitude | equal
+PROP: action and reaction | direction | opposite
+PROP: action and reaction | objects | different
+PROP: action and reaction | occurrence | simultaneous
+PROP: law of conservation of momentum | condition | no external unbalanced force
+PROP: total momentum | property | conserved
+EVENT: exert | object | force on another object | present | +
+EVENT: exert | second object | force on first object | present | +
+EVENT: push | person | road backwards | present | +
+EVENT: exert | road | force on feet | present | +
+EVENT: move | person | forward | present | +
+EVENT: fire | pistol | bullet | present | +
+EVENT: recoil | pistol |  | present | +
+EVENT: jump | sailor | out of rowing boat | present | +
+EVENT: move | boat | backwards | present | +
+EVENT: collide | balls | each other | present | +
+EVENT: conserve | collision | total momentum | present | +
+MORPH: exert | exerted | exerts
+MORPH: push | pushed | pushes
+MORPH: move | moved | moves
+MORPH: fire | fired | fires
+MORPH: recoil | recoiled | recoils
+MORPH: jump | jumped | jumps
+MORPH: collide | collided | collides
+MORPH: conserve | conserved | conserves
+LAW: momentum_before = momentum_after
+LAW: mA * uA + mB * uB = mA * vA + mB * vB
+UNIT: momentum | 1,1,-1
+FACT: bullet mass | gram | 20
+FACT: bullet velocity | m s⁻¹ | 150
+FACT: pistol mass | kilogram | 2
+FACT: pistol recoil velocity | m s⁻¹ | -1.5
+FACT: girl mass | kilogram | 40
+FACT: cart mass | kilogram | 3
+FACT: girl jump velocity | m s⁻¹ | 5
+FACT: girl and cart velocity | m s⁻¹ | 4.65
+SEQ: two objects move along a straight line
+SEQ: then the two objects collide
+SEQ: then each object exerts an equal and opposite force on the other
+SEQ: then the total momentum remains unchanged if no external unbalanced force acts
+ASK: third law of motion | statement
+ASK: law of conservation of momentum | statement
+ASK: horse | pull cart
+ASK: fireman | hold hose
+ASK: recoil of rifle | velocity
+ASK: momentum conservation | collision
+ISA: gravitation | force
+ISA: gravitational force | force
+ISA: gravity | gravitational force
+PROP: every object in the universe | attraction | every other object
+PROP: gravitational force | dependence | masses of objects
+PROP: gravitational force | dependence | distance between objects
+PROP: gravity | meaning | force of attraction of the earth
+PROP: earth | attraction | objects towards its centre
+EVENT: attract | every object | every other object | present | +
+EVENT: call | people | force of attraction of the earth as gravity | present | +
+EVENT: pull | earth | objects towards its centre | present | +
+EVENT: fall | fruits | towards the earth | present | +
+EVENT: fall | leaves | towards the earth | present | +
+EVENT: throw | person | object upwards | present | +
+EVENT: return | object | earth | present | +
+MORPH: attract | attracted | attracts
+MORPH: call | called | calls
+MORPH: pull | pulled | pulls
+MORPH: fall | fell | falls
+MORPH: throw | threw | throws
+MORPH: return | returned | returns
+ASK: gravitation | meaning
+ASK: gravity | meaning
+ASK: objects | fall towards the earth
+ASK: force of attraction between objects | dependence
+PROP: universal law of gravitation | statement | every object attracts every other object
+PROP: gravitational force | proportionality | product of masses
+PROP: gravitational force | proportionality | inversely proportional to square of distance
+PROP: gravitational force | nature | along the line joining the centres of two objects
+PROP: gravitational constant | symbol | G
+PROP: gravitational constant | value | universal
+EVENT: state | Newton | universal law of gravitation | past | +
+EVENT: attract | object | another object | present | +
+EVENT: increase | gravitational force | masses of objects | present | +
+EVENT: decrease | gravitational force | distance between objects | present | +
+EVENT: act | gravitational force | along the line joining the centres | present | +
+MORPH: state | stated | states
+MORPH: attract | attracted | attracts
+MORPH: increase | increased | increases
+MORPH: decrease | decreased | decreases
+MORPH: act | acted | acts
+LAW: gravitational force = G * mass1 * mass2 / (distance * distance)
+UNIT: gravitational force | 1,1,-2
+UNIT: mass | 1,0,0
+UNIT: distance | 0,1,0
+FACT: gravitational constant | symbol | G
+ASK: universal law of gravitation | statement
+ASK: gravitational force | dependence on masses
+ASK: gravitational force | dependence on distance
+ASK: gravitational constant | symbol
+PROP: free fall | meaning | motion under gravitational force alone
+PROP: freely falling object | acceleration | acceleration due to gravity
+PROP: acceleration due to gravity | symbol | g
+PROP: acceleration due to gravity | direction | towards the earth
+PROP: acceleration due to gravity | independence | mass of object
+PROP: all objects in free fall | rate of fall | same
+PROP: equations of motion | validity | free fall
+EVENT: throw | person | stone upwards | present | +
+EVENT: reach | stone | certain height | present | +
+EVENT: fall | stone | downwards | present | +
+EVENT: attract | earth | falling objects | present | +
+EVENT: experience | object | acceleration due to gravity | present | +
+EVENT: replace | equations of motion | acceleration by g | present | +
+MORPH: throw | threw | throws
+MORPH: reach | reached | reaches
+MORPH: fall | fell | falls
+MORPH: attract | attracted | attracts
+MORPH: experience | experienced | experiences
+MORPH: replace | replaced | replaces
+FACT: acceleration due to gravity | m s⁻² | 9.8
+FACT: earth mass | kilogram | 6 × 10²⁴
+FACT: moon mass | kilogram | 7.4 × 10²²
+FACT: earth-moon distance | kilometre | 3.84 × 10⁵
+FACT: gravitational constant | N m² kg⁻² | 6.673 × 10⁻¹¹
+LAW: final velocity = initial velocity + g * time
+LAW: distance = initial velocity * time + 1/2 * g * time * time
+LAW: final velocity * final velocity = initial velocity * initial velocity + 2 * g * distance
+UNIT: acceleration due to gravity | 0,1,-2
+ASK: free fall | meaning
+ASK: acceleration due to gravity | meaning
+ASK: acceleration due to gravity | value
+ASK: importance of universal law of gravitation
+ISA: mass | physical quantity
+ISA: weight | force
+ISA: thrust | force
+ISA: pressure | physical quantity
+PROP: mass | meaning | measure of inertia
+PROP: mass | property | constant
+PROP: weight | meaning | force with which the earth attracts an object
+PROP: weight | direction | vertically downwards
+PROP: weight | SI unit | newton
+PROP: weight | dependence | location
+PROP: mass | independence | location
+PROP: thrust | direction | perpendicular to the surface
+PROP: pressure | meaning | thrust on unit area
+PROP: pressure | SI unit | pascal
+PROP: pascal | symbol | Pa
+EVENT: attract | earth | object | present | +
+EVENT: depend | weight | mass and acceleration due to gravity | present | +
+EVENT: act | thrust | perpendicular to the surface | present | +
+EVENT: depend | pressure | area on which thrust acts | present | +
+EVENT: exert | block of wood | pressure on table top | present | +
+MORPH: attract | attracted | attracts
+MORPH: depend | depended | depends
+MORPH: act | acted | acts
+MORPH: exert | exerted | exerts
+FACT: wooden block mass | kilogram | 5
+FACT: wooden block length | centimetre | 40
+FACT: wooden block breadth | centimetre | 20
+FACT: wooden block height | centimetre | 10
+FACT: thrust by wooden block | newton | 49
+FACT: pressure on 20 cm × 10 cm side | N m⁻² | 2450
+FACT: pressure on 40 cm × 20 cm side | N m⁻² | 612.5
+LAW: weight = mass * acceleration due to gravity
+LAW: pressure = thrust / area
+UNIT: weight | 1,1,-2
+UNIT: thrust | 1,1,-2
+UNIT: pressure | 1,-1,-2
+UNIT: area | 0,2,0
+ASK: mass | meaning
+ASK: weight | meaning
+ASK: pressure | definition
+ASK: thrust | definition
+ASK: pressure | SI unit
+ASK: pointed nail | reason
+ASK: wide building foundations | reason
+ISA: buoyancy | force
+ISA: upthrust | buoyant force
+ISA: fluid | liquid
+ISA: fluid | gas
+ISA: Archimedes' principle | principle
+ISA: relative density | ratio
+PROP: buoyant force | direction | upward
+PROP: buoyant force | dependence | density of the fluid
+PROP: pressure in fluids | transmission | undiminished in all directions
+PROP: density | definition | mass per unit volume
+PROP: density | SI unit | kilogram per metre cube
+PROP: density | property | characteristic
+PROP: relative density | unit | no unit
+PROP: object with density less than liquid | behaviour | floats
+PROP: object with density greater than liquid | behaviour | sinks
+PROP: Archimedes' principle | upward force | equal to the weight of the fluid displaced
+EVENT: float | bottle | water surface | present | +
+EVENT: push | water | bottle upwards | present | +
+EVENT: increase | upward force | as bottle is pushed deeper | present | +
+EVENT: bounce | bottle | surface | present | +
+EVENT: float | cork | water | present | +
+EVENT: sink | iron nail | water | present | +
+EVENT: immerse | body | fluid | present | +
+EVENT: experience | body | upward force | present | +
+EVENT: displace | body | fluid | present | +
+MORPH: float | floated | floats
+MORPH: push | pushed | pushes
+MORPH: increase | increased | increases
+MORPH: bounce | bounced | bounces
+MORPH: sink | sank | sinks
+MORPH: immerse | immersed | immerses
+MORPH: experience | experienced | experiences
+MORPH: displace | displaced | displaces
+FACT: density of gold | kg m⁻³ | 19300
+FACT: density of water | kg m⁻³ | 1000
+FACT: relative density of silver | value | 10.8
+FACT: density of silver | kg m⁻³ | 10.8 × 10³
+LAW: relative density = density of substance / density of water
+UNIT: density | 1,-3,0
+UNIT: relative density | 0,0,0
+ASK: buoyancy | meaning
+ASK: object | float or sink in water
+ASK: Archimedes' principle | statement
+ASK: relative density | definition
+ASK: density | SI unit
+ASK: density of substance | purity
+PROP: work | condition | force causes displacement
+PROP: work | value | zero when displacement is zero
+PROP: work | value | zero when force is perpendicular to displacement
+PROP: energy | meaning | capacity to do work
+PROP: energy | SI unit | joule
+PROP: kinetic energy | meaning | energy possessed due to motion
+PROP: kinetic energy | dependence | mass
+PROP: kinetic energy | dependence | speed
+EVENT: do | force | work | present | +
+EVENT: cause | force | displacement | present | +
+EVENT: possess | moving object | energy | present | +
+EVENT: do | moving object | work | present | +
+EVENT: pierce | moving bullet | target | present | +
+EVENT: move | blowing wind | blades of a windmill | present | +
+EVENT: increase | kinetic energy | speed | present | +
+EVENT: drop | person | heavy ball on sand | present | +
+EVENT: create | ball | depression in sand | present | +
+EVENT: move | trolley | wooden block | present | +
+EVENT: gain | wooden block | energy | present | +
+MORPH: do | did | does
+MORPH: cause | caused | causes
+MORPH: possess | possessed | possesses
+MORPH: pierce | pierced | pierces
+MORPH: move | moved | moves
+MORPH: increase | increased | increases
+MORPH: drop | dropped | drops
+MORPH: create | created | creates
+MORPH: gain | gained | gains
+LAW: work = force * displacement
+LAW: kinetic energy = 1/2 * mass * velocity * velocity
+UNIT: work | 1,2,-2
+UNIT: energy | 1,2,-2
+UNIT: kinetic energy | 1,2,-2
+UNIT: force | 1,1,-2
+UNIT: displacement | 0,1,0
+UNIT: mass | 1,0,0
+UNIT: velocity | 0,1,-1
+ASK: work | condition
+ASK: energy | meaning
+ASK: kinetic energy | meaning
+ASK: kinetic energy | dependence
+ASK: work | SI unit
+ASK: energy | SI unit
+PROP: potential energy | meaning | energy possessed due to position or configuration
+PROP: gravitational potential energy | meaning | energy due to height
+PROP: potential energy | dependence | height
+PROP: potential energy | dependence | mass
+PROP: potential energy | dependence | acceleration due to gravity
+PROP: work done by gravity | dependence | difference in vertical heights
+PROP: work done by gravity | independence | path
+PROP: energy | property | interconvertible
+PROP: law of conservation of energy | statement | energy can neither be created nor destroyed
+PROP: law of conservation of energy | statement | energy can only be transformed from one form to another
+PROP: total energy | property | remains constant
+PROP: mechanical energy | meaning | sum of kinetic energy and potential energy
+PROP: power | meaning | rate of doing work
+PROP: power | SI unit | watt
+PROP: one watt | meaning | one joule per second
+PROP: kilowatt | value | 1000 watts
+PROP: average power | calculation | total energy consumed divided by total time taken
+PROP: one kilowatt hour | meaning | energy used in one hour at the rate of 1 kilowatt
+EVENT: stretch | person | rubber band | present | +
+EVENT: store | rubber band | potential energy | present | +
+EVENT: wind | person | toy car | present | +
+EVENT: store | spring | potential energy | present | +
+EVENT: release | person | arrow | present | +
+EVENT: convert | potential energy | kinetic energy | present | +
+EVENT: raise | person | object | present | +
+EVENT: gain | object | gravitational potential energy | present | +
+EVENT: transform | potential energy | kinetic energy | present | +
+EVENT: measure | power | rate of doing work | present | +
+MORPH: stretch | stretched | stretches
+MORPH: store | stored | stores
+MORPH: wind | wound | winds
+MORPH: release | released | releases
+MORPH: convert | converted | converts
+MORPH: raise | raised | raises
+MORPH: gain | gained | gains
+MORPH: transform | transformed | transforms
+MORPH: measure | measured | measures
+FACT: object mass | kilogram | 10
+FACT: object height | metre | 6
+FACT: acceleration due to gravity | m s⁻² | 9.8
+FACT: potential energy | joule | 588
+FACT: object mass | kilogram | 12
+FACT: potential energy | joule | 480
+FACT: object height | metre | 4
+FACT: one kilowatt | watt | 1000
+LAW: potential energy = mass * acceleration due to gravity * height
+LAW: mechanical energy = potential energy + kinetic energy
+LAW: power = work / time
+LAW: average power = total energy consumed / total time taken
+UNIT: potential energy | 1,2,-2
+UNIT: power | 1,2,-3
+UNIT: work | 1,2,-2
+ASK: potential energy | meaning
+ASK: law of conservation of energy | statement
+ASK: power | meaning
+ASK: one watt | definition
+ASK: one kilowatt hour | meaning
+ISA: sound | form of energy
+ISA: tuning fork | object
+ISA: vibration | motion
+ISA: vibrating object | source of sound
+PROP: sound | effect | sensation of hearing
+PROP: sound | production | vibration
+PROP: vibrating body | motion | back and forth
+PROP: tuning fork | property | vibrates when struck
+PROP: vibrating prongs | effect | produce sound
+EVENT: strike | person | tuning fork on rubber pad | present | +
+EVENT: vibrate | tuning fork |  | present | +
+EVENT: hear | person | sound | present | +
+EVENT: touch | vibrating tuning fork | table tennis ball | present | +
+EVENT: move | table tennis ball |  | present | +
+EVENT: touch | vibrating tuning fork | water surface | present | +
+EVENT: produce | vibrating tuning fork | ripples in water | present | +
+EVENT: dip | vibrating tuning fork | water | present | +
+EVENT: splash | water |  | present | +
+EVENT: produce | vibrating object | sound | present | +
+MORPH: strike | struck | strikes
+MORPH: vibrate | vibrated | vibrates
+MORPH: hear | heard | hears
+MORPH: touch | touched | touches
+MORPH: move | moved | moves
+MORPH: produce | produced | produces
+MORPH: dip | dipped | dips
+MORPH: splash | splashed | splashes
+ASK: sound | production
+ASK: sound | nature
+ASK: tuning fork | observation
+ASK: vibration | relation with sound
+ASK: vibrating tuning fork | effect on water surface
+ISA: medium | substance
+ISA: medium | solid
+ISA: medium | liquid
+ISA: medium | gas
+ISA: sound wave | mechanical wave
+ISA: wave | disturbance
+PROP: sound | transmission | through a medium
+PROP: medium | function | transmits sound
+PROP: sound | propagation | by vibration of particles
+PROP: particles of the medium | motion | vibrate
+PROP: particles of the medium | motion | do not travel with the sound
+PROP: disturbance | motion | carried forward
+PROP: sound wave | characteristic | mechanical wave
+EVENT: produce | vibrating object | sound | present | +
+EVENT: transmit | medium | sound | present | +
+EVENT: move | sound | from point of generation to listener | present | +
+EVENT: set | vibrating object | particles of the medium vibrating | present | +
+EVENT: displace | vibrating object | particle of the medium | present | +
+EVENT: exert | first particle | force on adjacent particle | present | +
+EVENT: displace | adjacent particle | from position of rest | present | +
+EVENT: return | first particle | original position | present | +
+EVENT: continue | process | through the medium | present | +
+EVENT: reach | sound | ear | present | +
+EVENT: move | disturbance | through the medium | present | +
+EVENT: set | wave | neighbouring particles into motion | present | +
+EVENT: carry | wave | disturbance forward | present | +
+MORPH: produce | produced | produces
+MORPH: transmit | transmitted | transmits
+MORPH: move | moved | moves
+MORPH: set | set | sets
+MORPH: displace | displaced | displaces
+MORPH: exert | exerted | exerts
+MORPH: return | returned | returns
+MORPH: continue | continued | continues
+MORPH: reach | reached | reaches
+MORPH: carry | carried | carries
+SEQ: the vibrating object sets the particles of the medium vibrating
+SEQ: then the first particle is displaced from its equilibrium position
+SEQ: then the first particle exerts a force on the adjacent particle
+SEQ: then the adjacent particle is displaced
+SEQ: then the first particle returns to its original position
+SEQ: then the disturbance continues through the medium
+SEQ: then the sound reaches the ear
+ASK: medium | meaning
+ASK: sound | propagation
+ASK: sound wave | meaning
+ASK: particles of the medium | role in propagation of sound
+ISA: compression | region
+ISA: rarefaction | region
+ISA: longitudinal wave | wave
+ISA: transverse wave | wave
+ISA: sound wave | longitudinal wave
+ISA: frequency | characteristic of sound wave
+ISA: amplitude | characteristic of sound wave
+ISA: speed | characteristic of sound wave
+PROP: compression | pressure | high
+PROP: rarefaction | pressure | low
+PROP: compression | particle density | high
+PROP: rarefaction | particle density | low
+PROP: sound | propagation | series of compressions and rarefactions
+PROP: sound | requirement | material medium
+PROP: sound | propagation through vacuum | absent
+PROP: longitudinal wave | particle motion | parallel to direction of propagation
+PROP: transverse wave | particle motion | perpendicular to direction of propagation
+PROP: sound wave | particle motion | back and forth
+EVENT: push | vibrating object | air | present | +
+EVENT: compress | vibrating object | air | present | +
+EVENT: create | vibrating object | compression | present | +
+EVENT: move | compression | away from vibrating object | present | +
+EVENT: create | vibrating object | rarefaction | present | +
+EVENT: propagate | sound wave | through medium | present | +
+EVENT: pump out | vacuum pump | air | present | +
+EVENT: become | sound | fainter | present | +
+EVENT: travel | sound | through vacuum | present | -
+EVENT: oscillate | particles of the medium | back and forth | present | +
+MORPH: push | pushed | pushes
+MORPH: compress | compressed | compresses
+MORPH: create | created | creates
+MORPH: move | moved | moves
+MORPH: propagate | propagated | propagates
+MORPH: pump out | pumped out | pumps out
+MORPH: become | became | becomes
+MORPH: travel | travelled | travels
+MORPH: oscillate | oscillated | oscillates
+ASK: sound | need for a material medium
+ASK: sound | travel through vacuum
+ASK: sound wave | longitudinal wave
+ASK: compression | meaning
+ASK: rarefaction | meaning
+ASK: school bell | sound production
+ASK: sound waves | mechanical waves
+ASK: sound on the moon | hearing
+SEQ: the vibrating object moves forward
+SEQ: then it creates a compression
+SEQ: then the vibrating object moves backward
+SEQ: then it creates a rarefaction
+SEQ: then a series of compressions and rarefactions propagates through the medium
+ISA: wavelength | characteristic of sound wave
+ISA: time period | characteristic of sound wave
+ISA: pitch | characteristic of sound
+ISA: loudness | characteristic of sound
+ISA: quality | characteristic of sound
+ISA: tone | sound
+ISA: note | sound
+PROP: wavelength | meaning | distance between two consecutive compressions
+PROP: wavelength | SI unit | metre
+PROP: time period | meaning | time taken for one complete oscillation
+PROP: time period | SI unit | second
+PROP: pitch | dependence | frequency
+PROP: high pitch sound | frequency | high
+PROP: low pitch sound | frequency | low
+PROP: loudness | dependence | amplitude
+PROP: amplitude | dependence | force with which an object is made to vibrate
+PROP: louder sound | energy | higher
+PROP: loudness | decreases | away from source
+PROP: quality | property | distinguishes one sound from another
+PROP: tone | frequency | single
+PROP: note | frequency | mixture of several frequencies
+PROP: note | nature | pleasant
+PROP: noise | nature | unpleasant
+PROP: music | quality | rich
+PROP: speed of sound | dependence | wavelength and frequency
+PROP: speed of sound | property | almost same for all frequencies in a given medium
+EVENT: interpret | brain | frequency as pitch | present | +
+EVENT: vibrate | objects | at different frequencies | present | +
+EVENT: strike | person | table lightly | present | +
+EVENT: hear | person | soft sound | present | +
+EVENT: hit | person | table hard | present | +
+EVENT: hear | person | louder sound | present | +
+EVENT: spread out | sound wave | from source | present | +
+EVENT: decrease | amplitude | away from source | present | +
+EVENT: decrease | loudness | away from source | present | +
+MORPH: interpret | interpreted | interprets
+MORPH: vibrate | vibrated | vibrates
+MORPH: strike | struck | strikes
+MORPH: hear | heard | hears
+MORPH: hit | hit | hits
+MORPH: spread out | spread out | spreads out
+MORPH: decrease | decreased | decreases
+LAW: frequency = 1 / time period
+LAW: speed = wavelength * frequency
+UNIT: wavelength | 0,1,0
+UNIT: frequency | 0,0,-1
+UNIT: time period | 0,0,1
+UNIT: speed | 0,1,-1
+ASK: wavelength | meaning
+ASK: frequency | meaning
+ASK: time period | meaning
+ASK: amplitude | meaning
+ASK: wavelength and frequency | relation to speed
+ASK: loudness | determining wave property
+ASK: pitch | determining wave property
+ASK: loudness | difference from intensity
+PROP: speed of sound | dependence | nature of the transmitting medium
+PROP: speed of sound | dependence | temperature of the transmitting medium
+PROP: speed of sound | change | decreases from solid to gaseous state
+PROP: speed of sound | change | increases with increase in temperature
+PROP: reflection of sound | law | angle of incidence equals angle of reflection
+PROP: reflection of sound | property | incident sound reflected sound and normal lie in the same plane
+PROP: echo | meaning | reflected sound heard later
+PROP: distinct echo | condition | time interval at least 0.1 s
+PROP: reverberation | meaning | persistence of sound due to repeated reflection
+PROP: excessive reverberation | property | undesirable
+PROP: megaphone | purpose | sends sound in one direction
+PROP: stethoscope | use | listening to sounds produced within the body
+PROP: curved ceilings | purpose | sound reaches all corners of the hall
+EVENT: hear | person | echo | present | +
+EVENT: reflect | sound | from obstacle | present | +
+EVENT: persist | sound | in a big hall | present | +
+EVENT: reduce | sound-absorbent materials | reverberation | present | +
+EVENT: guide | megaphone | sound waves forward | present | +
+EVENT: reach | patient's heartbeat | doctor's ears | present | +
+EVENT: spread | sound board | sound across the hall | present | +
+MORPH: hear | heard | hears
+MORPH: reflect | reflected | reflects
+MORPH: persist | persisted | persists
+MORPH: reduce | reduced | reduces
+MORPH: guide | guided | guides
+MORPH: reach | reached | reaches
+MORPH: spread | spread | spreads
+FACT: speed of sound in air at 0 °C | m s⁻¹ | 331
+FACT: speed of sound in air at 22 °C | m s⁻¹ | 344
+FACT: speed of sound in air at 25 °C | m s⁻¹ | 346
+FACT: speed of sound in aluminium | m s⁻¹ | 6420
+FACT: speed of sound in iron | m s⁻¹ | 5950
+FACT: minimum time interval for distinct echo | second | 0.1
+FACT: minimum distance for distinct echo | metre | 17.2
+FACT: echo example speed | m s⁻¹ | 346
+FACT: echo example time | second | 2
+FACT: echo example distance | metre | 346
+ASK: sound | speed in different media
+ASK: echo | meaning
+ASK: distinct echo | condition
+ASK: reverberation | meaning
+ASK: reverberation | reduction
+ASK: curved ceilings | purpose
+ASK: stethoscope | working
+ASK: practical applications of reflection of sound
+ISA: hearing aid | electronic device
+ISA: microphone | device
+ISA: amplifier | device
+ISA: speaker | device
+ISA: ultrasound | high frequency wave
+ISA: SONAR | acronym
+PROP: audible range of human beings | frequency | 20 Hz to 20000 Hz
+PROP: children under five | hearing range | up to 25 kHz
+PROP: infrasound | frequency | below 20 Hz
+PROP: ultrasound | frequency | above 20 kHz
+PROP: ultrasound | path | well-defined
+PROP: hearing aid | power source | battery
+PROP: microphone | function | converts sound waves to electrical signals
+PROP: amplifier | function | amplifies electrical signals
+PROP: speaker | function | converts electrical signals to sound
+PROP: SONAR | full form | SOund Navigation And Ranging
+EVENT: hear | dogs | up to 25 kHz | present | +
+EVENT: produce | whales and elephants | infrasound | present | +
+EVENT: produce | dolphins | ultrasound | present | +
+EVENT: produce | bats | ultrasound | present | +
+EVENT: produce | porpoises | ultrasound | present | +
+EVENT: receive | hearing aid | sound through microphone | present | +
+EVENT: convert | microphone | sound waves to electrical signals | present | +
+EVENT: amplify | amplifier | electrical signals | present | +
+EVENT: convert | speaker | electrical signals to sound | present | +
+EVENT: clean | ultrasound | hard-to-reach parts | present | +
+EVENT: detect | ultrasound | cracks and flaws in metal blocks | present | +
+EVENT: reflect | ultrasound | from defects | present | +
+EVENT: image | ultrasound scanner | internal organs | present | +
+EVENT: break | ultrasound | kidney stones into fine grains | present | +
+MORPH: hear | heard | hears
+MORPH: produce | produced | produces
+MORPH: receive | received | receives
+MORPH: convert | converted | converts
+MORPH: amplify | amplified | amplifies
+MORPH: clean | cleaned | cleans
+MORPH: detect | detected | detects
+MORPH: reflect | reflected | reflects
+MORPH: image | imaged | images
+MORPH: break | broke | breaks
+FACT: audible lower frequency | Hz | 20
+FACT: audible upper frequency | Hz | 20000
+FACT: hearing of children under five | kHz | 25
+FACT: rhinoceros infrasound frequency | Hz | 5
+FACT: 1 kHz | Hz | 1000
+ASK: audible range of average human ear | frequency
+ASK: infrasound | frequency range
+ASK: ultrasound | frequency range
+ASK: ultrasound | applications
+ASK: SONAR | full form
+ASK: hearing aid | working
+ASK: ultrasound | cleaning
+ASK: ultrasound | detecting cracks in metal blocks
+ISA: SONAR | device
+ISA: transmitter | device
+ISA: detector | device
+ISA: ear | device
+ISA: pinna | outer ear
+ISA: auditory canal | ear part
+ISA: ear drum | membrane
+ISA: tympanic membrane | ear drum
+ISA: cochlea | inner ear part
+ISA: auditory nerve | nerve
+PROP: SONAR | use | measures distance direction and speed of underwater objects
+PROP: SONAR | waves used | ultrasonic waves
+PROP: pinna | function | collects sound
+PROP: auditory canal | function | passes collected sound
+PROP: ear drum | property | thin membrane
+PROP: middle ear | function | transmits amplified pressure variations to inner ear
+PROP: cochlea | function | turns pressure variations into electrical signals
+PROP: auditory nerve | function | carries electrical signals to the brain
+PROP: brain | function | interprets electrical signals as sound
+PROP: bats | use of ultrasound | search prey
+PROP: porpoises | use of ultrasound | navigation and location of food
+EVENT: produce | transmitter | ultrasonic waves | present | +
+EVENT: transmit | transmitter | ultrasonic waves | present | +
+EVENT: strike | ultrasonic waves | object on the seabed | present | +
+EVENT: reflect | ultrasonic waves | detector | present | +
+EVENT: sense | detector | reflected ultrasonic waves | present | +
+EVENT: convert | detector | ultrasonic waves into electrical signals | present | +
+EVENT: calculate | person | distance of the object | present | +
+EVENT: collect | pinna | sound | present | +
+EVENT: pass | collected sound | auditory canal | present | +
+EVENT: vibrate | ear drum |  | present | +
+EVENT: amplify | three bones | vibrations | present | +
+EVENT: turn | cochlea | pressure variations into electrical signals | present | +
+EVENT: send | auditory nerve | electrical signals to the brain | present | +
+EVENT: interpret | brain | electrical signals as sound | present | +
+EVENT: emit | bat | ultrasonic squeaks | present | +
+EVENT: detect | bat | reflections of ultrasonic waves | present | +
+MORPH: produce | produced | produces
+MORPH: transmit | transmitted | transmits
+MORPH: strike | struck | strikes
+MORPH: reflect | reflected | reflects
+MORPH: sense | sensed | senses
+MORPH: convert | converted | converts
+MORPH: calculate | calculated | calculates
+MORPH: collect | collected | collects
+MORPH: pass | passed | passes
+MORPH: vibrate | vibrated | vibrates
+MORPH: amplify | amplified | amplifies
+MORPH: turn | turned | turns
+MORPH: send | sent | sends
+MORPH: interpret | interpreted | interprets
+MORPH: emit | emitted | emits
+MORPH: detect | detected | detects
+PART: ear | pinna
+PART: ear | auditory canal
+PART: ear | ear drum
+PART: ear | middle ear
+PART: middle ear | hammer
+PART: middle ear | anvil
+PART: middle ear | stirrup
+PART: ear | inner ear
+PART: inner ear | cochlea
+PART: ear | auditory nerve
+LAW: 2 * distance = speed * time
+UNIT: distance | 0,1,0
+UNIT: speed | 0,1,-1
+UNIT: time | 0,0,1
+FACT: sonar example time | second | 3.42
+FACT: speed of ultrasound in seawater | m s⁻¹ | 1531
+FACT: seabed distance | metre | 2618
+ASK: SONAR | working
+ASK: SONAR | applications
+ASK: human ear | structure
+ASK: human ear | working
+ASK: bats | use of ultrasound
+ASK: submarine sonar pulse | distance to underwater cliff
+ISA: health | state
+ISA: disease | condition
+ISA: cell | basic unit of organism
+ISA: protein | chemical substance
+ISA: carbohydrate | chemical substance
+ISA: fat | chemical substance
+ISA: lipid | chemical substance
+PROP: cell | nature | dynamic
+PROP: heart | function | beating
+PROP: lungs | function | breathing
+PROP: kidney | function | filtering urine
+PROP: brain | function | thinking
+PROP: specialised activities | property | interconnected
+PROP: food | role | necessity for cell and tissue functions
+PROP: health | meaning | state of being well enough to function well physically mentally and socially
+PROP: well-being | meaning | effective functioning
+EVENT: happen | complex reactions and repair | inside cells | present | +
+EVENT: make | body | new cells | present | +
+EVENT: beat | heart |  | present | +
+EVENT: breathe | lungs |  | present | +
+EVENT: filter | kidney | urine | present | +
+EVENT: think | brain |  | present | +
+EVENT: accumulate | poisonous substances |  | present | +
+EVENT: prevent | lack of proper functioning of cells and tissues | proper activity of the body | present | -
+EVENT: need | interconnected activities | energy and raw material | present | +
+EVENT: lead | lack of proper functioning of cells and tissues | lack of proper activity of the body | present | +
+EVENT: imply | health | idea of being well | present | +
+EVENT: function | healthy person | physically mentally and socially | present | +
+MORPH: happen | happened | happens
+MORPH: make | made | makes
+MORPH: beat | beat | beats
+MORPH: breathe | breathed | breathes
+MORPH: filter | filtered | filters
+MORPH: think | thought | thinks
+MORPH: accumulate | accumulated | accumulates
+MORPH: prevent | prevented | prevents
+MORPH: need | needed | needs
+MORPH: lead | led | leads
+MORPH: imply | implied | implies
+MORPH: function | functioned | functions
+PART: organism | cell
+ASK: health | meaning
+ASK: disease | meaning
+ASK: food | importance for cell and tissue functions
+ASK: health | significance
+ASK: cells | role in proper functioning of the body
+PROP: disease | meaning | disturbed ease
+PROP: disease | meaning | being uncomfortable
+PROP: disease | cause | specific and particular cause for discomfort
+PROP: healthy | meaning | not the same as disease-free
+PROP: good health | requirement | opportunity to realise the unique potential in all of us
+PROP: health | concern | societies and communities
+PROP: disease | concern | individual sufferers
+PROP: physiological system | function | carries out body functions
+PROP: digestive system | function | digests food
+PROP: musculoskeletal system | function | holds body parts together
+PROP: musculoskeletal system | function | helps the body move
+PROP: disease | effect | changes functioning of body systems for the worse
+PROP: symptom | meaning | things we feel as being wrong
+PROP: sign | meaning | indication of the presence of a particular disease
+PROP: acute disease | duration | short
+PROP: chronic disease | duration | long
+PROP: chronic disease | effect | major effects on general health
+PROP: chronic disease | effect | long-term effects on health
+EVENT: digest | digestive system | food | present | +
+EVENT: hold | musculoskeletal system | body parts together | present | +
+EVENT: help | musculoskeletal system | body move | present | +
+EVENT: change | disease | functioning of body systems | present | +
+EVENT: give rise | changes in body systems | symptoms and signs | present | +
+EVENT: look for | physician | signs of disease | present | +
+EVENT: do | physician | laboratory tests | present | +
+EVENT: pinpoint | laboratory tests | disease | present | +
+EVENT: last | acute disease | short period | present | +
+EVENT: last | chronic disease | long time | present | +
+EVENT: lose | chronic disease | weight | present | +
+EVENT: feel | person with chronic disease | tired | present | +
+EVENT: reduce | chronic disease | ability to learn | present | +
+MORPH: digest | digested | digests
+MORPH: hold | held | holds
+MORPH: help | helped | helps
+MORPH: change | changed | changes
+MORPH: give rise | gave rise | gives rise
+MORPH: look for | looked for | looks for
+MORPH: do | did | does
+MORPH: pinpoint | pinpointed | pinpoints
+MORPH: last | lasted | lasts
+MORPH: lose | lost | loses
+MORPH: feel | felt | feels
+MORPH: reduce | reduced | reduces
+ISA: digestive system | physiological system
+ISA: musculoskeletal system | physiological system
+PART: digestive system | stomach
+PART: digestive system | intestines
+PART: musculoskeletal system | bones
+PART: musculoskeletal system | muscles
+ISA: acute disease | disease
+ISA: chronic disease | disease
+ASK: good health | conditions
+ASK: disease | meaning
+ASK: symptom | meaning
+ASK: sign | meaning
+ASK: acute disease | meaning
+ASK: chronic disease | meaning
+PROP: disease | causes | immediate causes and contributory causes
+PROP: most diseases | causes | many
+PROP: infectious disease | immediate cause | microbes
+PROP: infectious disease | property | spreads in the community
+PROP: non-infectious disease | cause | internal
+PROP: non-infectious disease | property | does not spread through microbes
+PROP: cancer | cause | genetic abnormalities
+PROP: high blood pressure | cause | excessive weight
+PROP: high blood pressure | cause | lack of exercise
+PROP: poor nourishment | role | contributory cause of disease
+PROP: poverty | role | contributory cause of disease
+PROP: lack of public services | role | contributory cause of disease
+PROP: unclean drinking water | role | source of infection
+EVENT: cause | microbes | infectious diseases | present | +
+EVENT: spread | microbes | community | present | +
+EVENT: spread | infectious diseases | community | present | +
+EVENT: cause | genetic abnormalities | some cancers | present | +
+EVENT: cause | excessive weight | high blood pressure | present | +
+EVENT: cause | lack of exercise | high blood pressure | present | +
+EVENT: develop | baby | loose motions | present | +
+EVENT: come | infection | unclean drinking water | present | +
+EVENT: expose | unclean drinking water | baby | present | +
+EVENT: become | poor nourishment | contributory cause of disease | present | +
+EVENT: become | poverty | contributory cause of disease | present | +
+EVENT: become | lack of public services | contributory cause of disease | present | +
+MORPH: cause | caused | causes
+MORPH: spread | spread | spreads
+MORPH: develop | developed | develops
+MORPH: come | came | comes
+MORPH: expose | exposed | exposes
+MORPH: become | became | becomes
+ISA: infectious disease | disease
+ISA: non-infectious disease | disease
+ISA: microbe | infectious agent
+ISA: cancer | disease
+ISA: high blood pressure | disease
+PART: digestive system | stomach
+PART: digestive system | intestines
+ASK: disease | immediate causes
+ASK: disease | contributory causes
+ASK: infectious disease | cause
+ASK: non-infectious disease | cause
+ASK: high blood pressure | causes
+ASK: cancer | cause
+ISA: virus | infectious agent
+ISA: bacteria | infectious agent
+ISA: fungi | infectious agent
+ISA: protozoan | infectious agent
+ISA: worm | infectious agent
+ISA: common cold | viral disease
+ISA: influenza | viral disease
+ISA: dengue fever | viral disease
+ISA: AIDS | viral disease
+ISA: typhoid fever | bacterial disease
+ISA: cholera | bacterial disease
+ISA: tuberculosis | bacterial disease
+ISA: anthrax | bacterial disease
+ISA: malaria | protozoan disease
+ISA: kala-azar | protozoan disease
+ISA: elephantiasis | worm disease
+PROP: viruses | habitat | inside host cells
+PROP: bacteria | habitat | very rarely inside host cells
+PROP: viruses | multiplication | very quickly
+PROP: bacteria | multiplication | very quickly
+PROP: fungi | multiplication | very quickly
+PROP: worms | multiplication | very slowly
+PROP: antibiotics | action | block biochemical pathways important for bacteria
+PROP: penicillin | action | blocks bacterial cell-wall formation
+PROP: antibiotics | effect on viral infections | do not work
+EVENT: cause | viruses | common cold | present | +
+EVENT: cause | viruses | influenza | present | +
+EVENT: cause | viruses | dengue fever | present | +
+EVENT: cause | viruses | AIDS | present | +
+EVENT: cause | bacteria | typhoid fever | present | +
+EVENT: cause | bacteria | cholera | present | +
+EVENT: cause | bacteria | tuberculosis | present | +
+EVENT: cause | bacteria | anthrax | present | +
+EVENT: cause | fungi | skin infections | present | +
+EVENT: cause | protozoa | malaria | present | +
+EVENT: cause | protozoa | kala-azar | present | +
+EVENT: block | antibiotics | bacterial biochemical pathways | present | +
+EVENT: block | penicillin | bacterial cell-wall formation | present | +
+EVENT: die | growing bacteria |  | present | +
+EVENT: reduce | antibiotics | severity of common cold | present | -
+MORPH: cause | caused | causes
+MORPH: block | blocked | blocks
+MORPH: die | died | dies
+MORPH: reduce | reduced | reduces
+ASK: infectious agents | categories
+ASK: antibiotics | action
+ASK: penicillin | action
+ASK: antibiotics | effect on viral infections
+ASK: diseases caused by viruses
+ASK: diseases caused by bacteria
+ASK: diseases caused by protozoa
+PROP: treatment | methods | reduce the effects of the disease and kill the cause of the disease
+PROP: symptoms | cause | inflammation
+PROP: symptom-directed treatment | effect | does not cure the disease
+PROP: antibiotics | action | block bacterial synthesis pathway
+PROP: anti-viral medicines | development | harder than anti-bacterial medicines
+PROP: viruses | biochemical mechanisms | few
+PROP: prevention of disease | desirability | better than cure
+PROP: public hygiene | role | key to prevention of infectious diseases
+PROP: proper and sufficient food | role | principle of prevention of infectious disease
+PROP: immune system | function | fights off microbes
+PROP: immune system | property | remembers infectious microbes
+PROP: immunisation | basis | memory of the immune system
+PROP: vaccine | effect | prevents actual disease
+PROP: childhood immunisation | purpose | preventing infectious diseases
+EVENT: reduce | treatment | symptoms | present | +
+EVENT: kill | medicines | microbes | present | +
+EVENT: take | person | bed rest | present | +
+EVENT: conserve | bed rest | energy | present | +
+EVENT: block | antibiotics | bacterial synthesis pathway | present | +
+EVENT: kill | drugs | protozoa | present | +
+EVENT: enter | viruses | cells | present | +
+EVENT: use | viruses | cell machinery | present | +
+EVENT: prevent | public hygiene | infectious diseases | present | +
+EVENT: provide | safe drinking water | prevention of water-borne diseases | present | +
+EVENT: treat | water | microbial contamination | present | +
+EVENT: prevent | clean environments | mosquito breeding | present | +
+EVENT: fight off | immune system | microbes | present | +
+EVENT: kill | immune cells | infecting microbes | present | +
+EVENT: remember | immune system | infectious microbe | present | +
+EVENT: respond | immune system | infectious microbe | present | +
+EVENT: eliminate | immune system | infection | present | +
+EVENT: prevent | vaccine | actual disease | present | +
+MORPH: reduce | reduced | reduces
+MORPH: kill | killed | kills
+MORPH: take | took | takes
+MORPH: conserve | conserved | conserves
+MORPH: block | blocked | blocks
+MORPH: enter | entered | enters
+MORPH: use | used | uses
+MORPH: prevent | prevented | prevents
+MORPH: provide | provided | provides
+MORPH: treat | treated | treats
+MORPH: fight off | fought off | fights off
+MORPH: remember | remembered | remembers
+MORPH: respond | responded | responds
+MORPH: eliminate | eliminated | eliminates
+ASK: treatment | methods
+ASK: prevention of infectious diseases | principles
+ASK: public hygiene | role
+ASK: immunisation | basis
+ASK: vaccines | purpose
+ASK: proper and sufficient food | role in prevention
+ISA: vaccination | immunisation
+ISA: vaccine | preventive measure
+ISA: immune system | body system
+ISA: smallpox | infectious disease
+ISA: cowpox | disease
+ISA: hepatitis A | viral disease
+ISA: rabies | viral disease
+PROP: vaccination | origin | vaccinia
+PROP: cowpox | severity | mild
+PROP: smallpox virus | relation | closely related to cowpox virus
+PROP: vaccination | purpose | develops memory for a particular infection
+PROP: immunisation | method | disease-specific prevention
+PROP: hepatitis A | transmission | through water
+PROP: rabies virus | transmission | bite of infected dogs and other animals
+PROP: effective prevention of infectious diseases | requirement | public hygiene and immunisation
+EVENT: rub | traditional medicinal systems | skin crusts from smallpox victims into healthy skin | past | +
+EVENT: induce | mild form of smallpox | resistance against the disease | past | +
+EVENT: realise | Edward Jenner | milkmaids who had cowpox did not catch smallpox | past | +
+EVENT: give | Edward Jenner | cowpox to people | past | +
+EVENT: find | Edward Jenner | people resistant to smallpox | past | +
+EVENT: fool | vaccination | immune system | present | +
+EVENT: develop | immune system | memory for a particular infection | present | +
+EVENT: mimic | vaccine | microbe | present | +
+EVENT: prevent | vaccine | subsequent exposure from turning into actual disease | present | +
+EVENT: transmit | water | hepatitis A | present | +
+EVENT: spread | infected dogs and other animals | rabies virus | present | +
+MORPH: rub | rubbed | rubs
+MORPH: induce | induced | induces
+MORPH: realise | realised | realises
+MORPH: give | gave | gives
+MORPH: find | found | finds
+MORPH: fool | fooled | fools
+MORPH: develop | developed | develops
+MORPH: mimic | mimicked | mimics
+MORPH: prevent | prevented | prevents
+MORPH: transmit | transmitted | transmits
+MORPH: spread | spread | spreads
+ASK: vaccination | origin
+ASK: Edward Jenner | contribution
+ASK: vaccination | principle
+ASK: hepatitis A | transmission
+ASK: rabies virus | transmission
+ASK: effective prevention of infectious diseases | requirements
+PROP: health | meaning | state of physical, mental and social well-being
+PROP: health of an individual | dependence | physical surroundings
+PROP: health of an individual | dependence | economic status
+PROP: disease classification | basis | duration
+PROP: disease | causes | infectious or non-infectious
+PROP: infectious agents | forms | unicellular and microscopic or multicellular
+PROP: treatment | dependence | category of disease-causing organism
+PROP: infectious agents | spread | air
+PROP: infectious agents | spread | water
+PROP: infectious agents | spread | physical contact
+PROP: infectious agents | spread | vectors
+PROP: prevention of disease | desirability | more desirable than successful treatment
+PROP: infectious diseases | prevention | public health hygiene measures
+PROP: infectious diseases | prevention | immunisation
+PROP: effective prevention of infectious diseases | requirement | access to public hygiene
+PROP: effective prevention of infectious diseases | requirement | access to immunisation
+EVENT: depend | health of an individual | physical surroundings | present | +
+EVENT: depend | health of an individual | economic status | present | +
+EVENT: classify | diseases | acute or chronic | present | +
+EVENT: spread | infectious agents | through air | present | +
+EVENT: spread | infectious agents | through water | present | +
+EVENT: spread | infectious agents | through physical contact | present | +
+EVENT: spread | infectious agents | through vectors | present | +
+EVENT: prevent | public health hygiene measures | infectious diseases | present | +
+EVENT: prevent | immunisation | infectious diseases | present | +
+EVENT: require | effective prevention of infectious diseases | public hygiene and immunisation | present | +
+MORPH: depend | depended | depends
+MORPH: classify | classified | classifies
+MORPH: spread | spread | spreads
+MORPH: prevent | prevented | prevents
+MORPH: require | required | requires
+ASK: illnesses | number in the last one year
+ASK: habits | changes to avoid illness
+ASK: surroundings | changes to avoid illness
+ASK: health worker | avoiding infection
+ASK: neighbourhood | common diseases
+ASK: local authorities | steps to reduce diseases
+ASK: baby | signs of sickness
+ASK: baby | sickness
+ASK: infectious diseases | spread
+ASK: prevention of infectious diseases | measures
+ISA: Earth | planet
+ISA: lithosphere | outer crust of the Earth
+ISA: hydrosphere | water on the Earth
+ISA: atmosphere | air covering the Earth
+ISA: biosphere | life-supporting zone
+ISA: biotic component | living things
+ISA: abiotic component | air
+ISA: abiotic component | water
+ISA: abiotic component | soil
+PROP: life on Earth | dependence | ambient temperature
+PROP: life on Earth | dependence | water
+PROP: life on Earth | dependence | food
+PROP: resources on the Earth | types | land water and air
+PROP: atmosphere | composition | mixture of many gases
+PROP: atmosphere | components | nitrogen oxygen carbon dioxide and water vapour
+PROP: atmosphere of Venus and Mars | major component | carbon dioxide
+PROP: carbon dioxide | fixation | green plants
+PROP: carbon dioxide | fixation | marine animals
+PROP: atmosphere | role | climate control
+PROP: air | property | bad conductor of heat
+PROP: atmosphere | effect | keeps average temperature of the Earth fairly steady
+PROP: atmosphere | effect | prevents sudden increase in temperature during daylight
+PROP: atmosphere | effect | slows down escape of heat during night
+EVENT: depend | life on Earth | ambient temperature water and food | present | +
+EVENT: cover | water | 75% of the Earth's surface | present | +
+EVENT: cover | atmosphere | Earth | present | +
+EVENT: interact | atmosphere hydrosphere and lithosphere | make life possible | present | +
+EVENT: constitute | living things | biotic component | present | +
+EVENT: form | air water and soil | abiotic component | present | +
+EVENT: need | eukaryotic cells | oxygen | present | +
+EVENT: break down | cells | glucose molecules | present | +
+EVENT: produce | cells | carbon dioxide | present | +
+EVENT: consume | combustion | oxygen | present | +
+EVENT: produce | combustion | carbon dioxide | present | +
+EVENT: convert | green plants | carbon dioxide into glucose | present | +
+EVENT: use | marine animals | carbonates dissolved in sea-water | present | +
+EVENT: make | marine animals | shells | present | +
+MORPH: depend | depended | depends
+MORPH: cover | covered | covers
+MORPH: interact | interacted | interacts
+MORPH: constitute | constituted | constitutes
+MORPH: form | formed | forms
+MORPH: need | needed | needs
+MORPH: break down | broke down | breaks down
+MORPH: produce | produced | produces
+MORPH: consume | consumed | consumes
+MORPH: convert | converted | converts
+MORPH: use | used | uses
+MORPH: make | made | makes
+FACT: water on Earth's surface | percent | 75
+FACT: carbon dioxide in atmosphere of Venus and Mars | percent | 95-97
+FACT: moon temperature | minimum | -190 °C
+FACT: moon temperature | maximum | 110 °C
+ASK: biosphere | meaning
+ASK: atmosphere | role in climate control
+ASK: atmosphere | composition
+ASK: carbon dioxide | fixation
+ASK: lithosphere | meaning
+ASK: hydrosphere | meaning
+ASK: atmosphere | meaning
+ISA: air | mixture
+ISA: wind | moving air
+ISA: oxygen | gas
+ISA: nitrogen | gas
+ISA: carbon dioxide | gas
+ISA: water vapour | gas
+PROP: moving air | name | wind
+PROP: air | role | transfers heat
+PROP: land | heating | faster than water
+PROP: land | cooling | faster than water
+PROP: air over land | property | gets heated
+PROP: hot air | property | lighter
+PROP: hot air | motion | rises
+PROP: cool air | motion | moves towards land
+PROP: sea breeze | time | day
+PROP: land breeze | time | night
+PROP: wind | cause | uneven heating of land and water
+PROP: wind | cause | uneven heating of land
+PROP: rainfall | dependence | heating of land and water
+PROP: air pollution | cause | smoke
+EVENT: heat | Sun | land and water | present | +
+EVENT: heat | land | air above it | present | +
+EVENT: rise | hot air |  | present | +
+EVENT: move | cool air over sea | towards land | present | +
+EVENT: create | movement of air | sea breeze | present | +
+EVENT: cool | land | faster than sea | present | +
+EVENT: move | cool air over land | towards sea | present | +
+EVENT: create | movement of air | land breeze | present | +
+EVENT: burn | fuels | smoke | present | +
+EVENT: pollute | smoke | air | present | +
+MORPH: heat | heated | heats
+MORPH: rise | rose | rises
+MORPH: move | moved | moves
+MORPH: create | created | creates
+MORPH: cool | cooled | cools
+MORPH: burn | burnt | burns
+MORPH: pollute | polluted | pollutes
+SEQ: the Sun heats the land faster than the water
+SEQ: then the air over the land gets heated
+SEQ: then the hot air rises
+SEQ: then cooler air from over the sea moves towards the land
+SEQ: then a sea breeze is produced
+SEQ: at night the land cools faster than the sea
+SEQ: then cooler air from the land moves towards the sea
+SEQ: then a land breeze is produced
+ASK: sea breeze | cause
+ASK: land breeze | cause
+ASK: wind | cause
+ASK: land | heating
+ASK: water | heating
+ISA: water cycle | cycle
+ISA: evaporation | process
+ISA: condensation | process
+ISA: precipitation | process
+ISA: cloud | collection of water droplets
+PROP: water | role | moderates climate
+PROP: water | property | absorbs heat
+PROP: water | property | evaporates
+PROP: evaporation | cause | sunlight
+PROP: water vapour | motion | rises
+PROP: upper atmosphere | property | cooler
+PROP: condensation | result | clouds
+PROP: rainfall | source | clouds
+PROP: water cycle | property | continuous
+EVENT: absorb | water bodies | heat | present | +
+EVENT: evaporate | water |  | present | +
+EVENT: rise | water vapour | into the atmosphere | present | +
+EVENT: cool | water vapour | in upper atmosphere | present | +
+EVENT: condense | water vapour | into tiny droplets | present | +
+EVENT: form | tiny droplets | clouds | present | +
+EVENT: fall | water droplets | as rain | present | +
+EVENT: return | rainwater | water bodies | present | +
+EVENT: continue | water cycle |  | present | +
+MORPH: absorb | absorbed | absorbs
+MORPH: evaporate | evaporated | evaporates
+MORPH: rise | rose | rises
+MORPH: cool | cooled | cools
+MORPH: condense | condensed | condenses
+MORPH: form | formed | forms
+MORPH: fall | fell | falls
+MORPH: return | returned | returns
+MORPH: continue | continued | continues
+SEQ: the Sun heats water in rivers lakes and seas
+SEQ: then the water evaporates
+SEQ: then the water vapour rises into the atmosphere
+SEQ: then the water vapour cools
+SEQ: then the water vapour condenses into tiny droplets
+SEQ: then clouds are formed
+SEQ: then water falls as rain
+SEQ: then the water returns to rivers lakes and seas
+ASK: water cycle | steps
+ASK: evaporation | cause
+ASK: condensation | result
+ASK: clouds | formation
+ASK: rainfall | source
+ISA: ozone | form of oxygen
+ISA: ozone layer | layer
+ISA: CFC | man-made compound
+PROP: ozone layer | location | atmosphere
+PROP: ozone layer | function | protects the surface of the Earth from ultraviolet radiation
+PROP: CFCs | property | very stable
+PROP: CFCs | degradation | not degraded by any biological process
+PROP: ozone layer | change | getting depleted
+PROP: ozone hole | location | above Antarctica
+PROP: life on Earth | dependence | ozone layer
+PROP: nutrients | property | used again and again in a cyclic fashion
+PROP: biosphere | property | balance between components
+PROP: pollution | effect | affects quality of life
+PROP: pollution | effect | harms biodiversity
+PROP: natural resources | use | sustainable manner
+EVENT: reach | CFCs | ozone layer | past | +
+EVENT: react | CFCs | ozone molecules | past | +
+EVENT: reduce | CFCs | ozone layer | past | +
+EVENT: discover | scientists | hole in the ozone layer | past | +
+EVENT: damage | people | ozone layer | present | -
+EVENT: use | nutrients | again and again | present | +
+EVENT: affect | pollution | quality of life | present | +
+EVENT: harm | pollution | biodiversity | present | +
+EVENT: conserve | people | natural resources | present | +
+EVENT: use | people | natural resources in a sustainable manner | present | +
+MORPH: reach | reached | reaches
+MORPH: react | reacted | reacts
+MORPH: reduce | reduced | reduces
+MORPH: discover | discovered | discovers
+MORPH: damage | damaged | damages
+MORPH: use | used | uses
+MORPH: affect | affected | affects
+MORPH: harm | harmed | harms
+MORPH: conserve | conserved | conserves
+ASK: atmosphere | importance for life
+ASK: water | importance for life
+ASK: soil | importance for living organisms
+ASK: weather | prediction
+ASK: greenhouse effect | meaning
+ASK: oxygen | forms in the atmosphere
+ASK: human activities | increase in carbon dioxide
+ASK: forests | influence on air soil and water resources
+ISA: food | source
+ISA: agriculture | source of food
+ISA: animal husbandry | source of food
+ISA: nutrients | food component
+ISA: protein | nutrient
+ISA: carbohydrate | nutrient
+ISA: fat | nutrient
+ISA: vitamin | nutrient
+ISA: mineral | nutrient
+PROP: food | role | body development
+PROP: food | role | growth
+PROP: food | role | health
+PROP: plants | role | major source of food
+PROP: animals | role | major source of food
+PROP: agriculture | role | provides most food
+PROP: animal husbandry | role | provides most food
+EVENT: need | living organisms | food | present | +
+EVENT: supply | food | proteins carbohydrates fats vitamins and minerals | present | +
+EVENT: require | humans | proteins carbohydrates fats vitamins and minerals | present | +
+EVENT: obtain | humans | food from plants | present | +
+EVENT: obtain | humans | food from animals | present | +
+EVENT: obtain | humans | most food from agriculture | present | +
+EVENT: obtain | humans | most food from animal husbandry | present | +
+MORPH: need | needed | needs
+MORPH: supply | supplied | supplies
+MORPH: require | required | requires
+MORPH: obtain | obtained | obtains
+ASK: food | importance
+ASK: food | nutrients
+ASK: agriculture | role
+ASK: animal husbandry | role
+ISA: crop | plant
+ISA: food crop | crop
+ISA: cereal | food crop
+ISA: pulse | food crop
+ISA: oil seed | food crop
+ISA: beverage crop | crop
+ISA: spice | crop
+PROP: crop | meaning | plants of the same kind grown and cultivated at one place
+PROP: crops | cultivation | large scale
+PROP: cropping season | dependence | climatic conditions
+PROP: India | cropping seasons | two
+PROP: Kharif crops | growing season | rainy season
+PROP: Rabi crops | growing season | winter season
+PROP: paddy | season | Kharif
+PROP: maize | season | Kharif
+PROP: soyabean | season | Kharif
+PROP: groundnut | season | Kharif
+PROP: cotton | season | Kharif
+PROP: rice | season | Kharif
+PROP: wheat | season | Rabi
+PROP: gram | season | Rabi
+PROP: pea | season | Rabi
+PROP: mustard | season | Rabi
+PROP: linseed | season | Rabi
+EVENT: grow | farmers | crops | present | +
+EVENT: cultivate | farmers | crops | present | +
+EVENT: sow | farmers | Kharif crops in rainy season | present | +
+EVENT: sow | farmers | Rabi crops in winter season | present | +
+MORPH: grow | grew | grows
+MORPH: cultivate | cultivated | cultivates
+MORPH: sow | sowed | sows
+ASK: crop | meaning
+ASK: cropping seasons | names
+ASK: Kharif crops | examples
+ASK: Rabi crops | examples
+ISA: agricultural practice | practice
+ISA: preparation of soil | agricultural practice
+ISA: plough | implement
+ISA: ploughshare | part of plough
+ISA: hoe | implement
+ISA: cultivator | implement
+PROP: preparation of soil | first step | cultivation of a crop
+PROP: loose soil | property | rich in humus
+PROP: loose soil | property | better aeration
+PROP: ploughing | purpose | loosens and turns the soil
+PROP: plough | use | tilling the soil
+PROP: cultivator | operation | tractor driven
+PROP: cultivator | advantage | saves labour
+PROP: levelling | purpose | prevents soil erosion
+PROP: levelling | purpose | distributes water evenly
+EVENT: loosen | farmer | soil | present | +
+EVENT: turn | farmer | soil | present | +
+EVENT: plough | farmer | field | present | +
+EVENT: till | plough | soil | present | +
+EVENT: break | plough | soil lumps | present | +
+EVENT: mix | ploughing | manure with soil | present | +
+EVENT: uproot | ploughing | weeds | present | +
+EVENT: use | farmer | cultivator | present | +
+EVENT: level | farmer | field | present | +
+MORPH: loosen | loosened | loosens
+MORPH: turn | turned | turns
+MORPH: plough | ploughed | ploughs
+MORPH: till | tilled | tills
+MORPH: break | broke | breaks
+MORPH: mix | mixed | mixes
+MORPH: uproot | uprooted | uproots
+MORPH: use | used | uses
+MORPH: level | leveled | levels
+PART: plough | ploughshare
+PART: plough | beam
+PART: plough | handle
+ASK: preparation of soil | importance
+ASK: ploughing | purpose
+ASK: cultivator | advantage
+ASK: levelling | purpose
+ISA: seed | reproductive structure
+ISA: seed drill | implement
+ISA: traditional tool | sowing implement
+ISA: transplantation | planting method
+PROP: sowing | meaning | process of putting seeds into the soil
+PROP: healthy seeds | property | clean and disease-free
+PROP: good quality seeds | property | high yield
+PROP: seed drill | purpose | sows seeds uniformly
+PROP: seed drill | advantage | seeds are covered by soil
+PROP: seed drill | advantage | protects seeds from birds
+PROP: seed drill | advantage | saves time and labour
+PROP: proper distance between seeds | benefit | avoids overcrowding
+PROP: proper depth of seeds | importance | better germination
+PROP: transplantation | meaning | transferring seedlings from nursery to field
+PROP: transplantation | suitability | crops like paddy
+EVENT: select | farmer | healthy seeds | present | +
+EVENT: sow | farmer | seeds | present | +
+EVENT: place | seed drill | seeds at uniform depth | present | +
+EVENT: cover | soil | seeds | present | +
+EVENT: protect | soil | seeds from birds | present | +
+EVENT: germinate | seeds |  | present | +
+EVENT: grow | seedlings | in nursery | present | +
+EVENT: transplant | farmer | seedlings to field | present | +
+MORPH: select | selected | selects
+MORPH: sow | sowed | sows
+MORPH: place | placed | places
+MORPH: cover | covered | covers
+MORPH: protect | protected | protects
+MORPH: germinate | germinated | germinates
+MORPH: grow | grew | grows
+MORPH: transplant | transplanted | transplants
+ASK: sowing | meaning
+ASK: healthy seeds | importance
+ASK: seed drill | advantages
+ASK: transplantation | meaning
+ASK: proper depth of seeds | importance
+ISA: manure | organic fertiliser
+ISA: fertiliser | nutrient source
+ISA: irrigation | agricultural practice
+ISA: well | irrigation source
+ISA: canal | irrigation source
+ISA: river lift system | irrigation source
+ISA: tank | irrigation source
+ISA: mixed cropping | cropping pattern
+ISA: intercropping | cropping pattern
+ISA: crop rotation | cropping pattern
+
+PROP: manure | source | decomposed plant and animal waste
+PROP: manure | effect | enriches soil with organic matter
+PROP: manure | effect | improves soil fertility
+PROP: manure | effect | improves soil structure
+PROP: fertilisers | role | supply plant nutrients
+PROP: irrigation | meaning | artificial supply of water to crops
+PROP: irrigation | importance | increases crop yield
+PROP: crop success | dependence | timely water supply
+PROP: mixed cropping | meaning | growing two or more crops together on the same field
+PROP: mixed cropping | benefit | reduces risk of crop failure
+PROP: intercropping | meaning | growing two or more crops in a definite row pattern
+PROP: intercropping | benefit | better utilisation of nutrients
+PROP: intercropping | benefit | reduces spread of pests and diseases
+PROP: crop rotation | meaning | growing different crops in planned succession
+PROP: crop rotation | benefit | enables two or three crops in a year
+
+EVENT: prepare | manure | from plant waste and animal excreta | present | +
+EVENT: enrich | manure | soil | present | +
+EVENT: improve | manure | soil fertility | present | +
+EVENT: supply | fertilisers | nutrients to crops | present | +
+EVENT: irrigate | farmer | crops | present | +
+EVENT: draw | river lift system | water from rivers | present | +
+EVENT: store | tanks | runoff water | present | +
+EVENT: grow | farmers | mixed crops | present | +
+EVENT: grow | farmers | intercrops | present | +
+EVENT: rotate | farmers | crops | present | +
+
+MORPH: prepare | prepared | prepares
+MORPH: enrich | enriched | enriches
+MORPH: improve | improved | improves
+MORPH: supply | supplied | supplies
+MORPH: irrigate | irrigated | irrigates
+MORPH: draw | drew | draws
+MORPH: store | stored | stores
+MORPH: grow | grew | grows
+MORPH: rotate | rotated | rotates
+
+PART: irrigation system | well
+PART: irrigation system | canal
+PART: irrigation system | river lift system
+PART: irrigation system | tank
+
+ASK: manure | advantages
+ASK: fertilisers | role
+ASK: irrigation | importance
+ASK: mixed cropping | meaning
+ASK: intercropping | meaning
+ASK: crop rotation | meaning
+ASK: irrigation sources | examples
+ISA: weed | unwanted plant
+ISA: insect pest | crop pest
+ISA: pathogen | disease-causing organism
+ISA: bacterium | pathogen
+ISA: fungus | pathogen
+ISA: virus | pathogen
+ISA: pesticide | chemical
+ISA: herbicide | pesticide
+ISA: insecticide | pesticide
+ISA: fungicide | pesticide
+ISA: storage loss | crop loss
+
+PROP: weeds | effect | compete with crops for food space and light
+PROP: weeds | effect | reduce crop growth
+PROP: insect pests | effect | reduce crop yield
+PROP: plant diseases | causes | bacteria fungi and viruses
+PROP: pathogens | transmission | soil
+PROP: pathogens | transmission | water
+PROP: pathogens | transmission | air
+PROP: pesticides | use | control weeds insects and diseases
+PROP: excessive use of pesticides | effect | environmental pollution
+PROP: excessive use of pesticides | effect | poisonous to many plant and animal species
+PROP: storage losses | causes | biotic and abiotic factors
+PROP: biotic factors | examples | insects rodents fungi mites and bacteria
+PROP: abiotic factors | examples | inappropriate moisture and temperature
+PROP: storage losses | effects | poor germination discolouration loss in weight and poor marketability
+
+EVENT: compete | weeds | with crops for food space and light | present | +
+EVENT: reduce | weeds | crop growth | present | +
+EVENT: cut | insect pests | roots stems and leaves | present | +
+EVENT: suck | insect pests | cell sap | present | +
+EVENT: bore | insect pests | stems and fruits | present | +
+EVENT: cause | bacteria fungi and viruses | plant diseases | present | +
+EVENT: spray | farmers | pesticides on crops | present | +
+EVENT: treat | farmers | seeds and soil with pesticides | present | +
+EVENT: remove | farmers | weeds mechanically | present | +
+EVENT: dry | farmers | grains before storage | present | +
+EVENT: fumigate | farmers | stored grains | present | +
+EVENT: kill | fumigation chemicals | storage pests | present | +
+
+MORPH: compete | competed | competes
+MORPH: reduce | reduced | reduces
+MORPH: cut | cut | cuts
+MORPH: suck | sucked | sucks
+MORPH: bore | bored | bores
+MORPH: cause | caused | causes
+MORPH: spray | sprayed | sprays
+MORPH: treat | treated | treats
+MORPH: remove | removed | removes
+MORPH: dry | dried | dries
+MORPH: fumigate | fumigated | fumigates
+MORPH: kill | killed | kills
+
+ASK: weeds | harmful effects
+ASK: insect pests | methods of damaging crops
+ASK: plant diseases | causes
+ASK: pesticides | types
+ASK: storage losses | causes
+ASK: grain storage | preventive measures
+ISA: animal husbandry | scientific management of livestock
+ISA: cattle farming | animal husbandry
+ISA: dairy animal | milch animal
+ISA: draught animal | farm labour animal
+ISA: poultry farming | animal husbandry
+ISA: broiler | poultry bird
+ISA: layer | poultry bird
+
+PROP: animal husbandry | includes | feeding breeding and disease control
+PROP: cattle farming | purpose | milk production
+PROP: cattle farming | purpose | draught labour
+PROP: dairy animal | function | milk production
+PROP: draught animal | function | agricultural work
+PROP: milk production | dependence | lactation period
+PROP: exotic cattle breeds | characteristic | long lactation period
+PROP: local cattle breeds | characteristic | disease resistance
+PROP: balanced ration | importance | healthy cattle
+PROP: poultry farming | purpose | egg production
+PROP: poultry farming | purpose | chicken meat production
+PROP: broilers | purpose | meat production
+PROP: layers | purpose | egg production
+PROP: broiler feed | property | rich in protein and fat
+PROP: poultry management | requirement | hygiene sanitation and vaccination
+
+EVENT: increase | cross-breeding | milk production | present | +
+EVENT: feed | farmers | balanced ration to cattle | present | +
+EVENT: vaccinate | farmers | cattle | present | +
+EVENT: raise | farmers | domestic fowl | present | +
+EVENT: develop | breeders | improved poultry breeds | present | +
+EVENT: feed | farmers | protein-rich feed to broilers | present | +
+EVENT: clean | farmers | poultry houses | present | +
+EVENT: spray | farmers | disinfectants in poultry houses | present | +
+EVENT: vaccinate | farmers | poultry birds | present | +
+
+MORPH: increase | increased | increases
+MORPH: feed | fed | feeds
+MORPH: vaccinate | vaccinated | vaccinates
+MORPH: raise | raised | raises
+MORPH: develop | developed | develops
+MORPH: clean | cleaned | cleans
+MORPH: spray | sprayed | sprays
+
+ASK: animal husbandry | meaning
+ASK: cattle farming | purposes
+ASK: dairy animal | meaning
+ASK: draught animal | meaning
+ASK: broilers | purpose
+ASK: layers | purpose
+ASK: cross-breeding | purpose in cattle
+ASK: management practices | common in dairy and poultry farming
+ISA: fish production | animal husbandry
+ISA: capture fishing | fish production method
+ISA: culture fishery | fish production method
+ISA: marine fishery | fishery
+ISA: inland fishery | fishery
+ISA: mariculture | culture fishery
+ISA: aquaculture | culture fishery
+ISA: composite fish culture | fish farming system
+ISA: bee-keeping | agricultural enterprise
+ISA: apiary | bee farm
+ISA: honey | bee product
+ISA: wax | bee product
+
+PROP: fish | role | cheap source of animal protein
+PROP: capture fishing | source | natural resources
+PROP: culture fishery | method | fish farming
+PROP: marine fishery | location | seawater
+PROP: inland fishery | location | freshwater and brackish water
+PROP: mariculture | meaning | culture fisheries in seawater
+PROP: aquaculture | meaning | fish production in inland water resources
+PROP: composite fish culture | feature | five or six fish species reared together
+PROP: composite fish culture | benefit | increases fish yield
+PROP: composite fish culture | problem | lack of good-quality fish seed
+PROP: bee-keeping | investment | low
+PROP: bee-keeping | benefit | additional income
+PROP: honey quality | dependence | pasturage
+PROP: Italian bee | characteristic | high honey collection capacity
+PROP: Italian bee | characteristic | breeds well
+PROP: Italian bee | characteristic | stings less
+
+EVENT: obtain | people | fish by capture fishing | present | +
+EVENT: obtain | people | fish by culture fishery | present | +
+EVENT: locate | satellites and echo-sounders | schools of fish | present | +
+EVENT: rear | farmers | multiple fish species in one pond | present | +
+EVENT: use | different fish species | different food zones | present | +
+EVENT: increase | composite fish culture | fish yield | present | +
+EVENT: breed | farmers | fish using hormonal stimulation | present | +
+EVENT: establish | farmers | apiaries | present | +
+EVENT: collect | bees | nectar and pollen | present | +
+EVENT: produce | bees | honey | present | +
+EVENT: produce | bees | wax | present | +
+
+MORPH: obtain | obtained | obtains
+MORPH: locate | located | locates
+MORPH: rear | reared | rears
+MORPH: use | used | uses
+MORPH: increase | increased | increases
+MORPH: breed | bred | breeds
+MORPH: establish | established | establishes
+MORPH: collect | collected | collects
+MORPH: produce | produced | produces
+
+ASK: fish production | methods
+ASK: capture fishing | meaning
+ASK: culture fishery | meaning
+ASK: mariculture | meaning
+ASK: aquaculture | meaning
+ASK: composite fish culture | advantages
+ASK: bee-keeping | benefits
+ASK: pasturage | meaning
+ASK: desirable characters of bee varieties | honey production
+ISA: macro-nutrient | plant nutrient
+ISA: micro-nutrient | plant nutrient
+ISA: organic farming | farming system
+ISA: mixed farming | farming system
+ISA: inter-cropping | cropping system
+ISA: crop rotation | cropping system
+ISA: animal husbandry | livestock management
+
+PROP: macro-nutrients | requirement | required in large quantities
+PROP: micro-nutrients | requirement | required in small quantities
+PROP: organic farming | feature | minimal or no use of chemical fertilisers herbicides and pesticides
+PROP: organic farming | input | organic manures recycled farm wastes and bio-agents
+PROP: mixed farming | feature | combines crop production and livestock rearing
+PROP: inter-cropping | feature | crops grown in definite row patterns
+PROP: crop rotation | feature | crops grown in pre-planned succession
+PROP: animal husbandry | activities | shelter feeding breeding and disease control
+PROP: poultry production | components | egg production and broiler production
+PROP: poultry improvement | method | cross-breeding between Indian and exotic breeds
+PROP: fish sources | types | marine and inland resources
+PROP: fish production | method | culture in marine and inland ecosystems
+PROP: marine fish capture | method | fishing nets guided by echo-sounders and satellites
+PROP: fish farming | common system | composite fish culture
+PROP: bee-keeping | products | honey and wax
+
+EVENT: require | crops | macro-nutrients | present | +
+EVENT: require | crops | micro-nutrients | present | +
+EVENT: use | organic farming | organic manures and bio-agents | present | +
+EVENT: include | mixed farming | crop production and livestock rearing | present | +
+EVENT: raise | poultry farming | domestic fowls | present | +
+EVENT: improve | cross-breeding | poultry varieties | present | +
+EVENT: obtain | people | fish from marine and inland resources | present | +
+EVENT: culture | farmers | fish in marine and inland ecosystems | present | +
+EVENT: guide | echo-sounders and satellites | marine fishing nets | present | +
+EVENT: produce | bee-keeping | honey and wax | present | +
+
+MORPH: require | required | requires
+MORPH: use | used | uses
+MORPH: include | included | includes
+MORPH: raise | raised | raises
+MORPH: improve | improved | improves
+MORPH: obtain | obtained | obtains
+MORPH: culture | cultured | cultures
+MORPH: guide | guided | guides
+MORPH: produce | produced | produces
+
+ASK: macro-nutrients | meaning
+ASK: micro-nutrients | meaning
+ASK: organic farming | meaning
+ASK: mixed farming | meaning
+ASK: animal husbandry | meaning
+ASK: composite fish culture | meaning
+ASK: bee-keeping | products
+ASK: marine fish capture | method

@@ -63,6 +63,15 @@ Much of this roadmap is now built. Current state is documented in
 ## The components (from the design sessions)
 **Exactness:** CAS breadth (SymPy) · search-based prover (one bounded domain) ·
 verifier everywhere.
+> **SymPy is a lever, not a permanent dependency.**  Right now SymPy does the symbolic
+> heavy lifting (simplification, equation solving, algebraic manipulation) that the brain
+> cannot yet perform on its own.  The correct end-state mirrors the `BRAIN2_GROUND_MATH`
+> pattern: once the brain has grounded enough symbolic-reasoning procedures (the way it
+> grounded arithmetic from succ/pred), SymPy should be *disabled* as a crutch and
+> *reattached* only as a fast-path accelerator over the brain's own grounded reference.
+> Flip the lever when: (1) the brain can solve the same class of expressions it currently
+> delegates to SymPy, AND (2) results are verified on held-out inputs without SymPy in the
+> path.  Until then, SymPy stays on — but always remember it is scaffolding, not structure.
 **Language:** LLM as glorifier only · parser distilled FROM the LLM while it runs ·
 two specialized shells (bigger encoder = understand, ultra-small decoder = fluency,
 lean on GrammarMouth) · small purpose-built model for exactly the gap · definition-

@@ -1,0 +1,2357 @@
+ISA: natural number | number
+ISA: whole number | number
+ISA: integer | number
+ISA: rational number | number
+ISA: irrational number | number
+ISA: real number | number
+PROP: natural numbers | symbol | N
+PROP: whole numbers | symbol | W
+PROP: integers | symbol | Z
+PROP: rational numbers | symbol | Q
+PROP: real numbers | symbol | R
+EVENT: denote | symbol N | collection of natural numbers | present | +
+EVENT: denote | symbol W | collection of whole numbers | present | +
+EVENT: denote | symbol Z | collection of integers | present | +
+EVENT: denote | symbol Q | collection of rational numbers | present | +
+EVENT: denote | symbol R | collection of real numbers | present | +
+MORPH: denote | denoted | denotes
+PROP: Z | origin | German word "zahlen"
+PROP: zahlen | meaning | to count
+PROP: rational | origin | ratio
+PROP: Q | origin | quotient
+EVENT: write | rational number | p/q | present | +
+MORPH: write | wrote | writes
+PROP: rational number | form | p/q
+PROP: p | type | integer
+PROP: q | type | integer
+EVENT: include | rational numbers | natural numbers | present | +
+EVENT: include | rational numbers | whole numbers | present | +
+EVENT: include | rational numbers | integers | present | +
+MORPH: include | included | includes
+PROP: equivalent rational numbers | representation | not unique
+PROP: p and q | property | co-prime
+EVENT: represent | 1/2 | equivalent fractions | present | +
+MORPH: represent | represented | represents
+FACT: denominator q | value | not 0
+ASK: denominator q | not equal to 0
+ASK: whole number | natural number
+ASK: integer | rational number
+ASK: rational number | integer
+ASK: rational numbers | between 1 and 2
+ASK: rational numbers | between 3 and 4
+ASK: rational numbers | between 3/5 and 4/5
+PROP: irrational number | form | cannot be written as p/q
+EVENT: write | irrational number | p/q | present | -
+MORPH: write | wrote | writes
+EVENT: discover | Pythagoreans | irrational numbers | past | +
+MORPH: discover | discovered | discovers
+FACT: discovery of irrational numbers | time | 400 BC
+ISA: Pythagoreans | followers
+ISA: Pythagoras | mathematician
+ISA: Pythagoras | philosopher
+ISA: Hippacus of Croton | Pythagorean
+PROP: irrational numbers | name origin | cannot be written as a ratio of integers
+EVENT: prove | Pythagoreans | √2 is irrational | past | +
+EVENT: show | Theodorus of Cyrene | √3 √5 √6 √7 √10 √11 √12 √13 √14 √15 √17 are irrational | past | +
+EVENT: prove | Lambert and Legendre | π is irrational | past | +
+MORPH: prove | proved | proves
+MORPH: show | showed | shows
+PROP: √4 | value | 2
+EVENT: make up | rational numbers and irrational numbers | real numbers | present | +
+EVENT: represent | real number | unique point on the number line | present | +
+EVENT: represent | point on the number line | unique real number | present | +
+MORPH: make | made | makes
+PROP: number line | name | real number line
+EVENT: show | Cantor and Dedekind | correspondence between real numbers and points on the number line | past | +
+SEQ: start with a square of side 1 unit
+SEQ: find the diagonal using the Pythagoras theorem
+SEQ: transfer the square to the number line
+SEQ: draw an arc with centre O and radius OB
+SEQ: the arc meets the number line at √2
+SEQ: construct BD perpendicular to OB
+SEQ: find OD using the Pythagoras theorem
+SEQ: draw an arc with centre O and radius OD
+SEQ: the arc meets the number line at √3
+ASK: irrational number | definition
+ASK: √5 | representation on the number line
+ASK: square root spiral | construction
+PROP: decimal expansion of rational number | type | terminating
+PROP: decimal expansion of rational number | type | non-terminating recurring
+EVENT: become | remainder | zero | present | +
+EVENT: repeat | remainder |  | present | +
+EVENT: terminate | decimal expansion |  | present | +
+EVENT: recur | decimal expansion |  | present | +
+MORPH: become | became | becomes
+MORPH: repeat | repeated | repeats
+MORPH: terminate | terminated | terminates
+MORPH: recur | recurred | recurs
+PROP: terminating decimal expansion | end | finite number of steps
+PROP: non-terminating recurring decimal expansion | property | repeating block of digits
+ASK: decimal expansion | rational number
+ASK: terminating decimal expansion | rational number
+ASK: non-terminating recurring decimal expansion | rational number
+LAW: x = 3142678 / 1000000
+LAW: 9x = 3
+LAW: x = 1 / 3
+LAW: 99x = 126
+LAW: x = 14 / 11
+LAW: 99x = 233 / 10
+LAW: x = 233 / 990
+PROP: decimal expansion of a rational number | type | terminating
+PROP: decimal expansion of a rational number | type | non-terminating recurring
+PROP: decimal expansion of an irrational number | type | non-terminating non-recurring
+EVENT: express | terminating decimal | rational number | present | +
+EVENT: express | non-terminating recurring decimal | rational number | present | +
+EVENT: express | non-terminating non-recurring decimal | irrational number | present | +
+MORPH: express | expressed | expresses
+FACT: √2 | decimal expansion | 1.4142135623730950488016887242096...
+FACT: π | decimal expansion | 3.14159265358979323846264338327950...
+FACT: π | approximate value | 22/7
+PROP: π | equal to 22/7 | false
+EVENT: compute | Archimedes | digits of π | past | +
+EVENT: find | Aryabhatta | value of π correct to four decimal places | past | +
+EVENT: compute | high speed computers and advanced algorithms | digits of π | present | +
+MORPH: compute | computed | computes
+MORPH: find | found | finds
+FACT: Archimedes | lower bound of π | 3.140845
+FACT: Archimedes | upper bound of π | 3.142857
+FACT: Aryabhatta | value of π | 3.1416
+EVENT: generate | s | irrational numbers | present | +
+MORPH: generate | generated | generates
+ASK: irrational number | between 1/7 and 2/7
+EVENT: visualise | real number | number line | present | +
+MORPH: visualise | visualised | visualises
+PROP: every real number | representation | unique point on the number line
+PROP: every point on the number line | representation | one and only one real number
+ASK: 3.765 | representation on the number line
+ASK: 4.26 | representation on the number line
+PROP: rational numbers | property | closed under addition
+PROP: rational numbers | property | closed under subtraction
+PROP: rational numbers | property | closed under multiplication
+PROP: rational numbers | property | closed under division
+PROP: irrational numbers | satisfy | commutative law
+PROP: irrational numbers | satisfy | associative law
+PROP: irrational numbers | satisfy | distributive law
+PROP: sum of a rational number and an irrational number | type | irrational
+PROP: difference of a rational number and an irrational number | type | irrational
+PROP: product of a non-zero rational number and an irrational number | type | irrational
+PROP: quotient of a non-zero rational number and an irrational number | type | irrational
+PROP: result of adding two irrationals | type | rational or irrational
+PROP: result of subtracting two irrationals | type | rational or irrational
+PROP: result of multiplying two irrationals | type | rational or irrational
+PROP: result of dividing two irrationals | type | rational or irrational
+EVENT: satisfy | irrational numbers | commutative law | present | +
+EVENT: satisfy | irrational numbers | associative law | present | +
+EVENT: satisfy | irrational numbers | distributive law | present | +
+MORPH: satisfy | satisfied | satisfies
+PROP: √a | value | positive
+LAW: b² = a
+ASK: irrational numbers | operations
+EVENT: define | √a | b | present | +
+MORPH: define | defined | defines
+LAW: √a = b
+LAW: b * b = a
+PROP: a | property | positive real number
+PROP: b | property | positive
+SEQ: let a be a positive real number
+SEQ: let √a = b
+SEQ: then b² = a
+SEQ: then b is positive
+EVENT: multiply | numerator and denominator | √2 | present | +
+EVENT: locate | 1/√2 | number line | present | +
+MORPH: multiply | multiplied | multiplies
+MORPH: locate | located | locates
+LAW: √2 * √2 = 2
+LAW: 2 / 2 = 1
+LAW: 1 / √2 = √2 / 2
+SEQ: multiply numerator and denominator by √2
+SEQ: obtain the equivalent expression √2/2
+SEQ: locate √2/2 on the number line
+SEQ: √2/2 lies half way between 0 and √2
+EVENT: rationalise | denominator | expression | present | +
+MORPH: rationalise | rationalised | rationalises
+PROP: rationalising the denominator | meaning | converting to an equivalent expression whose denominator is a rational number
+SEQ: identify the square root in the denominator
+SEQ: multiply numerator and denominator by a suitable expression
+SEQ: obtain an equivalent expression
+SEQ: the denominator becomes a rational number
+ASK: denominator | rationalisation
+ASK: 1/(2+√3) | rationalisation
+ASK: 5/(3-√5) | rationalisation
+ASK: 1/(7+3√2) | rationalisation
+PROP: real numbers | satisfy | laws of exponents
+EVENT: satisfy | real numbers | laws of exponents | present | +
+MORPH: satisfy | satisfied | satisfies
+LAW: a^m * a^n = a^(m+n)
+LAW: a^m / a^n = a^(m-n)
+LAW: (a^m)^n = a^(m*n)
+LAW: (a*b)^m = a^m * b^m
+LAW: (a/b)^m = a^m / b^m
+LAW: a^0 = 1
+LAW: a^-m = 1 / a^m
+ASK: laws of exponents | real numbers
+LAW: a^m * a^n = a^(m+n)
+LAW: (a^m)^n = a^(mn)
+LAW: a^m / a^n = a^(m-n)
+LAW: a^m * b^m = (ab)^m
+LAW: a^0 = 1
+LAW: a^-n = 1 / a^n
+LAW: n√a = a^(1/n)
+LAW: a^p * a^q = a^(p+q)
+LAW: (a^p)^q = a^(pq)
+LAW: a^p / a^q = a^(p-q)
+LAW: a^p * b^p = (ab)^p
+EVENT: simplify | laws of exponents | expressions | present | +
+EVENT: extend | laws of exponents | rational exponents | present | +
+EVENT: define | n√a | a^(1/n) | present | +
+MORPH: simplify | simplified | simplifies
+MORPH: extend | extended | extends
+MORPH: define | defined | defines
+PROP: a | role | base
+PROP: m | role | exponent
+PROP: n | role | exponent
+ASK: number | rational or irrational
+ASK: expression | simplification
+ASK: π | irrational
+ASK: 9.3 | representation on the number line
+ASK: denominator | rationalisation
+PROP: rational number | form | p/q
+PROP: irrational number | form | cannot be written as p/q
+PROP: decimal expansion of a rational number | type | terminating or non-terminating recurring
+PROP: decimal expansion of an irrational number | type | non-terminating non-recurring
+PROP: real numbers | composition | rational numbers and irrational numbers
+PROP: every point on the number line | representation | unique real number
+PROP: every real number | representation | unique point on the number line
+PROP: sum of a rational number and an irrational number | type | irrational
+PROP: difference of a rational number and an irrational number | type | irrational
+PROP: product of a non-zero rational number and an irrational number | type | irrational
+PROP: quotient of a non-zero rational number and an irrational number | type | irrational
+SEQ: define n√a as a positive number
+SEQ: write n√a as a^(1/n)
+SEQ: extend the laws of exponents to rational exponents
+SEQ: apply the laws to simplify expressions
+ISA: polynomial | algebraic expression
+ISA: polynomial in one variable | polynomial
+PART: polynomial | term
+PART: term | coefficient
+PART: term | variable
+PART: term | exponent
+EVENT: define | polynomial | algebraic expression | present | +
+MORPH: define | defined | defines
+PROP: exponent of variable | value | non-negative integer
+FACT: constant polynomial | degree | 0
+FACT: zero polynomial | degree | not defined
+EVENT: call | polynomial with one term | monomial | present | +
+EVENT: call | polynomial with two terms | binomial | present | +
+EVENT: call | polynomial with three terms | trinomial | present | +
+MORPH: call | called | calls
+ISA: monomial | polynomial
+ISA: binomial | polynomial
+ISA: trinomial | polynomial
+PART: polynomial | constant term
+PART: polynomial | leading coefficient
+PROP: degree of a polynomial | meaning | highest exponent of the variable
+EVENT: determine | degree | highest exponent | present | +
+MORPH: determine | determined | determines
+ASK: polynomial | degree
+ASK: polynomial | coefficient
+ASK: polynomial | constant term
+ASK: polynomial | leading coefficient
+ASK: expression | polynomial
+ASK: polynomial | monomial
+ASK: polynomial | binomial
+ASK: polynomial | trinomial
+SEQ: identify the terms of the expression
+SEQ: identify the coefficient of each term
+SEQ: identify the exponent of the variable
+SEQ: find the highest exponent
+SEQ: write the degree of the polynomial
+EVENT: denote | polynomial in x | p(x) | present | +
+EVENT: denote | polynomial in x | q(x) | present | +
+EVENT: denote | polynomial in x | r(x) | present | +
+MORPH: denote | denoted | denotes
+PROP: polynomial | number of terms | finite
+EVENT: call | polynomial with one term | monomial | present | +
+EVENT: call | polynomial with two terms | binomial | present | +
+EVENT: call | polynomial with three terms | trinomial | present | +
+ISA: linear polynomial | polynomial
+ISA: quadratic polynomial | polynomial
+ISA: cubic polynomial | polynomial
+FACT: linear polynomial | degree | 1
+FACT: quadratic polynomial | degree | 2
+FACT: cubic polynomial | degree | 3
+PROP: linear polynomial in x | form | ax + b
+PROP: quadratic polynomial in x | form | ax² + bx + c
+PROP: cubic polynomial in x | form | ax³ + bx² + cx + d
+PROP: linear polynomial in x | maximum terms | two
+PROP: quadratic polynomial in one variable | maximum terms | three
+PROP: cubic polynomial in one variable | maximum terms | four
+PROP: polynomial in one variable of degree n | form | anxⁿ + an-1xⁿ⁻¹ + ... + a1x + a0
+EVENT: denote | zero polynomial | 0 | present | +
+PROP: zero polynomial | degree | not defined
+ISA: polynomial in two variables | polynomial
+ISA: polynomial in three variables | polynomial
+EVENT: substitute | x | value | present | +
+EVENT: find | value of polynomial | variable value | present | +
+MORPH: substitute | substituted | substitutes
+MORPH: find | found | finds
+PROP: value of p(x) at x = 1 | value | 4
+PROP: value of p(x) at x = 0 | value | -2
+ASK: polynomial | coefficients
+ASK: polynomial | degree
+ASK: polynomial | classification
+ASK: polynomial | value at given variable
+ASK: zero polynomial | degree
+SEQ: substitute the given value of the variable
+SEQ: simplify the expression
+SEQ: obtain the value of the polynomial
+EVENT: evaluate | polynomial | given value of variable | present | +
+EVENT: replace | variable | given value | present | +
+MORPH: evaluate | evaluated | evaluates
+MORPH: replace | replaced | replaces
+EVENT: call | number c | zero of polynomial p(x) | present | +
+MORPH: call | called | calls
+PROP: zero of polynomial p(x) | condition | p(c) = 0
+PROP: root of polynomial equation p(x) = 0 | meaning | zero of the polynomial
+EVENT: solve | polynomial equation | zero of polynomial | present | +
+MORPH: solve | solved | solves
+PROP: non-zero constant polynomial | zero | none
+PROP: zero polynomial | zeroes | every real number
+PROP: linear polynomial | zeroes | one and only one
+PROP: polynomial | zeroes | more than one
+FACT: p(1) | value | 0
+FACT: p(2) | value | 4
+FACT: p(-2) | value | 0
+EVENT: verify | number | zero of polynomial | present | +
+MORPH: verify | verified | verifies
+LAW: p(x) = (x - a)q(x) + r
+PROP: remainder | degree | less than degree of divisor
+EVENT: divide | polynomial | polynomial | present | +
+EVENT: obtain | division | quotient and remainder | present | +
+MORPH: divide | divided | divides
+MORPH: obtain | obtained | obtains
+LAW: remainder = p(a)
+EVENT: divide | p(x) | x - a | present | +
+EVENT: evaluate | p(a) | remainder | present | +
+PROP: Remainder Theorem | remainder | p(a)
+EVENT: state | Remainder Theorem | theorem | present | +
+MORPH: state | stated | states
+ASK: polynomial | zero
+ASK: polynomial | value at given variable
+ASK: remainder | polynomial division
+ASK: Remainder Theorem | remainder
+SEQ: divide the polynomial by x - a
+SEQ: write p(x) = (x - a)q(x) + r
+SEQ: substitute x = a
+SEQ: obtain p(a) = r
+EVENT: examine | polynomial | factor | present | +
+EVENT: find | value of k | factor | present | +
+MORPH: examine | examined | examines
+LAW: p(a) = 0
+PROP: x - a | factor of p(x) | if p(a) = 0
+PROP: p(a) | value | 0 if x - a is a factor of p(x)
+EVENT: factorise | quadratic polynomial | splitting the middle term | present | +
+EVENT: compare | coefficients | corresponding terms | present | +
+MORPH: factorise | factorised | factorises
+MORPH: compare | compared | compares
+LAW: ax² + bx + c = (px + q)(rx + s)
+LAW: a = pr
+LAW: b = ps + qr
+LAW: c = qs
+LAW: (ps)(qr) = ac
+PROP: b | property | sum of two numbers
+PROP: product of the two numbers | value | ac
+SEQ: write the polynomial as ax² + bx + c
+SEQ: find two numbers whose sum is b
+SEQ: find two numbers whose product is ac
+SEQ: split the middle term
+SEQ: take the common factor
+SEQ: write the polynomial as the product of two factors
+EVENT: use | Factor Theorem | factorise polynomial | present | +
+MORPH: use | used | uses
+EVENT: look | factors of constant term | polynomial | present | +
+MORPH: look | looked | looks
+PROP: constant term | product | ab
+EVENT: factorise | cubic polynomial | present | +
+MORPH: factorise | factorised | factorises
+SEQ: find one factor of the cubic polynomial
+SEQ: divide the polynomial by the factor
+SEQ: factorise the remaining quadratic polynomial
+SEQ: write the polynomial as the product of factors
+ASK: polynomial | factor
+ASK: polynomial | value of k
+ASK: polynomial | factorisation
+EVENT: define | algebraic identity | algebraic equation | present | +
+MORPH: define | defined | defines
+PROP: algebraic identity | property | true for all values of the variables
+LAW: (x + y)^2 = x^2 + 2xy + y^2
+LAW: (x - y)^2 = x^2 - 2xy + y^2
+LAW: x^2 - y^2 = (x + y)(x - y)
+LAW: (x + a)(x + b) = x^2 + (a + b)x + ab
+EVENT: use | algebraic identities | factorise algebraic expressions | present | +
+EVENT: use | algebraic identities | computations | present | +
+MORPH: use | used | uses
+EVENT: find | products | appropriate identities | present | +
+MORPH: find | found | finds
+LAW: (x + 3)^2 = x^2 + 6x + 9
+LAW: (x - 3)(x + 5) = x^2 + 2x - 15
+EVENT: evaluate | expressions | algebraic identities | present | +
+MORPH: evaluate | evaluated | evaluates
+ASK: algebraic identities | product
+ASK: polynomial | factorisation
+ASK: value of k | factor
+ASK: polynomial | factor
+SEQ: identify the appropriate algebraic identity
+SEQ: substitute the required values
+SEQ: simplify the expression
+SEQ: obtain the product
+LAW: (x + y + z)^2 = x^2 + y^2 + z^2 + 2xy + 2yz + 2zx
+PROP: expanded form of (x + y + z)^2 | square terms | three
+PROP: expanded form of (x + y + z)^2 | product terms | three
+EVENT: call | right hand side expression | expanded form | present | +
+MORPH: call | called | calls
+EVENT: expand | (x + y + z)^2 | expression | present | +
+MORPH: expand | expanded | expands
+LAW: (x + y)^3 = x^3 + 3x^2y + 3xy^2 + y^3
+LAW: (x + y)^3 = x^3 + y^3 + 3xy(x + y)
+LAW: x^3 + y^3 + z^3 - 3xyz = (x + y + z)(x^2 + y^2 + z^2 - xy - yz - zx)
+EVENT: factorise | expression | Identity V | present | +
+EVENT: factorise | expression | Identity VI | present | +
+EVENT: factorise | expression | Identity VIII | present | +
+MORPH: factorise | factorised | factorises
+SEQ: compare the given expression with the identity
+SEQ: substitute the corresponding terms
+SEQ: apply the identity
+SEQ: simplify the expression
+ASK: algebraic identity | expanded form
+ASK: expression | factorisation using identities
+ASK: product | suitable identities
+ISA: coordinate geometry | branch of Mathematics
+ISA: Cartesian system | system
+ISA: René Déscartes | philosopher
+ISA: René Déscartes | mathematician
+PROP: coordinate geometry | importance | very important
+PROP: Cartesian system | purpose | describing the position of a point in a plane
+EVENT: represent | position of an object | two perpendicular lines | present | +
+EVENT: represent | position of a point in a plane | Cartesian system | present | +
+EVENT: introduce | chapter | basic concepts of coordinate geometry | present | +
+EVENT: develop | René Déscartes | Cartesian system | past | +
+EVENT: solve | René Déscartes | problem of describing the position of a point in a plane | past | +
+EVENT: develop | method | idea of latitude and longitude | past | +
+MORPH: represent | represented | represents
+MORPH: introduce | introduced | introduces
+MORPH: develop | developed | develops
+MORPH: solve | solved | solves
+PROP: dot | position | distance from bottom line and left edge of the paper
+PROP: seating plan | position | column number and row number
+SEQ: draw two perpendicular lines
+SEQ: measure the distance from each line
+SEQ: describe the position of the point
+SEQ: represent the position using the Cartesian system
+ASK: table lamp | position
+ASK: point in a plane | position
+ASK: street plan | position
+ISA: Cartesian plane | coordinate plane
+ISA: xy-plane | coordinate plane
+PART: coordinate plane | x-axis
+PART: coordinate plane | y-axis
+PART: coordinate plane | quadrants
+PART: coordinate plane | origin
+PROP: x-axis | direction | horizontal
+PROP: y-axis | direction | vertical
+PROP: coordinate axes | number | two
+FACT: quadrants | number | 4
+FACT: origin | coordinates | (0,0)
+PROP: point on the x-axis | coordinates | (x,0)
+PROP: point on the y-axis | coordinates | (0,y)
+PROP: first quadrant | coordinates | (+,+)
+PROP: second quadrant | coordinates | (-,+)
+PROP: third quadrant | coordinates | (-,-)
+PROP: fourth quadrant | coordinates | (+,-)
+PROP: x-coordinate | name | abscissa
+PROP: y-coordinate | name | ordinate
+PROP: coordinates of a point | form | (x,y)
+EVENT: divide | coordinate axes | coordinate plane | present | +
+EVENT: call | point of intersection of the axes | origin | present | +
+EVENT: call | distance from the y-axis | x-coordinate | present | +
+EVENT: call | distance from the x-axis | y-coordinate | present | +
+EVENT: call | x-coordinate | abscissa | present | +
+EVENT: call | y-coordinate | ordinate | present | +
+EVENT: plot | point | coordinate plane | present | +
+MORPH: divide | divided | divides
+MORPH: plot | plotted | plots
+FACT: coordinates of P | value | (4,3)
+FACT: coordinates of Q | value | (-6,-2)
+PROP: ordered pair | property | order is important
+PROP: (x,y) | equal to (y,x) | if x = y
+PROP: (x,y) | equal to (y,x) | false if x ≠ y
+SEQ: draw the coordinate axes
+SEQ: count the x-coordinate on the x-axis
+SEQ: move parallel to the y-axis
+SEQ: mark the point
+ASK: point | coordinates
+ASK: point | quadrant
+ASK: point | plotting
+ASK: origin | coordinates
+ISA: coordinate plane | Cartesian plane
+PART: coordinate plane | coordinate axes
+PART: coordinate axes | x-axis
+PART: coordinate axes | y-axis
+PROP: x-axis | direction | horizontal
+PROP: y-axis | direction | vertical
+EVENT: divide | coordinate axes | coordinate plane | present | +
+EVENT: call | four parts of the coordinate plane | quadrants | present | +
+EVENT: call | point of intersection of the axes | origin | present | +
+EVENT: call | x-coordinate | abscissa | present | +
+EVENT: call | y-coordinate | ordinate | present | +
+MORPH: divide | divided | divides
+MORPH: call | called | calls
+FACT: quadrants | number | 4
+FACT: origin | coordinates | (0,0)
+PROP: point on x-axis | coordinates | (x,0)
+PROP: point on y-axis | coordinates | (0,y)
+PROP: first quadrant | coordinates | (+,+)
+PROP: second quadrant | coordinates | (-,+)
+PROP: third quadrant | coordinates | (-,-)
+PROP: fourth quadrant | coordinates | (+,-)
+PROP: coordinates | form | ordered pair
+PROP: ordered pair | property | order is important
+PROP: (x,y) | equal to (y,x) | if x = y
+PROP: (x,y) | equal to (y,x) | false if x ≠ y
+EVENT: locate | point | coordinate plane | present | +
+EVENT: plot | ordered pair | coordinate plane | present | +
+MORPH: locate | located | locates
+MORPH: plot | plotted | plots
+SEQ: draw the x-axis and the y-axis
+SEQ: locate the x-coordinate on the x-axis
+SEQ: move parallel to the y-axis
+SEQ: mark the point in the coordinate plane
+ASK: point | quadrant
+ASK: point | coordinates
+ASK: ordered pair | plotting
+ASK: origin | coordinates
+ISA: linear equation in one variable | equation
+ISA: linear equation in two variables | equation
+PROP: linear equation in one variable | solution | unique
+PROP: linear equation in two variables | variables | two
+EVENT: recall | chapter | linear equations in one variable | present | +
+EVENT: extend | knowledge of linear equations in one variable | linear equations in two variables | present | +
+MORPH: recall | recalled | recalls
+MORPH: extend | extended | extends
+PROP: linear equation in two variables | form | ax + by + c = 0
+PROP: a | type | real number
+PROP: b | type | real number
+PROP: c | type | real number
+PROP: a and b | property | not both zero
+EVENT: call | equation of the form ax + by + c = 0 | linear equation in two variables | present | +
+MORPH: call | called | calls
+EVENT: represent | score of one batsman | x | present | +
+EVENT: represent | score of the other batsman | y | present | +
+MORPH: represent | represented | represents
+LAW: x + y = 176
+EVENT: satisfy | ordered pair | linear equation | present | +
+MORPH: satisfy | satisfied | satisfies
+PROP: solution of a linear equation in two variables | form | ordered pair
+FACT: equation | solution | (3,2)
+FACT: equation | solution | (0,4)
+EVENT: substitute | values of x and y | equation | present | +
+MORPH: substitute | substituted | substitutes
+ASK: linear equation in two variables | solution
+ASK: linear equation in two variables | graph
+ASK: equation | ax + by + c = 0
+SEQ: choose values of x and y
+SEQ: substitute the values in the equation
+SEQ: check whether the equation is satisfied
+SEQ: write the solution as an ordered pair
+PROP: linear equation in two variables | solutions | infinitely many
+PROP: graph of a linear equation in two variables | shape | straight line
+PROP: x = 0 | equation | y-axis
+PROP: y = 0 | equation | x-axis
+PROP: graph of x = a | position | parallel to the y-axis
+PROP: graph of y = a | position | parallel to the x-axis
+PROP: equation of the type y = mx | graph | line passing through the origin
+EVENT: plot | solutions | graph paper | present | +
+EVENT: join | plotted points | line | present | +
+EVENT: represent | linear equation in two variables | straight line | present | +
+EVENT: satisfy | every point on the graph | linear equation | present | +
+EVENT: represent | every solution | point on the graph | present | +
+MORPH: plot | plotted | plots
+MORPH: join | joined | joins
+MORPH: represent | represented | represents
+MORPH: satisfy | satisfied | satisfies
+FACT: line AB | point | (0,3)
+FACT: line AB | point | (2,2)
+FACT: line AB | point | (4,1)
+FACT: line AB | point | (6,0)
+FACT: line AB | point | (8,-1)
+PROP: point not on the line | property | not a solution
+SEQ: find two solutions of the linear equation
+SEQ: plot the two points on the graph paper
+SEQ: join the two points by a line
+SEQ: check that every point on the line satisfies the equation
+ASK: linear equation in two variables | graph
+ASK: x = a | graph
+ASK: y = a | graph
+ASK: y = mx | graph
+ASK: y = 3 | geometric representation
+ASK: 2x + 9 = 0 | geometric representation
+ISA: point | geometrical object
+ISA: line | geometrical object
+ISA: surface | geometrical object
+ISA: plane surface | surface
+ISA: solid | geometrical object
+PART: solid | surface
+PART: surface | line
+PART: line | point
+FACT: solid | dimensions | 3
+FACT: surface | dimensions | 2
+FACT: line | dimensions | 1
+FACT: point | dimensions | 0
+PROP: point | property | has no part
+PROP: line | property | breadthless length
+PROP: straight line | property | lies evenly with the points on itself
+PROP: surface | property | has length and breadth only
+PROP: plane surface | property | lies evenly with the straight lines on itself
+EVENT: separate | surfaces | space | present | +
+EVENT: end | lines | points | present | +
+EVENT: lose | each step | one dimension | present | +
+EVENT: summarise | Euclid | statements as definitions | past | +
+MORPH: separate | separated | separates
+MORPH: end | ended | ends
+MORPH: lose | lost | loses
+MORPH: summarise | summarised | summarises
+SEQ: a solid has surfaces
+SEQ: the boundaries of the surfaces are lines
+SEQ: the lines end in points
+SEQ: each step loses one dimension
+ASK: point | definition
+ASK: line | definition
+ASK: surface | definition
+ASK: plane surface | definition
+PROP: postulates | property | self-evident truths
+PROP: postulates | property | not proved
+PROP: axioms | property | self-evident truths
+PROP: axioms | property | not proved
+PROP: postulates | usage | interchangeable with axioms
+PROP: system of axioms | property | consistent
+PROP: theorem | property | proved statement
+PROP: proposition | property | proved statement
+EVENT: accept | self-evident truths | without proof | present | +
+EVENT: use | Euclid | postulates and axioms | past | +
+EVENT: prove | Euclid | propositions | past | +
+EVENT: apply | Euclid | deductive reasoning | past | +
+EVENT: deduce | Euclid | 465 propositions | past | +
+MORPH: accept | accepted | accepts
+MORPH: use | used | uses
+MORPH: prove | proved | proves
+MORPH: apply | applied | applies
+MORPH: deduce | deduced | deduces
+FACT: Euclid | propositions | 465
+LAW: AC = AB + BC
+PROP: two distinct lines | common points | not more than one
+EVENT: intersect | two distinct lines | one point | present | +
+MORPH: intersect | intersected | intersects
+ASK: line | more than one common point
+ASK: parallel lines | definition
+ASK: perpendicular lines | definition
+ASK: line segment | definition
+ASK: radius of a circle | definition
+ASK: square | definition
+SEQ: assume two distinct lines pass through two distinct points
+SEQ: compare the assumption with the axiom
+SEQ: the assumption clashes with the axiom
+SEQ: conclude that two distinct lines cannot have more than one point in common
+PROP: point | status | undefined term
+PROP: line | status | undefined term
+PROP: plane | status | undefined term
+PROP: axiom | property | obvious universal truth
+PROP: postulate | property | obvious universal truth
+PROP: theorem | property | proved statement
+EVENT: prove | theorem | using definitions, axioms, previously proved statements and deductive reasoning | present | +
+MORPH: prove | proved | proves
+PROP: things equal to the same thing | relation | equal to one another
+PROP: equals added to equals | result | wholes are equal
+PROP: equals subtracted from equals | result | remainders are equal
+PROP: things which coincide with one another | relation | equal to one another
+PROP: whole | relation | greater than the part
+PROP: things double of the same things | relation | equal to one another
+PROP: things halves of the same things | relation | equal to one another
+EVENT: draw | straight line | from any one point to any other point | present | +
+EVENT: produce | terminated line | indefinitely | present | +
+EVENT: draw | circle | with any centre and any radius | present | +
+MORPH: draw | drew | draws
+MORPH: produce | produced | produces
+PROP: all right angles | relation | equal to one another
+EVENT: meet | two straight lines | if interior angles are less than two right angles | present | +
+MORPH: meet | met | meets
+PROP: equivalent version of Euclid's fifth postulate | statement | for every line l and every point P not lying on l there exists a unique line m passing through P and parallel to l
+PROP: equivalent version of Euclid's fifth postulate | statement | two distinct intersecting lines cannot be parallel to the same line
+EVENT: fail | attempts to prove Euclid's fifth postulate |  | past | +
+EVENT: lead | attempts to prove Euclid's fifth postulate | discovery of non-Euclidean geometries | past | +
+MORPH: fail | failed | fails
+MORPH: lead | led | leads
+ASK: Euclid's fifth postulate | easier form
+ASK: Euclid's fifth postulate | existence of parallel lines
+PROP: Euclid's fifth postulate | property | very significant in the history of mathematics
+PROP: sum of the interior angles on the same side | value | 180°
+PROP: Playfair's axiom | property | equivalent version of Euclid's fifth postulate
+ISA: Playfair's axiom | axiom
+EVENT: exist | unique line m | through P and parallel to l | present | +
+MORPH: exist | existed | exists
+PROP: two lines parallel to one another | property | everywhere equidistant
+EVENT: prove | mathematicians | Euclid's fifth postulate | past | -
+EVENT: lead | failed attempts | creation of non-Euclidean geometries | past | +
+MORPH: lead | led | leads
+PROP: non-Euclidean geometries | property | different from Euclidean geometry
+PROP: spherical geometry | type | non-Euclidean geometry
+PROP: spherical geometry | lines | parts of great circles
+PROP: Euclidean geometry | validity | figures in the plane
+PROP: Euclidean geometry | validity on curved surfaces | fails
+EVENT: meet | lines AN and BN | each other | present | +
+MORPH: meet | met | meets
+FACT: first 28 theorems | fifth postulate required | no
+FACT: angle A + angle B | value | greater than 180°
+FACT: 90° + 90° | value | 180°
+EVENT: consider | statement | pair of straight lines everywhere equidistant | present | +
+EVENT: know | Playfair's axiom | unique line through P parallel to l | present | +
+EVENT: measure | distance of a point from a line | length of the perpendicular | present | +
+MORPH: consider | considered | considers
+MORPH: know | knew | knows
+MORPH: measure | measured | measures
+PROP: distance of a point from a line | meaning | length of the perpendicular
+ASK: Euclid's fifth postulate | equivalent version
+ASK: pair of straight lines | everywhere equidistant
+SEQ: take any line l and a point P not on l
+SEQ: draw the unique line m through P parallel to l
+SEQ: measure the perpendicular distance between the lines
+SEQ: conclude that the two lines are everywhere equidistant
+ISA: intersecting lines | lines
+ISA: parallel lines | lines
+ISA: transversal | line
+PART: linear pair | angle
+PROP: intersecting lines | property | meet at one point
+PROP: parallel lines | property | do not intersect
+PROP: distance between two parallel lines | property | equal everywhere
+EVENT: intersect | intersecting lines | one point | present | +
+EVENT: extend | line | indefinitely in both directions | present | +
+MORPH: intersect | intersected | intersects
+MORPH: extend | extended | extends
+LAW: ∠AOC + ∠BOC = 180°
+PROP: linear pair of angles | sum | 180°
+EVENT: form | ray standing on a line | linear pair | present | +
+MORPH: form | formed | forms
+PROP: vertically opposite angles | property | equal
+EVENT: intersect | two lines | four angles | present | +
+MORPH: intersect | intersected | intersects
+LAW: vertically opposite angles = equal
+PROP: corresponding angles | property | equal if a transversal intersects two parallel lines
+PROP: alternate interior angles | property | equal if a transversal intersects two parallel lines
+PROP: interior angles on the same side of the transversal | property | supplementary
+EVENT: intersect | transversal | two parallel lines | present | +
+MORPH: intersect | intersected | intersects
+LAW: corresponding angles = equal
+LAW: alternate interior angles = equal
+LAW: interior angles on the same side = 180°
+PROP: two lines | property | parallel if corresponding angles are equal
+PROP: two lines | property | parallel if alternate interior angles are equal
+PROP: two lines | property | parallel if interior angles on the same side are supplementary
+PROP: lines parallel to the same line | property | parallel to each other
+EVENT: prove | lines parallel to the same line | parallel to each other | present | +
+MORPH: prove | proved | proves
+ASK: intersecting lines | definition
+ASK: parallel lines | definition
+ASK: corresponding angles | relation
+ASK: alternate interior angles | relation
+ASK: interior angles on the same side | relation
+ASK: lines parallel to the same line | relation
+SEQ: draw two parallel lines
+SEQ: draw a transversal
+SEQ: identify the corresponding angles
+SEQ: compare the corresponding angles
+SEQ: conclude that the lines are parallel
+ISA: triangle | polygon
+PART: triangle | three sides
+PART: triangle | three angles
+FACT: triangle | sides | 3
+FACT: triangle | angles | 3
+LAW: ∠A + ∠B + ∠C = 180°
+PROP: angle sum of a triangle | value | 180°
+EVENT: form | three angles of a triangle | 180° | present | +
+MORPH: form | formed | forms
+EVENT: draw | line through a vertex parallel to the opposite side | present | +
+MORPH: draw | drew | draws
+PROP: alternate interior angles | property | equal
+EVENT: use | alternate interior angles | prove angle sum property | present | +
+MORPH: use | used | uses
+EVENT: prove | angle sum property of a triangle | theorem | present | +
+MORPH: prove | proved | proves
+PROP: exterior angle of a triangle | value | sum of two interior opposite angles
+LAW: exterior angle = interior opposite angle + interior opposite angle
+EVENT: equal | exterior angle | sum of two interior opposite angles | present | +
+MORPH: equal | equalled | equals
+ASK: triangle | angle sum property
+ASK: exterior angle | property
+SEQ: draw a line through a vertex parallel to the opposite side
+SEQ: identify the alternate interior angles
+SEQ: use the straight angle
+SEQ: conclude that the sum of the three angles of the triangle is 180°
+ISA: congruent triangles | triangles
+PROP: congruent triangles | property | same shape and same size
+EVENT: coincide | congruent triangles | completely | present | +
+MORPH: coincide | coincided | coincides
+PART: congruent triangles | corresponding sides
+PART: congruent triangles | corresponding angles
+PART: congruent triangles | corresponding vertices
+PROP: corresponding parts of congruent triangles | property | equal
+EVENT: write | corresponding parts of congruent triangles | CPCT | present | +
+MORPH: write | wrote | writes
+PROP: one side | property | not sufficient for congruence
+PROP: one side and one angle | property | not sufficient for congruence
+PROP: two sides and the included angle | property | sufficient for congruence
+ISA: SAS congruence rule | axiom
+EVENT: satisfy | two triangles | SAS congruence rule | present | +
+MORPH: satisfy | satisfied | satisfies
+PROP: SAS congruence rule | condition | two sides and the included angle are equal
+EVENT: state | SAS congruence rule | axiom | present | +
+MORPH: state | stated | states
+EVENT: prove | triangles | congruent by SAS | present | +
+MORPH: prove | proved | proves
+EVENT: conclude | corresponding parts | equal | present | +
+MORPH: conclude | concluded | concludes
+ASK: congruent triangles | corresponding parts
+ASK: SAS congruence rule | condition
+ASK: triangles | congruence
+SEQ: compare two sides of the two triangles
+SEQ: compare the included angle
+SEQ: apply the SAS congruence rule
+SEQ: conclude that the triangles are congruent
+SEQ: use corresponding parts of congruent triangles
+PROP: two angles and the included side | property | sufficient for congruence
+ISA: ASA congruence rule | theorem
+EVENT: state | ASA congruence rule | theorem | present | +
+MORPH: state | stated | states
+PROP: ASA congruence rule | condition | two angles and the included side are equal
+EVENT: prove | triangles | congruent by ASA | present | +
+MORPH: prove | proved | proves
+PROP: two angles and one corresponding side | property | sufficient for congruence
+ISA: AAS congruence rule | congruence rule
+PROP: AAS congruence rule | condition | two angles and one corresponding side are equal
+EVENT: call | congruence rule | AAS congruence rule | present | +
+MORPH: call | called | calls
+PROP: three angles | property | not sufficient for congruence
+PROP: three sides | property | sufficient for congruence
+ISA: SSS congruence rule | theorem
+PROP: SSS congruence rule | condition | three sides are equal
+EVENT: state | SSS congruence rule | theorem | present | +
+MORPH: state | stated | states
+EVENT: prove | triangles | congruent by SSS | present | +
+MORPH: prove | proved | proves
+ISA: RHS congruence rule | theorem
+PROP: RHS | meaning | Right angle-Hypotenuse-Side
+PROP: RHS congruence rule | condition | hypotenuse and one side are equal
+EVENT: state | RHS congruence rule | theorem | present | +
+EVENT: prove | right triangles | congruent by RHS | present | +
+MORPH: prove | proved | proves
+PROP: right angle | property | not the included angle in RHS
+ASK: ASA congruence rule | condition
+ASK: AAS congruence rule | condition
+ASK: SSS congruence rule | condition
+ASK: RHS congruence rule | condition
+SEQ: compare the corresponding parts of the two triangles
+SEQ: identify the applicable congruence rule
+SEQ: apply the congruence rule
+SEQ: conclude that the triangles are congruent
+ISA: isosceles triangle | triangle
+ISA: equilateral triangle | triangle
+PROP: isosceles triangle | property | two sides are equal
+PROP: equilateral triangle | property | three sides are equal
+EVENT: construct | altitude | isosceles triangle | present | +
+MORPH: construct | constructed | constructs
+EVENT: divide | isosceles triangle | two congruent triangles | present | +
+MORPH: divide | divided | divides
+EVENT: prove | base angles of an isosceles triangle | equal | present | +
+MORPH: prove | proved | proves
+PROP: angles opposite equal sides | property | equal
+EVENT: equal | angles opposite equal sides | each other | present | +
+MORPH: equal | equalled | equals
+PROP: sides opposite equal angles | property | equal
+EVENT: equal | sides opposite equal angles | each other | present | +
+MORPH: equal | equalled | equals
+FACT: each angle of an equilateral triangle | measure | 60°
+PROP: equilateral triangle | property | equiangular
+EVENT: conclude | equilateral triangle | equiangular | present | +
+MORPH: conclude | concluded | concludes
+ASK: isosceles triangle | base angles
+ASK: equal sides | opposite angles
+ASK: equal angles | opposite sides
+ASK: equilateral triangle | angle
+SEQ: construct the altitude of the isosceles triangle
+SEQ: identify the two congruent triangles
+SEQ: use congruent parts
+SEQ: conclude that the base angles are equal
+PROP: angle opposite the longer side | property | larger
+PROP: side opposite the larger angle | property | longer
+PROP: sum of any two sides of a triangle | property | greater than the third side
+EVENT: compare | angle opposite the longer side | other angle | present | +
+EVENT: compare | side opposite the larger angle | other side | present | +
+EVENT: add | any two sides of a triangle | third side | present | +
+MORPH: compare | compared | compares
+MORPH: add | added | adds
+LAW: side₁ + side₂ > side₃
+EVENT: construct | triangle | three given sides | present | +
+MORPH: construct | constructed | constructs
+PROP: set of three lengths | property | satisfies triangle inequality
+PROP: triangle | existence | if the three lengths satisfy triangle inequality
+EVENT: satisfy | three lengths | triangle inequality | present | +
+MORPH: satisfy | satisfied | satisfies
+EVENT: exist | triangle | when the three lengths satisfy triangle inequality | present | +
+MORPH: exist | existed | exists
+ASK: triangle | triangle inequality
+ASK: longer side | opposite angle
+ASK: larger angle | opposite side
+ASK: three lengths | triangle
+SEQ: compare the lengths of the three sides
+SEQ: add any two sides
+SEQ: compare the sum with the third side
+SEQ: conclude whether a triangle can be constructed
+ISA: quadrilateral | polygon
+PART: quadrilateral | four sides
+PART: quadrilateral | four angles
+PART: quadrilateral | four vertices
+PART: quadrilateral | two diagonals
+FACT: quadrilateral | sides | 4
+FACT: quadrilateral | angles | 4
+FACT: quadrilateral | vertices | 4
+FACT: quadrilateral | diagonals | 2
+LAW: ∠A + ∠B + ∠C + ∠D = 360°
+PROP: angle sum of a quadrilateral | value | 360°
+EVENT: draw | diagonal | quadrilateral | present | +
+EVENT: divide | quadrilateral | two triangles | present | +
+EVENT: use | angle sum property of triangles | angle sum of a quadrilateral | present | +
+EVENT: prove | angle sum property of a quadrilateral | theorem | present | +
+MORPH: draw | drew | draws
+MORPH: divide | divided | divides
+MORPH: use | used | uses
+MORPH: prove | proved | proves
+SEQ: draw a diagonal of the quadrilateral
+SEQ: divide the quadrilateral into two triangles
+SEQ: apply the angle sum property of each triangle
+SEQ: conclude that the sum of the angles of the quadrilateral is 360°
+ASK: quadrilateral | angle sum property
+ASK: quadrilateral | diagonals
+ASK: quadrilateral | angles
+ISA: trapezium | quadrilateral
+ISA: parallelogram | quadrilateral
+ISA: rectangle | parallelogram
+ISA: rhombus | parallelogram
+ISA: square | rectangle
+ISA: square | rhombus
+ISA: square | parallelogram
+ISA: kite | quadrilateral
+PART: quadrilateral | opposite sides
+PART: quadrilateral | adjacent sides
+PROP: trapezium | opposite sides | one pair parallel
+PROP: parallelogram | opposite sides | both pairs parallel
+PROP: rectangle | property | one angle is a right angle
+PROP: rhombus | property | all sides equal
+PROP: square | property | all sides equal
+PROP: square | property | one angle is a right angle
+PROP: kite | property | two pairs of adjacent sides are equal
+PROP: kite | property | not a parallelogram
+PROP: parallelogram | property | trapezium
+PROP: trapezium | property | not a parallelogram
+PROP: rectangle | property | not a square
+PROP: rhombus | property | not a square
+EVENT: call | quadrilateral with one pair of opposite sides parallel | trapezium | present | +
+EVENT: call | quadrilateral with both pairs of opposite sides parallel | parallelogram | present | +
+EVENT: call | parallelogram with one right angle | rectangle | present | +
+EVENT: call | parallelogram with all sides equal | rhombus | present | +
+EVENT: call | parallelogram with all sides equal and one right angle | square | present | +
+EVENT: call | quadrilateral with two pairs of adjacent sides equal | kite | present | +
+MORPH: call | called | calls
+ASK: trapezium | definition
+ASK: parallelogram | definition
+ASK: rectangle | definition
+ASK: rhombus | definition
+ASK: square | definition
+ASK: kite | definition
+PROP: opposite sides of a parallelogram | property | equal
+PROP: opposite angles of a parallelogram | property | equal
+PROP: adjacent angles of a parallelogram | property | supplementary
+PROP: diagonals of a parallelogram | property | bisect each other
+EVENT: prove | opposite sides of a parallelogram | equal | present | +
+EVENT: prove | opposite angles of a parallelogram | equal | present | +
+EVENT: prove | diagonals of a parallelogram | bisect each other | present | +
+MORPH: prove | proved | proves
+LAW: adjacent angle₁ + adjacent angle₂ = 180°
+EVENT: bisect | diagonals | each other | present | +
+MORPH: bisect | bisected | bisects
+PROP: quadrilateral | property | parallelogram if opposite sides are equal
+PROP: quadrilateral | property | parallelogram if opposite angles are equal
+PROP: quadrilateral | property | parallelogram if diagonals bisect each other
+PROP: quadrilateral | property | parallelogram if one pair of opposite sides is equal and parallel
+EVENT: become | quadrilateral | parallelogram | present | +
+MORPH: become | became | becomes
+ASK: parallelogram | opposite sides
+ASK: parallelogram | opposite angles
+ASK: parallelogram | diagonals
+ASK: quadrilateral | condition for parallelogram
+SEQ: draw a diagonal of the parallelogram
+SEQ: identify the congruent triangles
+SEQ: use corresponding parts of congruent triangles
+SEQ: conclude the required property of the parallelogram
+ISA: rectangle | parallelogram
+ISA: rhombus | parallelogram
+ISA: square | rectangle
+ISA: square | rhombus
+PROP: rectangle | angles | all right angles
+PROP: rectangle | opposite sides | equal
+PROP: rectangle | opposite sides | parallel
+PROP: diagonals of a rectangle | property | equal
+PROP: diagonals of a rectangle | property | bisect each other
+EVENT: bisect | diagonals of a rectangle | each other | present | +
+MORPH: bisect | bisected | bisects
+PROP: rhombus | sides | all equal
+PROP: rhombus | opposite sides | parallel
+PROP: opposite angles of a rhombus | property | equal
+PROP: adjacent angles of a rhombus | property | supplementary
+PROP: diagonals of a rhombus | property | bisect each other
+PROP: diagonals of a rhombus | property | bisect the angles
+PROP: diagonals of a rhombus | property | perpendicular
+EVENT: bisect | diagonals of a rhombus | each other | present | +
+EVENT: bisect | diagonals of a rhombus | angles | present | +
+EVENT: intersect | diagonals of a rhombus | right angle | present | +
+PROP: square | sides | all equal
+PROP: square | angles | all right angles
+PROP: opposite sides of a square | property | parallel
+PROP: diagonals of a square | property | equal
+PROP: diagonals of a square | property | bisect each other
+PROP: diagonals of a square | property | perpendicular
+PROP: diagonals of a square | property | bisect the angles
+EVENT: bisect | diagonals of a square | each other | present | +
+EVENT: bisect | diagonals of a square | angles | present | +
+EVENT: intersect | diagonals of a square | right angle | present | +
+ASK: rectangle | properties
+ASK: rhombus | properties
+ASK: square | properties
+ASK: diagonals of a rectangle | properties
+ASK: diagonals of a rhombus | properties
+ASK: diagonals of a square | properties
+ISA: midpoint theorem | theorem
+PART: triangle | midpoint
+PROP: midpoint | property | divides a line segment into two equal parts
+EVENT: join | midpoints of two sides of a triangle | line segment | present | +
+MORPH: join | joined | joins
+PROP: line segment joining the midpoints of two sides of a triangle | property | parallel to the third side
+PROP: line segment joining the midpoints of two sides of a triangle | length | half of the third side
+EVENT: prove | midpoint theorem | theorem | present | +
+MORPH: prove | proved | proves
+EVENT: draw | line through the midpoint parallel to the third side | present | +
+MORPH: draw | drew | draws
+EVENT: bisect | third side | midpoint | present | +
+MORPH: bisect | bisected | bisects
+PROP: line through the midpoint of one side parallel to another side | property | bisects the third side
+EVENT: state | converse of the midpoint theorem | theorem | present | +
+MORPH: state | stated | states
+LAW: midpoint segment = third side / 2
+PROP: converse of the midpoint theorem | condition | line through the midpoint of one side parallel to another side bisects the third side
+ASK: midpoint theorem | statement
+ASK: converse of the midpoint theorem | statement
+ASK: line joining the midpoints of two sides | relation to the third side
+ASK: midpoint segment | length
+SEQ: identify the midpoints of two sides
+SEQ: join the two midpoints
+SEQ: show that the line segment is parallel to the third side
+SEQ: conclude that the line segment is half of the third side
+ISA: parallelogram | quadrilateral
+ISA: triangle | polygon
+PART: parallelogram | base
+PART: parallelogram | corresponding altitude
+PROP: parallelograms on the same base and between the same parallels | property | equal in area
+EVENT: compare | parallelograms on the same base and between the same parallels | areas | present | +
+MORPH: compare | compared | compares
+PROP: area of a parallelogram | property | product of base and corresponding altitude
+LAW: area of parallelogram = base * corresponding altitude
+EVENT: calculate | area of a parallelogram | base and corresponding altitude | present | +
+MORPH: calculate | calculated | calculates
+PROP: area of a triangle | property | half the product of base and corresponding altitude
+LAW: area of triangle = (base * corresponding altitude) / 2
+EVENT: calculate | area of a triangle | base and corresponding altitude | present | +
+MORPH: calculate | calculated | calculates
+PROP: triangles on the same base and between the same parallels | property | equal in area
+EVENT: compare | triangles on the same base and between the same parallels | areas | present | +
+LAW: area of triangle = area of parallelogram / 2
+ASK: parallelogram | area
+ASK: triangle | area
+ASK: parallelograms on the same base | area
+ASK: triangles on the same base | area
+SEQ: identify the base
+SEQ: draw the corresponding altitude
+SEQ: measure the base and altitude
+SEQ: calculate the area using the formula
+PROP: two congruent figures | property | equal areas
+PROP: converse of equal areas | property | not true
+PROP: area of a figure | meaning | part of the plane enclosed by the figure
+EVENT: associate | area | enclosed part of the plane | present | +
+MORPH: associate | associated | associates
+PROP: planar region | property | made up of non-overlapping planar regions
+LAW: ar(T) = ar(P) + ar(Q)
+EVENT: form | planar region T | planar regions P and Q | present | +
+MORPH: form | formed | forms
+PROP: two figures on the same base and between the same parallels | property | common base and opposite vertices on a line parallel to the base
+PROP: parallelograms on the same base and between the same parallels | property | equal in area
+PROP: parallelograms on the same base and equal in area | property | lie between the same parallels
+PROP: triangle and parallelogram on the same base and between the same parallels | property | triangle has half the area of the parallelogram
+LAW: area of triangle = area of parallelogram / 2
+PROP: triangles on the same base and between the same parallels | property | equal in area
+PROP: triangles on the same base and equal in area | property | lie between the same parallels
+PROP: median of a triangle | property | divides the triangle into two triangles of equal areas
+EVENT: divide | median of a triangle | triangle into two triangles of equal areas | present | +
+MORPH: divide | divided | divides
+ASK: congruent figures | area
+ASK: figures on the same base | area
+ASK: median of a triangle | equal areas
+ASK: triangles on the same base | area
+ISA: circle | plane figure
+PART: circle | centre
+PART: circle | radius
+PART: circle | diameter
+PART: circle | chord
+PART: circle | arc
+PART: circle | segment
+PART: circle | sector
+PROP: circle | property | collection of all points in a plane equidistant from a fixed point
+PROP: centre | property | fixed point
+PROP: radius | property | line segment joining the centre to a point on the circle
+PROP: diameter | property | chord passing through the centre
+PROP: longest chord of a circle | property | diameter
+LAW: diameter = 2 * radius
+PROP: major arc | property | longer arc
+PROP: minor arc | property | shorter arc
+PROP: semicircle | property | arc whose ends are the ends of a diameter
+PROP: circumference | property | length of the complete circle
+PROP: segment | property | region between an arc and a chord
+PROP: sector | property | region between an arc and two radii
+EVENT: join | centre | point on the circle | present | +
+EVENT: pass | diameter | centre | present | +
+EVENT: divide | circle | plane into two parts | present | +
+MORPH: join | joined | joins
+MORPH: pass | passed | passes
+MORPH: divide | divided | divides
+FACT: circle | diameters | infinitely many
+ASK: circle | centre
+ASK: diameter | longest chord
+ASK: arc | semicircle
+ASK: segment | definition
+ASK: sector | definition
+SEQ: choose a fixed point as the centre
+SEQ: keep all points at the same distance from the centre
+SEQ: obtain the circle
+ISA: geometrical construction | process
+PART: geometry box | graduated scale
+PART: geometry box | set-squares
+PART: geometry box | dividers
+PART: geometry box | compasses
+PART: geometry box | protractor
+PROP: geometrical construction | instruments | ungraduated ruler and compass
+PROP: ungraduated ruler | name | straight edge
+EVENT: draw | geometrical figure | ruler and compass | present | +
+EVENT: use | graduated scale and protractor | measurements | present | +
+MORPH: draw | drew | draws
+MORPH: use | used | uses
+EVENT: construct | bisector of a given angle | present | +
+MORPH: construct | constructed | constructs
+EVENT: draw | arc | present | +
+EVENT: intersect | arcs | point F | present | +
+EVENT: draw | ray BF | present | +
+MORPH: intersect | intersected | intersects
+PROP: ray BF | property | bisector of angle ABC
+EVENT: construct | perpendicular bisector of a line segment | present | +
+EVENT: join | points P and Q | present | +
+MORPH: join | joined | joins
+PROP: line PMQ | property | perpendicular bisector of AB
+EVENT: construct | angle of 60° | present | +
+FACT: angle CAB | measure | 60°
+PROP: triangle EAD | property | equilateral
+EVENT: construct | triangle | base, base angle and sum of other two sides | present | +
+EVENT: construct | triangle | base, base angle and difference of other two sides | present | +
+PROP: triangle | property | unique if two sides and the included angle are given
+PROP: triangle | property | unique if three sides are given
+PROP: triangle | property | unique if two angles and the included side are given
+PROP: right triangle | property | unique if hypotenuse and one side are given
+PROP: construction of a triangle | property | not always possible if two sides and a non-included angle are given
+PROP: construction of a triangle | property | not possible if AB + AC ≤ BC
+ASK: angle | bisector
+ASK: line segment | perpendicular bisector
+ASK: angle | 60°
+ASK: triangle | construction
+SEQ: draw the given base
+SEQ: construct the given angle
+SEQ: mark the required length
+SEQ: complete the construction of the triangle
+ISA: triangle | polygon
+PART: triangle | base
+PART: triangle | base angle
+PART: triangle | side
+PROP: triangle | property | unique if base, base angle and sum of the other two sides are given
+PROP: triangle | property | unique if base, base angle and difference of the other two sides are given
+EVENT: draw | base BC | present | +
+EVENT: make | angle XBC | present | +
+EVENT: cut | line segment BD | present | +
+EVENT: join | points D and C | present | +
+EVENT: draw | perpendicular bisector of DC | present | +
+EVENT: intersect | perpendicular bisector | ray BX | present | +
+EVENT: join | points A and C | present | +
+MORPH: draw | drew | draws
+MORPH: make | made | makes
+MORPH: cut | cut | cuts
+MORPH: join | joined | joins
+MORPH: intersect | intersected | intersects
+LAW: AB + AC = BD
+LAW: AB = BD - AC
+PROP: construction of triangle | property | not possible if AB + AC ≤ BC
+PROP: construction of triangle | property | two cases if the difference of the other two sides is given
+PROP: case (i) | condition | AB > AC
+PROP: case (ii) | condition | AC > AB
+ASK: triangle | construction from base, base angle and sum of other two sides
+ASK: triangle | construction from base, base angle and difference of other two sides
+ASK: construction | possibility
+SEQ: draw the base BC
+SEQ: construct the given base angle
+SEQ: mark the required length on the ray
+SEQ: join the required points
+SEQ: draw the perpendicular bisector
+SEQ: locate the required vertex
+SEQ: join the remaining side
+ISA: triangle | polygon
+PART: triangle | perimeter
+PART: triangle | base angles
+PROP: triangle | property | can be constructed from its perimeter and two base angles
+EVENT: draw | line segment XY | present | +
+EVENT: make | angle LXY | present | +
+EVENT: make | angle MYX | present | +
+EVENT: bisect | angle LXY | present | +
+EVENT: bisect | angle MYX | present | +
+EVENT: intersect | angle bisectors | point A | present | +
+EVENT: draw | perpendicular bisector of AX | present | +
+EVENT: draw | perpendicular bisector of AY | present | +
+EVENT: intersect | perpendicular bisector of AX | XY at B | present | +
+EVENT: intersect | perpendicular bisector of AY | XY at C | present | +
+EVENT: join | A and B | present | +
+EVENT: join | A and C | present | +
+MORPH: draw | drew | draws
+MORPH: make | made | makes
+MORPH: bisect | bisected | bisects
+MORPH: intersect | intersected | intersects
+MORPH: join | joined | joins
+PROP: B | property | lies on the perpendicular bisector of AX
+PROP: C | property | lies on the perpendicular bisector of AY
+LAW: XB = AB
+LAW: CY = AC
+LAW: BC + XB + CY = XY
+LAW: BC + CA + AB = XY
+FACT: example perimeter | length | 11 cm
+FACT: angle B | measure | 60°
+FACT: angle C | measure | 45°
+ASK: triangle | construction from perimeter and two base angles
+ASK: perimeter | construction
+SEQ: draw the line segment equal to the perimeter
+SEQ: construct the two base angles
+SEQ: bisect both angles
+SEQ: draw the perpendicular bisectors
+SEQ: mark the base points
+SEQ: join the vertices to obtain the triangle
+ISA: Heron's formula | formula
+PART: triangle | side
+PART: triangle | perimeter
+PART: triangle | semi-perimeter
+PROP: Heron's formula | use | area of a triangle
+PROP: Heron's formula | property | helpful when the height of the triangle is not easy to find
+EVENT: calculate | area of a triangle | Heron's formula | present | +
+EVENT: derive | Heron | formula for the area of a triangle | past | +
+MORPH: calculate | calculated | calculates
+MORPH: derive | derived | derives
+LAW: s = (a + b + c) / 2
+LAW: area of triangle = √(s * (s - a) * (s - b) * (s - c))
+FACT: triangular park | side | 40 m
+FACT: triangular park | side | 32 m
+FACT: triangular park | side | 24 m
+FACT: triangular park | semi-perimeter | 48 m
+FACT: triangular park | area | 384 m²
+FACT: equilateral triangle | side | 10 cm
+FACT: isosceles triangle | equal side | 5 cm
+FACT: isosceles triangle | unequal side | 8 cm
+ASK: triangle | semi-perimeter
+ASK: triangle | area by Heron's formula
+ASK: Heron's formula | use
+SEQ: find the lengths of the three sides
+SEQ: calculate the semi-perimeter
+SEQ: find s - a, s - b and s - c
+SEQ: apply Heron's formula
+SEQ: calculate the area of the triangle
+FACT: equilateral triangle | side | 10 cm
+FACT: equilateral triangle | semi-perimeter | 15 cm
+FACT: equilateral triangle | area | 25√3 cm²
+FACT: isosceles triangle | equal side | 5 cm
+FACT: isosceles triangle | unequal side | 8 cm
+FACT: isosceles triangle | semi-perimeter | 9 cm
+FACT: isosceles triangle | area | 12 cm²
+FACT: triangle | perimeter | 32 cm
+FACT: triangle | side | 8 cm
+FACT: triangle | side | 11 cm
+FACT: triangle | third side | 13 cm
+FACT: triangle | semi-perimeter | 16 cm
+FACT: triangle | area | 8√30 cm²
+FACT: triangular park | side | 120 m
+FACT: triangular park | side | 80 m
+FACT: triangular park | side | 50 m
+LAW: third side = perimeter - (first side + second side)
+LAW: semi-perimeter = perimeter / 2
+EVENT: find | third side | perimeter and two sides | present | +
+EVENT: calculate | semi-perimeter | perimeter | present | +
+EVENT: apply | Heron's formula | area of a triangle | present | +
+EVENT: verify | area | Heron's formula | present | +
+MORPH: find | found | finds
+MORPH: calculate | calculated | calculates
+MORPH: apply | applied | applies
+MORPH: verify | verified | verifies
+ASK: triangle | third side
+ASK: triangle | semi-perimeter
+ASK: triangle | area by Heron's formula
+ASK: triangular park | area
+SEQ: find the third side from the perimeter
+SEQ: calculate the semi-perimeter
+SEQ: find the values of s - a, s - b and s - c
+SEQ: substitute the values in Heron's formula
+SEQ: calculate the area
+ISA: quadrilateral | plane figure
+PART: quadrilateral | diagonal
+PART: quadrilateral | triangle
+EVENT: divide | quadrilateral | two triangles | present | +
+MORPH: divide | divided | divides
+EVENT: apply | Heron's formula | each triangle | present | +
+MORPH: apply | applied | applies
+EVENT: add | areas of two triangles | area of quadrilateral | present | +
+MORPH: add | added | adds
+PROP: area of a quadrilateral | property | sum of the areas of two triangles formed by a diagonal
+LAW: area of quadrilateral = area of first triangle + area of second triangle
+FACT: park | angle C | 90°
+FACT: park | side AB | 9 m
+FACT: park | side BC | 12 m
+FACT: park | side CD | 5 m
+FACT: park | side AD | 8 m
+FACT: quadrilateral | side AB | 3 cm
+FACT: quadrilateral | side BC | 4 cm
+FACT: quadrilateral | side CD | 4 cm
+FACT: quadrilateral | side DA | 5 cm
+FACT: quadrilateral | diagonal AC | 5 cm
+PROP: Heron's formula | application | area of quadrilateral
+ASK: quadrilateral | area
+ASK: quadrilateral | diagonal
+ASK: Heron's formula | application to quadrilateral
+SEQ: draw a diagonal of the quadrilateral
+SEQ: divide the quadrilateral into two triangles
+SEQ: calculate the area of each triangle using Heron's formula
+SEQ: add the two areas
+SEQ: obtain the area of the quadrilateral
+ISA: solid | three-dimensional figure
+ISA: plane figure | figure
+PART: solid | length
+PART: solid | breadth
+PART: solid | height
+PROP: plane figure | property | can be drawn on a plane
+PROP: solid | property | occupies space
+EVENT: see | people | solids | present | +
+EVENT: draw | plane figures | notebook | present | +
+MORPH: see | saw | sees
+MORPH: draw | drew | draws
+PROP: rectangle | property | plane figure
+PROP: square | property | plane figure
+PROP: circle | property | plane figure
+ASK: solid | definition
+ASK: plane figure | definition
+ASK: rectangle | perimeter
+ASK: rectangle | area
+SEQ: observe figures around us
+SEQ: identify the plane figures
+SEQ: identify the solids
+SEQ: study the surface areas and volumes of solids
+ISA: cuboid | solid
+ISA: cube | cuboid
+PART: cuboid | face
+PART: cuboid | length
+PART: cuboid | breadth
+PART: cuboid | height
+FACT: cuboid | faces | 6
+PROP: face of a cuboid | property | rectangle
+EVENT: cover | cuboid | six rectangular pieces | present | +
+MORPH: cover | covered | covers
+EVENT: add | areas of six rectangles | surface area of cuboid | present | +
+MORPH: add | added | adds
+LAW: surface area of cuboid = 2 * (length * breadth + breadth * height + height * length)
+LAW: surface area of cube = 6 * edge * edge
+LAW: lateral surface area of cuboid = 2 * (length + breadth) * height
+LAW: lateral surface area of cube = 4 * edge * edge
+PROP: surface area | unit | square unit
+PROP: surface area of cuboid | property | total surface area
+PROP: surface area of cube | property | total surface area
+FACT: example cuboid | length | 15 cm
+FACT: example cuboid | breadth | 10 cm
+FACT: example cuboid | height | 20 cm
+FACT: example cuboid | surface area | 1300 cm²
+EVENT: measure | surface area | square units | present | +
+MORPH: measure | measured | measures
+ASK: cuboid | surface area
+ASK: cube | surface area
+ASK: cuboid | lateral surface area
+ASK: cube | lateral surface area
+SEQ: cover the bottom of the cuboid
+SEQ: cover the two side faces
+SEQ: cover the front and back faces
+SEQ: cover the top face
+SEQ: add the areas of the six faces
+SEQ: obtain the surface area of the cuboid
+ISA: right circular cylinder | cylinder
+PART: cylinder | base
+PART: cylinder | curved surface
+PART: cylinder | height
+PART: cylinder | radius
+PART: cylinder | axis
+PROP: bases of a cylinder | property | equal circles
+PROP: axis of a cylinder | property | joins the centres of the bases
+PROP: height of a cylinder | property | distance between the two bases
+EVENT: roll | rectangle | cylinder | present | +
+MORPH: roll | rolled | rolls
+EVENT: cover | curved surface of a cylinder | rectangle | present | +
+MORPH: cover | covered | covers
+LAW: curved surface area of cylinder = 2 * π * radius * height
+LAW: total surface area of cylinder = 2 * π * radius * (radius + height)
+PROP: radius of a cylinder | property | base radius
+PROP: π | property | irrational number
+PROP: π | approximate value | 22/7
+PROP: π | approximate value | 3.14
+FACT: kaleidoscope | radius | 3.5 cm
+FACT: kaleidoscope | height | 25 cm
+FACT: kaleidoscope | curved surface area | 550 cm²
+EVENT: calculate | curved surface area of a cylinder | radius and height | present | +
+MORPH: calculate | calculated | calculates
+ASK: cylinder | curved surface area
+ASK: cylinder | total surface area
+ASK: cylinder | height
+ASK: cylinder | radius
+SEQ: identify the radius of the base
+SEQ: identify the height of the cylinder
+SEQ: apply the curved surface area formula
+SEQ: add the areas of the two circular bases
+SEQ: obtain the total surface area of the cylinder
+ISA: right circular cone | cone
+PART: cone | base
+PART: cone | curved surface
+PART: cone | radius
+PART: cone | height
+PART: cone | slant height
+PART: cone | vertex
+PROP: base of a right circular cone | property | circle
+EVENT: rotate | right-angled triangle | right circular cone | present | +
+MORPH: rotate | rotated | rotates
+EVENT: calculate | slant height | height and radius | present | +
+MORPH: calculate | calculated | calculates
+LAW: slant height * slant height = height * height + radius * radius
+LAW: curved surface area of cone = π * radius * slant height
+LAW: total surface area of cone = π * radius * (slant height + radius)
+FACT: example cone | slant height | 10 cm
+FACT: example cone | radius | 7 cm
+FACT: example cone | curved surface area | 220 cm²
+FACT: example cone | height | 16 cm
+FACT: example cone | radius | 12 cm
+FACT: example cone | slant height | 20 cm
+FACT: example cone | curved surface area | 753.6 cm²
+FACT: example cone | total surface area | 1205.76 cm²
+PROP: grains of corn | property | found only on the curved surface of the corn cob
+EVENT: find | curved surface area of a cone | slant height | present | +
+MORPH: find | found | finds
+ASK: cone | slant height
+ASK: cone | curved surface area
+ASK: cone | total surface area
+SEQ: identify the radius and height of the cone
+SEQ: calculate the slant height
+SEQ: apply the curved surface area formula
+SEQ: add the area of the circular base
+SEQ: obtain the total surface area of the cone
+ISA: sphere | solid
+ISA: hemisphere | solid
+PART: sphere | centre
+PART: sphere | radius
+PART: hemisphere | curved surface
+PART: hemisphere | flat face
+PART: hemisphere | base
+PROP: sphere | property | made up of all points in space at a constant distance from a fixed point
+PROP: centre of a sphere | property | fixed point
+PROP: radius of a sphere | property | constant distance from the centre
+PROP: hemisphere | property | half of a sphere
+FACT: hemisphere | faces | 2
+FACT: sphere | curved faces | 1
+LAW: surface area of sphere = 4 * π * radius * radius
+LAW: curved surface area of hemisphere = 2 * π * radius * radius
+LAW: total surface area of hemisphere = 3 * π * radius * radius
+EVENT: rotate | circular disc | sphere | present | +
+EVENT: divide | sphere | two equal parts | present | +
+EVENT: call | half of a sphere | hemisphere | present | +
+EVENT: calculate | surface area of a sphere | radius | present | +
+EVENT: calculate | curved surface area of a hemisphere | radius | present | +
+EVENT: calculate | total surface area of a hemisphere | radius | present | +
+MORPH: rotate | rotated | rotates
+MORPH: divide | divided | divides
+MORPH: call | called | calls
+MORPH: calculate | calculated | calculates
+FACT: example sphere | radius | 7 cm
+FACT: example sphere | surface area | 616 cm²
+FACT: example hemisphere | radius | 21 cm
+FACT: example hemisphere | curved surface area | 2772 cm²
+FACT: example hemisphere | total surface area | 4158 cm²
+FACT: circus sphere | diameter | 7 m
+FACT: circus sphere | riding area | 154 m²
+ASK: sphere | surface area
+ASK: hemisphere | curved surface area
+ASK: hemisphere | total surface area
+ASK: sphere | radius
+SEQ: find the radius of the sphere
+SEQ: apply the surface area formula
+SEQ: divide the sphere into two equal parts for a hemisphere
+SEQ: apply the hemisphere surface area formula
+ISA: volume | measure
+ISA: cuboid | solid
+ISA: cube | cuboid
+PART: cuboid | length
+PART: cuboid | breadth
+PART: cuboid | height
+PROP: volume | property | measure of the space occupied
+PROP: capacity | property | volume of substance the interior can accommodate
+PROP: volume | unit | cubic unit
+EVENT: occupy | solid object | space | present | +
+EVENT: measure | volume | cubic units | present | +
+MORPH: occupy | occupied | occupies
+MORPH: measure | measured | measures
+LAW: volume of cuboid = length * breadth * height
+LAW: volume of cuboid = base area * height
+LAW: volume = base area * height
+LAW: volume of cube = edge * edge * edge
+LAW: volume of cube = edge³
+FACT: example cube | edge | 12 cm
+FACT: example cube | volume | 1728 cm³
+FACT: wall | length | 10 m
+FACT: wall | height | 4 m
+FACT: wall | thickness | 24 cm
+FACT: brick | length | 24 cm
+FACT: brick | breadth | 12 cm
+FACT: brick | height | 8 cm
+FACT: wall | bricks required | 4167
+FACT: building block | edge | 3 cm
+FACT: structure | cubes | 15
+FACT: structure | volume | 405 cm³
+EVENT: calculate | volume of a cuboid | length breadth and height | present | +
+EVENT: calculate | volume of a cube | edge | present | +
+MORPH: calculate | calculated | calculates
+ASK: cuboid | volume
+ASK: cube | volume
+ASK: volume | unit
+ASK: capacity | meaning
+SEQ: identify the length, breadth and height
+SEQ: multiply the length, breadth and height
+SEQ: obtain the volume of the cuboid
+ISA: cylinder | solid
+PART: cylinder | circular base
+PART: cylinder | height
+PART: cylinder | radius
+PROP: volume of a cylinder | property | base area multiplied by height
+LAW: volume of cylinder = π * radius * radius * height
+EVENT: calculate | volume of a cylinder | radius and height | present | +
+MORPH: calculate | calculated | calculates
+FACT: pillar | radius | 20 cm
+FACT: pillar | height | 10 m
+FACT: pillars | number | 14
+PROP: cone | property | one-third the volume of a cylinder with the same base radius and height
+LAW: volume of cone = (π * radius * radius * height) / 3
+EVENT: fill | cone | sand | present | +
+EVENT: empty | cone | cylinder | present | +
+EVENT: conclude | volume of cone | one-third the volume of the cylinder | present | +
+MORPH: fill | filled | fills
+MORPH: empty | emptied | empties
+MORPH: conclude | concluded | concludes
+FACT: example cone | height | 21 cm
+FACT: example cone | slant height | 28 cm
+FACT: example cone | radius | 7√7 cm
+FACT: example cone | volume | 7546 cm³
+ISA: sphere | solid
+ISA: hemisphere | solid
+PROP: volume of a sphere | property | four-thirds π times the cube of its radius
+LAW: volume of sphere = (4 * π * radius³) / 3
+PROP: volume of a hemisphere | property | half the volume of a sphere
+LAW: volume of hemisphere = (2 * π * radius³) / 3
+EVENT: displace | sphere | water | present | +
+EVENT: measure | overflowed water | volume | present | +
+MORPH: displace | displaced | displaces
+MORPH: measure | measured | measures
+FACT: sphere | radius | 11.2 cm
+FACT: sphere | volume | 5887.32 cm³
+FACT: shot-putt | radius | 4.9 cm
+FACT: hemispherical bowl | radius | 3.5 cm
+FACT: hemispherical bowl | volume | 89.8 cm³
+ASK: cylinder | volume
+ASK: cone | volume
+ASK: sphere | volume
+ASK: hemisphere | volume
+SEQ: find the base radius
+SEQ: find the height
+SEQ: apply the volume formula
+SEQ: calculate the volume
+ISA: data | information
+ISA: statistics | branch of mathematics
+PROP: data | property | facts or figures
+PROP: data | property | collected with a definite purpose
+PROP: statistics | property | studies the extraction of meaningful information from data
+PROP: data | property | numerical or otherwise
+EVENT: collect | people | data | present | +
+EVENT: present | statistics | data | present | +
+EVENT: interpret | statistics | data | present | +
+EVENT: draw | statistics | inferences from data | present | +
+EVENT: use | people | data | present | +
+EVENT: extract | statistics | meaningful information from data | present | +
+MORPH: collect | collected | collects
+MORPH: present | presented | presents
+MORPH: interpret | interpreted | interprets
+MORPH: draw | drew | draws
+MORPH: use | used | uses
+MORPH: extract | extracted | extracts
+PROP: datum | property | singular form of data
+PROP: data | property | plural form of datum
+PROP: statistics | origin | derived from the Latin word status
+PROP: status | meaning | political state
+PROP: statistics | early use | collection of data useful to the State
+PROP: statistics | present scope | collection presentation interpretation and drawing of inferences from data
+ASK: data | meaning
+ASK: statistics | meaning
+ASK: datum | relation to data
+ASK: statistics | use
+SEQ: collect data
+SEQ: present the data
+SEQ: interpret the data
+SEQ: draw inferences from the data
+SEQ: extract meaningful information from the data
+ISA: data | information
+PROP: data | property | collected with a definite purpose
+PROP: data | property | numerical or otherwise
+PROP: primary data | property | collected by the investigator
+PROP: secondary data | property | collected by someone else
+EVENT: collect | investigator | primary data | present | +
+EVENT: use | investigator | secondary data | present | +
+MORPH: collect | collected | collects
+MORPH: use | used | uses
+PROP: raw data | property | not arranged
+EVENT: arrange | data | ascending order | present | +
+EVENT: arrange | data | descending order | present | +
+MORPH: arrange | arranged | arranges
+PROP: array | property | arrangement of data in ascending or descending order
+EVENT: observe | data | frequency | present | +
+MORPH: observe | observed | observes
+ISA: frequency | number
+PROP: frequency | property | number of times an observation occurs
+EVENT: count | frequency | observations | present | +
+MORPH: count | counted | counts
+ISA: tally mark | mark
+PROP: tally mark | property | used for counting
+EVENT: record | observations | tally marks | present | +
+MORPH: record | recorded | records
+ISA: frequency distribution table | table
+PART: frequency distribution table | observation
+PART: frequency distribution table | tally marks
+PART: frequency distribution table | frequency
+EVENT: prepare | frequency distribution table | data | present | +
+MORPH: prepare | prepared | prepares
+ASK: data | primary data
+ASK: data | secondary data
+ASK: frequency | meaning
+ASK: tally marks | use
+ASK: frequency distribution table | purpose
+SEQ: collect the data
+SEQ: arrange the data
+SEQ: count each observation
+SEQ: record the tally marks
+SEQ: prepare the frequency distribution table
+ISA: grouped data | data
+ISA: ungrouped data | data
+PROP: grouped data | property | arranged in classes
+PROP: ungrouped data | property | individual observations
+ISA: class interval | interval
+PART: class interval | lower limit
+PART: class interval | upper limit
+PROP: class interval | property | range of values
+EVENT: group | data | class intervals | present | +
+EVENT: divide | observations | classes | present | +
+EVENT: count | observations | frequency | present | +
+EVENT: prepare | grouped frequency distribution | data | present | +
+MORPH: group | grouped | groups
+MORPH: divide | divided | divides
+MORPH: count | counted | counts
+MORPH: prepare | prepared | prepares
+ISA: class mark | value
+LAW: class mark = (lower limit + upper limit) / 2
+PROP: class mark | property | mid-value of a class interval
+EVENT: calculate | class mark | lower and upper limits | present | +
+MORPH: calculate | calculated | calculates
+PROP: inclusive form | property | includes both class limits
+PROP: exclusive form | property | excludes the upper class limit
+ASK: grouped data | meaning
+ASK: class interval | meaning
+ASK: class mark | calculation
+ASK: inclusive form | meaning
+ASK: exclusive form | meaning
+SEQ: arrange the observations
+SEQ: divide the observations into class intervals
+SEQ: count the observations in each class
+SEQ: record the frequencies
+SEQ: prepare the grouped frequency distribution table
+ISA: mean | measure of central tendency
+ISA: median | measure of central tendency
+ISA: mode | measure of central tendency
+PROP: mean | property | average of the observations
+PROP: median | property | middle-most observation
+PROP: mode | property | most frequently occurring observation
+EVENT: add | observations | values | present | +
+EVENT: divide | sum of observations | number of observations | present | +
+EVENT: arrange | observations | ascending order | present | +
+EVENT: identify | middle-most observation | median | present | +
+EVENT: identify | most frequent observation | mode | present | +
+MORPH: add | added | adds
+MORPH: divide | divided | divides
+MORPH: arrange | arranged | arranges
+MORPH: identify | identified | identifies
+LAW: mean = sum of observations / number of observations
+LAW: mean = Σ(f * x) / Σf
+PROP: median | condition | middle value when the number of observations is odd
+PROP: median | condition | mean of the two middle values when the number of observations is even
+PROP: mode | property | observation with maximum frequency
+PROP: mean | weakness | affected by extreme values
+PROP: median | property | not affected by extreme values
+PROP: mode | property | not affected by extreme values
+EVENT: affect | extreme values | mean | present | +
+EVENT: affect | extreme values | median | present | -
+EVENT: affect | extreme values | mode | present | -
+MORPH: affect | affected | affects
+ASK: mean | formula
+ASK: median | meaning
+ASK: mode | meaning
+ASK: mean | weakness
+ASK: median | condition
+ASK: mode | frequency
+SEQ: add all the observations
+SEQ: divide by the total number of observations
+SEQ: arrange the observations in ascending order
+SEQ: identify the middle-most observation
+SEQ: identify the observation with the highest frequency
+ISA: probability | measure
+PROP: probability | property | measures uncertainty
+PROP: uncertainty | property | may happen or may not happen
+EVENT: predict | people | event | present | +
+EVENT: measure | probability | uncertainty | present | +
+MORPH: predict | predicted | predicts
+MORPH: measure | measured | measures
+PROP: probability | use | games of chance
+PROP: probability | use | Physical Sciences
+PROP: probability | use | Commerce
+PROP: probability | use | Biological Sciences
+PROP: probability | use | Medical Sciences
+PROP: probability | use | Weather Forecasting
+EVENT: use | probability | Physical Sciences | present | +
+EVENT: use | probability | Commerce | present | +
+EVENT: use | probability | Biological Sciences | present | +
+EVENT: use | probability | Medical Sciences | present | +
+EVENT: use | probability | Weather Forecasting | present | +
+MORPH: use | used | uses
+PROP: probability | property | experimental approach
+EVENT: perform | experiment | repeatedly | present | +
+EVENT: record | outcomes | experiment | present | +
+EVENT: observe | frequency | outcomes | present | +
+MORPH: perform | performed | performs
+MORPH: record | recorded | records
+MORPH: observe | observed | observes
+PROP: probability of an event | property | lies between 0 and 1
+FACT: probability of an impossible event | value | 0
+FACT: probability of a sure event | value | 1
+LAW: probability = number of times the event occurs / total number of trials
+ASK: probability | meaning
+ASK: event | probability
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: probability | formula
+SEQ: perform an experiment
+SEQ: repeat the experiment many times
+SEQ: record the outcomes
+SEQ: count the number of times the event occurs
+SEQ: divide by the total number of trials
+ISA: experiment | activity
+ISA: trial | experiment
+ISA: event | outcome
+PART: experiment | outcomes
+PROP: random experiment | property | result cannot be predicted with certainty
+PROP: trial | property | one performance of an experiment
+EVENT: perform | experiment | trial | present | +
+EVENT: repeat | experiment | many times | present | +
+EVENT: count | event | occurrences | present | +
+EVENT: calculate | experimental probability | event | present | +
+MORPH: perform | performed | performs
+MORPH: repeat | repeated | repeats
+MORPH: count | counted | counts
+MORPH: calculate | calculated | calculates
+LAW: experimental probability = number of times an event occurs / total number of trials
+FACT: probability of an impossible event | value | 0
+FACT: probability of a sure event | value | 1
+PROP: probability | property | greater than or equal to 0
+PROP: probability | property | less than or equal to 1
+LAW: 0 ≤ probability ≤ 1
+EVENT: toss | coin |  | present | +
+EVENT: throw | die |  | present | +
+MORPH: toss | tossed | tosses
+MORPH: throw | threw | throws
+ASK: experimental probability | formula
+ASK: event | experimental probability
+ASK: impossible event | probability
+ASK: sure event | probability
+SEQ: perform the experiment
+SEQ: repeat the experiment a large number of times
+SEQ: record the outcomes
+SEQ: count the number of times the event occurs
+SEQ: divide by the total number of trials
+ISA: coin toss | experiment
+ISA: die throw | experiment
+ISA: outcome | result
+PART: experiment | outcome
+PROP: coin toss | outcomes | head and tail
+FACT: coin toss | outcomes | 2
+FACT: die throw | outcomes | 6
+EVENT: toss | coin |  | present | +
+EVENT: obtain | coin toss | head | present | +
+EVENT: obtain | coin toss | tail | present | +
+EVENT: throw | die |  | present | +
+EVENT: obtain | die throw | number | present | +
+MORPH: toss | tossed | tosses
+MORPH: obtain | obtained | obtains
+MORPH: throw | threw | throws
+PROP: impossible event | probability | 0
+PROP: sure event | probability | 1
+PROP: experimental probability | property | approaches probability as the number of trials increases
+EVENT: increase | number of trials | experimental probability becomes stable | present | +
+MORPH: increase | increased | increases
+LAW: experimental probability = frequency of the event / total number of trials
+ASK: coin toss | outcomes
+ASK: die throw | outcomes
+ASK: experimental probability | formula
+ASK: impossible event | probability
+ASK: sure event | probability
+SEQ: perform the experiment
+SEQ: note the outcome of each trial
+SEQ: count the frequency of the event
+SEQ: divide the frequency by the total number of trials
+SEQ: obtain the experimental probability
+ISA: sample space | set
+PART: sample space | outcomes
+ISA: outcome | result
+ISA: event | collection of outcomes
+PROP: sample space | property | set of all possible outcomes
+EVENT: list | sample space | outcomes | present | +
+EVENT: identify | event | outcomes | present | +
+MORPH: list | listed | lists
+MORPH: identify | identified | identifies
+PROP: impossible event | property | cannot occur
+PROP: sure event | property | always occurs
+EVENT: occur | impossible event |  | present | -
+EVENT: occur | sure event |  | present | +
+MORPH: occur | occurred | occurs
+LAW: probability of an event = number of favourable outcomes / total number of outcomes
+FACT: probability of an impossible event | value | 0
+FACT: probability of a sure event | value | 1
+PROP: probability | property | cannot be less than 0
+PROP: probability | property | cannot be greater than 1
+LAW: 0 ≤ probability ≤ 1
+ASK: sample space | meaning
+ASK: event | favourable outcomes
+ASK: probability | favourable outcomes
+ASK: impossible event | probability
+ASK: sure event | probability
+SEQ: list all possible outcomes
+SEQ: identify the favourable outcomes
+SEQ: count the favourable outcomes
+SEQ: count the total outcomes
+SEQ: calculate the probability
+ISA: probability | number
+PROP: probability | property | measures chance of an event
+PROP: event | property | may or may not occur
+EVENT: conduct | experiment | repeatedly | present | +
+EVENT: note | outcomes | experiment | present | +
+EVENT: compare | experimental probability | different numbers of trials | present | +
+MORPH: conduct | conducted | conducts
+MORPH: note | noted | notes
+MORPH: compare | compared | compares
+PROP: experimental probability | property | depends on the number of trials
+PROP: experimental probability | property | gets closer to the true value as the number of trials increases
+EVENT: increase | number of trials | reliability of experimental probability | present | +
+MORPH: increase | increased | increases
+FACT: probability of an impossible event | value | 0
+FACT: probability of a sure event | value | 1
+LAW: experimental probability = frequency of an event / number of trials
+LAW: 0 ≤ probability ≤ 1
+ASK: experimental probability | meaning
+ASK: number of trials | effect on experimental probability
+ASK: impossible event | probability
+ASK: sure event | probability
+SEQ: choose an experiment
+SEQ: repeat the experiment many times
+SEQ: record each outcome
+SEQ: count the frequency of the event
+SEQ: divide the frequency by the number of trials
+SEQ: compare the experimental probabilities
+PROP: probability | property | based on observations from experiments
+EVENT: repeat | random experiment | many times | present | +
+EVENT: estimate | probability | experimental results | present | +
+EVENT: observe | relative frequency | event | present | +
+MORPH: repeat | repeated | repeats
+MORPH: estimate | estimated | estimates
+MORPH: observe | observed | observes
+PROP: relative frequency | property | experimental probability
+PROP: experimental probability | property | may vary from experiment to experiment
+PROP: experimental probability | property | becomes closer to the true value with a large number of trials
+LAW: relative frequency = number of occurrences of the event / total number of trials
+LAW: experimental probability = relative frequency
+FACT: probability of a sure event | value | 1
+FACT: probability of an impossible event | value | 0
+ASK: relative frequency | meaning
+ASK: experimental probability | relative frequency
+ASK: random experiment | repetition
+ASK: probability | experimental approach
+SEQ: select a random experiment
+SEQ: repeat the experiment a large number of times
+SEQ: record every outcome
+SEQ: find the relative frequency of the event
+SEQ: use the relative frequency to estimate the probability
+ISA: probability | branch of mathematics
+PROP: probability | property | measures uncertainty numerically
+PROP: random experiment | property | outcome cannot be predicted with certainty
+ISA: impossible event | event
+ISA: sure event | event
+EVENT: happen | impossible event |  | present | -
+EVENT: happen | sure event |  | present | +
+MORPH: happen | happened | happens
+PROP: impossible event | probability | 0
+PROP: sure event | probability | 1
+LAW: probability of an event = experimental frequency / total number of trials
+LAW: 0 ≤ probability ≤ 1
+EVENT: conclude | probability | from repeated experiments | present | +
+MORPH: conclude | concluded | concludes
+PROP: experimental probability | property | based on repeated trials
+PROP: experimental probability | property | estimate of probability
+ASK: probability | range
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: experimental probability | formula
+SEQ: perform the experiment
+SEQ: repeat the experiment many times
+SEQ: record the outcomes
+SEQ: find the frequency of the event
+SEQ: divide the frequency by the total number of trials
+SEQ: estimate the probability of the event
+ISA: probability | measure of uncertainty
+PROP: probability | property | obtained by an experimental approach
+PROP: experimental probability | property | based on repeated experiments
+EVENT: repeat | experiment | many times | present | +
+EVENT: record | outcome | each trial | present | +
+EVENT: find | experimental probability | event | present | +
+MORPH: repeat | repeated | repeats
+MORPH: record | recorded | records
+MORPH: find | found | finds
+LAW: experimental probability = number of times the event occurs / total number of trials
+PROP: impossible event | probability | 0
+PROP: sure event | probability | 1
+LAW: probability ≥ 0
+LAW: probability ≤ 1
+EVENT: compare | experimental probabilities | different experiments | present | +
+MORPH: compare | compared | compares
+PROP: experimental probability | property | may differ in different experiments
+PROP: experimental probability | property | becomes more stable as the number of trials increases
+EVENT: increase | number of trials | stability of experimental probability | present | +
+MORPH: increase | increased | increases
+ASK: probability | experimental approach
+ASK: event | experimental probability
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: number of trials | effect on experimental probability
+SEQ: perform a random experiment
+SEQ: repeat the experiment many times
+SEQ: record the result of each trial
+SEQ: count the number of times the event occurs
+SEQ: divide by the total number of trials
+SEQ: obtain the experimental probability
+ISA: probability | experimental measure
+ISA: event | result
+PROP: event | property | may occur
+PROP: event | property | may not occur
+EVENT: perform | random experiment | repeatedly | present | +
+EVENT: observe | occurrence of an event | present | +
+EVENT: calculate | probability | experimental data | present | +
+MORPH: perform | performed | performs
+MORPH: observe | observed | observes
+MORPH: calculate | calculated | calculates
+LAW: probability = frequency of occurrence / total number of trials
+LAW: 0 ≤ probability ≤ 1
+FACT: probability of an impossible event | value | 0
+FACT: probability of a sure event | value | 1
+PROP: experimental probability | property | estimate of probability
+PROP: experimental probability | property | approaches the true probability with more trials
+EVENT: increase | number of trials | accuracy of experimental probability | present | +
+MORPH: increase | increased | increases
+ASK: random experiment | probability
+ASK: probability | value
+ASK: event | occurrence
+ASK: experimental probability | calculation
+SEQ: perform the random experiment
+SEQ: repeat the experiment a large number of times
+SEQ: record each outcome
+SEQ: count the frequency of the event
+SEQ: divide the frequency by the total number of trials
+SEQ: estimate the probability of the event
+ISA: probability | measure
+PROP: probability | property | numerical measure of uncertainty
+PROP: experimental probability | property | based on experiments
+EVENT: perform | experiment | repeatedly | present | +
+EVENT: observe | outcomes | experiment | present | +
+EVENT: estimate | probability | repeated observations | present | +
+MORPH: perform | performed | performs
+MORPH: observe | observed | observes
+MORPH: estimate | estimated | estimates
+LAW: experimental probability = number of occurrences of the event / total number of trials
+LAW: probability of impossible event = 0
+LAW: probability of sure event = 1
+LAW: 0 ≤ probability ≤ 1
+PROP: impossible event | property | never occurs
+PROP: sure event | property | always occurs
+EVENT: occur | impossible event |  | present | -
+EVENT: occur | sure event |  | present | +
+MORPH: occur | occurred | occurs
+PROP: experimental probability | property | changes with the number of trials
+PROP: experimental probability | property | approaches a fixed value as the number of trials becomes very large
+EVENT: increase | number of trials | experimental probability approaches a fixed value | present | +
+MORPH: increase | increased | increases
+ASK: probability | experimental probability
+ASK: probability | range
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: number of trials | effect on probability
+SEQ: choose a random experiment
+SEQ: repeat the experiment many times
+SEQ: record every outcome
+SEQ: count the occurrences of the event
+SEQ: divide the occurrences by the total number of trials
+SEQ: estimate the probability of the event
+ISA: probability | experimental approach
+ISA: trial | experiment
+PART: experiment | trial
+PROP: random experiment | property | repeated under similar conditions
+EVENT: repeat | random experiment | similar conditions | present | +
+EVENT: compare | relative frequencies | different numbers of trials | present | +
+EVENT: estimate | probability | relative frequency | present | +
+MORPH: repeat | repeated | repeats
+MORPH: compare | compared | compares
+MORPH: estimate | estimated | estimates
+PROP: relative frequency | property | ratio of the number of occurrences of an event to the total number of trials
+PROP: experimental probability | property | relative frequency of an event
+LAW: relative frequency = number of occurrences of the event / total number of trials
+LAW: experimental probability = relative frequency
+PROP: probability | property | lies between 0 and 1
+FACT: impossible event | probability | 0
+FACT: sure event | probability | 1
+EVENT: approach | experimental probability | true probability | present | +
+MORPH: approach | approached | approaches
+PROP: experimental probability | property | approaches the true probability when the number of trials is very large
+ASK: relative frequency | meaning
+ASK: experimental probability | estimation
+ASK: probability | limits
+ASK: number of trials | effect on experimental probability
+SEQ: perform a random experiment
+SEQ: repeat the experiment under similar conditions
+SEQ: record the outcome of every trial
+SEQ: calculate the relative frequency of the event
+SEQ: use the relative frequency to estimate the probability
+ISA: probability | branch of mathematics
+PROP: probability | property | experimental approach
+PROP: experimental probability | property | based on repeated observations
+EVENT: perform | experiment | repeatedly | present | +
+EVENT: record | outcome | each trial | present | +
+EVENT: calculate | experimental probability | event | present | +
+EVENT: compare | experimental probability | probability | present | +
+MORPH: perform | performed | performs
+MORPH: record | recorded | records
+MORPH: calculate | calculated | calculates
+MORPH: compare | compared | compares
+LAW: experimental probability = number of times an event occurs / total number of trials
+LAW: probability of impossible event = 0
+LAW: probability of sure event = 1
+LAW: 0 ≤ probability ≤ 1
+PROP: impossible event | property | never occurs
+PROP: sure event | property | always occurs
+PROP: experimental probability | property | becomes more reliable as the number of trials increases
+EVENT: increase | number of trials | reliability of experimental probability | present | +
+MORPH: increase | increased | increases
+ASK: experimental probability | formula
+ASK: probability | impossible event
+ASK: probability | sure event
+ASK: probability | range
+ASK: number of trials | effect on experimental probability
+SEQ: perform the experiment
+SEQ: repeat the experiment many times
+SEQ: record the outcome of each trial
+SEQ: count the number of times the event occurs
+SEQ: divide by the total number of trials
+SEQ: obtain the experimental probability
+PROP: probability | property | estimated by an experimental approach
+EVENT: perform | experiment | under similar conditions | present | +
+EVENT: repeat | experiment | large number of times | present | +
+EVENT: record | outcomes | experiment | present | +
+EVENT: calculate | experimental probability | event | present | +
+MORPH: perform | performed | performs
+MORPH: repeat | repeated | repeats
+MORPH: record | recorded | records
+MORPH: calculate | calculated | calculates
+LAW: experimental probability = number of times the event occurs / total number of trials
+PROP: experimental probability | property | approaches a fixed value with a large number of trials
+PROP: impossible event | probability | 0
+PROP: sure event | probability | 1
+LAW: 0 ≤ probability ≤ 1
+EVENT: estimate | probability | experimental probability | present | +
+MORPH: estimate | estimated | estimates
+ASK: experiment | repeated trials
+ASK: event | experimental probability
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: probability | experimental approach
+SEQ: perform an experiment
+SEQ: repeat the experiment under similar conditions
+SEQ: record each outcome
+SEQ: count the occurrences of the event
+SEQ: divide by the total number of trials
+SEQ: estimate the probability of the event
+PROP: probability | property | estimated from experiments
+PROP: probability | property | numerical value between 0 and 1
+EVENT: observe | outcomes | repeated experiments | present | +
+EVENT: estimate | chance of an event | experimental probability | present | +
+EVENT: record | results | experiment | present | +
+MORPH: observe | observed | observes
+MORPH: estimate | estimated | estimates
+MORPH: record | recorded | records
+LAW: experimental probability = number of times the event occurs / total number of trials
+LAW: probability of impossible event = 0
+LAW: probability of sure event = 1
+LAW: 0 ≤ probability ≤ 1
+PROP: impossible event | property | never happens
+PROP: sure event | property | always happens
+EVENT: happen | impossible event |  | present | -
+EVENT: happen | sure event |  | present | +
+MORPH: happen | happened | happens
+PROP: experimental probability | property | becomes closer to the true probability as the number of trials increases
+EVENT: increase | number of trials | experimental probability approaches the true probability | present | +
+MORPH: increase | increased | increases
+ASK: experimental probability | estimation
+ASK: probability | impossible event
+ASK: probability | sure event
+ASK: probability | limits
+SEQ: perform the experiment
+SEQ: repeat the experiment many times
+SEQ: observe and record each outcome
+SEQ: count the occurrences of the event
+SEQ: divide by the total number of trials
+SEQ: estimate the probability
+PROP: probability | property | estimates the chance of an event
+PROP: experimental probability | property | based on repeated experiments
+EVENT: perform | random experiment | repeatedly | present | +
+EVENT: record | outcome | every trial | present | +
+EVENT: determine | experimental probability | event | present | +
+MORPH: perform | performed | performs
+MORPH: record | recorded | records
+MORPH: determine | determined | determines
+LAW: experimental probability = number of occurrences of an event / total number of trials
+PROP: probability | property | not less than 0
+PROP: probability | property | not greater than 1
+FACT: impossible event | probability | 0
+FACT: sure event | probability | 1
+LAW: 0 ≤ probability ≤ 1
+EVENT: approach | experimental probability | true probability | present | +
+MORPH: approach | approached | approaches
+PROP: experimental probability | property | approaches the true probability when the experiment is repeated many times
+ASK: experimental probability | formula
+ASK: random experiment | repetition
+ASK: impossible event | probability
+ASK: sure event | probability
+ASK: probability | range
+SEQ: choose a random experiment
+SEQ: perform the experiment repeatedly
+SEQ: record the outcome of each trial
+SEQ: count the number of occurrences of the event
+SEQ: divide by the total number of trials
+SEQ: estimate the probability of the event
+ISA: event | collection of outcomes
+ISA: outcome | result
+PART: experiment | outcomes
+PROP: event | property | collection of some outcomes of the experiment
+EVENT: consist | event | outcomes | present | +
+MORPH: consist | consisted | consists
+PROP: empirical probability | property | based on observation
+EVENT: observe | outcomes | trials | present | +
+MORPH: observe | observed | observes
+LAW: empirical probability = number of trials in which the event happened / total number of trials
+EVENT: depend | empirical probability | number of trials | present | +
+EVENT: depend | empirical probability | number of times the outcome occurs | present | +
+MORPH: depend | depended | depends
+PROP: empirical probability | property | changes with the number of trials
+FACT: coin toss | trials | 1000
+FACT: head | frequency | 455
+FACT: tail | frequency | 545
+LAW: P(head) = 455 / 1000
+LAW: P(tail) = 545 / 1000
+LAW: P(head) + P(tail) = 1
+FACT: two heads | frequency | 105
+FACT: one head | frequency | 275
+FACT: no head | frequency | 120
+FACT: two-coin toss | trials | 500
+LAW: P(two heads) = 105 / 500
+LAW: P(one head) = 275 / 500
+LAW: P(no head) = 120 / 500
+LAW: P(two heads) + P(one head) + P(no head) = 1
+PROP: probability of each event | property | lies between 0 and 1
+PROP: sum of probabilities of all outcomes | property | 1
+ASK: empirical probability | formula
+ASK: event | collection of outcomes
+ASK: probability | range
+ASK: head | probability
+ASK: tail | probability
+SEQ: perform the experiment
+SEQ: repeat the experiment
+SEQ: record the outcomes
+SEQ: count the number of times the event happens
+SEQ: divide by the total number of trials
+FACT: die throw | trials | 1000
+FACT: outcome 1 | frequency | 179
+FACT: outcome 2 | frequency | 150
+FACT: outcome 3 | frequency | 157
+FACT: outcome 4 | frequency | 149
+FACT: outcome 5 | frequency | 175
+FACT: outcome 6 | frequency | 190
+LAW: P(outcome 1) = 179 / 1000
+LAW: P(outcome 2) = 150 / 1000
+LAW: P(outcome 3) = 157 / 1000
+LAW: P(outcome 4) = 149 / 1000
+LAW: P(outcome 5) = 175 / 1000
+LAW: P(outcome 6) = 190 / 1000
+FACT: telephone numbers | total | 200
+FACT: digit 6 | frequency | 14
+LAW: P(unit place digit is 6) = 14 / 200
+FACT: weather records | days | 250
+FACT: correct forecasts | days | 175
+FACT: incorrect forecasts | days | 75
+LAW: P(correct forecast) = 175 / 250
+LAW: P(incorrect forecast) = 75 / 250
+LAW: P(correct forecast) + P(incorrect forecast) = 1
+EVENT: throw | die |  | present | +
+EVENT: choose | telephone number | at random | present | +
+EVENT: record | weather station | forecasts | present | +
+MORPH: throw | threw | throws
+MORPH: choose | chose | chooses
+MORPH: record | recorded | records
+PROP: probability of each event | property | lies between 0 and 1
+PROP: sum of probabilities of all outcomes | property | 1
+ASK: die | probability of each outcome
+ASK: telephone number | unit place digit
+ASK: weather forecast | probability of being correct
+ASK: weather forecast | probability of being incorrect
+SEQ: perform the experiment
+SEQ: record the frequencies
+SEQ: calculate the probability of each event
+SEQ: compare the probabilities
+FACT: tyre records | cases | 1000
+FACT: tyres replaced before 4000 km | frequency | 20
+FACT: tyres lasting 4000–9000 km | frequency | 210
+FACT: tyres lasting 9001–14000 km | frequency | 325
+FACT: tyres lasting more than 14000 km | frequency | 445
+LAW: P(tyre replaced before 4000 km) = 20 / 1000
+LAW: P(tyre lasts more than 9000 km) = (325 + 445) / 1000
+LAW: P(tyre lasts between 4000 km and 14000 km) = (210 + 325) / 1000
+FACT: drivers | total | 2000
+FACT: drivers aged 18–29 with exactly 3 accidents | frequency | 61
+LAW: P(driver aged 18–29 with exactly 3 accidents) = 61 / 2000
+FACT: drivers aged 30–50 with one or more accidents | frequency | 225
+LAW: P(driver aged 30–50 with one or more accidents) = 225 / 2000
+FACT: drivers with no accidents | frequency | 1305
+LAW: P(driver with no accidents) = 1305 / 2000
+FACT: students | total | 38
+FACT: students weighing 46–50 kg | frequency | 3
+LAW: P(student weighs 46–50 kg) = 3 / 38
+PROP: student weighing 30 kg | probability | 0
+PROP: student weighing more than 30 kg | probability | 1
+FACT: bags | total | 5
+FACT: bags with more than 40 seeds germinated | frequency | 3
+FACT: bags with 49 seeds germinated | frequency | 0
+FACT: bags with more than 35 seeds germinated | frequency | 5
+LAW: P(more than 40 seeds germinated) = 3 / 5
+LAW: P(49 seeds germinated) = 0 / 5
+LAW: P(more than 35 seeds germinated) = 5 / 5
+PROP: probability of an event | property | can be any fraction from 0 to 1
+ASK: tyre | probability
+ASK: driver | probability
+ASK: student weight | probability
+ASK: seed germination | probability
+SEQ: collect the data
+SEQ: count the frequency of the event
+SEQ: divide the frequency by the total number of observations
+SEQ: obtain the empirical probability
+ASK: batswoman | probability of not hitting a boundary
+ASK: family | probability of two girls
+ASK: family | probability of one girl
+ASK: family | probability of no girl
+ASK: student | probability of being born in August
+ASK: three coins | probability of two heads
+ASK: family income | probability
+ASK: vehicles per family | probability
+ASK: student | probability of obtaining less than 20% marks
+ASK: student | probability of obtaining 60 or more marks
+ASK: student | probability of liking statistics
+ASK: student | probability of not liking statistics
+ASK: engineer | probability of living less than 7 km from the place of work
+ASK: engineer | probability of living more than or equal to 7 km from the place of work
+ASK: engineer | probability of living within 1/2 km from the place of work
+ASK: two-wheeler | probability
+ASK: three-digit number divisible by 3 | probability
+ASK: bag of wheat flour | probability of containing more than 5 kg of flour
+ASK: sulphur dioxide concentration | probability
+ASK: blood group AB | probability
+PROP: event | property | collection of some outcomes of the experiment
+PROP: empirical probability | property | lies between 0 and 1
+LAW: empirical probability = number of trials in which the event happened / total number of trials
+FACT: probability | minimum value | 0
+FACT: probability | maximum value | 1
+PROP: impossible event | probability | 0
+PROP: sure event | probability | 1
+PROP: probability | property | lies between 0 and 1
+PROP: event | property | collection of some outcomes of an experiment
+LAW: empirical probability = number of trials in which the event happened / total number of trials
+ASK: empirical probability | formula
+ASK: probability | range
+ASK: impossible event | probability
+ASK: sure event | probability
+PROP: empirical probability | property | based on experiments
+PROP: event | property | collection of outcomes
+PROP: probability | property | value from 0 to 1
+FACT: impossible event | probability | 0
+FACT: sure event | probability | 1
+LAW: empirical probability = number of trials in which the event happened / total number of trials
+ASK: event | empirical probability
+ASK: experiment | outcomes
+ASK: probability | value
+ASK: impossible event | probability
+ASK: sure event | probability
