@@ -31,6 +31,38 @@ def b_composable(ex):
     return C.render("f", p) if p else None
 
 
+# Learned accelerator over the SAME composable space: a proposer reads the target's I/O
+# shape and orders the compositions so the likely program is tried first (premise
+# selection). Trained once per process, cached. Guided runs before brute b_composable;
+# on a miss the engine falls through to brute, and solve() re-verifies either way — so
+# the accelerator only ever changes SPEED, never correctness.
+_CP = {"trees": None, "failed": False}
+
+
+def _cp_trees():
+    import composable_proposer as CP
+    if _CP["trees"] is None and not _CP["failed"]:
+        try:
+            _CP["trees"] = CP.train()
+        except Exception:
+            _CP["failed"] = True
+    return _CP["trees"]
+
+
+def b_composable_guided(ex):
+    import composable_proposer as CP
+    trees = _cp_trees()
+    if trees is None:
+        return None
+    data = _int1(ex)
+    try:
+        cand = CP.order(trees, CP.feats(data))
+        p, _ = CP.search(data, cand)
+    except Exception:
+        p = None
+    return C.render("f", p) if p else None
+
+
 def b_early(ex):
     r = L3.synth_search(_int1(ex))
     return L3.render("f", *r) if r else None
@@ -74,7 +106,7 @@ def b_dp(ex):
 
 
 ROUTES = {              # input kind -> ordered backends to try
-    "int1":  [("composable", b_composable), ("early", b_early)],
+    "int1":  [("composable_guided", b_composable_guided), ("composable", b_composable), ("early", b_early)],
     "int2":  [("while", b_while)],
     "list":  [("list", b_list), ("dp", b_dp)],
     "listt": [("member", b_member)],
