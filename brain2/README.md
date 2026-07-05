@@ -139,7 +139,7 @@ These aren't bugs to hide — they're the true shape of the system.
 ## Module wiring status (as of 2026-07-05)
 
 Import-reachability from the live entry points (`whole_brain`, `exam`, `train_pipeline`,
-`reading_loop`, `autonomous_loop`, `nl_front`): **126 modules, 71 wired (56%).** A passing
+`reading_loop`, `autonomous_loop`, `nl_front`): **126 modules, 74 wired (59%).** A passing
 `__main__` demo is not a wire — the system's real behavior is only what the front reaches.
 
 **Wired into the live `ask()` path:** `reasoning_engine`, `means_ends`, `synth_engine`,
@@ -159,7 +159,7 @@ composed in `create()`. The front reads episodes → originates verified rules �
 | B. Alternate fronts | `brain_chat`, `chat`, `brain_repl`, `brain_session`, `math_chat`, `server`, `agent`, `brain_planner`, `planning_engine` | never chosen as THE front |
 | C. Grounding | `ground_blend`, `ground_numeric`, `ground_reason`, `ground_to_binding`, `crispify_bridge` | perception→symbol, disconnected |
 | D. Code-generation engines (lineage) | `program_synth`, `synthesis_engine`, `loop_synth`, `loop_synth2`, `dp_greedy_synth`, `stress_synth`, `compositional` | the code-gen synthesis ladder (formulas→folds→conditionals→DP→composable). KEEP — this is the code-generation capability + provenance. The live `_code()` path routes through `synth_engine` → `composable_synth`/`loop_synth3`/`loop_synth4`/`dp_proposer`; the earlier rungs are the documented lineage, several still demo'd/tested. |
-| E. Search accelerators | `learned_guidance`, `online_proposer2` | speed search; `composable_proposer` is now WIRED as `synth_engine`'s guided `int1` backend (proposer orders compositions → ~3.8× fewer evals, brute fallback, solve() re-verifies). The other two guide different engines (A* / task-signature) and still need those to expose a prior hook. |
+| E. Search accelerators — ALL WIRED | `composable_proposer`, `online_proposer2`, `learned_guidance` | `composable_proposer` = `synth_engine`'s guided `int1` backend (~3.8× fewer evals). `online_proposer2` = `whole_brain._guided_solve` (task-signature picks the space, stress-survival rewards it; code synth learns per family). `learned_guidance` = `whole_brain.learn_heuristic()` (fits a cost-to-goal estimate → guides the A* engine, ~121× fewer states, still correct). All verifier-gated: guidance changes SPEED, never correctness. |
 | F. Language / memory | `semantic_memory`, `conceptnet_taxonomy`, `knowledge_pack`, `dual_process`, `dual_process_engine` | disconnected |
 
 Regenerate: import-reachability BFS from the entry points over local imports

@@ -61,6 +61,7 @@ CODE_TASKS["fibonacci"] = ("int1", CODE_TASKS["fibonacci"][1], _fib)
 class WholeBrain:
     def __init__(self):
         self.store = BrainStore()
+        self._proposer = None                       # lazy online_proposer2 (guided code synth)
         # FACTUAL: real-world knowledge + inheritance
         self.kre = ReasoningEngine()
         for s, r, o in CORE_FACTS:
@@ -261,6 +262,25 @@ class WholeBrain:
                     break
         return {"banked": banked, "conjectures_tested": total}
 
+    def learn_heuristic(self, n_tasks=60, probes=12, seed=7):
+        """Search that IMPROVES with experience (learned_guidance): fit a cost-to-goal estimate
+        from solved instances, then guide the A* engine so it expands far fewer states while
+        staying correct (it still solves). Wires learned_guidance into the front; returns the
+        measured blind-vs-learned node reduction. Domain-agnostic — demonstrated on the puzzle
+        it is proven on, the same engine (tree_reason) the synthesis paths use."""
+        import random
+        import learned_guidance as LG
+        from tree_learn import EightPuzzle, features, manhattan, scramble
+        h = LG.LearnedHeuristic(features)
+        h.train(LG.collect_examples(EightPuzzle, scramble, manhattan))
+        rng = random.Random(seed)
+        starts = [scramble(80, rng) for _ in range(probes)]
+        blind, ok_b = LG._avg_nodes(None, starts)
+        learned, ok_l = LG._avg_nodes(h, starts)
+        return {"blind_states": round(blind), "learned_states": round(learned),
+                "speedup": round(blind / max(learned, 1), 1),
+                "solved": f"{ok_l}/{len(starts)}", "correct": ok_l >= ok_b}
+
     # ── CREATIVITY faculties: originate new knowledge, membrane-gated ────────────
     # These were built + verified in isolation but orphaned (no importer). Wired here
     # into the front so the running brain can conjecture across domains, blend concepts,
@@ -396,7 +416,27 @@ class WholeBrain:
                 "code_checks": (dict(self.checks.inv) if self.checks else {}),
                 "creativity": ["cross_domain", "blend", "analogize", "induce",
                                "read_to_law", "create"],   # originate faculties, membrane-gated
+                "learned_search": ["_guided_solve (online_proposer2)",
+                                   "learn_heuristic (learned_guidance)"],  # search that improves
                 "verification": self.self_check()}
+
+    def _guided_solve(self, ex, kind, oracle):
+        """Code synthesis ordered by a learned proposer (online_proposer2): a task-signature
+        keys which space to try first, and stress-survival rewards/penalizes that space, so
+        repeated synthesis learns the right space per task FAMILY and NEW tasks transfer by
+        signature. Falls back to the static engine if the proposer is unavailable — the
+        verifier gates every result, so guidance changes SPEED, never correctness."""
+        if self._proposer is None:
+            try:
+                from online_proposer2 import FeatureProposer
+                self._proposer = FeatureProposer()
+            except Exception:
+                self._proposer = False
+        if self._proposer:
+            name, code, _ = self._proposer.solve(ex, kind, oracle)
+            if code:
+                return name, code
+        return SE.solve(ex, kind)                        # static-order fallback
 
     def _code(self, toks):
         name = next((t for t in toks if t in CODE_TASKS), None)
@@ -406,7 +446,7 @@ class WholeBrain:
             return ("code", f"recalled from memory:\n{self.store.functions[name].strip()}", True)
         kind, raw, oracle = CODE_TASKS[name]
         ex = SE._ex(kind, oracle, raw)
-        sp, code = SE.solve(ex, kind)
+        sp, code = self._guided_solve(ex, kind, oracle)
         if code and SE.stress(code, oracle, kind)[0]:
             code = code.replace("def f(", f"def {name}(")
             self.store.add_function(name, code)
