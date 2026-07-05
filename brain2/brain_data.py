@@ -186,14 +186,31 @@ class BrainData:
     def verbs(self):
         return {ev.verb for _, ev in self.events}
 
-    def learn_verb_constraints(self, oracle, promote_at=2):
+    def learn_verb_constraints(self, oracle, promote_at=2, frac=1.0):
         """Train the event membrane FROM DATA: watch every event, induce each verb's selectional
         constraint (agent/patient types) via the conjecture->verify->admit VerbLearner. Replaces
-        hand-set constraints with learned ones."""
+        hand-set constraints with learned ones.
+
+        NOTE: per-file learning sees only this file's events; a verb used broadly across the
+        corpus is best learned by pooling every file's events into ONE learner
+        (`learn_verb_constraints_pooled`) — otherwise last-file-wins throws away evidence."""
         from verb_learn import VerbLearner
-        vl = VerbLearner(oracle, promote_at=promote_at)
+        vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
         for _, ev in self.events:
             vl.observe(ev)
+        vl.acquire()
+        return vl.constraints
+
+    @staticmethod
+    def learn_verb_constraints_pooled(datas, oracle, promote_at=2, frac=0.5):
+        """Pool events from MANY BrainData files into one learner, so each verb's constraint is
+        induced from all its uses corpus-wide (not one file). frac<1 generalizes to a shared
+        supertype robust to sparse taxonomy gaps and one-off contexts."""
+        from verb_learn import VerbLearner
+        vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
+        for d in datas:
+            for _, ev in d.events:
+                vl.observe(ev)
         vl.acquire()
         return vl.constraints
 

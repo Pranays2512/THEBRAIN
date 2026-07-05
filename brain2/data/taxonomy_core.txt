@@ -1,0 +1,21 @@
+# taxonomy_core.txt — the animate ontology backbone.
+#
+# The per-subject corpora connect animals to "living thing" (animal isa living thing),
+# but the HUMAN branch was never linked: person / child / children had no path to
+# "living thing". That gap made selectional-constraint learning collapse — a verb seen
+# with both people and animals found no shared animate supertype, so "eat" over-fit to
+# "person" and rejected "monkey". These edges close the gap: humans and animals now share
+# "living thing", giving verb learning a real animate category to generalise to.
+#
+# These are genuine ISA facts (a person IS a living thing), not a hack — they belong in
+# the knowledge base. Kept in one file so the backbone is auditable in one place.
+
+ISA: person | living being
+ISA: person | living thing
+ISA: child | person
+ISA: children | person
+ISA: people | person
+ISA: animals | animal
+ISA: living beings | living thing
+ISA: animal | living being
+ISA: plant | living being

@@ -22,21 +22,36 @@ Admitting a verb makes it TRUSTED: its events move held -> admit/reject. (Open-l
 _ROOTS = frozenset({"living_thing", "thing", "entity", "object", "concept"})
 
 
-def _intersect(closures):
-    """Shared types across uses = intersection of their isa-closures, minus universal roots."""
-    closures = [set(c) for c in closures if c]
-    if not closures:
+def _generalize(closures, frac=1.0):
+    """The shared selectional type across uses. A type is kept if it appears in at least
+    `frac` of the TYPED observations (untyped fillers are ignored, not counted against).
+    frac=1.0 is strict intersection (every use must share it — brittle: one shallow-typed or
+    outlier filler collapses the constraint). frac<1.0 is frequency-thresholded generalization:
+    robust to sparse taxonomy gaps and one-off contexts, which is what real corpora have.
+    Universal roots are removed either way (they'd admit anything)."""
+    import math
+    from collections import Counter
+    typed = [set(c) for c in closures if c]
+    n = len(typed)
+    if n == 0:
         return frozenset()
-    shared = closures[0]
-    for c in closures[1:]:
-        shared &= c
-    return frozenset(shared - _ROOTS)
+    cnt = Counter()
+    for s in typed:
+        cnt.update(s)
+    need = n if frac >= 1.0 else max(1, math.ceil(frac * n))
+    return frozenset(t for t, k in cnt.items() if k >= need) - _ROOTS
+
+
+def _intersect(closures):
+    """Back-compat alias: strict intersection (frac=1.0)."""
+    return _generalize(closures, 1.0)
 
 
 class VerbLearner:
-    def __init__(self, type_of, promote_at=2):
+    def __init__(self, type_of, promote_at=2, frac=1.0):
         self.type_of = type_of
         self.promote_at = promote_at
+        self.frac = frac                       # generalization threshold (1.0 = strict intersect)
         self.obs = {}                          # verb -> [(agent_types, patient_types)]
         self.constraints = {}                  # verb -> {agent:set, patient:set}  (admitted)
 
@@ -48,8 +63,8 @@ class VerbLearner:
 
     def _conjecture(self, obs):
         spec = {}
-        agent_c = _intersect([a for a, _ in obs])
-        patient_c = _intersect([p for _, p in obs])
+        agent_c = _generalize([a for a, _ in obs], self.frac)
+        patient_c = _generalize([p for _, p in obs], self.frac)
         if agent_c:
             spec["agent"] = set(agent_c)
         if patient_c:

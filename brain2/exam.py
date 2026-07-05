@@ -36,20 +36,24 @@ fkb, mem = KD.SimpleKB(), PolicyMemory()
 predictor = EventPredictor()
 all_isa = []; all_ents = set(); all_verbs = set()
 
-for f in ALL_FILES:
+# taxonomy_core first: the animate ISA backbone (person/child -> living thing) that lets
+# verb constraints find a shared supertype across humans and animals.
+datas = []
+for f in ["data/taxonomy_core.txt"] + ALL_FILES:
     d = BrainData.from_file(f)
     d.load_morph()
     d.teach_knowledge(fkb, mem)
     d.train_predictor(predictor)
+    datas.append(d)
     all_isa += [(c, "isa", p) for c, p in d.isa]
     all_ents |= d.entities()
     all_verbs |= d.verbs()
 
 oracle = TypeOracle(triples=all_isa)
-constraints = {}
-for f in ALL_FILES:
-    d = BrainData.from_file(f)
-    constraints.update(d.learn_verb_constraints(oracle))
+# Pool every file's events into ONE learner (per-file last-wins threw away evidence) and
+# generalize to a shared supertype (frac=0.5), robust to one-off contexts like a single
+# "eat | members | dining hall" that used to over-constrain the whole verb.
+constraints = BrainData.learn_verb_constraints_pooled(datas, oracle, frac=0.5)
 store = EventStore()
 print("Brain loaded.\n")
 
