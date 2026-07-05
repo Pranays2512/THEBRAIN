@@ -325,6 +325,11 @@ here, crisp all the way, built in dependency order:
   laws via `autonomous_loop` — it re-learned the shared shape `0.5·a·b²` across energy gaps),
   and a `CheckLibrary` of code-checks learned from breaks. The 4 formerly-orphaned
   self-improve/verifier components are now reachable from the front.
+  **Still orphaned (built + run, NOT yet wired into the front):** the CREATIVITY faculties —
+  `curiosity_cross` (cross-domain law unification), `analogy_engine`, `concept_blend`,
+  `curiosity_loop`, `composable_proposer`, `learn_by_reading`. `self_extend()` wired the
+  verifier/rediscovery half; the analogical/blending half is next. See README
+  §"Module wiring status" for the full wired-vs-orphan map (64/126 wired).
 - **Wired into the front** (`whole_brain.ask`): a declarative (not a question) now routes to
   `EventReader` — the running brain reads prose into verified events through the same membrane
   as compute. "the dog ate the fish" → *learned + verified*; "the dog did not eat the fish" →

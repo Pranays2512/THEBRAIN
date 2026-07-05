@@ -112,15 +112,55 @@ consolidation** cycle (interleaved experience replay) that cuts forgetting 84%.
 - **Language is capacity-bound.** Held-out bits/char is ~1.72 regardless of data
   scale; more epochs make it worse. A 2-layer LSTM at 64-d frozen embeddings will
   never be LLM-class, and that's fine — language is the interface, not the value.
-- **Operators are defined per domain.** It reasons brilliantly *inside* rules you
-  give it — and finds solutions you never handed it (it discovered the bridge
-  puzzle's counterintuitive optimum) — but it does **not invent new rules or
-  operators** for a domain on its own. Each new problem class is a plug-in.
-- **It does not originate knowledge.** It must be told relations (or fed them by
-  an extractor); it reasons over knowledge, it doesn't generate it from raw
-  perception.
+- **Origination is bounded, not absent.** The brain *does* originate: it
+  conjectures laws and self-tests them against principles it already trusts
+  (`conjecture_sandbox`), runs a standing curiosity→conjecture→test→bank→learn
+  cycle that rediscovers laws with no answer key and transfers a learned shape to
+  new gaps (`autonomous_loop`), and unifies two distant domains under one shared
+  law via anti-unification (`curiosity_cross`, e.g. ½·m·v² and ½·k·x² collapse to
+  ½·coeff·quantity²). The **boundary**: conjectures are drawn from a form grammar
+  (compositions of known operators) and must have a trusted anchor to test against.
+  So it originates *novel-but-related* knowledge, not *zero-precedent* structure —
+  the same boundary a scientist has. It is not a passive store.
+- **Wiring lags capability.** Several of the origination/creativity faculties above
+  are BUILT and pass their own demos but are **not yet wired into the `whole_brain`
+  front** — so a live `ask()` today does routing→facts→laws→ISA→synth→arithmetic,
+  not curiosity/blend/cross-domain. See §"Module wiring status" for the wired-vs-
+  orphan map. Making these live is integration work, not training.
+- **Operators are still per domain.** It reasons brilliantly inside rules you give
+  it and finds solutions you never handed it (the bridge-puzzle optimum), and the
+  autonomous loop discovers laws within its form grammar — but it does not invent a
+  genuinely new operator outside that grammar on its own.
 
 These aren't bugs to hide — they're the true shape of the system.
+
+---
+
+## Module wiring status (as of 2026-07-05)
+
+Import-reachability from the live entry points (`whole_brain`, `exam`, `train_pipeline`,
+`reading_loop`, `autonomous_loop`, `nl_front`): **126 modules, 64 wired (51%), 42 orphan
+(built, zero importers), 16 semi-wired (reachable only via tests).** A passing
+`__main__` demo is not a wire — the system's real behavior is only what the front reaches.
+
+**Wired into the live `ask()` path:** `reasoning_engine`, `means_ends`, `synth_engine`,
+`brain_store`, `appraisal_engine`, `reading_loop`, `type_oracle`, `verb_learn`,
+`event_*`, `mouth`, `synth_invariant`, `verifier_monitor`, `autonomous_loop`,
+`context_embed`, `check_library`, `+ C++ core`.
+
+**Built + verified to run, NOT wired into the front (orphans):**
+
+| Group | Modules | Note |
+|---|---|---|
+| A. Creativity / origination | `curiosity_cross`, `curiosity_loop`, `analogy_engine`, `concept_blend`, `composable_proposer`, `online_proposer2`, `learned_guidance`, `learn_by_reading`, `inductive_engine`, `conjecture_sandbox` | all run; the highest-value wiring targets |
+| B. Alternate fronts | `brain_chat`, `chat`, `brain_repl`, `brain_session`, `math_chat`, `server`, `agent`, `brain_planner`, `planning_engine` | never chosen as THE front |
+| C. Grounding | `ground_blend`, `ground_numeric`, `ground_reason`, `ground_to_binding`, `crispify_bridge` | perception→symbol, disconnected |
+| D. Synthesis variants | `program_synth`, `synthesis_engine`, `loop_synth`, `loop_synth2`, `dp_greedy_synth`, `stress_synth`, `compositional` | likely superseded by `synth_engine`; audit + prune |
+| E. Language / memory | `semantic_memory`, `conceptnet_taxonomy`, `knowledge_pack`, `dual_process`, `dual_process_engine` | disconnected |
+
+Regenerate: import-reachability BFS from the entry points over local imports
+(see the graphify graph at `../graphify-out/`). Closing the Group-A gap is
+integration work (wire the faculty into the front / a background loop), not training.
 
 ---
 
