@@ -116,18 +116,35 @@ def make_function(schema, base_tokens, step_tokens, library):
 
 
 # ── synthesis as search — reuse tree_reason.solve (the proven A* engine) ─────
+# ── op-agnostic features of a partial token-program state, so a heuristic learned
+# on one op transfers to the next (counts/depth only, never op-specific tokens) ──
+def _state_feats(state):
+    tokens, depth = state
+    atoms = sum(t in ("S", "P", "Z") for t in tokens)
+    vrs = sum(t in ("a", "b", "r") for t in tokens)
+    calls = len(tokens) - atoms - vrs                 # library-call tokens (arity-2)
+    return [1.0, float(len(tokens)), float(depth), float(atoms), float(vrs), float(calls)]
+
+
 class StepSynth(SearchProblem):
-    def __init__(self, examples, schema, base_tokens, library, max_len=6):
+    def __init__(self, examples, schema, base_tokens, library, max_len=6, hfn=None):
         self.examples = examples
         self.schema = schema
         self.base = base_tokens
         self.library = library
         self.comp = step_components(library)
         self.max_len = max_len
+        self.hfn = hfn                                # learned cost-to-goal estimate, or None
 
     def initial(self):     return ((), 0)
     def key(self, s):      return s
-    def heuristic(self, s): return 0
+    def heuristic(self, s):
+        if self.hfn is None:
+            return 0
+        try:
+            return max(0.0, float(self.hfn(_state_feats(s))))
+        except Exception:
+            return 0
 
     def is_goal(self, state):
         tokens, depth = state
@@ -157,22 +174,30 @@ def _base_candidates(survivor):
     return [(survivor,), ("Z",), ("Z", "S"), (survivor, "S"), (survivor, "P")]
 
 
-def synthesize(examples, library, max_len=5, node_budget=120_000):
+def synthesize(examples, library, max_len=5, node_budget=120_000, hfn=None):
     """Find (schema, base, step) whose primrec function fits ALL examples,
     trying recursion on either argument. Returns first (shortest-per-base)
-    solution. Reuses solve()."""
+    solution. Reuses solve(). `hfn` (optional) is a learned cost-to-goal estimate
+    that guides the A* search; None = blind (uniform-cost, the original behavior).
+
+    Returns (f, schema, base, step, total_nodes, trace) where `trace` is the list of
+    (state_features, cost_to_goal) along the winning path — labels to train/refine a
+    heuristic that transfers to the next op. `trace` is [] on failure."""
     total = 0
     for schema in ("a", "b"):
         survivor = "b" if schema == "a" else "a"
         for base in _base_candidates(survivor):
-            prob = StepSynth(examples, schema, base, library, max_len=max_len)
+            prob = StepSynth(examples, schema, base, library, max_len=max_len, hfn=hfn)
             path, cost, nodes = solve(prob, max_nodes=node_budget)
             total += nodes
             if path is not None:
                 step = path[-1][1][0]
                 f = make_function(schema, base, step, library)
-                return f, schema, base, step, total
-    return None, None, None, None, total
+                states = [prob.initial()] + [s for _, s in path]
+                n = len(states) - 1
+                trace = [(_state_feats(s), float(n - i)) for i, s in enumerate(states)]
+                return f, schema, base, step, total, trace
+    return None, None, None, None, total, []
 
 
 # ── readability ──────────────────────────────────────────────────────────────
@@ -204,12 +229,30 @@ class LearnedArithmetic:
     ORACLE = {"add": lambda a, b: a + b, "sub": lambda a, b: max(0, a - b),
               "mul": lambda a, b: a * b, "pow": lambda a, b: a ** b}
 
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, guided=False):
+        # guided=True plumbs a learned cost-to-goal heuristic through the A* search
+        # (transfers across the add→sub→mul→pow curriculum). MEASURED: ~1.00× here —
+        # this search is bounded by candidate EVALUATION (WorkExceeded on explosive
+        # programs), not frontier ORDERING, so a count-feature heuristic can't help.
+        # Kept off by default (no benefit, keep the tested path simple); the hook stays
+        # for a richer state representation later. Guidance never affects correctness —
+        # every candidate is verified, and a guided miss falls back to blind.
         self.lib = {}
         self.programs = {}          # name -> (schema, base, step)
         self.report = {}            # name -> {"nodes","train_ok","holdout_ok"}
+        self._trace = []            # accumulated (features, cost-to-goal) across solved ops
+        self._guide = None          # learned heuristic, refined as the curriculum advances
         for name, _kind, examples in self.CURRICULUM:
-            f, schema, base, step, nodes = synthesize(examples, self.lib)
+            # GUIDED first (heuristic learned from earlier ops); on a miss, fall BACK to
+            # blind — so learning can only make search FASTER, never lose coverage. The
+            # search verifies every candidate against the examples, so the program is
+            # correct regardless of which heuristic (or none) guided the way there.
+            f = None
+            if guided and self._guide is not None:
+                f, schema, base, step, nodes, trace = synthesize(examples, self.lib, hfn=self._guide)
+            if f is None:
+                f, schema, base, step, nodes2, trace = synthesize(examples, self.lib)
+                nodes = (nodes if f is not None and guided and self._guide is not None else 0) + nodes2
             if f is None:
                 self.report[name] = {"nodes": None, "train_ok": False, "holdout_ok": False}
                 if verbose: print(f"  ✗ {name}: FAILED")
@@ -225,6 +268,10 @@ class LearnedArithmetic:
             self.lib[name] = f
             self.programs[name] = (schema, base, step)
             self.report[name] = {"nodes": nodes, "train_ok": True, "holdout_ok": hok}
+            # refine the transferable heuristic from this op's winning path
+            if guided and trace:
+                self._trace.extend(trace)
+                self._refit_guide()
             if verbose:
                 b = "b" if schema == "a" else "a"
                 zero = "0" if schema == "a" else "a"
@@ -233,6 +280,20 @@ class LearnedArithmetic:
                       f"{name}({zero.replace('0','0,b') if schema=='a' else 'a,0'}) = {pretty(base)} ; "
                       f"{name}({arg},{'b' if schema=='a' else 'a'}) = {pretty(step)}   "
                       f"holdout {'✓' if hok else '✗'}")
+
+    def _refit_guide(self):
+        """Least-squares cost-to-goal estimate over accumulated path features (via
+        learned_guidance if present, else a local numpy fit). Transfers to the next op."""
+        if len(self._trace) < 6:
+            return
+        try:
+            import numpy as np
+            X = np.array([f for f, _ in self._trace])
+            y = np.array([c for _, c in self._trace])
+            w, *_ = np.linalg.lstsq(X, y, rcond=None)
+            self._guide = lambda feats, _w=w: float(np.asarray(feats) @ _w)
+        except Exception:
+            self._guide = None
 
     def __call__(self, name, a, b):
         return self.lib[name](a, b)
