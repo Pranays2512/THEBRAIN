@@ -24,6 +24,22 @@ DOMAIN_A = [("kinetic_energy", ("*", 0.5, ("*", "m", ("*", "v", "v"))))]   # ½�
 DOMAIN_B = [("spring_energy",  ("*", 0.5, ("*", "k", ("*", "x", "x"))))]   # ½·k·x²
 
 
+def cross_domain_laws(libraries, min_count=2, min_kept=1):
+    """The reusable core (callable from the front). `libraries` is a list of (name, tree)
+    from two+ domains. Factor their UNION via anti-unification: a skeleton that recurs
+    across DISTINCT named laws is a shared cross-domain law. Returns the discovery plus a
+    VERIFIED flag (the shared structure must reconstruct every input formula — membrane).
+
+    Returns {"new": [(name,tree)], "prims": {...}, "discovery": (skel_name, skel),
+             "verified": bool}. Empty `new` => no shared structure (honest miss)."""
+    union = list(libraries)
+    new, prims, disc = FZ.factor_au(union, min_count=min_count, min_kept=min_kept)
+    verified = False
+    if new:
+        verified, _ = FZ._verify(union, new, prims)
+    return {"new": new, "prims": prims, "discovery": disc, "verified": verified}
+
+
 def _demo():
     print("=== curiosity_cross — find the law two domains share (the adjacent possible) ===\n")
     print("  domain A:", DOMAIN_A[0][0], "=", DOMAIN_A[0][1], "  (½·m·v²)")
@@ -36,15 +52,13 @@ def _demo():
 
     # cross-domain curiosity: factor the UNION -> the shared abstract structure UNIFIES
     # two distinct named phenomena (kinetic vs spring) under one law.
-    union = DOMAIN_A + DOMAIN_B
-    new, prims, disc = FZ.factor_au(union, min_count=2, min_kept=1)
+    r = cross_domain_laws(DOMAIN_A + DOMAIN_B)
+    new, disc, ok = r["new"], r["discovery"], r["verified"]
     print("\n  across A ∪ B: two distinct laws collapse to ONE shape =", disc[0], "=", disc[1])
     print("    (½·coeff·quantity² — kinetic energy and spring energy are the SAME law):")
     for n, t in new:
         print("      %-15s %s" % (n, t))
 
-    # verify the shared structure really generalises both (meaning preserved)
-    ok, _ = FZ._verify(union, new, prims)
     print("\n  shared structure verified on both formulas:", ok)
     print("  -> the insight 'these two distant laws are the same shape' exists only when the")
     print("     domains are combined — within-domain curiosity could never surface it.")

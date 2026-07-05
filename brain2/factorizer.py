@@ -23,7 +23,8 @@ import random
 from collections import Counter
 
 OPS = {"+": lambda a, b: a + b, "-": lambda a, b: a - b,
-       "*": lambda a, b: a * b, "/": lambda a, b: a / b if b else 0.0}
+       "*": lambda a, b: a * b, "/": lambda a, b: a / b if b else 0.0,
+       "^": lambda a, b: a ** b}
 
 
 def _is_leaf(t):

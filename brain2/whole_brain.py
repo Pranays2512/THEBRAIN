@@ -125,6 +125,7 @@ class WholeBrain:
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
                 "things", "thing", "great", "high", "large", "strong", "fast", "dense", "heavy"}
         vecs = CE.build()
+        self.vecs = vecs                            # learned concept vectors (for concept_blend)
         self.ctx_map = {}
         for w in vecs:
             if w in self.relations or w in self.entities or w in STOP:
@@ -260,6 +261,121 @@ class WholeBrain:
                     break
         return {"banked": banked, "conjectures_tested": total}
 
+    # ── CREATIVITY faculties: originate new knowledge, membrane-gated ────────────
+    # These were built + verified in isolation but orphaned (no importer). Wired here
+    # into the front so the running brain can conjecture across domains, blend concepts,
+    # map analogies, and induce rules — every product VERIFIED before it is banked.
+
+    def cross_domain(self):
+        """Find a law two DISTINCT domains secretly share (curiosity into the adjacent
+        possible). Factors the union of the brain's banked policies via anti-unification;
+        a skeleton recurring across differently-named laws is a cross-domain insight —
+        verified to reconstruct every input formula. Banks the shared shape into the store."""
+        import curiosity_cross as CC
+        libs = [(t, p.expr) for t, p in self.mem.by_target.items()]
+        if len(libs) < 2:
+            return {"discovered": None, "reason": "need >=2 banked laws"}
+        r = CC.cross_domain_laws(libs)
+        disc = r["discovery"]
+        if not r["new"] or not r["verified"] or not disc:
+            return {"discovered": None, "reason": "no verified shared structure"}
+        name, skel = disc[0], disc[1]                  # (name, pattern, arity)
+        self.store.add_policy(name, (), skel)          # bank the shared shape (verified)
+        self.store.save()
+        return {"discovered": name, "shape": skel, "verified": True,
+                "unified": [n for n, _ in r["new"]]}
+
+    def blend(self, a=None, b=None):
+        """Invent a concept in EMPTY feature space (novelty primitive). Fuses two distant
+        known concepts into a point outside every category; admitted only if verifiably
+        novel (nearest known concept farther than the cluster radius). Proposes — grounding
+        still decides usefulness."""
+        import concept_blend as CB
+        # CE vectors are SPARSE co-occurrence dicts; densify to aligned lists over the shared
+        # context vocabulary so concept_blend's per-dimension fuse/distance is well-defined.
+        grounded = [c for c in (self.concepts | self.relations) if c in self.vecs]
+        dims = sorted({k for c in grounded for k in self.vecs[c]})
+        pool = {c: [self.vecs[c].get(k, 0.0) for k in dims] for c in grounded}
+        if len(pool) < 3 or not dims:
+            return {"novel": False, "reason": "too few grounded concepts"}
+        # data-driven radius = median nearest-neighbour distance (what "same concept" means here)
+        names = sorted(pool)
+        nn = []
+        for n in names:
+            d = min(CB.dist(pool[n], pool[m]) for m in names if m != n)
+            nn.append(d)
+        radius = sorted(nn)[len(nn) // 2]
+        if a is None or b is None:                     # pick the two most distant concepts
+            best, pair = -1.0, None
+            for i, x in enumerate(names):
+                for y in names[i + 1:]:
+                    d = CB.dist(pool[x], pool[y])
+                    if d > best:
+                        best, pair = d, (x, y)
+            a, b = pair
+        if a not in pool or b not in pool:
+            return {"novel": False, "reason": "concepts not grounded"}
+        r = CB.propose(a, b, pool, radius)
+        r["parents"] = [a, b]
+        r.pop("vector", None)                          # keep the report light
+        return r
+
+    def analogize(self, source, target):
+        """Structure-map two domains given as (subj, rel, obj) triples over a shared relation
+        vocabulary; return the object correspondence + analogical predictions (HYPOTHESES to
+        verify, not truths). Ambiguous/structure-poor domains yield no mapping, honestly."""
+        from analogy_engine import AnalogyEngine
+        mapping, transfers = AnalogyEngine().map_domains(list(source), list(target))
+        return {"mapping": mapping,
+                "predictions": [(s, r, o) for s, r, o, _ in transfers]}
+
+    def induce(self, episodes, promote=True):
+        """Mine rules (A tends to precede B) from observed episodes, VERIFY on a held-out
+        split (reject train-only coincidences), and — if promote — install the survivors into
+        the factual reasoner so they become chainable knowledge. Originating rules from data."""
+        import random
+        from inductive_engine import InductiveLearner
+        eps = [list(e) for e in episodes if len(e) >= 2]
+        if len(eps) < 4:
+            return {"promoted": [], "rejected": [], "reason": "too few episodes"}
+        random.Random(0).shuffle(eps)              # deterministic: a pattern must appear in
+        cut = max(2, int(0.7 * len(eps)))          # BOTH splits to verify (else "untested")
+        learner = InductiveLearner()
+        promoted, rejected = learner.mine(eps[:cut], eps[cut:])
+        if promote and promoted:
+            learner.promote_into(self.kre, promoted)   # discovered rules -> usable knowledge
+        return {"promoted": [(r.a, r.b, r.conf_test) for r in promoted],
+                "rejected": [(a, b) for a, b, _ in rejected]}
+
+    def read_to_law(self, corpus, inputs, target, client):
+        """The extractor rung: an LLM reads prose into numeric rows, the brain INDUCES a law
+        over them and VERIFIES it before storing (teacher proposes data, brain disposes the
+        law). Needs an LLM `client` with .complete(); the induced law is membrane-checked, so
+        a corpus that supports no law yields None, not a guess."""
+        import learn_by_reading as LBR
+
+        class _Adapter:                                # bridge to brain_store.add_policy
+            def __init__(s, store): s.store = store
+            def policy_add(s, t, ins, expr):
+                s.store.add_policy(t, ins, expr); s.store.save()
+        expr, n_rows, nodes = LBR.learn(corpus, tuple(inputs), target, client, _Adapter(self.store))
+        return {"law": expr, "rows": n_rows, "nodes": nodes, "stored": expr is not None}
+
+    def create(self):
+        """The unifying idle cycle: the brain extends ITSELF between queries. Induce rules from
+        what it has read, find a cross-domain shared law, invent a novel concept — each product
+        passes the membrane (held-out verify / structural verify / novelty check) before it is
+        banked. Nothing fuzzy reaches the truth store. Returns what it originated this pass."""
+        # 1. induce rules from the reader's admitted event history (agent->verb->patient chains)
+        episodes = [[e.agent, e.verb, e.patient] for e in getattr(self.reader, "events", [])
+                    if e.agent and e.verb and e.patient]
+        induced = self.induce(episodes) if episodes else {"promoted": [], "reason": "no reading yet"}
+        # 2. cross-domain law from banked policies
+        crossed = self.cross_domain()
+        # 3. invent a verified-novel concept
+        blended = self.blend()
+        return {"induced": induced, "cross_domain": crossed, "blended": blended}
+
     def wonder(self):
         """Curiosity -> a question. The brain asks about the most surprising event it has seen
         (surprise-gated salience), voicing it through its own mouth. Returns None if nothing
@@ -278,6 +394,8 @@ class WholeBrain:
         return {"entities": sorted(self.entities), "relations": sorted(self.relations),
                 "verbs_learned": sorted(self.reader.verbs - base),
                 "code_checks": (dict(self.checks.inv) if self.checks else {}),
+                "creativity": ["cross_domain", "blend", "analogize", "induce",
+                               "read_to_law", "create"],   # originate faculties, membrane-gated
                 "verification": self.self_check()}
 
     def _code(self, toks):
