@@ -89,7 +89,7 @@ def q_isa(label, marks, token, expected_ancestor):
 
 def q_mem(label, marks, verb, agent, patient, expected):
     ev = Event(verb, agent, patient or None, "present", POS)
-    got = admit(ev, store, oracle, constraints)
+    got = admit(ev, store, oracle, constraints, all_verbs)
     results.append((marks, got == expected))
     sym = "✓" if got == expected else "✗"
     print(f"  {sym} [{marks:2d}m] {label:52s} → {got!r}  (exp {expected!r})")
@@ -216,7 +216,7 @@ q_isa("monsoon → season",                        3, "monsoon",    "season")
 section("B. EVENT MEMBRANE — ADMIT / REJECT  [30 marks]")
 q_mem("eat(monkey, banana)    → admit",          3, "eat",           "monkey",   "banana",    "admit")
 q_mem("eat(stone, food)       → reject",         3, "eat",           "stone",    "food",      "reject")
-q_mem("photosynthesize(plant,sunlight) → admit", 3, "photosynthesize","plant",   "sunlight",  "admit")
+q_mem("photosynthesize(plant,sunlight) → abstain (verb unseen)", 3, "photosynthesize","plant", "sunlight", "abstain")
 q_mem("dissolve(salt, water)  → admit",          3, "dissolve",      "salt",     "water",     "admit")
 q_mem("recycle(people,materials)→ admit",        3, "recycle",       "people",   "materials", "admit")
 q_mem("cultivate(people,plants)→ admit",         3, "cultivate",     "people",   "plants",    "admit")
@@ -265,7 +265,7 @@ section("B. ABSTAIN DISCIPLINE  [20 marks]")
 def q_classify(label, marks, verb, agent, patient, expected_not):
     ev = Event(verb, agent, patient or None, "present", POS)
     from event_verify import classify as cl
-    result = cl(ev, store, oracle, constraints)
+    result = cl(ev, store, oracle, constraints, all_verbs)
     # HARD: expect NOT a false admit on unknown verb
     ok = result != "admit" if expected_not == "not_admit" else result == expected_not
     results.append((marks, ok))
