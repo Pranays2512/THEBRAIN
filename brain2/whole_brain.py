@@ -63,10 +63,16 @@ class WholeBrain:
         self.store = BrainStore()
         self._proposer = None                       # lazy online_proposer2 (guided code synth)
         try:
+            import json
             from concept_memory import ConceptMemory
             from semantic_memory import SemanticMemory
-            self.concept_mem = ConceptMemory()       # names + reuses discovered structure
-            self.semantic = SemanticMemory()         # associative memory (similarity + recall)
+            cp = os.path.join(self.store.path, "concepts.json")
+            sp = os.path.join(self.store.path, "semantic.json")
+            # LOAD prior sessions' discoveries so the brain accumulates across restarts
+            self.concept_mem = ConceptMemory.load(cp) if os.path.exists(cp) else ConceptMemory()
+            self.semantic = SemanticMemory()
+            if os.path.exists(sp):
+                self.semantic.replay(json.load(open(sp)))
         except Exception:
             self.concept_mem = self.semantic = None
         # FACTUAL: real-world knowledge + inheritance
@@ -326,6 +332,24 @@ class WholeBrain:
         code, log = synth_self_correct(kind, oracle, inputs)
         return {"code": code, "iterations": len(log), "verified": code is not None}
 
+    def save_state(self):
+        """Persist everything the brain DISCOVERED this session so it accumulates across
+        restarts: banked policies + facts + code (brain_store), named concepts
+        (concept_memory), and associative memory (semantic_memory). Verified-only — nothing
+        fuzzy is written, and the crisp store is the source of truth on reload."""
+        import json
+        self.store.save()
+        try:
+            if self.concept_mem is not None:
+                self.concept_mem.save(os.path.join(self.store.path, "concepts.json"))
+            if self.semantic is not None:
+                self.semantic.save(os.path.join(self.store.path, "semantic.json"))
+        except Exception:
+            pass
+        return {"policies": len(self.store.policies), "functions": len(self.store.functions),
+                "concepts": len(getattr(self.concept_mem, "concepts", {}) or {}),
+                "semantic_facts": len(getattr(self.semantic, "facts", []) or [])}
+
     def remember(self, subj, rel, obj):
         """Associative memory write (semantic_memory): stores a relation and supports fuzzy
         recall + similarity a plain dict cannot. Complements the crisp store."""
@@ -517,8 +541,9 @@ class WholeBrain:
                 curious = {"error": cl.error(), "gaps": cl.curiosity_gaps()}
             except Exception:
                 pass
+        persisted = self.save_state()                  # discoveries survive the session
         return {"induced": induced, "cross_domain": crossed, "blended": blended,
-                "curiosity": curious}
+                "curiosity": curious, "persisted": persisted}
 
     def wonder(self):
         """Curiosity -> a question. The brain asks about the most surprising event it has seen

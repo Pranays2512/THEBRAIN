@@ -105,6 +105,18 @@ class SemanticMemory:
         tok = self._decode(vec)
         return (tok, round(float(conf), 3)) if tok else (None, 0.0)
 
+    def save(self, path):
+        """Persist the learned triples; vector bindings rebuild on load by replaying them,
+        so a session's associative memory survives restart."""
+        import json
+        json.dump(self.facts, open(path, "w"))
+
+    def replay(self, triples):
+        """Re-learn a list of (subj, rel, obj) triples (used on load)."""
+        for s, r, o in triples:
+            self.learn(s, r, o)
+        return self
+
     def similar(self, token, k=5):
         """Top-k known tokens semantically closest to `token` (what a dict
         can't do)."""
