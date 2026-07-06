@@ -418,6 +418,8 @@ class WholeBrain:
                                "read_to_law", "create"],   # originate faculties, membrane-gated
                 "learned_search": ["_guided_solve (online_proposer2)",
                                    "learn_heuristic (learned_guidance)"],  # search that improves
+                "code_gen": ["_code (int algorithms: composable/early/fold/two)",
+                             "write_transform (string transforms: program_synth)"],
                 "verification": self.self_check()}
 
     def _guided_solve(self, ex, kind, oracle):
@@ -437,6 +439,22 @@ class WholeBrain:
             if code:
                 return name, code
         return SE.solve(ex, kind)                        # static-order fallback
+
+    def write_transform(self, examples):
+        """Synthesize a STRING-transform program from (input, output) examples, by verified
+        search over a text DSL (program_synth) — e.g. [("John Smith","JOHN")] -> upper∘first.
+        The returned program is correct on the examples BY CONSTRUCTION and generalizes; None
+        if no program in the DSL fits (honest miss)."""
+        import program_synth as PS
+        from tree_reason import solve
+        path, _, nodes = solve(PS.Synthesize(list(examples)))
+        if path is None:
+            return {"program": None, "nodes": nodes}
+        prog = path[-1][1]
+        return {"program": list(prog) or ["identity"],
+                "apply": (lambda s, _p=prog: PS.run(_p, s)),
+                "nodes": nodes,
+                "verified": all(PS.run(prog, i) == o for i, o in examples)}
 
     def _code(self, toks):
         name = next((t for t in toks if t in CODE_TASKS), None)

@@ -19,6 +19,8 @@ import composable_synth as C
 import loop_synth3 as L3
 import loop_synth4 as L4
 import dp_proposer as DP
+import loop_synth as L1          # earlier fold synthesizer (fallback coverage)
+import loop_synth2 as L2         # two-accumulator + conditional synthesizer (fallback)
 
 
 # ── backends: each takes examples in (args, out) form, returns Python code or None
@@ -68,6 +70,19 @@ def b_early(ex):
     return L3.render("f", *r) if r else None
 
 
+def b_fold(ex):
+    spec = L1.synthesize(_int1(ex))              # earlier single-accumulator fold synth
+    return L1.render("f", spec) if spec else None
+
+
+def b_two(ex):
+    r = L2.synthesize(_int1(ex))                 # two-accumulator / conditional synth
+    if not r:
+        return None
+    kind, spec = r
+    return L2.render("f", kind, spec)
+
+
 def b_while(ex):
     r = L3.synth_while([(a, y) for a, y in ex])      # args already (a,b)
     return L3.render("f", *r) if r else None
@@ -106,7 +121,8 @@ def b_dp(ex):
 
 
 ROUTES = {              # input kind -> ordered backends to try
-    "int1":  [("composable_guided", b_composable_guided), ("composable", b_composable), ("early", b_early)],
+    "int1":  [("composable_guided", b_composable_guided), ("composable", b_composable),
+              ("early", b_early), ("fold", b_fold), ("two", b_two)],
     "int2":  [("while", b_while)],
     "list":  [("list", b_list), ("dp", b_dp)],
     "listt": [("member", b_member)],
