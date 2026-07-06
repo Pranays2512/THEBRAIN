@@ -62,6 +62,13 @@ class WholeBrain:
     def __init__(self):
         self.store = BrainStore()
         self._proposer = None                       # lazy online_proposer2 (guided code synth)
+        try:
+            from concept_memory import ConceptMemory
+            from semantic_memory import SemanticMemory
+            self.concept_mem = ConceptMemory()       # names + reuses discovered structure
+            self.semantic = SemanticMemory()         # associative memory (similarity + recall)
+        except Exception:
+            self.concept_mem = self.semantic = None
         # FACTUAL: real-world knowledge + inheritance
         self.kre = ReasoningEngine()
         for s, r, o in CORE_FACTS:
@@ -292,6 +299,51 @@ class WholeBrain:
                 "samples": [" ".join(lm.generate(seed_rng=i)) for i in range(n)],
                 "entropy_at_start": round(lm.entropy(list(seed)), 3)}
 
+    def check_dimensions(self, expr, target):
+        """A units VERIFIER: is `expr` dimensionally sound for the `target` quantity (e.g.
+        mass*accel is a force, mass*speed is not)? A second membrane beyond numeric checking —
+        catches type-of-quantity errors a value check can't. Wires dimensional_verify."""
+        from dimensional_verify import dimensionally_sound
+        try:
+            return bool(dimensionally_sound(expr, target))
+        except Exception:
+            return None
+
+    def test_conjecture(self, conjecture):
+        """The brain designs experiments to test its OWN guess against a principle it already
+        trusts (energy conservation), admitting only what survives — active experimentation,
+        no answer key. Wires conjecture_sandbox. `conjecture` is f(mass, velocity) -> KE
+        (the true law is ½·m·v²; a guess that matches on random drops is admitted)."""
+        from conjecture_sandbox import design_and_test
+        ok, worst, counter = design_and_test(conjecture)
+        return {"admitted": bool(ok), "worst_error": round(worst, 4), "counterexample": counter}
+
+    def write_code_robust(self, kind, oracle, inputs):
+        """Self-correcting synthesis: synthesize, STRESS against the oracle, and if it breaks on
+        a counterexample fold that in and re-synthesize — the refuter closing the loop so an
+        overfit fixes itself with no hand-holding. Wires refute_synth."""
+        from refute_synth import synth_self_correct
+        code, log = synth_self_correct(kind, oracle, inputs)
+        return {"code": code, "iterations": len(log), "verified": code is not None}
+
+    def remember(self, subj, rel, obj):
+        """Associative memory write (semantic_memory): stores a relation and supports fuzzy
+        recall + similarity a plain dict cannot. Complements the crisp store."""
+        if self.semantic is None:
+            return False
+        self.semantic.learn(subj, rel, obj)
+        return True
+
+    def recall_similar(self, token, k=5):
+        """What is this token associatively like? (semantic_memory.similar) — the fuzzy
+        neighbour lookup, distinct from crisp isa closure."""
+        if self.semantic is None:
+            return []
+        try:
+            return self.semantic.similar(token, k)
+        except Exception:
+            return []
+
     def ground(self):
         """Perception -> symbol -> reasoning: the brain sees raw vectors, recognizes their
         category on the SOM, ASSERTS the grounded category as a fact, and INFERS properties it
@@ -302,6 +354,17 @@ class WholeBrain:
         import ground_reason as GR
         r = GR.ground_and_reason(reasoner=ReasoningEngine())
         return {"grounded": True, "inferred_correct": f"{r['correct']}/{r['total']}",
+                "sample": r["results"][:3]}
+
+    def ground_numeric(self):
+        """Ground CONTINUOUS quantities: perceive raw vectors, DECODE numeric values, assert
+        them as facts, and let the PolicyEngine compute from what it perceived (not values it
+        was told). Wires ground_numeric. Guarded on C++ brain2."""
+        if self.brain is None:
+            return {"grounded": False, "reason": "C++ brain2 unavailable"}
+        import ground_numeric as GN
+        r = GN.ground_and_compute()
+        return {"grounded": True, "within_10pct": f"{r['hits']}/{r['total']}",
                 "sample": r["results"][:3]}
 
     def learn_heuristic(self, n_tasks=60, probes=12, seed=7):
@@ -344,7 +407,14 @@ class WholeBrain:
         name, skel = disc[0], disc[1]                  # (name, pattern, arity)
         self.store.add_policy(name, (), skel)          # bank the shared shape (verified)
         self.store.save()
-        return {"discovered": name, "shape": skel, "verified": True,
+        # give the discovered structure a NAMED, reusable identity (concept_memory)
+        cname = name
+        if self.concept_mem is not None:
+            try:
+                cname = self.concept_mem.register(skel, [n for n, _ in r["new"]])
+            except Exception:
+                pass
+        return {"discovered": name, "concept": cname, "shape": skel, "verified": True,
                 "unified": [n for n, _ in r["new"]]}
 
     def blend(self, a=None, b=None):
@@ -436,7 +506,19 @@ class WholeBrain:
         crossed = self.cross_domain()
         # 3. invent a verified-novel concept
         blended = self.blend()
-        return {"induced": induced, "cross_domain": crossed, "blended": blended}
+        # 4. curiosity: where is the brain's predictor weakest? (prediction-error gaps)
+        curious = None
+        if episodes:
+            try:
+                from curiosity_loop import CuriosityLoop
+                cl = CuriosityLoop()
+                cl.observe(episodes)
+                cl.tick()
+                curious = {"error": cl.error(), "gaps": cl.curiosity_gaps()}
+            except Exception:
+                pass
+        return {"induced": induced, "cross_domain": crossed, "blended": blended,
+                "curiosity": curious}
 
     def wonder(self):
         """Curiosity -> a question. The brain asks about the most surprising event it has seen
@@ -462,8 +544,15 @@ class WholeBrain:
                                    "learn_heuristic (learned_guidance)"],  # search that improves
                 "code_gen": ["_code (int algorithms: composable/early/fold/two)",
                              "write_transform (string transforms: program_synth)"],
-                "grounding": ["ground (perception->symbol->fact->infer, ground_reason)"],
+                "grounding": ["ground (perception->symbol->fact->infer, ground_reason)",
+                              "ground_numeric (perceive quantities->compute, ground_numeric)"],
                 "probabilistic": ["generate (n-gram over read text, prob_compute)"],
+                "verifiers": ["check_dimensions (dimensional_verify)",
+                              "test_conjecture (conjecture_sandbox)",
+                              "write_code_robust (refute_synth)"],
+                "memory": ["remember / recall_similar (semantic_memory)",
+                           "concept_mem (concept_memory, names discoveries)",
+                           "create.curiosity (curiosity_loop)"],
                 "verification": self.self_check()}
 
     def _guided_solve(self, ex, kind, oracle):

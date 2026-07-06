@@ -23,16 +23,17 @@ D = 16
 ATTRS = ["mass", "accel"]
 
 
-def _demo():
+def ground_and_compute(n=8, tol=0.1):
+    """Perceive continuous quantities (decode from raw vectors) -> assert as crisp facts ->
+    the C++ PolicyEngine COMPUTES from perceived values. Returns {hits,total,results}. The
+    reusable core (callable from the front)."""
     rng = np.random.default_rng(0)
-    axes = {a: rng.standard_normal(D) for a in ATTRS}     # encoding directions
+    axes = {a: rng.standard_normal(D) for a in ATTRS}
 
     def encode(vals):
         v = sum(vals[a] * axes[a] for a in ATTRS) + 0.05 * rng.standard_normal(D)
         return v.astype("float32")
 
-    # calibrate the decoder from labeled observations (grounded sensor): learn
-    # w_a such that observation . w_a ~= value of attribute a.
     labeled = [{a: rng.uniform(2, 9) for a in ATTRS} for _ in range(40)]
     V = np.array([encode(x) for x in labeled])
     W = {a: np.linalg.lstsq(V, np.array([x[a] for x in labeled]), rcond=None)[0]
@@ -44,22 +45,28 @@ def _demo():
     brain = brain2.Brain(som_rows=4, som_cols=4, n_dims=D)
     brain.policy_add("force", ["mass", "accel"], ["*", "mass", "accel"])
 
-    print("=== ground_numeric — perceive quantities -> numeric facts -> compute ===\n")
-    print("  decoder calibrated from 40 labeled observations; tested on fresh ones:\n")
-    hits = 0
-    for i in range(8):
+    hits, results = 0, []
+    for i in range(n):
         vals = {a: round(rng.uniform(2, 9), 2) for a in ATTRS}
-        dec = decode(encode(vals))                        # GROUND the numbers
+        dec = decode(encode(vals))
         for a in ATTRS:
-            brain.teach_fact(f"obj{i}", a, dec[a])        # assert as crisp facts
-        got = brain.policy_solve(f"obj{i}", "force")      # PolicyEngine computes
+            brain.teach_fact(f"obj{i}", a, dec[a])
+        got = brain.policy_solve(f"obj{i}", "force")
         true = vals["mass"] * vals["accel"]
-        ok = abs(got - true) / true < 0.1
+        ok = abs(got - true) / true < tol
         hits += ok
-        print(f"  obj{i}: perceived mass~{dec['mass']:.2f} accel~{dec['accel']:.2f} "
-              f"-> force={got:.1f}  (true {true:.1f})  [{'ok' if ok else 'off'}]")
-    print(f"\n  {hits}/8 forces within 10% — computed by the reasoner from quantities")
-    print("  it PERCEIVED (decoded from raw vectors), not values it was told.")
+        results.append({"mass": round(dec["mass"], 2), "accel": round(dec["accel"], 2),
+                        "force": round(got, 1), "true": round(true, 1), "ok": bool(ok)})
+    return {"hits": hits, "total": n, "results": results}
+
+
+def _demo():
+    print("=== ground_numeric — perceive quantities -> numeric facts -> compute ===\n")
+    r = ground_and_compute()
+    for x in r["results"]:
+        print(f"  perceived mass~{x['mass']} accel~{x['accel']} -> force={x['force']} "
+              f"(true {x['true']})  [{'ok' if x['ok'] else 'off'}]")
+    print(f"\n  {r['hits']}/{r['total']} forces within 10% — computed from PERCEIVED quantities.")
 
 
 if __name__ == "__main__":
