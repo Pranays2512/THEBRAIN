@@ -213,10 +213,14 @@ def _eval(tree, env):
 
 
 def teach(fkb, mem, facts, laws):
-    """Teach facts; admit each law as a policy only if it VERIFIES by DIRECT evaluation on an
-    object whose facts cover its inputs (single-level, so no policy-chain recursion/cycles).
-    A verified law's derived value is also stored, so the brain 'knows' it."""
-    from means_ends import Policy
+    """Teach facts; admit each law as a policy once it VERIFIES on some object. Verification is
+    MULTI-HOP: a law's inputs may be direct facts OR quantities DERIVED by already-admitted
+    policies (checked through the means-ends solver, which chains + memoizes). So laws admit to
+    a FIXPOINT — a law admitted in one pass supplies a derived input that unblocks dependent
+    laws in the next. (The old single-level check dropped every law whose input wasn't a raw
+    fact, even when the brain could compute it.) A verified law's value is stored so the brain
+    'knows' it; still one verifying object is enough to admit the reusable policy."""
+    from means_ends import Policy, FactSource, PolicySource, MeansEndsSolver, Need
     ent_facts = {}
     for e, r, v in facts:
         fkb.learn(e, r, v)
@@ -224,22 +228,35 @@ def teach(fkb, mem, facts, laws):
             ent_facts.setdefault(e.lower(), {})[r.lower()] = float(v)
         except (TypeError, ValueError):
             pass
-    admitted, rejected = [], []
-    for target, tree in laws:
-        inputs = [v for v in _vars(tree) if isinstance(v, str)]
-        ent = next((e for e, fs in ent_facts.items() if all(i in fs for i in inputs)), None)
-        if ent is None:
-            rejected.append(target)         # inputs aren't known facts -> unverifiable
-            continue
-        try:
-            val = _eval(tree, ent_facts[ent])
-        except Exception:
-            rejected.append(target)
-            continue
-        mem.add(Policy(target, tuple(inputs), tree))
-        fkb.learn(ent, target, val)          # store the derived value
-        admitted.append(target)
-    return admitted, rejected
+    entities = list(ent_facts.keys())
+    admitted, pending = [], list(laws)
+    changed = True
+    while changed and pending:
+        changed = False
+        solve = MeansEndsSolver([FactSource(fkb), PolicySource(mem)]).solve   # memoizes per pass
+        still = []
+        for target, tree in pending:
+            inputs = [v for v in _vars(tree) if isinstance(v, str)]
+            # only bother with objects that could plausibly supply an input (have ANY fact
+            # whose rel is one of the inputs) — keeps the entity scan cheap on a big corpus
+            cands = [e for e in entities if any(i in ent_facts[e] for i in inputs)] or entities[:1]
+            done = False
+            for ent in cands:
+                env = {}
+                if all((env.setdefault(i, solve(Need(ent, i))) is not None) for i in inputs):
+                    try:
+                        val = _eval(tree, env)
+                    except Exception:
+                        continue
+                    mem.add(Policy(target, tuple(inputs), tree))
+                    fkb.learn(ent, target, val)
+                    admitted.append(target)
+                    changed = done = True
+                    break
+            if not done:
+                still.append((target, tree))
+        pending = still
+    return admitted, [t for t, _ in pending]
 
 
 # ── offline self-test of the parser + teach + verify (no teacher calls) ──
