@@ -143,7 +143,17 @@ class WholeBrain:
         ts = set(toks)
         if CODE_WORDS & ts:
             return self._code(toks)
-        # COMPUTE first (before the loose 'is'/'can' factual checks)
+        # RICHER queries first (compare / compound / boolean / nested) — they'd otherwise be
+        # mis-caught by the single-fact compute path or the event reader.
+        _RICH = {"heavier", "lighter", "faster", "slower", "denser", "bigger", "greater",
+                 "more", "less", "than", "heaviest", "lightest", "fastest", "slowest",
+                 "densest", "biggest"}
+        if (_RICH & ts) or " and " in f" {text.lower()} " or " or " in f" {text.lower()} " \
+                or sum(t in self.relations for t in toks) >= 2:
+            r = self.ask_rich(text)
+            if r is not None:
+                return ("compute", r, True)
+        # COMPUTE (before the loose 'is'/'can' factual checks)
         rel = next((t for t in toks if t in self.relations), None)
         ent = next((t for t in toks if t in self.entities), None)
         if rel and ent:
@@ -174,6 +184,10 @@ class WholeBrain:
             ev = self._read_event(text)
             if ev is not None:
                 return ev
+        # richer query comprehension (compare / compound / boolean / nested) before giving up
+        rich = self.ask_rich(text)
+        if rich is not None:
+            return ("compute", rich, True)
         return ("none", "I don't know.", False)
 
     def _read_event(self, text):
@@ -439,6 +453,49 @@ class WholeBrain:
             if code:
                 return name, code
         return SE.solve(ex, kind)                        # static-order fallback
+
+    def ask_rich(self, q):
+        """Richer QUERY comprehension the flat router can't parse — generalize over sentence
+        STRUCTURE, not surface words: compare ('is the rocket heavier than the sample'),
+        compound ('mass and speed of the rocket'), boolean conditions ('mass > 100 and speed <
+        50'), and nested (superlative 'the fastest object', if/then). Answered by the SAME
+        verified compute core (means-ends over facts+policies). Returns a string, or None to
+        fall back to ask(). (Wires structural_parser / deeper_grammar / nested_parser.)"""
+        import structural_parser as SP, deeper_grammar as DG, nested_parser as NP
+        for M in (DG, NP):                              # inject THIS brain's live vocabulary
+            M.ENTS = set(self.entities)
+            M.RELS = set(self.relations)
+        # comparative adjectives -> the relation they compare on, so 'heavier' finds 'mass'
+        cmp_map = {"heavier": "mass", "lighter": "mass", "faster": "speed",
+                   "slower": "speed", "denser": "density", "bigger": "volume"}
+        ctx = {**self.ctx_map, **cmp_map}
+        low = q.lower()
+        toks = set(re.findall(r"[a-z_]+", low))
+
+        def _ok(a):
+            return a and "abstain" not in a and "not a conditional" not in a \
+                and "not parseable" not in a and "no answer" not in a
+
+        try:
+            if "if" in toks:                            # conditional: boolean (and/or) or single
+                a = DG.DeeperParser(self.fkb, self.mem).answer(q)   # if-then, boolean clauses
+                if _ok(a):
+                    return a
+                a = NP.NestedParser(self.fkb, self.mem).answer(q)   # if-then, single clause
+                if _ok(a):
+                    return a
+            if toks & set(NP.SUPER):                    # superlative sub-query (needs a relation)
+                a = NP.NestedParser(self.fkb, self.mem).answer(q)
+                if _ok(a):
+                    return a
+            parsed = SP.StructuralParser(self.entities, self.relations, ctx).parse(q)
+            if parsed["kind"] in ("compare", "compound", "single"):
+                a = SP.answer(parsed, self.fkb, self.mem)
+                if a:
+                    return a
+        except Exception:
+            pass
+        return None
 
     def write_transform(self, examples):
         """Synthesize a STRING-transform program from (input, output) examples, by verified
