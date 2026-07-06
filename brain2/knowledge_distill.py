@@ -26,19 +26,42 @@ import re
 
 class SimpleKB:
     """Exact fact store for taught facts (avoids the fuzzy ReasoningEngine's recursion on
-    arbitrary teacher data). means_ends.FactSource just needs .ask(subj, rel) -> (value, conf)."""
+    arbitrary teacher data). means_ends.FactSource just needs .ask(subj, rel) -> (value, conf).
+
+    MULTI-VALUE: the same (entity, rel) can legitimately carry different values across the
+    corpus (e.g. a story's 'pencils | number' is 6 in one grade, 12 in another). A single-slot
+    dict lost all but the last (key collision). We keep every distinct value; .ask returns the
+    most-recent (compute entities have a single value, so this is unchanged for them), and
+    .values / .knows expose the full set so recall isn't silently dropped."""
     def __init__(self):
-        self.facts = {}
+        self.facts = {}          # (e, r) -> most-recently-learned value (fast path for compute)
+        self.multi = {}          # (e, r) -> list of distinct values, in insertion order
 
     def learn(self, e, r, v):
         try:
             v = float(v)
         except (TypeError, ValueError):
             pass
-        self.facts[(e.lower(), r.lower())] = v
+        k = (e.lower(), r.lower())
+        self.facts[k] = v
+        vals = self.multi.setdefault(k, [])
+        if v not in vals:
+            vals.append(v)
 
     def ask(self, subj, rel, **kw):
         return self.facts.get((subj.lower(), rel.lower())), 1.0
+
+    def values(self, subj, rel):
+        """All distinct values learned for this key (multi-value recall)."""
+        return list(self.multi.get((subj.lower(), rel.lower()), []))
+
+    def knows(self, subj, rel, value):
+        """True if `value` is among the values learned for (subj, rel)."""
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            pass
+        return value in self.multi.get((subj.lower(), rel.lower()), [])
 
 
 _SUP = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",

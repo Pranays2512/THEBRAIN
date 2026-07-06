@@ -87,15 +87,11 @@ def main():
     sample = RNG.sample(clean, min(250, len(clean)))
     ok, fails = 0, []
     for e, r, v in sample:
-        got, _ = fkb.ask(e, r)
-        try:
-            hit = got is not None and abs(float(got) - float(v)) < 1e-6
-        except (TypeError, ValueError):
-            hit = False                            # key overwritten by a string value
+        hit = fkb.knows(e, r, v)                    # multi-value: value retained even on collision
         ok += hit
         if not hit and len(fails) < 3:
-            fails.append(f"{e} | {r} -> got {got!r}, expected {v} (key collision)")
-    report("clean numeric fact recall", ok, len(sample), fails, results)
+            fails.append(f"{e} | {r} -> values {fkb.values(e, r)}, expected {v}")
+    report("clean numeric fact recall (multi-value)", ok, len(sample), fails, results)
     print(f"       note: {malformed}/{len(facts)} FACT lines have NON-numeric values "
           f"(ranges/lists/units) — corpus data-quality, excluded above")
 
@@ -104,12 +100,12 @@ def main():
     sample = RNG.sample(props, min(250, len(props)))
     ok, fails = 0, []
     for e, r, v in sample:
-        got, _ = fkb.ask(e, r)
-        hit = got is not None and str(got).lower() == str(v).lower()
+        vals = [str(x).lower() for x in fkb.values(e, r)]
+        hit = str(v).lower() in vals               # multi-value: cross-grade variants retained
         ok += hit
         if not hit and len(fails) < 3:
-            fails.append(f"{e} | {r} -> got {got!r}, expected {v!r}")
-    report("qualitative prop recall", ok, len(sample), fails, results)
+            fails.append(f"{e} | {r} -> values {fkb.values(e, r)}, expected {v!r}")
+    report("qualitative prop recall (multi-value)", ok, len(sample), fails, results)
 
     # 3. ISA CLOSURE — every stated child must reach its parent (transitive)
     section("3. ISA CLOSURE (transitive reachability)")
