@@ -129,8 +129,16 @@ public:
             }
         }
         #endif
-        
+
         return best_node;
+    }
+
+    // Quantization error of the best match = how far the closest neuron is from the input.
+    // High QE => this region of the input space is poorly covered (capacity ceiling); the
+    // brain uses it to decide when to MINT a new neuron (auto-grow) instead of stalling.
+    float bmu_distance(const std::vector<float>& input) const {
+        int b = find_bmu(input);
+        return std::sqrt(l2sq(&weights_[b * n_dims], input.data()));
     }
 
     // Graded activation: BMU + the top-K nearest neurons with a soft decay, instead of

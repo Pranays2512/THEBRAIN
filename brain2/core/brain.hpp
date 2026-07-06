@@ -191,7 +191,13 @@ public:
         std::vector<int> targets;
     };
     std::deque<ReplaySeq> replay_buffer_;
-    size_t replay_capacity_ = 300;
+    size_t replay_capacity_ = 1000;
+    // Reservoir sampling: a FIFO ring only remembers the most RECENT `capacity` sequences,
+    // so an unbounded stream forgets everything old (asymptotic forgetting). A reservoir
+    // instead keeps a UNIFORM sample of the ENTIRE history seen — old-but-important
+    // sequences survive with the right probability, so replay rehearses the whole stream.
+    std::mt19937 replay_rng_{20260706u};
+    long replay_seen_ = 0;
 
     // Automatic dream consolidation: rehearse buffered sequences every
     // `replay_interval_` training calls. Interleaving replay with new learning
@@ -202,10 +208,26 @@ public:
     int   replay_samples_   = 4;
     long  train_calls_      = 0;
 
+    // SOM auto-grow: a fixed neuron count hits a capacity ceiling on a growing input space.
+    // When an input is poorly covered (BMU distance > threshold) and we're under the cap,
+    // mint a neuron at that input — relieving the ceiling instead of stalling. Bounded so it
+    // can't grow without limit. Off unless enabled to keep benchmarks deterministic.
+    bool  som_autogrow_     = true;
+    float som_grow_thresh_  = 1.5f;
+    int   som_max_neurons_  = 0;      // 0 => set to 3x initial in ctor
+
     void push_replay(std::vector<std::vector<float>> inputs, std::vector<int> targets) {
         if (inputs.empty()) return;
-        replay_buffer_.push_back({std::move(inputs), std::move(targets)});
-        while (replay_buffer_.size() > replay_capacity_) replay_buffer_.pop_front();
+        replay_seen_++;
+        if (replay_buffer_.size() < replay_capacity_) {
+            replay_buffer_.push_back({std::move(inputs), std::move(targets)});
+        } else {
+            // reservoir: replace a uniformly-random slot with prob capacity/seen, so the
+            // buffer stays a uniform sample of the whole stream (old items aren't forced out)
+            long j = (long)(replay_rng_() % (unsigned long)replay_seen_);
+            if (j < (long)replay_capacity_)
+                replay_buffer_[(size_t)j] = {std::move(inputs), std::move(targets)};
+        }
     }
     int replay_size() const { return (int)replay_buffer_.size(); }
 
@@ -326,6 +348,7 @@ public:
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
         symbolic.seed_math_symbols();
+        som_max_neurons_ = som.n_neurons * 3;      // auto-grow cap: up to 3x the initial grid
     }
 
     Brain(Brain&&)            = default;
@@ -427,6 +450,12 @@ public:
 
         // 1. SOM: find BMU + activation map
         auto t0 = std::chrono::high_resolution_clock::now();
+        // capacity relief: if this input is poorly covered and we're under the cap, mint a
+        // neuron at it (auto-grow) so the map keeps resolving new regions instead of stalling
+        if (som_autogrow_ && som.n_neurons < som_max_neurons_
+                && som.bmu_distance(input) > som_grow_thresh_) {
+            som.add_neuron(input);
+        }
         int bmu      = som.find_bmu(input);
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
