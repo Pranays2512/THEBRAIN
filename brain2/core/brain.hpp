@@ -122,22 +122,46 @@ public:
     // fuzzy binding memory — the crisp half of the brain.
     PolicyMemory          policy_mem;
     std::map<std::pair<std::string, std::string>, double> crisp_facts;
-    size_t crisp_conflicts = 0;   // # of times a taught fact OVERWROTE a different value
+    // Conflicting writes are QUARANTINED here (not applied to the truth store) so a caller
+    // can't silently poison a fact by writing a different value. Held for audit/resolution.
+    std::map<std::pair<std::string, std::string>, std::vector<double>> crisp_quarantine;
+    size_t crisp_conflicts = 0;   // # of taught facts that CONFLICTED with a stored value
     size_t oov_count = 0;         // # of out-of-vocabulary words given a random embedding
     size_t ep_seen_ = 0;          // tokens seen by the episodic min-rate floor
+    bool   strict_facts_ = true;  // true: quarantine conflicts; false: legacy overwrite
 
-    // The crisp store has no per-fact uncertainty (single scalars). teach_fact still
-    // overwrites, but a conflicting overwrite (same entity/rel, different value) is no
-    // longer SILENT — it's counted + logged, so a Python caller poisoning the truth
-    // store (audit: teach_fact bypasses the gate) is at least visible/auditable.
+    // A GATE, not just an audit: the first taught value for (entity, rel) is the trusted
+    // one; a later write of a DIFFERENT value does not overwrite it — it is counted and
+    // held in quarantine for review. This stops a stray/rogue caller from corrupting the
+    // truth store (the old behavior silently overwrote). Intentional updates go through
+    // resolve_fact(). Set strict_facts_=false for the legacy last-write-wins behavior.
     void teach_fact(const std::string& entity, const std::string& rel, double value) {
-        auto it = crisp_facts.find({entity, rel});
+        auto key = std::make_pair(entity, rel);
+        auto it = crisp_facts.find(key);
         if (it != crisp_facts.end() && std::abs(it->second - value) > 1e-9) {
             crisp_conflicts++;
-            B2DEBUG("[crisp] CONFLICT %s.%s: %g -> %g (overwriting)\n",
+            B2DEBUG("[crisp] CONFLICT %s.%s: stored %g, rejected %g\n",
                     entity.c_str(), rel.c_str(), it->second, value);
+            if (strict_facts_) {
+                auto& q = crisp_quarantine[key];
+                if (std::find(q.begin(), q.end(), value) == q.end()) q.push_back(value);
+                return;                                 // truth store unchanged (not poisoned)
+            }
         }
-        crisp_facts[{entity, rel}] = value;
+        crisp_facts[key] = value;
+    }
+
+    // Intentional, trusted update: overwrite the stored value and clear its quarantine.
+    void resolve_fact(const std::string& entity, const std::string& rel, double value) {
+        auto key = std::make_pair(entity, rel);
+        crisp_facts[key] = value;
+        crisp_quarantine.erase(key);
+    }
+
+    size_t crisp_quarantined() const {
+        size_t n = 0;
+        for (const auto& kv : crisp_quarantine) n += kv.second.size();
+        return n;
     }
     void policy_add(const std::string& target, const std::vector<std::string>& inputs,
                     const ExprPtr& expr) {

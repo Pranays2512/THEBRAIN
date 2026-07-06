@@ -875,6 +875,12 @@ PYBIND11_MODULE(brain2, m) {
       // Crisp reasoner (embedded PolicyEngine)
       .def("teach_fact", &Brain::teach_fact, py::arg("entity"), py::arg("rel"),
            py::arg("value"))
+      .def("resolve_fact", &Brain::resolve_fact, py::arg("entity"), py::arg("rel"),
+           py::arg("value"), "Trusted intentional overwrite (bypasses the conflict gate)")
+      .def("crisp_quarantined", &Brain::crisp_quarantined,
+           "Count of conflicting fact-writes held out of the truth store")
+      .def_readwrite("strict_facts", &Brain::strict_facts_,
+           "true (default): quarantine conflicting writes; false: legacy overwrite")
       .def_readonly("crisp_conflicts", &Brain::crisp_conflicts)
       .def_readonly("oov_count", &Brain::oov_count)
       .def("sync_symbols_to_scratchpad", &Brain::sync_symbols_to_scratchpad,
