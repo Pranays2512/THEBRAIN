@@ -53,8 +53,9 @@ public:
     // Grounded arithmetic — composed ops built from the successor atom (x+1) and
     // primitive recursion: the exact procedures math_synth discovered
     // (add<-succ, mul<-add, pow<-mul). No host * or ** ; correct-but-linear.
-    // Under BRAIN2_GROUND_MATH the brain runs these LEARNED algorithms in core
-    // instead of frozen skills; the frozen host op is the (removed) fast-path.
+    // These are now the DEFAULT compute path (see m_add/m_mul/m_pow below) — the brain
+    // runs the LEARNED algorithm, not a frozen skill; the host op only accelerates values
+    // too large for O(value) recursion. The old BRAIN2_GROUND_MATH compile flag is gone.
     static long long g_add(long long a, long long b) {
         long long r = b;
         for (long long i = 0; i < a; i++) r = r + 1;       // succ atom, a times
@@ -69,6 +70,22 @@ public:
         long long r = 1;
         for (long long i = 0; i < b; i++) r = g_mul(r, a);  // mul a, b times
         return r;
+    }
+
+    // Default = the LEARNED grounded procedure (truth). The frozen host op is now only a
+    // bounded FAST-PATH: since grounded arithmetic is O(value) it would hang on large
+    // operands, so above a size threshold we accelerate with the host op (identical result).
+    // This is the intended end-state — learned by default, host as accelerator — replacing
+    // the old "always frozen unless a compile flag flips it".
+    static long long m_add(long long a, long long b) {
+        return (a >= 0 && a < 4096) ? g_add(a, b) : a + b;
+    }
+    static long long m_mul(long long a, long long b) {
+        return (a >= 0 && b >= 0 && a < 4096 && b < 4096) ? g_mul(a, b) : a * b;
+    }
+    static long long m_pow(long long a, long long b) {                 // grounded pow is O(a^b)
+        return (a >= 0 && b >= 0 && a <= 64 && b <= 10)
+                   ? g_pow(a, b) : (long long)std::llround(std::pow((double)a, (double)b));
     }
 
     std::vector<float> execute_op(Op op, Scratchpad& pad, bool commit = true) {
@@ -177,11 +194,7 @@ public:
                     auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
-#ifdef BRAIN2_GROUND_MATH
-                            long long res = g_mul(std::stoi(s_sym), std::stoi(o_sym));
-#else
-                            int res = std::stoi(s_sym) * std::stoi(o_sym);
-#endif
+                            long long res = m_mul(std::stoi(s_sym), std::stoi(o_sym));
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -202,11 +215,7 @@ public:
                     auto o_sym = language.best_word(obj, {}, 0);
                     if (!s_sym.empty() && !o_sym.empty()) {
                         try {
-#ifdef BRAIN2_GROUND_MATH
-                            long long res = g_pow(std::stoi(s_sym), std::stoi(o_sym));
-#else
-                            int res = std::pow(std::stoi(s_sym), std::stoi(o_sym));
-#endif
+                            long long res = m_pow(std::stoi(s_sym), std::stoi(o_sym));
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -227,11 +236,7 @@ public:
                         try {
                             int n = std::stoi(s_sym);
                             long long res = 1;
-#ifdef BRAIN2_GROUND_MATH
-                            for (int i = 2; i <= n; i++) res = g_mul(res, i);
-#else
-                            for (int i = 2; i <= n; i++) res *= i;
-#endif
+                            for (int i = 2; i <= n; i++) res = m_mul(res, i);
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -251,11 +256,7 @@ public:
                         try {
                             int n = std::stoi(r_sym);
                             long long res = 1;
-#ifdef BRAIN2_GROUND_MATH
-                            for (int i = 2; i <= n; i++) res = g_mul(res, i);
-#else
-                            for (int i = 2; i <= n; i++) res *= i;
-#endif
+                            for (int i = 2; i <= n; i++) res = m_mul(res, i);
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
@@ -310,11 +311,7 @@ public:
                             int a = std::stoi(a_sym);
                             int b = std::stoi(b_sym);
                             int c = std::stoi(c_sym);
-#ifdef BRAIN2_GROUND_MATH
-                            long long res = g_add(g_add(g_mul(g_mul(a, x), x), g_mul(b, x)), c);
-#else
-                            int res = a * x * x + b * x + c;
-#endif
+                            long long res = m_add(m_add(m_mul(m_mul(a, x), x), m_mul(b, x)), c);
                             std::string res_sym = std::to_string(res);
                             if (!language.knows(res_sym)) {
                                 language.register_word(res_sym);
