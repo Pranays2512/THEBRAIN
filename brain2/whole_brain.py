@@ -545,6 +545,33 @@ class WholeBrain:
         return {"induced": induced, "cross_domain": crossed, "blended": blended,
                 "curiosity": curious, "persisted": persisted}
 
+    def run_loop(self, ticks=5, verbose=False):
+        """The STANDING unifying loop (roadmap's always-on cycle): tick the create() faculties
+        repeatedly so they COMPOUND — each pass runs self_extend (autonomous conjecture→sandbox
+        →bank), induce, cross_domain, blend, curiosity, and persists. Tracks growth per tick;
+        stops early once a tick adds nothing new (converged). This is the orchestrator that was
+        missing — the modules existed, the loop that keeps them running unattended did not."""
+        history = []
+        prev = (len(self.store.policies), len(getattr(self.concept_mem, "concepts", {}) or {}))
+        for t in range(ticks):
+            self.self_extend()                          # autonomous conjecture -> sandbox -> bank
+            out = self.create()                         # induce/cross-domain/blend + persist
+            now = (len(self.store.policies), len(getattr(self.concept_mem, "concepts", {}) or {}))
+            grew = now != prev
+            rec = {"tick": t, "policies": now[0], "concepts": now[1],
+                   "induced": len(out["induced"].get("promoted", [])),
+                   "curiosity_gaps": (out.get("curiosity") or {}).get("gaps", []),
+                   "grew": grew}
+            history.append(rec)
+            if verbose:
+                print(f"  tick {t}: policies={now[0]} concepts={now[1]} "
+                      f"induced={rec['induced']} grew={grew}")
+            if not grew and t > 0:                      # converged: nothing new to discover
+                break
+            prev = now
+        return {"ticks_run": len(history), "history": history,
+                "final": self.save_state()}
+
     def wonder(self):
         """Curiosity -> a question. The brain asks about the most surprising event it has seen
         (surprise-gated salience), voicing it through its own mouth. Returns None if nothing
