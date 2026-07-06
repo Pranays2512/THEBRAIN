@@ -188,7 +188,7 @@ own data; generate-and-verify with the *generate* side being fuzzy + probabilist
 |---|---|---|
 | **Symbolic** | exact, verified, owns truth | crisp core, `means_ends`, verifiers, 7 primitives in C++ |
 | **Fuzzy** | similarity, grounding, lexical meaning | SOM, `grounding`, `context_embed` |
-| **Probabilistic** | distributions, uncertainty, **generation** | `prob_compute` (n-gram) → `neural_lm` / `neural_lm_torch` (MPS Transformer) |
+| **Probabilistic** | distributions, uncertainty, **generation** | heavy: `neural_lm_torch` (MPS Transformer, trained in `train_pipeline`); lightweight in-process: `prob_compute` (n-gram, wired to `whole_brain.generate`) |
 
 ### Self-extension (the loops that make it grow)
 - **Make/break + novelty**: `refuter` (break a rule, find scope), `factorizer` (+`factor_au`

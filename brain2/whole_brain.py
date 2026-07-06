@@ -276,6 +276,34 @@ class WholeBrain:
                     break
         return {"banked": banked, "conjectures_tested": total}
 
+    def generate(self, corpus=None, seed=("<s>",), n=3):
+        """The PROBABILISTIC pillar (lightweight): an n-gram model over text the brain has
+        (its admitted events rendered to sentences, or a given corpus) — distributions,
+        entropy, GENERATION. Complements the heavy owned Transformer (neural_lm_torch) used
+        in training; this is the in-process, torch-free generator. Wires prob_compute."""
+        from prob_compute import ProbLM
+        if corpus is None:                              # build from what the brain has read
+            from mouth import say_event
+            corpus = [say_event(e) for e in getattr(self.reader, "events", [])]
+            corpus += ["a dog is an animal", "an animal is a living thing",
+                       "the rocket has large mass", "energy depends on mass and speed"]
+        lm = ProbLM(order=3).train(corpus)
+        return {"trained_on": len(corpus), "vocab": len(lm.vocab),
+                "samples": [" ".join(lm.generate(seed_rng=i)) for i in range(n)],
+                "entropy_at_start": round(lm.entropy(list(seed)), 3)}
+
+    def ground(self):
+        """Perception -> symbol -> reasoning: the brain sees raw vectors, recognizes their
+        category on the SOM, ASSERTS the grounded category as a fact, and INFERS properties it
+        was never told (grounded meaning, not LLM-given). Wires ground_reason. Guarded — needs
+        the C++ brain2; returns how many properties it inferred from perception alone."""
+        if self.brain is None:
+            return {"grounded": False, "reason": "C++ brain2 unavailable"}
+        import ground_reason as GR
+        r = GR.ground_and_reason(reasoner=ReasoningEngine())
+        return {"grounded": True, "inferred_correct": f"{r['correct']}/{r['total']}",
+                "sample": r["results"][:3]}
+
     def learn_heuristic(self, n_tasks=60, probes=12, seed=7):
         """Search that IMPROVES with experience (learned_guidance): fit a cost-to-goal estimate
         from solved instances, then guide the A* engine so it expands far fewer states while
@@ -434,6 +462,8 @@ class WholeBrain:
                                    "learn_heuristic (learned_guidance)"],  # search that improves
                 "code_gen": ["_code (int algorithms: composable/early/fold/two)",
                              "write_transform (string transforms: program_synth)"],
+                "grounding": ["ground (perception->symbol->fact->infer, ground_reason)"],
+                "probabilistic": ["generate (n-gram over read text, prob_compute)"],
                 "verification": self.self_check()}
 
     def _guided_solve(self, ex, kind, oracle):
