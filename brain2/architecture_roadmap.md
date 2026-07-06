@@ -110,10 +110,11 @@ LLM → instead the parser READS the frozen LLM's representations, verifier chec
   EXPRESSION SIZE, not just node count, so it won't terminate cleanly. Needs SymPy
   (the CAS layer) to manage growth. The proposer concept is already proven elsewhere.
 
-## Known latent bug
-- `physics_engine.ev` builds the whole op-dict eagerly (`{...,"^": a**b}[op]`) → computes
-  `a**b` even for `*`/`+` → overflows on large values. `means_ends.py` uses a local lazy
-  evaluator to avoid it. Fix at the source when convenient.
+## Known latent bug — FIXED (2026-07-06)
+- `physics_engine.ev` was flagged for eager op-dict eval (`{...,"^": a**b}[op]`) overflowing
+  on `*`/`+`. Verified as-built: `ev` already evaluates lazily via an if/elif chain
+  (`physics_engine.py:53-60`) — the overflow cannot occur. Note kept as resolved so external
+  reviews don't re-flag it.
 
 ## Honest ceilings
 - LLM-free math: formal input, covered domain → verified, sometimes hard. From English
