@@ -62,3 +62,9 @@ brain2_512D_baseline_backup/train/conceptnet-assertions-5.7.0.csv.gz
 a.out
 brain2/check_library/
 brain2/trained/
+
+# generated code-graph output (regenerable, large)
+graphify-out/
+brain2/graphify-out/
+# OCR'd corpus (regenerable from the source PDF)
+brain2/data/ncert_class_10_science.txt
