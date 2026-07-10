@@ -131,7 +131,7 @@ class FactExtractor:
 
 
 def _demo():
-    from conversation_engine import ConversationEngine
+    from faculties.conversation_engine import ConversationEngine
     fe = FactExtractor()
     text = ("An apple is a fruit. It is red. It grows on a tree. It has seeds. "
             "A dog is an animal. It has a tail.")

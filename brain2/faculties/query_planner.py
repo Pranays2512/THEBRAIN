@@ -29,8 +29,8 @@ from dataclasses import dataclass
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from core.reasoning.reasoning_engine import ReasoningEngine
-from appraisal_engine import AppraisalEngine
-from conversation_engine import oxford
+from faculties.appraisal_engine import AppraisalEngine
+from faculties.conversation_engine import oxford
 
 # natural verb -> canonical relation (controlled alias map)
 VERB_RELATION = {

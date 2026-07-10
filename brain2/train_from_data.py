@@ -35,7 +35,7 @@ def train(path, do_lm=False, do_brain=False):
     rep["knowledge"] = d.teach_knowledge(fkb, mem)
 
     # 4. PREDICTOR (predictive processing: verb transitions over the event stream)
-    from event_predict import EventPredictor
+    from faculties.event_predict import EventPredictor
     predictor = EventPredictor()
     rep["predictor"] = d.train_predictor(predictor)
 

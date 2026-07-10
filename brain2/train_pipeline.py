@@ -28,7 +28,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 import sys
 
 from core.grounding import context_embed as CE
-import feature_learner as FL
+from faculties import feature_learner as FL
 from core.synthesis import synth_engine as SE
 from core.neural.neural_lm import NeuralLM
 

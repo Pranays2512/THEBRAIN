@@ -27,8 +27,8 @@ from core.math.math_parser import parse, ParseError
 from core.math.calculus_engine import CalculusEngine
 from core.math.integral_engine import IntegralEngine, render as render_expr
 from core.math.algebra_engine import AlgebraEngine, AlgebraError
-from conversation_engine import ConversationEngine
-from query_planner import QueryPlanner
+from faculties.conversation_engine import ConversationEngine
+from faculties.query_planner import QueryPlanner
 
 
 # ── the contract ─────────────────────────────────────────────────────────────

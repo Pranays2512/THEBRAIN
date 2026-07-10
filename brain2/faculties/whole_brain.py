@@ -29,7 +29,7 @@ from core.knowledge.core_knowledge import CORE_FACTS
 from core.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
 from core.synthesis import synth_engine as SE
 from core.store.brain_store import BrainStore
-from appraisal_engine import AppraisalEngine
+from faculties.appraisal_engine import AppraisalEngine
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
 # Paraphrase -> canonical token, so routing isn't brittle to exact wording. A real
@@ -103,10 +103,10 @@ class WholeBrain:
         # OPEN-LANGUAGE: read declarative prose into VERIFIED events (the open-lang track).
         # Fuzzy/positional parse proposes an Event; the crisp membrane disposes (admit verified,
         # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
-        from reading_loop import EventReader
+        from faculties.reading_loop import EventReader
         from core.store.type_oracle import TypeOracle
         from core.events.verb_learn import VerbLearner
-        from event_predict import EventPredictor
+        from faculties.event_predict import EventPredictor
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
         self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
                                  "chase": {"agent": {"animal"}, "patient": {"animal"}}}
@@ -265,7 +265,7 @@ class WholeBrain:
         """Verification-health introspection: synthesize a task's invariants and audit them —
         are they catching wrong answers, or spuriously rejecting correct ones? Wires
         synth_invariant + verifier_monitor + invariant_miner into the front."""
-        import verifier_monitor as VM; from core.synthesis import synth_invariant as SI
+        from faculties import verifier_monitor as VM; from core.synthesis import synth_invariant as SI
         mine, hold = [0, 1, 2, 3, 4], [5, 6, 7]
         inv = SI.task_invariants(math.factorial, mine, hold)
         correct = [(x, math.factorial(x)) for x in mine + hold]
@@ -278,7 +278,7 @@ class WholeBrain:
         """Autonomous self-improvement: conjecture -> sandbox-test against a trusted principle
         -> bank verified laws, learning which shapes work. Wires autonomous_loop into the
         front. The membrane holds: only sandbox-verified conjectures are banked."""
-        import autonomous_loop as AL
+        from faculties import autonomous_loop as AL
         prop, banked, total = AL.Proposer(), {}, 0
         for gap, true_law in AL.GAPS:
             for name, fn, shape in prop.order():
@@ -420,7 +420,7 @@ class WholeBrain:
         possible). Factors the union of the brain's banked policies via anti-unification;
         a skeleton recurring across differently-named laws is a cross-domain insight —
         verified to reconstruct every input formula. Banks the shared shape into the store."""
-        import curiosity_cross as CC
+        from faculties import curiosity_cross as CC
         libs = [(t, p.expr) for t, p in self.mem.by_target.items()]
         if len(libs) < 2:
             return {"discovered": None, "reason": "need >=2 banked laws"}
@@ -508,7 +508,7 @@ class WholeBrain:
         over them and VERIFIES it before storing (teacher proposes data, brain disposes the
         law). Needs an LLM `client` with .complete(); the induced law is membrane-checked, so
         a corpus that supports no law yields None, not a guess."""
-        import learn_by_reading as LBR
+        from faculties import learn_by_reading as LBR
 
         class _Adapter:                                # bridge to brain_store.add_policy
             def __init__(s, store): s.store = store
@@ -534,7 +534,7 @@ class WholeBrain:
         curious = None
         if episodes:
             try:
-                from curiosity_loop import CuriosityLoop
+                from faculties.curiosity_loop import CuriosityLoop
                 cl = CuriosityLoop()
                 cl.observe(episodes)
                 cl.tick()

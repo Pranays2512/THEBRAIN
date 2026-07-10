@@ -30,7 +30,7 @@ def main():
     print("=" * 68)
     print("  FACULTY LIVENESS CHECK — every higher-order faculty on a live brain")
     print("=" * 68)
-    from whole_brain import WholeBrain
+    from faculties.whole_brain import WholeBrain
     wb = WholeBrain()
     # feed some reading so induction/curiosity have episodes
     for s in ["the dog ate the fish", "the dog ate the bread", "the cat ate the fish",

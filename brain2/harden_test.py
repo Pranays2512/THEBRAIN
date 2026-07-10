@@ -74,7 +74,7 @@ def run():
 
     # proposers — empty / single
     from core.synthesis import online_proposer as OP
-    import feature_learner as FL
+    from faculties import feature_learner as FL
     check("OP.solve empty", lambda: OP.OnlineProposer().solve([], "int1"))
     check("FL.features empty", lambda: FL.gen_features([], "int1"))
     check("FL.solve empty", lambda: FL.LearnedProposer().solve([], "list"))

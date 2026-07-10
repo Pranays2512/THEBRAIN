@@ -99,7 +99,7 @@ def main():
         # comparing to _law_error would be C++ vs C++ and lock nothing)
         expect("C++ law_error matches Python",
                abs(brain2.law_error(tr, ho) - ID._law_error_py(tr, ho)) < 1e-9)
-        import feature_learner as FL
+        from faculties import feature_learner as FL
         lp = FL.LearnedProposer()
         lp.proto = {"list": {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.5},
                     "dp":   {"out_is_list": 0.0, "out_exceeds_max": 1.0, "neg_in": 0.5}}

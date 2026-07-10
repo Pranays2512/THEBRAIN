@@ -27,7 +27,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("TESSDATA_PREFIX", "/opt/homebrew/opt/tesseract/share/tessdata")
 
 from adapters.ocr_pdf import ocr
-from read_book import sentences, BookTrainer, _print_report
+from faculties.read_book import sentences, BookTrainer, _print_report
 from adapters.llm_adapter import OllamaClient, SafeClient
 
 CLOUD_MODEL = "qwen3-coder:480b-cloud"
@@ -108,7 +108,7 @@ def do_persist(bt):
     """KEEP: bridge every learned triple into the faculties, run the loop, save_state()."""
     print("\n[keep] bridging triples -> faculties, running loop, persisting ...", flush=True)
     try:
-        from whole_brain import WholeBrain
+        from faculties.whole_brain import WholeBrain
         wb = WholeBrain()
         kept = 0
         for (s, r), v in bt.numeric.items():

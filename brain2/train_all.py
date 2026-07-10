@@ -82,7 +82,7 @@ def train(do_lm=False, do_brain=False, files=FILES):
 
     # ── Stage 2: MEMBRANE — pooled verb constraints + predictor + questions ──────
     constraints = BrainData.learn_verb_constraints_pooled(datas, oracle, frac=0.5)
-    from event_predict import EventPredictor
+    from faculties.event_predict import EventPredictor
     predictor = EventPredictor()
     for d in datas:
         d.train_predictor(predictor)
@@ -132,7 +132,7 @@ def train(do_lm=False, do_brain=False, files=FILES):
     # ── Stage 7 + 8: FACULTIES (standing loop) + PERSIST ────────────────────────
     # feed the trained corpus policies into the front, run the self-improving loop, persist
     try:
-        from whole_brain import WholeBrain
+        from faculties.whole_brain import WholeBrain
         wb = WholeBrain()
         for tgt, p in mem.by_target.items():           # corpus-learned laws -> faculty substrate
             wb.mem.add(p)

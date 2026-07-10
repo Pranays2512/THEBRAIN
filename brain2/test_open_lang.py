@@ -8,7 +8,7 @@ from core.events.event_form import (Event, Relation, POS, NEG, CAUSE, CONTRAST,
                         dump_relation, load_relation)
 from core.events.event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT, ABSTAIN
 from core.events.discourse import ContextStack, connective_of, link_events
-from reading_loop import ReadingLoop, EventReader
+from faculties.reading_loop import ReadingLoop, EventReader
 from core.events.event_parse import parse_event, verb_trusted
 from core.store.coverage_harness import coverage_split, event_coverage, event_coverage_split
 from core.store.template_memory import TemplateMemory
@@ -206,7 +206,7 @@ ok("learned verb now rejects type violation",
 
 
 # ── predictive processing: predict next event, learn from surprise ──────────
-from event_predict import EventPredictor
+from faculties.event_predict import EventPredictor
 _ev = lambda v: Event(v, "cat", "mouse")
 _ep = EventPredictor()
 ok("no history -> max surprise", _ep.surprise(None, _ev("chase")) == 1.0)

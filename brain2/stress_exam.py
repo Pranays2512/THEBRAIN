@@ -192,7 +192,7 @@ def main():
 
     # 8. WIRED FACULTIES — dimensional verifier on real physics laws + rich queries
     section("8. WIRED FACULTIES (dimensional verify + rich queries)")
-    from whole_brain import WholeBrain
+    from faculties.whole_brain import WholeBrain
     wb = WholeBrain()
     checks = [
         ("dim force=mass*accel", wb.check_dimensions(("*", "mass", "accel"), "force") is True),
