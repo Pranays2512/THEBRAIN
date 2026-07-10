@@ -17,10 +17,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from math_parser import parse, ParseError
-from calculus_engine import CalculusEngine, render
-from integral_engine import IntegralEngine
-from algebra_engine import AlgebraEngine, AlgebraError
+from core.math.math_parser import parse, ParseError
+from core.math.calculus_engine import CalculusEngine, render
+from core.math.integral_engine import IntegralEngine
+from core.math.algebra_engine import AlgebraEngine, AlgebraError
 
 
 def _after(text, phrases):

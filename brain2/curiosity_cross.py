@@ -17,7 +17,7 @@ formulas); it discovers shared STRUCTURE, not brand-new physics. But "these two 
 things are the same shape" is exactly the cross-domain spark within-domain curiosity can't reach.
 """
 
-import factorizer as FZ
+from core.math import factorizer as FZ
 
 # Two distant domains. Each library alone shows nothing shared (one formula each).
 DOMAIN_A = [("kinetic_energy", ("*", 0.5, ("*", "m", ("*", "v", "v"))))]   # ½·m·v²

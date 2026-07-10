@@ -23,10 +23,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from math_parser import parse, ParseError
-from calculus_engine import CalculusEngine
-from integral_engine import IntegralEngine, render as render_expr
-from algebra_engine import AlgebraEngine, AlgebraError
+from core.math.math_parser import parse, ParseError
+from core.math.calculus_engine import CalculusEngine
+from core.math.integral_engine import IntegralEngine, render as render_expr
+from core.math.algebra_engine import AlgebraEngine, AlgebraError
 from conversation_engine import ConversationEngine
 from query_planner import QueryPlanner
 

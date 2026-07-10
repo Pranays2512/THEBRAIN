@@ -29,7 +29,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from reasoning_engine import ReasoningEngine
 from appraisal_engine import AppraisalEngine
-from word_math import solve as solve_word_math
+from core.math.word_math import solve as solve_word_math
 
 PRONOUNS = {"it", "that", "this", "he", "she", "him", "her", "they", "them"}
 # "how does X grow/form?" asks what PRODUCES X -> walk the causal chain backward;

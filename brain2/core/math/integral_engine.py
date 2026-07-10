@@ -24,8 +24,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from calculus_engine import CalculusEngine, render, simplify
-from physics_engine import contains, ev
+from core.math.calculus_engine import CalculusEngine, render, simplify
+from core.math.physics_engine import contains, ev
 
 
 class IntegralEngine:

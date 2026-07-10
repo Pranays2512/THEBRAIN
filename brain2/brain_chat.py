@@ -24,7 +24,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from math_chat import MathChat
-from math_parser import parse, ParseError, FUNCS
+from core.math.math_parser import parse, ParseError, FUNCS
 from conversation_engine import ConversationEngine
 
 MATH_INTENT = ("differentiate", "derivative", "integrate", "integral", "antiderivative")

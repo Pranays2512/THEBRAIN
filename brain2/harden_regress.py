@@ -13,7 +13,7 @@ import math
 def main():
     import invariant_miner as IM
     import refuter as RF
-    import factorizer as FZ
+    from core.math import factorizer as FZ
     import synth_engine as SE
     import conjecture_sandbox as CSB
     import open_world as OW

@@ -21,7 +21,7 @@ def check(name, fn):
 def run():
     import invariant_miner as IM
     import refuter as RF
-    import factorizer as FZ
+    from core.math import factorizer as FZ
     import synth_engine as SE
     import context_embed as CE
 
@@ -80,7 +80,7 @@ def run():
     check("FL.solve empty", lambda: FL.LearnedProposer().solve([], "list"))
 
     # LMs — empty / tiny corpus
-    import prob_compute as PC
+    from core.math import prob_compute as PC
     check("PC.train empty", lambda: PC.ProbLM().train([]))
     check("PC.generate untrained", lambda: PC.ProbLM().train(["a b c"]).generate())
     check("PC.dist unknown-ctx", lambda: PC.ProbLM().train(["a b c"]).dist(["zzz"]))

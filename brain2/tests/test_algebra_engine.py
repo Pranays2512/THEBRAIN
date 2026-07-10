@@ -10,7 +10,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from algebra_engine import AlgebraEngine, AlgebraError
+from core.math.algebra_engine import AlgebraEngine, AlgebraError
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

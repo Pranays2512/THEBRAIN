@@ -294,7 +294,7 @@ class WholeBrain:
         (its admitted events rendered to sentences, or a given corpus) — distributions,
         entropy, GENERATION. Complements the heavy owned Transformer (neural_lm_torch) used
         in training; this is the in-process, torch-free generator. Wires prob_compute."""
-        from prob_compute import ProbLM
+        from core.math.prob_compute import ProbLM
         if corpus is None:                              # build from what the brain has read
             from mouth import say_event
             corpus = [say_event(e) for e in getattr(self.reader, "events", [])]
@@ -309,7 +309,7 @@ class WholeBrain:
         """A units VERIFIER: is `expr` dimensionally sound for the `target` quantity (e.g.
         mass*accel is a force, mass*speed is not)? A second membrane beyond numeric checking —
         catches type-of-quantity errors a value check can't. Wires dimensional_verify."""
-        from dimensional_verify import dimensionally_sound
+        from core.math.dimensional_verify import dimensionally_sound
         try:
             return bool(dimensionally_sound(expr, target))
         except Exception:

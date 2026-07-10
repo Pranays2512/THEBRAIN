@@ -31,7 +31,7 @@ import sys
 from abc import ABC, abstractmethod
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from math_parser import parse, ParseError
+from core.math.math_parser import parse, ParseError
 from neuro_bridge import Eyes, Mouth, Query, RuleEyes, GrammarMouth
 
 

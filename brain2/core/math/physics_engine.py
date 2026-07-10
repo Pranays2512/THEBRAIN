@@ -20,7 +20,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from calculus_engine import render
+from core.math.calculus_engine import render
 
 
 class PhysicsError(ValueError):
