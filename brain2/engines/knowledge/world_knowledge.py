@@ -18,7 +18,15 @@ import gzip
 import json
 import os
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+def _brain2_root():
+    """brain2/ root — walk up from this module (survives being inside a package)."""
+    d = os.path.dirname(os.path.abspath(__file__))
+    while d != "/" and not os.path.exists(os.path.join(d, "brain2.cpp")):
+        d = os.path.dirname(d)
+    return d if os.path.exists(os.path.join(d, "brain2.cpp")) else \
+        os.path.dirname(os.path.abspath(__file__))
+
+HERE = _brain2_root()
 CN_GZ = os.path.join(HERE, "train", "conceptnet-assertions-5.7.0.csv.gz")
 CACHE = os.path.join(HERE, "train", "conceptnet_en_subset.json")
 

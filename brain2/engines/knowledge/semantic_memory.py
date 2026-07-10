@@ -27,7 +27,15 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import brain2
 
-GLOVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "glove.6B.50d.txt")
+def _brain2_root():
+    """brain2/ root — walk up from this module (survives being inside a package)."""
+    d = os.path.dirname(os.path.abspath(__file__))
+    while d != "/" and not os.path.exists(os.path.join(d, "brain2.cpp")):
+        d = os.path.dirname(d)
+    return d if os.path.exists(os.path.join(d, "brain2.cpp")) else \
+        os.path.dirname(os.path.abspath(__file__))
+
+GLOVE_PATH = os.path.join(_brain2_root(), "glove.6B.50d.txt")
 N_DIMS = 50
 _GLOVE = None       # module-level cache (load once)
 
