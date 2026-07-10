@@ -16,7 +16,7 @@ from event_form import Event, POS, NEG
 from mouth import say_event
 import knowledge_distill as KD
 from means_ends import PolicyMemory
-from type_oracle import TypeOracle
+from core.store.type_oracle import TypeOracle
 from event_parse import parse_event
 from event_verify import EventStore, admit, classify
 

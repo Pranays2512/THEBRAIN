@@ -10,9 +10,9 @@ from event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT
 from discourse import ContextStack, connective_of, link_events
 from reading_loop import ReadingLoop, EventReader
 from event_parse import parse_event, verb_trusted
-from coverage_harness import coverage_split, event_coverage, event_coverage_split
-from template_memory import TemplateMemory
-from type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
+from core.store.coverage_harness import coverage_split, event_coverage, event_coverage_split
+from core.store.template_memory import TemplateMemory
+from core.store.type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
 
 R = []
 def ok(name, cond): R.append((name, bool(cond)))

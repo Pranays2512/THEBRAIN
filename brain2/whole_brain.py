@@ -28,7 +28,7 @@ from reasoning_engine import ReasoningEngine
 from core_knowledge import CORE_FACTS
 from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
 import synth_engine as SE
-from brain_store import BrainStore
+from core.store.brain_store import BrainStore
 from appraisal_engine import AppraisalEngine
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
@@ -104,7 +104,7 @@ class WholeBrain:
         # Fuzzy/positional parse proposes an Event; the crisp membrane disposes (admit verified,
         # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
         from reading_loop import EventReader
-        from type_oracle import TypeOracle
+        from core.store.type_oracle import TypeOracle
         from verb_learn import VerbLearner
         from event_predict import EventPredictor
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
@@ -130,7 +130,7 @@ class WholeBrain:
         # SELF-EXTENSION + VERIFICATION faculties (were built + tested but orphaned; wired now):
         # a persistent library of code checks learned from breaks.
         try:
-            from check_library import CheckLibrary
+            from core.store.check_library import CheckLibrary
             self.checks = CheckLibrary(path=os.path.join(os.path.dirname(__file__), "brain_store"))
         except Exception:
             self.checks = None

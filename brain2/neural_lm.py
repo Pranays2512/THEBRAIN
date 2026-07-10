@@ -108,7 +108,7 @@ class NeuralLM:
 def _demo():
     import context_embed as CE
     try:
-        import corpus_scale as CS
+        from core.store import corpus_scale as CS
         corpus = CS.LARGE
     except Exception:
         corpus = CE.CORPUS

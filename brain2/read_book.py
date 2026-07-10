@@ -117,7 +117,7 @@ class BookTrainer:
         if with_events:
             try:
                 from reading_loop import EventReader
-                from type_oracle import TypeOracle
+                from core.store.type_oracle import TypeOracle
                 from verb_learn import VerbLearner
                 self._oracle = TypeOracle()
                 self.reader = EventReader(set(), set(), type_of=self._oracle,

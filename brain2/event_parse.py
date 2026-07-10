@@ -16,7 +16,7 @@ reader's coref to resolve. verbs is the known-lemma set (crisp verb identificati
 
 import re
 
-from parse_template import normalize
+from core.store.parse_template import normalize
 from event_form import Event, POS, NEG
 from discourse import _PRONOUNS
 

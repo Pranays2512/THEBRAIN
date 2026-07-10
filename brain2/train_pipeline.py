@@ -71,7 +71,7 @@ class UnifiedTrainer:
         self.fkb = KD.SimpleKB()          # symbolic brain: exact taught facts
         self.mem = PolicyMemory()         # symbolic brain: policies/laws
         try:
-            import corpus_scale as CS
+            from core.store import corpus_scale as CS
             self.corpus = list(CS.LARGE)
         except Exception:
             pass

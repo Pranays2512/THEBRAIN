@@ -31,7 +31,7 @@ class ReadingLoop:
         self.store = store or EventStore()
         if type_of is None:                            # wire the real isa-taxonomy by default
             try:
-                from type_oracle import TypeOracle
+                from core.store.type_oracle import TypeOracle
                 type_of = TypeOracle()
             except Exception:
                 type_of = lambda _t: None              # degrade gracefully if taxonomy absent
@@ -124,7 +124,7 @@ class EventReader:
         self.store = store or EventStore()
         if type_of is None:
             try:
-                from type_oracle import TypeOracle
+                from core.store.type_oracle import TypeOracle
                 type_of = TypeOracle()
             except Exception:
                 type_of = lambda _t: None

@@ -8,7 +8,7 @@ templates carry an entity slot and answer with the rel. (Plan Phase A, Tasks 3/6
 
 import json
 
-from parse_template import Template, tokenize, match, slot_example, anti_unify
+from core.store.parse_template import Template, tokenize, match, slot_example, anti_unify
 
 
 class TemplateMemory:

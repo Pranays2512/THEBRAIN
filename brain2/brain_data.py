@@ -130,7 +130,7 @@ class BrainData:
     # ── feed each subsystem ────────────────────────────────────────────────────
     def type_oracle(self):
         """A TypeOracle grounded in the ISA chains (parents-first handled by closure build)."""
-        from type_oracle import TypeOracle
+        from core.store.type_oracle import TypeOracle
         return TypeOracle(triples=[(c, "isa", p) for c, p in self.isa])
 
     def load_morph(self):
@@ -219,7 +219,7 @@ class BrainData:
         surface shape, not the specific entity, so a couple of examples PER RELATION suffice —
         and capping is essential: template induction (_admit) is O(examples^2) with list growth,
         so feeding all 285 questions blows up memory. 2 per rel generalizes; the rest are dupes."""
-        from template_memory import TemplateMemory
+        from core.store.template_memory import TemplateMemory
         by_rel = {}
         for s, q in self.questions:
             by_rel.setdefault(q["rel"], []).append((s, q))

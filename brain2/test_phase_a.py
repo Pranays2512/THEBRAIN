@@ -6,9 +6,9 @@ Assertions follow the plan; slot_example stores NORMAL form (weighs->weigh) per 
 import os
 import tempfile
 
-from parse_template import Template, tokenize, match, slot_example, anti_unify, normalize
-from template_memory import TemplateMemory
-from coverage_harness import coverage
+from core.store.parse_template import Template, tokenize, match, slot_example, anti_unify, normalize
+from core.store.template_memory import TemplateMemory
+from core.store.coverage_harness import coverage
 from domain_features import dims_of, dim_consistent, success_rate_feature
 from concept_memory import ConceptMemory
 from means_ends import Policy
