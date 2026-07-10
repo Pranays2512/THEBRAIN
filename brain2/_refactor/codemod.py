@@ -70,6 +70,30 @@ class Rewriter(cst.CSTTransformer):
             if m in self.moved:  # from X import a  ->  from pkg.X import a
                 return updated.with_changes(module=cst.parse_expression(self.moved[m] + "." + m))
         return updated
+    def leave_Call(self, orig, updated):
+        # dynamic imports: __import__("X") / importlib.import_module("X") for moved X
+        f = updated.func
+        is_dunder = isinstance(f, cst.Name) and f.value == "__import__"
+        is_impmod = (isinstance(f, cst.Attribute) and f.attr.value == "import_module") or \
+                    (isinstance(f, cst.Name) and f.value == "import_module")
+        if not (is_dunder or is_impmod) or not updated.args:
+            return updated
+        a0 = updated.args[0].value
+        if not (isinstance(a0, cst.SimpleString)):
+            return updated
+        name = a0.evaluated_value
+        if name not in self.moved:
+            return updated
+        newpath = cst.SimpleString(f'"{self.moved[name]}.{name}"')
+        newargs = [updated.args[0].with_changes(value=newpath)] + list(updated.args[1:])
+        if is_dunder and not any(  # __import__ needs fromlist to return the submodule
+                (k.keyword and k.keyword.value == "fromlist") for k in updated.args[1:]):
+            newargs.append(cst.Arg(keyword=cst.Name("fromlist"),
+                                   value=cst.parse_expression('["_"]'),
+                                   equal=cst.AssignEqual(
+                                       whitespace_before=cst.SimpleWhitespace(""),
+                                       whitespace_after=cst.SimpleWhitespace(""))))
+        return updated.with_changes(args=newargs)
 
 def rewrite_all(moved):
     for dirpath, _, files in os.walk(BRAIN2):
