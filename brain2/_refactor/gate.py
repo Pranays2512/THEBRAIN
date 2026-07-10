@@ -5,10 +5,23 @@ BRAIN2 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = os.path.join(BRAIN2, "baseline")
 PY = os.path.join(BRAIN2, "..", "venv2", "bin", "python3")
 
+def resolve(script):
+    """Run bare 'exam.py' if at root; else find it in a package and run '-m pkg.mod'
+    (keeps brain2/ on sys.path, unlike `python3 tests/exam.py`)."""
+    if os.path.exists(os.path.join(BRAIN2, script)):
+        return [PY, script]
+    for dp, _, fs in os.walk(BRAIN2):
+        if "/_refactor" in dp or "/.git" in dp or "/__pycache__" in dp:
+            continue
+        if script in fs:
+            rel = os.path.relpath(os.path.join(dp, script), BRAIN2)
+            return [PY, "-m", rel[:-3].replace(os.sep, ".")]
+    return [PY, script]
+
 def run(script, norm):
     env = dict(os.environ, KMP_DUPLICATE_LIB_OK="TRUE", OMP_NUM_THREADS="1",
                PYTHONHASHSEED="0")
-    r = subprocess.run([PY, script], cwd=BRAIN2, capture_output=True, text=True, env=env)
+    r = subprocess.run(resolve(script), cwd=BRAIN2, capture_output=True, text=True, env=env)
     out = r.stdout
     for pat in norm:                       # strip volatile lines
         import re; out = re.sub(pat, "", out)
