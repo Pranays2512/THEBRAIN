@@ -191,7 +191,7 @@ class BookTrainer:
 
         # 2. inductive rules from co-occurrence over the isa chains (verify on holdout)
         try:
-            from inductive_engine import InductiveLearner
+            from core.synthesis.inductive_engine import InductiveLearner
             eps = [[s, o] for s, o in self.isa_pairs]
             if len(eps) >= 4:
                 cut = max(2, int(0.7 * len(eps)))

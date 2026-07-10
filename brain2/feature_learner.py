@@ -22,8 +22,8 @@ TYPES is the deeper rung. But which signals MATTER is now learned, not told.
 
 import random
 
-import synth_engine as SE
-from online_proposer import fixed_solve
+from core.synthesis import synth_engine as SE
+from core.synthesis.online_proposer import fixed_solve
 
 
 def _flat(a):

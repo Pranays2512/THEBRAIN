@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from code_gen import CodeGenerator, ClassSpec, Field, Method
+from core.synthesis.code_gen import CodeGenerator, ClassSpec, Field, Method
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

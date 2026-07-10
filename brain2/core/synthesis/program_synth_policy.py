@@ -26,7 +26,7 @@ import random
 import numpy as np
 
 from core.reasoning.tree_reason import SearchProblem, solve
-from program_synth_guided import (
+from core.synthesis.program_synth_guided import (
     OPS, run, features, rand_name, rand_program, make_hard_tasks,
     learn_prior, Synthesize,
 )

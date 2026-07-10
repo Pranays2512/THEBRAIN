@@ -20,7 +20,7 @@ it just spares the oracle from obviously-wrong ones.
 
 import random
 
-import invariant_miner as IM
+from core.synthesis import invariant_miner as IM
 
 STRESS_N = 1000
 

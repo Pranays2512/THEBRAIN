@@ -21,8 +21,8 @@ Honest limit: a hand-picked feature set; learning the features themselves is the
 
 import random
 
-import synth_engine as SE
-from online_proposer import OnlineProposer, fixed_solve
+from core.synthesis import synth_engine as SE
+from core.synthesis.online_proposer import OnlineProposer, fixed_solve
 
 
 def _flat(a):

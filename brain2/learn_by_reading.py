@@ -21,7 +21,7 @@ import random
 import sys
 
 import brain2
-from policy_induction import guided_induce, _render
+from core.synthesis.policy_induction import guided_induce, _render
 from llm_adapter import OllamaClient, StubClient, _first_json
 
 EXTRACT_SYS = (

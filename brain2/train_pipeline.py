@@ -29,7 +29,7 @@ import sys
 
 from core.grounding import context_embed as CE
 import feature_learner as FL
-import synth_engine as SE
+from core.synthesis import synth_engine as SE
 from core.neural.neural_lm import NeuralLM
 
 

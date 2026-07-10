@@ -15,12 +15,12 @@ coverage (how many the brain writes, no LLM) and which space solved each.
     python3 synth_engine.py
 """
 
-import composable_synth as C
-import loop_synth3 as L3
-import loop_synth4 as L4
-import dp_proposer as DP
-import loop_synth as L1          # earlier fold synthesizer (fallback coverage)
-import loop_synth2 as L2         # two-accumulator + conditional synthesizer (fallback)
+from core.synthesis import composable_synth as C
+from core.synthesis import loop_synth3 as L3
+from core.synthesis import loop_synth4 as L4
+from core.synthesis import dp_proposer as DP
+from core.synthesis import loop_synth as L1          # earlier fold synthesizer (fallback coverage)
+from core.synthesis import loop_synth2 as L2         # two-accumulator + conditional synthesizer (fallback)
 
 
 # ── backends: each takes examples in (args, out) form, returns Python code or None
@@ -42,7 +42,7 @@ _CP = {"trees": None, "failed": False}
 
 
 def _cp_trees():
-    import composable_proposer as CP
+    from core.synthesis import composable_proposer as CP
     if _CP["trees"] is None and not _CP["failed"]:
         try:
             _CP["trees"] = CP.train()
@@ -52,7 +52,7 @@ def _cp_trees():
 
 
 def b_composable_guided(ex):
-    import composable_proposer as CP
+    from core.synthesis import composable_proposer as CP
     trees = _cp_trees()
     if trees is None:
         return None

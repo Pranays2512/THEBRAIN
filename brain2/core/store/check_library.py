@@ -22,8 +22,8 @@ check is a further step.
 import json
 import os
 
-import invariant_miner as IM
-import refuter as RF
+from core.synthesis import invariant_miner as IM
+from core.synthesis import refuter as RF
 
 LIB = os.path.join(os.path.dirname(__file__), "check_library")
 

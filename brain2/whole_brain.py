@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from core.reasoning.reasoning_engine import ReasoningEngine
 from core.knowledge.core_knowledge import CORE_FACTS
 from core.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
-import synth_engine as SE
+from core.synthesis import synth_engine as SE
 from core.store.brain_store import BrainStore
 from appraisal_engine import AppraisalEngine
 
@@ -265,7 +265,7 @@ class WholeBrain:
         """Verification-health introspection: synthesize a task's invariants and audit them —
         are they catching wrong answers, or spuriously rejecting correct ones? Wires
         synth_invariant + verifier_monitor + invariant_miner into the front."""
-        import synth_invariant as SI, verifier_monitor as VM
+        import verifier_monitor as VM; from core.synthesis import synth_invariant as SI
         mine, hold = [0, 1, 2, 3, 4], [5, 6, 7]
         inv = SI.task_invariants(math.factorial, mine, hold)
         correct = [(x, math.factorial(x)) for x in mine + hold]
@@ -320,7 +320,7 @@ class WholeBrain:
         trusts (energy conservation), admitting only what survives — active experimentation,
         no answer key. Wires conjecture_sandbox. `conjecture` is f(mass, velocity) -> KE
         (the true law is ½·m·v²; a guess that matches on random drops is admitted)."""
-        from conjecture_sandbox import design_and_test
+        from core.synthesis.conjecture_sandbox import design_and_test
         ok, worst, counter = design_and_test(conjecture)
         return {"admitted": bool(ok), "worst_error": round(worst, 4), "counterexample": counter}
 
@@ -328,7 +328,7 @@ class WholeBrain:
         """Self-correcting synthesis: synthesize, STRESS against the oracle, and if it breaks on
         a counterexample fold that in and re-synthesize — the refuter closing the loop so an
         overfit fixes itself with no hand-holding. Wires refute_synth."""
-        from refute_synth import synth_self_correct
+        from core.synthesis.refute_synth import synth_self_correct
         code, log = synth_self_correct(kind, oracle, inputs)
         return {"code": code, "iterations": len(log), "verified": code is not None}
 
@@ -490,7 +490,7 @@ class WholeBrain:
         split (reject train-only coincidences), and — if promote — install the survivors into
         the factual reasoner so they become chainable knowledge. Originating rules from data."""
         import random
-        from inductive_engine import InductiveLearner
+        from core.synthesis.inductive_engine import InductiveLearner
         eps = [list(e) for e in episodes if len(e) >= 2]
         if len(eps) < 4:
             return {"promoted": [], "rejected": [], "reason": "too few episodes"}
@@ -615,7 +615,7 @@ class WholeBrain:
         verifier gates every result, so guidance changes SPEED, never correctness."""
         if self._proposer is None:
             try:
-                from online_proposer2 import FeatureProposer
+                from core.synthesis.online_proposer2 import FeatureProposer
                 self._proposer = FeatureProposer()
             except Exception:
                 self._proposer = False
@@ -673,7 +673,7 @@ class WholeBrain:
         search over a text DSL (program_synth) — e.g. [("John Smith","JOHN")] -> upper∘first.
         The returned program is correct on the examples BY CONSTRUCTION and generalizes; None
         if no program in the DSL fits (honest miss)."""
-        import program_synth as PS
+        from core.synthesis import program_synth as PS
         from core.reasoning.tree_reason import solve
         path, _, nodes = solve(PS.Synthesize(list(examples)))
         if path is None:

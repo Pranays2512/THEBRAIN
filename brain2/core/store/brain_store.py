@@ -18,8 +18,8 @@ import json
 import os
 import random
 
-from policy_induction import guided_induce, _render
-import synth_engine as SE
+from core.synthesis.policy_induction import guided_induce, _render
+from core.synthesis import synth_engine as SE
 
 STORE = os.path.join(os.path.dirname(__file__), "brain_store")
 

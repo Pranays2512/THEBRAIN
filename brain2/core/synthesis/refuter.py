@@ -20,7 +20,7 @@ report "unbroken in N samples", not "correct". It finds where two things DISAGRE
 import math
 import random
 
-import synth_engine as SE
+from core.synthesis import synth_engine as SE
 
 
 def _load(code_or_fn):

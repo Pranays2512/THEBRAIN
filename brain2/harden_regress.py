@@ -11,11 +11,11 @@ import math
 
 
 def main():
-    import invariant_miner as IM
-    import refuter as RF
+    from core.synthesis import invariant_miner as IM
+    from core.synthesis import refuter as RF
     from core.math import factorizer as FZ
-    import synth_engine as SE
-    import conjecture_sandbox as CSB
+    from core.synthesis import synth_engine as SE
+    from core.synthesis import conjecture_sandbox as CSB
     import open_world as OW
 
     ok = []
@@ -92,7 +92,7 @@ def main():
         env = {"m": 3.0, "v": 4.0, "k": 8.0}
         expect("C++ eval_sexpr matches Python",
                abs(brain2.eval_sexpr(FZ.to_sexpr(tree), env) - FZ.eval_tree(tree, env, {})) < 1e-9)
-        import irregularity_detector as ID
+        from core.synthesis import irregularity_detector as ID
         tr = [(0.387, 0.241), (0.723, 0.615), (1.0, 1.0), (1.524, 1.881), (5.203, 11.862)]
         ho = [(9.537, 29.457), (19.191, 84.02)]
         # compare against the PYTHON REFERENCE (_law_error now prefers the C++ port, so

@@ -24,8 +24,8 @@ import random
 import time
 
 from core.reasoning.tree_reason import solve
-from program_synth_guided import OPS, run, rand_name, rand_program, Synthesize
-from program_synth_tree import DecisionTree, collect, tree_scores
+from core.synthesis.program_synth_guided import OPS, run, rand_name, rand_program, Synthesize
+from core.synthesis.program_synth_tree import DecisionTree, collect, tree_scores
 
 
 def reflex(ex, tree, max_len=6):

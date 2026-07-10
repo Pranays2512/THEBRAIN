@@ -19,10 +19,10 @@ def check(name, fn):
 
 
 def run():
-    import invariant_miner as IM
-    import refuter as RF
+    from core.synthesis import invariant_miner as IM
+    from core.synthesis import refuter as RF
     from core.math import factorizer as FZ
-    import synth_engine as SE
+    from core.synthesis import synth_engine as SE
     from core.grounding import context_embed as CE
 
     # invariant_miner edge cases
@@ -66,14 +66,14 @@ def run():
     check("DG.answer empty-cond", lambda: DG.DeeperParser(fkb, mem).answer("if then what"))
 
     # sandbox / irregularity — degenerate data
-    import conjecture_sandbox as CSB
-    import irregularity_detector as ID
+    from core.synthesis import conjecture_sandbox as CSB
+    from core.synthesis import irregularity_detector as ID
     check("CSB.test raises", lambda: CSB.design_and_test(lambda m, v: 1 / 0, n=5))
     check("ID.assess empty", lambda: ID.assess([], []))
     check("ID.assess single", lambda: ID.assess([(1, 1)], [(2, 2)]))
 
     # proposers — empty / single
-    import online_proposer as OP
+    from core.synthesis import online_proposer as OP
     import feature_learner as FL
     check("OP.solve empty", lambda: OP.OnlineProposer().solve([], "int1"))
     check("FL.features empty", lambda: FL.gen_features([], "int1"))

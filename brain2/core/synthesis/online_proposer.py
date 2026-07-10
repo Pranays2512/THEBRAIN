@@ -16,7 +16,7 @@ loss of solutions (same verifier gates every candidate). Honest limit: learns sp
 from outcomes; richer per-task features (beyond kind) are the next rung.
 """
 
-import synth_engine as SE
+from core.synthesis import synth_engine as SE
 
 
 class OnlineProposer:

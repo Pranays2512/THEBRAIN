@@ -23,8 +23,8 @@ import random
 
 import numpy as np
 
-from composable_synth import (INITS, RANGES, GUARDS, UPDATES, EARLIES, FINALS, run)
-from program_synth_tree import DecisionTree
+from core.synthesis.composable_synth import (INITS, RANGES, GUARDS, UPDATES, EARLIES, FINALS, run)
+from core.synthesis.program_synth_tree import DecisionTree
 
 IK, RK = INITS, RANGES
 GK, UK, EK, FK = list(GUARDS), list(UPDATES), list(EARLIES), list(FINALS)

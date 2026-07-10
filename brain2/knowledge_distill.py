@@ -171,7 +171,7 @@ def _learned_lib():
     global _LA, _LA_FAILED
     if _LA is None and not _LA_FAILED:
         try:
-            from math_synth import LearnedArithmetic
+            from core.synthesis.math_synth import LearnedArithmetic
             _LA = LearnedArithmetic()
         except Exception:
             _LA_FAILED = True
@@ -194,7 +194,7 @@ def _arith(op, a, b):
             name = "sub"
         if name in la.lib:
             try:
-                from math_synth import safe_call
+                from core.synthesis.math_synth import safe_call
                 val = safe_call(la.lib[name], ia, ib, budget=5_000_000)
                 ARITH_STATS["learned"] += 1
                 return float(val)

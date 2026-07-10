@@ -13,7 +13,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from program_synth_guided import run, rand_program, rand_name
+from core.synthesis.program_synth_guided import run, rand_program, rand_name
 from core.reasoning.dual_process_engine import DualProcessSolver, train_policy
 
 PASS = "\033[92mPASS\033[0m"

@@ -19,7 +19,7 @@ transcriber, never the thinker, and the test gate still catches mis-transcriptio
 
 import random
 
-from policy_induction import guided_induce, _render
+from core.synthesis.policy_induction import guided_induce, _render
 
 
 def render_py(e):

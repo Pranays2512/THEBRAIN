@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from core.reasoning.reasoning_engine import ReasoningEngine
 from core.reasoning.means_ends import Policy
 from policy_pack import PACK
-from policy_proposer import MultiPolicyMemory, Solver
+from core.synthesis.policy_proposer import MultiPolicyMemory, Solver
 from nl_query import NLQueryParser, load_glove, _rel_words, STOP
 from student_trainer import Student, load_dataset, DATA
 

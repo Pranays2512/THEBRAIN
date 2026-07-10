@@ -17,8 +17,8 @@ and refute_synth (self-correction) — the organs already built.
 
 import math
 
-import synth_engine as SE
-from refute_synth import synth_self_correct
+from core.synthesis import synth_engine as SE
+from core.synthesis.refute_synth import synth_self_correct
 
 
 class VerifyingAgent:

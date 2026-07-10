@@ -19,7 +19,7 @@ import random
 
 import numpy as np
 
-from program_synth_tree import DecisionTree
+from core.synthesis.program_synth_tree import DecisionTree
 
 INITS = {"first": None, "zero": (0, 0)}      # 'first' uses arr[0] for both
 CUR = {

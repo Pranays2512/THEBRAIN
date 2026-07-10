@@ -15,8 +15,8 @@ that fits the examples but fails random cases and keeps looking for one that sur
     python3 stress_synth.py
 """
 
-from loop_synth4 import INITS, FOLD_UPD, _run_fold, render as render4
-from synth_engine import stress
+from core.synthesis.loop_synth4 import INITS, FOLD_UPD, _run_fold, render as render4
+from core.synthesis.synth_engine import stress
 
 
 def _fits(spec, data):

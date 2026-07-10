@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from inductive_engine import InductiveLearner
+from core.synthesis.inductive_engine import InductiveLearner
 from core.reasoning.reasoning_engine import ReasoningEngine
 
 PASS = "\033[92mPASS\033[0m"

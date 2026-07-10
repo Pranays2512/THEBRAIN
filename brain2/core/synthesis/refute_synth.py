@@ -18,8 +18,8 @@ Honest limit: needs an oracle to refute against (same bound as all verification 
 repair only works if the correct program is reachable in the DSL once the example is added.
 """
 
-import refuter as RF
-import synth_engine as SE
+from core.synthesis import refuter as RF
+from core.synthesis import synth_engine as SE
 
 
 def synth_self_correct(kind, oracle, inputs, max_iters=5):
