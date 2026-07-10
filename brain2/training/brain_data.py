@@ -19,7 +19,7 @@ Line grammars (one per line):
   SEQ: <sentence>
 """
 
-from core.events.event_form import Event, POS, NEG
+from engines.events.event_form import Event, POS, NEG
 
 
 def _say(ev):
@@ -130,7 +130,7 @@ class BrainData:
     # ── feed each subsystem ────────────────────────────────────────────────────
     def type_oracle(self):
         """A TypeOracle grounded in the ISA chains (parents-first handled by closure build)."""
-        from core.store.type_oracle import TypeOracle
+        from engines.store.type_oracle import TypeOracle
         return TypeOracle(triples=[(c, "isa", p) for c, p in self.isa])
 
     def load_morph(self):
@@ -141,8 +141,8 @@ class BrainData:
 
     def _law_dim(self, law_struct):
         """dim_consistent for a 'LAW: t = expr' string, using the UNITs. True/False/None."""
-        from core.grounding.domain_features import dim_consistent
-        from core.reasoning.means_ends import Policy
+        from engines.grounding.domain_features import dim_consistent
+        from engines.reasoning.means_ends import Policy
         from training import knowledge_distill as KD
         try:
             target, expr = (x.strip() for x in law_struct[4:].split("=", 1))
@@ -194,7 +194,7 @@ class BrainData:
         NOTE: per-file learning sees only this file's events; a verb used broadly across the
         corpus is best learned by pooling every file's events into ONE learner
         (`learn_verb_constraints_pooled`) — otherwise last-file-wins throws away evidence."""
-        from core.events.verb_learn import VerbLearner
+        from engines.events.verb_learn import VerbLearner
         vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
         for _, ev in self.events:
             vl.observe(ev)
@@ -206,7 +206,7 @@ class BrainData:
         """Pool events from MANY BrainData files into one learner, so each verb's constraint is
         induced from all its uses corpus-wide (not one file). frac<1 generalizes to a shared
         supertype robust to sparse taxonomy gaps and one-off contexts."""
-        from core.events.verb_learn import VerbLearner
+        from engines.events.verb_learn import VerbLearner
         vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
         for d in datas:
             for _, ev in d.events:
@@ -219,7 +219,7 @@ class BrainData:
         surface shape, not the specific entity, so a couple of examples PER RELATION suffice —
         and capping is essential: template induction (_admit) is O(examples^2) with list growth,
         so feeding all 285 questions blows up memory. 2 per rel generalizes; the rest are dupes."""
-        from core.store.template_memory import TemplateMemory
+        from engines.store.template_memory import TemplateMemory
         by_rel = {}
         for s, q in self.questions:
             by_rel.setdefault(q["rel"], []).append((s, q))

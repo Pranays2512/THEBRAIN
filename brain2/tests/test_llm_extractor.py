@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from adapters.llm_extractor import LLMExtractor
 from adapters.llm_adapter import StubClient
-from core.knowledge.knowledge_base import KnowledgeBase
+from engines.knowledge.knowledge_base import KnowledgeBase
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

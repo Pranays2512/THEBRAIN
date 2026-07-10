@@ -27,9 +27,9 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 from training.brain_data import BrainData
-from core.store.type_oracle import TypeOracle
+from engines.store.type_oracle import TypeOracle
 from training import knowledge_distill as KD
-from core.reasoning.means_ends import PolicyMemory
+from engines.reasoning.means_ends import PolicyMemory
 
 FILES = (["data/taxonomy_core.txt"]
          + [f"data/math{i}.txt" for i in range(1, 10)]
@@ -120,7 +120,7 @@ def train(do_lm=False, do_brain=False, files=FILES):
     # ── Stage 6: PROBABILISTIC — owned neural LM over parse pairs ────────────────
     if do_lm:
         try:
-            from core.neural.neural_lm_torch import NeuralLMTorch
+            from engines.neural.neural_lm_torch import NeuralLMTorch
             lm = NeuralLMTorch(dim=256, layers=4, ctx=16, epochs=40).train(parse_pairs)
             os.makedirs("trained", exist_ok=True)
             lm.save("trained/owned_lm_data.pt")

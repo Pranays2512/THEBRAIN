@@ -1,2 +1,2 @@
 import runpy
-runpy.run_module('core.synthesis.math_synth', run_name='__main__')
+runpy.run_module('engines.synthesis.math_synth', run_name='__main__')

@@ -15,11 +15,11 @@ import re
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from training.brain_data import BrainData
-from core.store.type_oracle import TypeOracle
+from engines.store.type_oracle import TypeOracle
 from training import knowledge_distill as KD
-from core.reasoning.means_ends import PolicyMemory
-from core.events.event_form import Event, POS
-from core.events.event_verify import EventStore, classify
+from engines.reasoning.means_ends import PolicyMemory
+from engines.events.event_form import Event, POS
+from engines.events.event_verify import EventStore, classify
 from adapters.mouth import say_event
 
 FILES = (["data/taxonomy_core.txt"]

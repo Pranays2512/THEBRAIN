@@ -6,12 +6,12 @@ Assertions follow the plan; slot_example stores NORMAL form (weighs->weigh) per 
 import os
 import tempfile
 
-from core.store.parse_template import Template, tokenize, match, slot_example, anti_unify, normalize
-from core.store.template_memory import TemplateMemory
-from core.store.coverage_harness import coverage
-from core.grounding.domain_features import dims_of, dim_consistent, success_rate_feature
-from core.knowledge.concept_memory import ConceptMemory
-from core.reasoning.means_ends import Policy
+from engines.store.parse_template import Template, tokenize, match, slot_example, anti_unify, normalize
+from engines.store.template_memory import TemplateMemory
+from engines.store.coverage_harness import coverage
+from engines.grounding.domain_features import dims_of, dim_consistent, success_rate_feature
+from engines.knowledge.concept_memory import ConceptMemory
+from engines.reasoning.means_ends import Policy
 
 R = []
 def ok(name, cond): R.append((name, bool(cond)))

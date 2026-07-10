@@ -16,7 +16,7 @@ Two surfaces:
   * say_fact(e, rel, v, tm)  — bidirectional: fill a learned statement template's slots
 """
 
-from core.events.event_form import NEG
+from engines.events.event_form import NEG
 
 # lemma -> past (generation direction; the inverse of event_parse's surface->lemma map)
 _PAST = {"eat": "ate", "run": "ran", "go": "went", "see": "saw", "make": "made",

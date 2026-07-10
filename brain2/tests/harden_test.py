@@ -19,11 +19,11 @@ def check(name, fn):
 
 
 def run():
-    from core.synthesis import invariant_miner as IM
-    from core.synthesis import refuter as RF
-    from core.math import factorizer as FZ
-    from core.synthesis import synth_engine as SE
-    from core.grounding import context_embed as CE
+    from engines.synthesis import invariant_miner as IM
+    from engines.synthesis import refuter as RF
+    from engines.math import factorizer as FZ
+    from engines.synthesis import synth_engine as SE
+    from engines.grounding import context_embed as CE
 
     # invariant_miner edge cases
     check("IM.mine empty", lambda: IM.mine([]))
@@ -52,9 +52,9 @@ def run():
     check("CE.nearest unknown", lambda: CE.nearest("zzz", ["speed"], CE.build(["the speed of light"])))
 
     # parsers — garbage / empty / no entities
-    from core.reasoning import structural_parser as SP
-    from core.reasoning import nested_parser as NP
-    from core.reasoning import deeper_grammar as DG
+    from engines.reasoning import structural_parser as SP
+    from engines.reasoning import nested_parser as NP
+    from engines.reasoning import deeper_grammar as DG
     fkb, mem = SP.build_brain()
     P = SP.StructuralParser({"rocket"}, {"mass"}, {})
     check("SP.parse empty", lambda: P.parse(""))
@@ -66,28 +66,28 @@ def run():
     check("DG.answer empty-cond", lambda: DG.DeeperParser(fkb, mem).answer("if then what"))
 
     # sandbox / irregularity — degenerate data
-    from core.synthesis import conjecture_sandbox as CSB
-    from core.synthesis import irregularity_detector as ID
+    from engines.synthesis import conjecture_sandbox as CSB
+    from engines.synthesis import irregularity_detector as ID
     check("CSB.test raises", lambda: CSB.design_and_test(lambda m, v: 1 / 0, n=5))
     check("ID.assess empty", lambda: ID.assess([], []))
     check("ID.assess single", lambda: ID.assess([(1, 1)], [(2, 2)]))
 
     # proposers — empty / single
-    from core.synthesis import online_proposer as OP
+    from engines.synthesis import online_proposer as OP
     from faculties import feature_learner as FL
     check("OP.solve empty", lambda: OP.OnlineProposer().solve([], "int1"))
     check("FL.features empty", lambda: FL.gen_features([], "int1"))
     check("FL.solve empty", lambda: FL.LearnedProposer().solve([], "list"))
 
     # LMs — empty / tiny corpus
-    from core.math import prob_compute as PC
+    from engines.math import prob_compute as PC
     check("PC.train empty", lambda: PC.ProbLM().train([]))
     check("PC.generate untrained", lambda: PC.ProbLM().train(["a b c"]).generate())
     check("PC.dist unknown-ctx", lambda: PC.ProbLM().train(["a b c"]).dist(["zzz"]))
 
     # analogy / semantic — empty / malformed
-    from core.events import analogy_struct as AS
-    from core.knowledge import semantic_depth as SD
+    from engines.events import analogy_struct as AS
+    from engines.knowledge import semantic_depth as SD
     check("AS.align empty", lambda: AS.align([], []))
     check("AS.align_greedy empty", lambda: AS.align_greedy([], []))
     fkb2, mem2 = SP.build_brain()

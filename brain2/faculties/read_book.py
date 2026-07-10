@@ -37,7 +37,7 @@ from collections import Counter, defaultdict
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-from core.reasoning.reasoning_engine import ReasoningEngine
+from engines.reasoning.reasoning_engine import ReasoningEngine
 from adapters.llm_extractor import LLMExtractor
 
 
@@ -117,8 +117,8 @@ class BookTrainer:
         if with_events:
             try:
                 from faculties.reading_loop import EventReader
-                from core.store.type_oracle import TypeOracle
-                from core.events.verb_learn import VerbLearner
+                from engines.store.type_oracle import TypeOracle
+                from engines.events.verb_learn import VerbLearner
                 self._oracle = TypeOracle()
                 self.reader = EventReader(set(), set(), type_of=self._oracle,
                                           learner=VerbLearner(self._oracle))
@@ -191,7 +191,7 @@ class BookTrainer:
 
         # 2. inductive rules from co-occurrence over the isa chains (verify on holdout)
         try:
-            from core.synthesis.inductive_engine import InductiveLearner
+            from engines.synthesis.inductive_engine import InductiveLearner
             eps = [[s, o] for s, o in self.isa_pairs]
             if len(eps) >= 4:
                 cut = max(2, int(0.7 * len(eps)))

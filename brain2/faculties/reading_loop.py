@@ -19,10 +19,10 @@ unattended:
 import re
 from collections import Counter, defaultdict
 
-from core.events.event_form import fact_as_event, event_as_fact, Event
-from core.events.event_verify import EventStore, admit, ADMIT
-from core.events.discourse import ContextStack, _PRONOUNS, link_events, _CONNECTIVES
-from core.events.event_parse import parse_event, verb_trusted
+from engines.events.event_form import fact_as_event, event_as_fact, Event
+from engines.events.event_verify import EventStore, admit, ADMIT
+from engines.events.discourse import ContextStack, _PRONOUNS, link_events, _CONNECTIVES
+from engines.events.event_parse import parse_event, verb_trusted
 
 
 class ReadingLoop:
@@ -31,7 +31,7 @@ class ReadingLoop:
         self.store = store or EventStore()
         if type_of is None:                            # wire the real isa-taxonomy by default
             try:
-                from core.store.type_oracle import TypeOracle
+                from engines.store.type_oracle import TypeOracle
                 type_of = TypeOracle()
             except Exception:
                 type_of = lambda _t: None              # degrade gracefully if taxonomy absent
@@ -124,7 +124,7 @@ class EventReader:
         self.store = store or EventStore()
         if type_of is None:
             try:
-                from core.store.type_oracle import TypeOracle
+                from engines.store.type_oracle import TypeOracle
                 type_of = TypeOracle()
             except Exception:
                 type_of = lambda _t: None

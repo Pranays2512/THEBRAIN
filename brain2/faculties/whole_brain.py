@@ -24,11 +24,11 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from core.reasoning.reasoning_engine import ReasoningEngine
-from core.knowledge.core_knowledge import CORE_FACTS
-from core.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
-from core.synthesis import synth_engine as SE
-from core.store.brain_store import BrainStore
+from engines.reasoning.reasoning_engine import ReasoningEngine
+from engines.knowledge.core_knowledge import CORE_FACTS
+from engines.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
+from engines.synthesis import synth_engine as SE
+from engines.store.brain_store import BrainStore
 from faculties.appraisal_engine import AppraisalEngine
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
@@ -64,8 +64,8 @@ class WholeBrain:
         self._proposer = None                       # lazy online_proposer2 (guided code synth)
         try:
             import json
-            from core.knowledge.concept_memory import ConceptMemory
-            from core.knowledge.semantic_memory import SemanticMemory
+            from engines.knowledge.concept_memory import ConceptMemory
+            from engines.knowledge.semantic_memory import SemanticMemory
             cp = os.path.join(self.store.path, "concepts.json")
             sp = os.path.join(self.store.path, "semantic.json")
             # LOAD prior sessions' discoveries so the brain accumulates across restarts
@@ -93,7 +93,7 @@ class WholeBrain:
                           ("density", ("mass", "volume"), ("/", "mass", "volume")),
                           ("momentum", ("mass", "speed"), ("*", "mass", "speed")),
                           ("energy", ("mass", "speed"), ("*", 0.5, ("*", "mass", ("^", "speed", 2))))]:
-            self.mem.add(__import__("core.reasoning.means_ends", fromlist=["_"]).Policy(t, ins, e))
+            self.mem.add(__import__("engines.reasoning.means_ends", fromlist=["_"]).Policy(t, ins, e))
         self.entities = {"rocket", "sample"}
         self.relations = {"force", "density", "momentum", "energy", "mass", "speed", "accel", "volume"}
         self.concepts = {s for s, _, _ in CORE_FACTS} | {o for _, _, o in CORE_FACTS}
@@ -104,8 +104,8 @@ class WholeBrain:
         # Fuzzy/positional parse proposes an Event; the crisp membrane disposes (admit verified,
         # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
         from faculties.reading_loop import EventReader
-        from core.store.type_oracle import TypeOracle
-        from core.events.verb_learn import VerbLearner
+        from engines.store.type_oracle import TypeOracle
+        from engines.events.verb_learn import VerbLearner
         from faculties.event_predict import EventPredictor
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
         self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
@@ -130,11 +130,11 @@ class WholeBrain:
         # SELF-EXTENSION + VERIFICATION faculties (were built + tested but orphaned; wired now):
         # a persistent library of code checks learned from breaks.
         try:
-            from core.store.check_library import CheckLibrary
+            from engines.store.check_library import CheckLibrary
             self.checks = CheckLibrary(path=os.path.join(os.path.dirname(__file__), "brain_store"))
         except Exception:
             self.checks = None
-        from core.grounding import context_embed as CE
+        from engines.grounding import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
                 "things", "thing", "great", "high", "large", "strong", "fast", "dense", "heavy"}
@@ -265,7 +265,7 @@ class WholeBrain:
         """Verification-health introspection: synthesize a task's invariants and audit them —
         are they catching wrong answers, or spuriously rejecting correct ones? Wires
         synth_invariant + verifier_monitor + invariant_miner into the front."""
-        from faculties import verifier_monitor as VM; from core.synthesis import synth_invariant as SI
+        from faculties import verifier_monitor as VM; from engines.synthesis import synth_invariant as SI
         mine, hold = [0, 1, 2, 3, 4], [5, 6, 7]
         inv = SI.task_invariants(math.factorial, mine, hold)
         correct = [(x, math.factorial(x)) for x in mine + hold]
@@ -294,7 +294,7 @@ class WholeBrain:
         (its admitted events rendered to sentences, or a given corpus) — distributions,
         entropy, GENERATION. Complements the heavy owned Transformer (neural_lm_torch) used
         in training; this is the in-process, torch-free generator. Wires prob_compute."""
-        from core.math.prob_compute import ProbLM
+        from engines.math.prob_compute import ProbLM
         if corpus is None:                              # build from what the brain has read
             from adapters.mouth import say_event
             corpus = [say_event(e) for e in getattr(self.reader, "events", [])]
@@ -309,7 +309,7 @@ class WholeBrain:
         """A units VERIFIER: is `expr` dimensionally sound for the `target` quantity (e.g.
         mass*accel is a force, mass*speed is not)? A second membrane beyond numeric checking —
         catches type-of-quantity errors a value check can't. Wires dimensional_verify."""
-        from core.math.dimensional_verify import dimensionally_sound
+        from engines.math.dimensional_verify import dimensionally_sound
         try:
             return bool(dimensionally_sound(expr, target))
         except Exception:
@@ -320,7 +320,7 @@ class WholeBrain:
         trusts (energy conservation), admitting only what survives — active experimentation,
         no answer key. Wires conjecture_sandbox. `conjecture` is f(mass, velocity) -> KE
         (the true law is ½·m·v²; a guess that matches on random drops is admitted)."""
-        from core.synthesis.conjecture_sandbox import design_and_test
+        from engines.synthesis.conjecture_sandbox import design_and_test
         ok, worst, counter = design_and_test(conjecture)
         return {"admitted": bool(ok), "worst_error": round(worst, 4), "counterexample": counter}
 
@@ -328,7 +328,7 @@ class WholeBrain:
         """Self-correcting synthesis: synthesize, STRESS against the oracle, and if it breaks on
         a counterexample fold that in and re-synthesize — the refuter closing the loop so an
         overfit fixes itself with no hand-holding. Wires refute_synth."""
-        from core.synthesis.refute_synth import synth_self_correct
+        from engines.synthesis.refute_synth import synth_self_correct
         code, log = synth_self_correct(kind, oracle, inputs)
         return {"code": code, "iterations": len(log), "verified": code is not None}
 
@@ -375,7 +375,7 @@ class WholeBrain:
         the C++ brain2; returns how many properties it inferred from perception alone."""
         if self.brain is None:
             return {"grounded": False, "reason": "C++ brain2 unavailable"}
-        from core.grounding import ground_reason as GR
+        from engines.grounding import ground_reason as GR
         r = GR.ground_and_reason(reasoner=ReasoningEngine())
         return {"grounded": True, "inferred_correct": f"{r['correct']}/{r['total']}",
                 "sample": r["results"][:3]}
@@ -386,7 +386,7 @@ class WholeBrain:
         was told). Wires ground_numeric. Guarded on C++ brain2."""
         if self.brain is None:
             return {"grounded": False, "reason": "C++ brain2 unavailable"}
-        from core.grounding import ground_numeric as GN
+        from engines.grounding import ground_numeric as GN
         r = GN.ground_and_compute()
         return {"grounded": True, "within_10pct": f"{r['hits']}/{r['total']}",
                 "sample": r["results"][:3]}
@@ -398,8 +398,8 @@ class WholeBrain:
         measured blind-vs-learned node reduction. Domain-agnostic — demonstrated on the puzzle
         it is proven on, the same engine (tree_reason) the synthesis paths use."""
         import random
-        from core.reasoning import learned_guidance as LG
-        from core.reasoning.tree_learn import EightPuzzle, features, manhattan, scramble
+        from engines.reasoning import learned_guidance as LG
+        from engines.reasoning.tree_learn import EightPuzzle, features, manhattan, scramble
         h = LG.LearnedHeuristic(features)
         h.train(LG.collect_examples(EightPuzzle, scramble, manhattan))
         rng = random.Random(seed)
@@ -446,7 +446,7 @@ class WholeBrain:
         known concepts into a point outside every category; admitted only if verifiably
         novel (nearest known concept farther than the cluster radius). Proposes — grounding
         still decides usefulness."""
-        from core.knowledge import concept_blend as CB
+        from engines.knowledge import concept_blend as CB
         # CE vectors are SPARSE co-occurrence dicts; densify to aligned lists over the shared
         # context vocabulary so concept_blend's per-dimension fuse/distance is well-defined.
         grounded = [c for c in (self.concepts | self.relations) if c in self.vecs]
@@ -480,7 +480,7 @@ class WholeBrain:
         """Structure-map two domains given as (subj, rel, obj) triples over a shared relation
         vocabulary; return the object correspondence + analogical predictions (HYPOTHESES to
         verify, not truths). Ambiguous/structure-poor domains yield no mapping, honestly."""
-        from core.events.analogy_engine import AnalogyEngine
+        from engines.events.analogy_engine import AnalogyEngine
         mapping, transfers = AnalogyEngine().map_domains(list(source), list(target))
         return {"mapping": mapping,
                 "predictions": [(s, r, o) for s, r, o, _ in transfers]}
@@ -490,7 +490,7 @@ class WholeBrain:
         split (reject train-only coincidences), and — if promote — install the survivors into
         the factual reasoner so they become chainable knowledge. Originating rules from data."""
         import random
-        from core.synthesis.inductive_engine import InductiveLearner
+        from engines.synthesis.inductive_engine import InductiveLearner
         eps = [list(e) for e in episodes if len(e) >= 2]
         if len(eps) < 4:
             return {"promoted": [], "rejected": [], "reason": "too few episodes"}
@@ -615,7 +615,7 @@ class WholeBrain:
         verifier gates every result, so guidance changes SPEED, never correctness."""
         if self._proposer is None:
             try:
-                from core.synthesis.online_proposer2 import FeatureProposer
+                from engines.synthesis.online_proposer2 import FeatureProposer
                 self._proposer = FeatureProposer()
             except Exception:
                 self._proposer = False
@@ -632,7 +632,7 @@ class WholeBrain:
         50'), and nested (superlative 'the fastest object', if/then). Answered by the SAME
         verified compute core (means-ends over facts+policies). Returns a string, or None to
         fall back to ask(). (Wires structural_parser / deeper_grammar / nested_parser.)"""
-        from core.reasoning import structural_parser as SP; from core.reasoning import deeper_grammar as DG; from core.reasoning import nested_parser as NP
+        from engines.reasoning import structural_parser as SP; from engines.reasoning import deeper_grammar as DG; from engines.reasoning import nested_parser as NP
         for M in (DG, NP):                              # inject THIS brain's live vocabulary
             M.ENTS = set(self.entities)
             M.RELS = set(self.relations)
@@ -673,8 +673,8 @@ class WholeBrain:
         search over a text DSL (program_synth) — e.g. [("John Smith","JOHN")] -> upper∘first.
         The returned program is correct on the examples BY CONSTRUCTION and generalizes; None
         if no program in the DSL fits (honest miss)."""
-        from core.synthesis import program_synth as PS
-        from core.reasoning.tree_reason import solve
+        from engines.synthesis import program_synth as PS
+        from engines.reasoning.tree_reason import solve
         path, _, nodes = solve(PS.Synthesize(list(examples)))
         if path is None:
             return {"program": None, "nodes": nodes}

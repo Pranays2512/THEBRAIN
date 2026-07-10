@@ -16,7 +16,7 @@ This closes the loop on self-made verifiers: mine -> validate -> admit -> USE ->
 demote/prune. A verifier only keeps its authority while it behaves.
 """
 
-from core.synthesis import invariant_miner as IM
+from engines.synthesis import invariant_miner as IM
 
 
 def _passes_one(name, fn, probes):

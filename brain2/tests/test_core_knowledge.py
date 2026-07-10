@@ -11,10 +11,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from core.knowledge.core_knowledge import CORE_FACTS, load_core
-from core.knowledge.knowledge_base import KnowledgeBase
-from core.reasoning.neuro_bridge import Brain, RuleEyes
-from core.reasoning.reasoning_engine import ReasoningEngine
+from engines.knowledge.core_knowledge import CORE_FACTS, load_core
+from engines.knowledge.knowledge_base import KnowledgeBase
+from engines.reasoning.neuro_bridge import Brain, RuleEyes
+from engines.reasoning.reasoning_engine import ReasoningEngine
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

@@ -31,8 +31,8 @@ import sys
 from abc import ABC, abstractmethod
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from core.math.math_parser import parse, ParseError
-from core.reasoning.neuro_bridge import Eyes, Mouth, Query, RuleEyes, GrammarMouth
+from engines.math.math_parser import parse, ParseError
+from engines.reasoning.neuro_bridge import Eyes, Mouth, Query, RuleEyes, GrammarMouth
 
 
 # ── the model client (swap Stub for Ollama) ──────────────────────────────────
@@ -158,7 +158,7 @@ class LLMMouth(Mouth):
 
 
 def _demo():
-    from core.reasoning.neuro_bridge import Mind, Brain
+    from engines.reasoning.neuro_bridge import Mind, Brain
     # a stub standing in for the local model
     stub = StubClient({
         "slope of x squared": '{"kind":"differentiate","expr":"x^2"}',

@@ -27,10 +27,10 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 import sys
 
-from core.grounding import context_embed as CE
+from engines.grounding import context_embed as CE
 from faculties import feature_learner as FL
-from core.synthesis import synth_engine as SE
-from core.neural.neural_lm import NeuralLM
+from engines.synthesis import synth_engine as SE
+from engines.neural.neural_lm import NeuralLM
 
 
 import json
@@ -67,11 +67,11 @@ class UnifiedTrainer:
         self.cache_path = cache_path      # teacher output cached here: teach ONCE, scale offline
         self.report = {}
         from training import knowledge_distill as KD
-        from core.reasoning.means_ends import PolicyMemory
+        from engines.reasoning.means_ends import PolicyMemory
         self.fkb = KD.SimpleKB()          # symbolic brain: exact taught facts
         self.mem = PolicyMemory()         # symbolic brain: policies/laws
         try:
-            from core.store import corpus_scale as CS
+            from engines.store import corpus_scale as CS
             self.corpus = list(CS.LARGE)
         except Exception:
             pass
@@ -158,7 +158,7 @@ class UnifiedTrainer:
     #    Transformer (real, Mac-GPU) when torch is installed; else the numpy proof model.
     def stage_lm(self):
         try:
-            from core.neural.neural_lm_torch import NeuralLMTorch
+            from engines.neural.neural_lm_torch import NeuralLMTorch
             self.lm = NeuralLMTorch(dim=self.lm_dim, layers=self.lm_layers,
                                     ctx=self.lm_ctx, epochs=self.lm_epochs).train(self.corpus)
             self.report["lm_backend"] = "torch/%s (%d params)" % (self.lm.device, self.lm.param_count())
@@ -192,7 +192,7 @@ class UnifiedTrainer:
     # 3. GROUND — SOM self-organizes on data vectors + grounds concepts (fuzzy pillar)
     def stage_ground(self):
         try:
-            from core.grounding import grounding as G
+            from engines.grounding import grounding as G
             import brain2
             train, test = G.make_data()
             som = brain2.SOM(G.ROWS, G.COLS, G.D, init_lr=0.3)

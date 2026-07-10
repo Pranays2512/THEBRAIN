@@ -12,8 +12,8 @@ import sys
 from fractions import Fraction
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from core.reasoning.tree_reason import SearchProblem, solve, search, LinearEquation, BridgePuzzle
-from core.reasoning.tree_domains import NQueens, WaterJugs, Rewrite
+from engines.reasoning.tree_reason import SearchProblem, solve, search, LinearEquation, BridgePuzzle
+from engines.reasoning.tree_domains import NQueens, WaterJugs, Rewrite
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

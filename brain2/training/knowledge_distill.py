@@ -171,7 +171,7 @@ def _learned_lib():
     global _LA, _LA_FAILED
     if _LA is None and not _LA_FAILED:
         try:
-            from core.synthesis.math_synth import LearnedArithmetic
+            from engines.synthesis.math_synth import LearnedArithmetic
             _LA = LearnedArithmetic()
         except Exception:
             _LA_FAILED = True
@@ -194,7 +194,7 @@ def _arith(op, a, b):
             name = "sub"
         if name in la.lib:
             try:
-                from core.synthesis.math_synth import safe_call
+                from engines.synthesis.math_synth import safe_call
                 val = safe_call(la.lib[name], ia, ib, budget=5_000_000)
                 ARITH_STATS["learned"] += 1
                 return float(val)
@@ -220,7 +220,7 @@ def teach(fkb, mem, facts, laws):
     laws in the next. (The old single-level check dropped every law whose input wasn't a raw
     fact, even when the brain could compute it.) A verified law's value is stored so the brain
     'knows' it; still one verifying object is enough to admit the reusable policy."""
-    from core.reasoning.means_ends import Policy, FactSource, PolicySource, MeansEndsSolver, Need
+    from engines.reasoning.means_ends import Policy, FactSource, PolicySource, MeansEndsSolver, Need
     ent_facts = {}
     for e, r, v in facts:
         fkb.learn(e, r, v)
@@ -261,7 +261,7 @@ def teach(fkb, mem, facts, laws):
 
 # ── offline self-test of the parser + teach + verify (no teacher calls) ──
 def _self_test():
-    from core.reasoning.means_ends import PolicyMemory
+    from engines.reasoning.means_ends import PolicyMemory
     mock = """
 OBJECT: capacitor
 FACT: capacitor | charge | 12
@@ -275,7 +275,7 @@ SENT: capacitance is the ratio of charge to voltage
     facts, laws, sents = parse_teacher(mock)
     fkb, mem = SimpleKB(), PolicyMemory()
     adm, rej = teach(fkb, mem, facts, laws)
-    from core.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need
+    from engines.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need
     solve = MeansEndsSolver([FactSource(fkb), PolicySource(mem)]).solve
     print("=== knowledge_distill self-test (offline, mock teacher output) ===")
     print("  parsed: %d facts, %d laws, %d sents" % (len(facts), len(laws), len(sents)))

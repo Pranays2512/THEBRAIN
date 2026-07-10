@@ -3,16 +3,16 @@
 Standalone (no pytest). The point is the membrane: contradictions/type-violations must be
 REJECTED, the genuinely-unknown must ABSTAIN, the good must ADMIT."""
 
-from core.events.event_form import (Event, Relation, POS, NEG, CAUSE, CONTRAST,
+from engines.events.event_form import (Event, Relation, POS, NEG, CAUSE, CONTRAST,
                         fact_as_event, event_as_fact, dump_event, load_event,
                         dump_relation, load_relation)
-from core.events.event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT, ABSTAIN
-from core.events.discourse import ContextStack, connective_of, link_events
+from engines.events.event_verify import EventStore, admit, classify, check_types, ADMIT, REJECT, ABSTAIN
+from engines.events.discourse import ContextStack, connective_of, link_events
 from faculties.reading_loop import ReadingLoop, EventReader
-from core.events.event_parse import parse_event, verb_trusted
-from core.store.coverage_harness import coverage_split, event_coverage, event_coverage_split
-from core.store.template_memory import TemplateMemory
-from core.store.type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
+from engines.events.event_parse import parse_event, verb_trusted
+from engines.store.coverage_harness import coverage_split, event_coverage, event_coverage_split
+from engines.store.template_memory import TemplateMemory
+from engines.store.type_oracle import TypeOracle, _isa_closure, build_similar_from_vectors
 
 R = []
 def ok(name, cond): R.append((name, bool(cond)))
@@ -175,7 +175,7 @@ ok("event_coverage_split taught flatters, wild honest",
 
 
 # ── verb acquisition: learn a verb's constraint from reading (the capstone) ──
-from core.events.verb_learn import VerbLearner
+from engines.events.verb_learn import VerbLearner
 V_ISA = [("wolf", "isa", "mammal"), ("deer", "isa", "mammal"), ("lion", "isa", "mammal"),
          ("zebra", "isa", "mammal"), ("tiger", "isa", "mammal"), ("rabbit", "isa", "mammal"),
          ("mammal", "isa", "animal"), ("animal", "isa", "living_thing"), ("rock", "isa", "mineral")]
@@ -198,7 +198,7 @@ _vr = EventReader(V_ENT, set(), type_of=V_ORACLE, learner=VerbLearner(V_ORACLE, 
 _vr._read_clause("the wolf hunted the deer"); _vr._read_clause("the lion hunted the zebra")
 ok("unknown verb held before acquisition", _vr.stats[ABSTAIN] == 2 and _vr.stats[ADMIT] == 0)
 ok("acquire learns the verb", _vr.acquire() == {"hunt"} and "hunt" in _vr.verbs)
-from core.events.event_verify import classify as _classify
+from engines.events.event_verify import classify as _classify
 ok("learned verb now admits valid use",
    _classify(parse_event("the tiger hunted the rabbit", _vr.entities, _vr.verbs, V_ORACLE), _vr.store, V_ORACLE, _vr.constraints) == ADMIT)
 ok("learned verb now rejects type violation",
@@ -287,7 +287,7 @@ ok("loader parses UNIT dimensions", _v2.units["force"] == (1, 1, -2))
 ok("loader parses ASK question", _v2.questions[0][1] == {"entity": "block", "rel": "mass"})
 _dr = _v2.dim_report()
 ok("dimensional verifier: consistent vs nonsense", _dr["consistent"] == 1 and _dr["violation"] == 1)
-_fkb2, _mem2 = __import__("training.knowledge_distill", fromlist=["_"]).SimpleKB(), __import__("core.reasoning.means_ends", fromlist=["_"]).PolicyMemory()
+_fkb2, _mem2 = __import__("training.knowledge_distill", fromlist=["_"]).SimpleKB(), __import__("engines.reasoning.means_ends", fromlist=["_"]).PolicyMemory()
 _v2.teach_knowledge(_fkb2, _mem2)
 ok("worked-example law verifies (no waste)", _fkb2.ask("block", "force")[0] == 12.0)
 

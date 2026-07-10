@@ -30,7 +30,7 @@ def train(path, do_lm=False, do_brain=False):
 
     # 3. SYMBOLIC KNOWLEDGE (facts taught, laws VERIFIED before admit)
     from training import knowledge_distill as KD
-    from core.reasoning.means_ends import PolicyMemory
+    from engines.reasoning.means_ends import PolicyMemory
     fkb, mem = KD.SimpleKB(), PolicyMemory()
     rep["knowledge"] = d.teach_knowledge(fkb, mem)
 
@@ -54,7 +54,7 @@ def train(path, do_lm=False, do_brain=False):
     # 5. STUDENT LM (owned neural net; learns the PARSING, text -> structure) — heavy
     if do_lm:
         try:
-            from core.neural.neural_lm_torch import NeuralLMTorch
+            from engines.neural.neural_lm_torch import NeuralLMTorch
             lm = NeuralLMTorch(dim=256, layers=4, ctx=16, epochs=40).train(d.parse_pairs)
             os.makedirs("trained", exist_ok=True)
             lm.save("trained/owned_lm_data.pt")
@@ -81,8 +81,8 @@ def train(path, do_lm=False, do_brain=False):
 
 def _demo(rep, fkb, oracle, predictor):
     from adapters.mouth import say_event
-    from core.events.event_parse import parse_event
-    from core.events.event_form import Event, POS
+    from engines.events.event_parse import parse_event
+    from engines.events.event_form import Event, POS
     print("=== trained from data ===")
     for k, v in rep.items():
         print("  %-11s %s" % (k, v))

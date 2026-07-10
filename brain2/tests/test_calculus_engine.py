@@ -12,7 +12,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from core.math.calculus_engine import CalculusEngine, simplify
+from engines.math.calculus_engine import CalculusEngine, simplify
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

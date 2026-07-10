@@ -23,8 +23,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from core.reasoning.reasoning_engine import ReasoningEngine
-from core.synthesis.inductive_engine import InductiveLearner
+from engines.reasoning.reasoning_engine import ReasoningEngine
+from engines.synthesis.inductive_engine import InductiveLearner
 
 
 class CuriosityLoop:

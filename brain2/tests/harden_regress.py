@@ -11,11 +11,11 @@ import math
 
 
 def main():
-    from core.synthesis import invariant_miner as IM
-    from core.synthesis import refuter as RF
-    from core.math import factorizer as FZ
-    from core.synthesis import synth_engine as SE
-    from core.synthesis import conjecture_sandbox as CSB
+    from engines.synthesis import invariant_miner as IM
+    from engines.synthesis import refuter as RF
+    from engines.math import factorizer as FZ
+    from engines.synthesis import synth_engine as SE
+    from engines.synthesis import conjecture_sandbox as CSB
     import open_world as OW
 
     ok = []
@@ -55,8 +55,8 @@ def main():
     expect("OW rediscovers Kepler p~1.5", abs(sum(ps) / len(ps) - 1.5) < 0.05)
 
     # language — structural parse + verified compute, incl. compare + abstain
-    from core.reasoning import structural_parser as SP
-    from core.grounding import context_embed as CE
+    from engines.reasoning import structural_parser as SP
+    from engines.grounding import context_embed as CE
     fkb, mem = SP.build_brain()
     PP = SP.StructuralParser({"rocket", "sample"}, {"force", "mass", "speed", "accel", "volume"}, {})
     expect("SP single computes force", "1.2e+04" in (SP.answer(PP.parse("force of the rocket"), fkb, mem) or ""))
@@ -66,14 +66,14 @@ def main():
     expect("CE maps velocity->speed", CE.nearest("velocity", ["speed", "mass"], vecs)[0] == "speed")
 
     # analogy — solar->atom structure map (no shared vocab)
-    from core.events import analogy_struct as AS
+    from engines.events import analogy_struct as AS
     solar = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
     atom = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
     emap, _, score = AS.align(solar, atom)
     expect("AS maps sun->nucleus", emap and emap.get("sun") == "nucleus" and score >= 2)
 
     # semantic_depth — learns a new concept from a definition, verified
-    from core.knowledge import semantic_depth as SD
+    from engines.knowledge import semantic_depth as SD
     fkb2, mem2 = SP.build_brain()
     L = SD.ConceptLearner(fkb2, mem2, {"force", "mass", "speed", "accel", "volume"})
     tgt, _ = L.learn_definition("momentum is mass times speed")
@@ -92,7 +92,7 @@ def main():
         env = {"m": 3.0, "v": 4.0, "k": 8.0}
         expect("C++ eval_sexpr matches Python",
                abs(brain2.eval_sexpr(FZ.to_sexpr(tree), env) - FZ.eval_tree(tree, env, {})) < 1e-9)
-        from core.synthesis import irregularity_detector as ID
+        from engines.synthesis import irregularity_detector as ID
         tr = [(0.387, 0.241), (0.723, 0.615), (1.0, 1.0), (1.524, 1.881), (5.203, 11.862)]
         ho = [(9.537, 29.457), (19.191, 84.02)]
         # compare against the PYTHON REFERENCE (_law_error now prefers the C++ port, so
@@ -108,10 +108,10 @@ def main():
         fe = {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.0}
         expect("C++ proposer scoring matches Python",
                abs(lp._sim(fe, lp.proto["list"], pyw) - brain2.feat_sim(fe, lp.proto["list"], cppw)) < 1e-9)
-        from core.grounding import context_embed as CE2
+        from engines.grounding import context_embed as CE2
         va, vb = {"x": 2.0, "y": 1.0}, {"x": 1.0, "z": 3.0}
         expect("C++ cosine matches Python", abs(brain2.cosine_map(va, vb) - CE2.cosine(va, vb)) < 1e-9)
-        from core.events import analogy_struct as AS2
+        from engines.events import analogy_struct as AS2
         src = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
         tgt = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
         em = {"sun": "nucleus", "planet": "electron"}

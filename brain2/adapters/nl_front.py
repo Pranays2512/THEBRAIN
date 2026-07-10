@@ -19,10 +19,10 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from core.reasoning.reasoning_engine import ReasoningEngine
-from core.reasoning.means_ends import Policy
+from engines.reasoning.reasoning_engine import ReasoningEngine
+from engines.reasoning.means_ends import Policy
 from policy_pack import PACK
-from core.synthesis.policy_proposer import MultiPolicyMemory, Solver
+from engines.synthesis.policy_proposer import MultiPolicyMemory, Solver
 from nl_query import NLQueryParser, load_glove, _rel_words, STOP
 from training.student_trainer import Student, load_dataset, DATA
 

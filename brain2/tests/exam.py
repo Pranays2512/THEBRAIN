@@ -12,13 +12,13 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from training.brain_data import BrainData
 from faculties.event_predict import EventPredictor
-from core.events.event_form import Event, POS, NEG
+from engines.events.event_form import Event, POS, NEG
 from adapters.mouth import say_event
 from training import knowledge_distill as KD
-from core.reasoning.means_ends import PolicyMemory
-from core.store.type_oracle import TypeOracle
-from core.events.event_parse import parse_event
-from core.events.event_verify import EventStore, admit, classify
+from engines.reasoning.means_ends import PolicyMemory
+from engines.store.type_oracle import TypeOracle
+from engines.events.event_parse import parse_event
+from engines.events.event_verify import EventStore, admit, classify
 
 ALL_FILES = [
     "data/math1.txt","data/math2.txt","data/math3.txt","data/math4.txt","data/math5.txt",
@@ -268,7 +268,7 @@ section("B. ABSTAIN DISCIPLINE  [20 marks]")
 # Brain must ABSTAIN when verb is positional/untrusted — not guess wrongly
 def q_classify(label, marks, verb, agent, patient, expected_not):
     ev = Event(verb, agent, patient or None, "present", POS)
-    from core.events.event_verify import classify as cl
+    from engines.events.event_verify import classify as cl
     result = cl(ev, store, oracle, constraints, all_verbs)
     # HARD: expect NOT a false admit on unknown verb
     ok = result != "admit" if expected_not == "not_admit" else result == expected_not

@@ -1,2 +1,2 @@
 import runpy
-runpy.run_module('core.neural.neural_lm', run_name='__main__')
+runpy.run_module('engines.neural.neural_lm', run_name='__main__')
