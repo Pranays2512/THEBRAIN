@@ -1,0 +1,58 @@
+{
+ "suites": [
+  {
+   "script": "exam.py",
+   "out": "exam.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  },
+  {
+   "script": "test_open_lang.py",
+   "out": "test_open_lang.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  },
+  {
+   "script": "test_phase_a.py",
+   "out": "test_phase_a.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  },
+  {
+   "script": "stress_exam.py",
+   "out": "stress_exam.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  },
+  {
+   "script": "reasoning_suite.py",
+   "out": "reasoning_suite.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  },
+  {
+   "script": "component_validation.py",
+   "out": "component_validation.py.out",
+   "normalizers": [
+    "\\d+\\.\\d+s",
+    "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}",
+    "0x[0-9a-fA-F]+"
+   ]
+  }
+ ]
+}
