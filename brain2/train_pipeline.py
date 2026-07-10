@@ -30,7 +30,7 @@ import sys
 import context_embed as CE
 import feature_learner as FL
 import synth_engine as SE
-from neural_lm import NeuralLM
+from core.neural.neural_lm import NeuralLM
 
 
 import json
@@ -158,7 +158,7 @@ class UnifiedTrainer:
     #    Transformer (real, Mac-GPU) when torch is installed; else the numpy proof model.
     def stage_lm(self):
         try:
-            from neural_lm_torch import NeuralLMTorch
+            from core.neural.neural_lm_torch import NeuralLMTorch
             self.lm = NeuralLMTorch(dim=self.lm_dim, layers=self.lm_layers,
                                     ctx=self.lm_ctx, epochs=self.lm_epochs).train(self.corpus)
             self.report["lm_backend"] = "torch/%s (%d params)" % (self.lm.device, self.lm.param_count())

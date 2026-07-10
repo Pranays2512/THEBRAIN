@@ -34,7 +34,7 @@ def _law_error(train, holdout):
     """Best held-out relative error fitting y=m*x+b and y=k*x^p (whichever is better).
     Prefers the verified C++ port (brain2.law_error) when available, else the Python
     reference below. harden_regress locks brain2.law_error == _law_error_py."""
-    from cpp_accel import cpp
+    from core.neural.cpp_accel import cpp
     b = cpp()
     if b is not None:
         return b.law_error(train, holdout)

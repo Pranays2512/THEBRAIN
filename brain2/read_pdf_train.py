@@ -89,7 +89,7 @@ def do_lm(texts, bt=None):
                 corpus.append(f"{tri[0]} {tri[1]} {tri[2]}")
     print(f"\n[lm] training owned LM on {len(corpus)} lines ...", flush=True)
     try:
-        from neural_lm_torch import NeuralLMTorch
+        from core.neural.neural_lm_torch import NeuralLMTorch
         dim = int(os.environ.get("LM_DIM", 256))
         layers = int(os.environ.get("LM_LAYERS", 4))
         ctx = int(os.environ.get("LM_CTX", 16))

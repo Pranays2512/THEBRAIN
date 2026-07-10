@@ -120,7 +120,7 @@ def train(do_lm=False, do_brain=False, files=FILES):
     # ── Stage 6: PROBABILISTIC — owned neural LM over parse pairs ────────────────
     if do_lm:
         try:
-            from neural_lm_torch import NeuralLMTorch
+            from core.neural.neural_lm_torch import NeuralLMTorch
             lm = NeuralLMTorch(dim=256, layers=4, ctx=16, epochs=40).train(parse_pairs)
             os.makedirs("trained", exist_ok=True)
             lm.save("trained/owned_lm_data.pt")

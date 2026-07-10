@@ -54,7 +54,7 @@ def train(path, do_lm=False, do_brain=False):
     # 5. STUDENT LM (owned neural net; learns the PARSING, text -> structure) — heavy
     if do_lm:
         try:
-            from neural_lm_torch import NeuralLMTorch
+            from core.neural.neural_lm_torch import NeuralLMTorch
             lm = NeuralLMTorch(dim=256, layers=4, ctx=16, epochs=40).train(d.parse_pairs)
             os.makedirs("trained", exist_ok=True)
             lm.save("trained/owned_lm_data.pt")
