@@ -27,7 +27,7 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 import sys
 
-import context_embed as CE
+from core.grounding import context_embed as CE
 import feature_learner as FL
 import synth_engine as SE
 from core.neural.neural_lm import NeuralLM
@@ -192,7 +192,7 @@ class UnifiedTrainer:
     # 3. GROUND — SOM self-organizes on data vectors + grounds concepts (fuzzy pillar)
     def stage_ground(self):
         try:
-            import grounding as G
+            from core.grounding import grounding as G
             import brain2
             train, test = G.make_data()
             som = brain2.SOM(G.ROWS, G.COLS, G.D, init_lr=0.3)

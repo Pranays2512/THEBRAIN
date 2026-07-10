@@ -134,7 +134,7 @@ class WholeBrain:
             self.checks = CheckLibrary(path=os.path.join(os.path.dirname(__file__), "brain_store"))
         except Exception:
             self.checks = None
-        import context_embed as CE
+        from core.grounding import context_embed as CE
         STOP = {"the", "a", "an", "is", "are", "of", "at", "with", "has", "have", "had",
                 "makes", "made", "to", "in", "on", "and", "or", "it", "its", "that", "this",
                 "things", "thing", "great", "high", "large", "strong", "fast", "dense", "heavy"}
@@ -375,7 +375,7 @@ class WholeBrain:
         the C++ brain2; returns how many properties it inferred from perception alone."""
         if self.brain is None:
             return {"grounded": False, "reason": "C++ brain2 unavailable"}
-        import ground_reason as GR
+        from core.grounding import ground_reason as GR
         r = GR.ground_and_reason(reasoner=ReasoningEngine())
         return {"grounded": True, "inferred_correct": f"{r['correct']}/{r['total']}",
                 "sample": r["results"][:3]}
@@ -386,7 +386,7 @@ class WholeBrain:
         was told). Wires ground_numeric. Guarded on C++ brain2."""
         if self.brain is None:
             return {"grounded": False, "reason": "C++ brain2 unavailable"}
-        import ground_numeric as GN
+        from core.grounding import ground_numeric as GN
         r = GN.ground_and_compute()
         return {"grounded": True, "within_10pct": f"{r['hits']}/{r['total']}",
                 "sample": r["results"][:3]}

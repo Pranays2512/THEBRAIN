@@ -12,7 +12,7 @@ Honest: still a synthetic corpus (no web access here); the MEASUREMENT is the re
 coverage rises with corpus size. Real deployment points this at a large natural corpus.
 """
 
-import context_embed as CE
+from core.grounding import context_embed as CE
 
 SMALL = CE.CORPUS                                   # the original 14 sentences
 

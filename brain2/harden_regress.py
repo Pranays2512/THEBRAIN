@@ -56,7 +56,7 @@ def main():
 
     # language — structural parse + verified compute, incl. compare + abstain
     import structural_parser as SP
-    import context_embed as CE
+    from core.grounding import context_embed as CE
     fkb, mem = SP.build_brain()
     PP = SP.StructuralParser({"rocket", "sample"}, {"force", "mass", "speed", "accel", "volume"}, {})
     expect("SP single computes force", "1.2e+04" in (SP.answer(PP.parse("force of the rocket"), fkb, mem) or ""))
@@ -108,7 +108,7 @@ def main():
         fe = {"out_is_list": 1.0, "out_exceeds_max": 0.0, "neg_in": 0.0}
         expect("C++ proposer scoring matches Python",
                abs(lp._sim(fe, lp.proto["list"], pyw) - brain2.feat_sim(fe, lp.proto["list"], cppw)) < 1e-9)
-        import context_embed as CE2
+        from core.grounding import context_embed as CE2
         va, vb = {"x": 2.0, "y": 1.0}, {"x": 1.0, "z": 3.0}
         expect("C++ cosine matches Python", abs(brain2.cosine_map(va, vb) - CE2.cosine(va, vb)) < 1e-9)
         from core.events import analogy_struct as AS2

@@ -22,7 +22,7 @@ maps (a known SOM limit) make the blend a union of two regions.
 
 import numpy as np
 import brain2
-import grounding as G
+from core.grounding import grounding as G
 
 
 def blend_centroid(centroids, a_name, b_name, mode="salient"):

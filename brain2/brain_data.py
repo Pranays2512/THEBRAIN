@@ -141,7 +141,7 @@ class BrainData:
 
     def _law_dim(self, law_struct):
         """dim_consistent for a 'LAW: t = expr' string, using the UNITs. True/False/None."""
-        from domain_features import dim_consistent
+        from core.grounding.domain_features import dim_consistent
         from means_ends import Policy
         import knowledge_distill as KD
         try:

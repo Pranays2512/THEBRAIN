@@ -22,7 +22,7 @@ full compositional grammar; nested clauses / conditionals are the next rung.
 
 import re
 
-import context_embed as CE
+from core.grounding import context_embed as CE
 from reasoning_engine import ReasoningEngine
 from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need, Policy
 

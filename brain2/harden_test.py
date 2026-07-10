@@ -23,7 +23,7 @@ def run():
     import refuter as RF
     from core.math import factorizer as FZ
     import synth_engine as SE
-    import context_embed as CE
+    from core.grounding import context_embed as CE
 
     # invariant_miner edge cases
     check("IM.mine empty", lambda: IM.mine([]))

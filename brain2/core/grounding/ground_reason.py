@@ -21,7 +21,7 @@ AND what follows from that.
 
 import brain2
 from reasoning_engine import ReasoningEngine
-from grounding import make_data, ground, recognize, SYMS, ROWS, COLS, D
+from core.grounding.grounding import make_data, ground, recognize, SYMS, ROWS, COLS, D
 
 PROPS = {"alpha": "conductive", "beta": "insulating",
          "gamma": "magnetic", "delta": "inert"}
