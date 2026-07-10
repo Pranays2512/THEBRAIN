@@ -86,7 +86,7 @@ def run():
     check("PC.dist unknown-ctx", lambda: PC.ProbLM().train(["a b c"]).dist(["zzz"]))
 
     # analogy / semantic — empty / malformed
-    import analogy_struct as AS
+    from core.events import analogy_struct as AS
     import semantic_depth as SD
     check("AS.align empty", lambda: AS.align([], []))
     check("AS.align_greedy empty", lambda: AS.align_greedy([], []))

@@ -66,7 +66,7 @@ def main():
     expect("CE maps velocity->speed", CE.nearest("velocity", ["speed", "mass"], vecs)[0] == "speed")
 
     # analogy — solar->atom structure map (no shared vocab)
-    import analogy_struct as AS
+    from core.events import analogy_struct as AS
     solar = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
     atom = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
     emap, _, score = AS.align(solar, atom)
@@ -111,7 +111,7 @@ def main():
         import context_embed as CE2
         va, vb = {"x": 2.0, "y": 1.0}, {"x": 1.0, "z": 3.0}
         expect("C++ cosine matches Python", abs(brain2.cosine_map(va, vb) - CE2.cosine(va, vb)) < 1e-9)
-        import analogy_struct as AS2
+        from core.events import analogy_struct as AS2
         src = [("sun", "heavier", "planet"), ("planet", "revolves", "sun"), ("sun", "pulls", "planet")]
         tgt = [("nucleus", "massive", "electron"), ("electron", "circles", "nucleus")]
         em = {"sun": "nucleus", "planet": "electron"}

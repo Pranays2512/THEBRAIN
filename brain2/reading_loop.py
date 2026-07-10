@@ -19,10 +19,10 @@ unattended:
 import re
 from collections import Counter, defaultdict
 
-from event_form import fact_as_event, event_as_fact, Event
-from event_verify import EventStore, admit, ADMIT
-from discourse import ContextStack, _PRONOUNS, link_events, _CONNECTIVES
-from event_parse import parse_event, verb_trusted
+from core.events.event_form import fact_as_event, event_as_fact, Event
+from core.events.event_verify import EventStore, admit, ADMIT
+from core.events.discourse import ContextStack, _PRONOUNS, link_events, _CONNECTIVES
+from core.events.event_parse import parse_event, verb_trusted
 
 
 class ReadingLoop:

@@ -17,8 +17,8 @@ reader's coref to resolve. verbs is the known-lemma set (crisp verb identificati
 import re
 
 from core.store.parse_template import normalize
-from event_form import Event, POS, NEG
-from discourse import _PRONOUNS
+from core.events.event_form import Event, POS, NEG
+from core.events.discourse import _PRONOUNS
 
 _CONTRACTIONS = {
     "didn't": "did not", "don't": "do not", "doesn't": "does not", "won't": "will not",

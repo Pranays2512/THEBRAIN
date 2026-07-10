@@ -19,7 +19,7 @@ Line grammars (one per line):
   SEQ: <sentence>
 """
 
-from event_form import Event, POS, NEG
+from core.events.event_form import Event, POS, NEG
 
 
 def _say(ev):
@@ -194,7 +194,7 @@ class BrainData:
         NOTE: per-file learning sees only this file's events; a verb used broadly across the
         corpus is best learned by pooling every file's events into ONE learner
         (`learn_verb_constraints_pooled`) — otherwise last-file-wins throws away evidence."""
-        from verb_learn import VerbLearner
+        from core.events.verb_learn import VerbLearner
         vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
         for _, ev in self.events:
             vl.observe(ev)
@@ -206,7 +206,7 @@ class BrainData:
         """Pool events from MANY BrainData files into one learner, so each verb's constraint is
         induced from all its uses corpus-wide (not one file). frac<1 generalizes to a shared
         supertype robust to sparse taxonomy gaps and one-off contexts."""
-        from verb_learn import VerbLearner
+        from core.events.verb_learn import VerbLearner
         vl = VerbLearner(oracle, promote_at=promote_at, frac=frac)
         for d in datas:
             for _, ev in d.events:

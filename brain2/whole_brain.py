@@ -105,7 +105,7 @@ class WholeBrain:
         # reject contradiction/type-violation, abstain on the unknown). Same membrane as compute.
         from reading_loop import EventReader
         from core.store.type_oracle import TypeOracle
-        from verb_learn import VerbLearner
+        from core.events.verb_learn import VerbLearner
         from event_predict import EventPredictor
         self.verbs = {"eat", "chase", "like", "see", "run", "catch", "drink"}
         self.verb_constraints = {"eat": {"agent": {"animal"}, "patient": {"animal", "plant", "food"}},
@@ -480,7 +480,7 @@ class WholeBrain:
         """Structure-map two domains given as (subj, rel, obj) triples over a shared relation
         vocabulary; return the object correspondence + analogical predictions (HYPOTHESES to
         verify, not truths). Ambiguous/structure-poor domains yield no mapping, honestly."""
-        from analogy_engine import AnalogyEngine
+        from core.events.analogy_engine import AnalogyEngine
         mapping, transfers = AnalogyEngine().map_domains(list(source), list(target))
         return {"mapping": mapping,
                 "predictions": [(s, r, o) for s, r, o, _ in transfers]}

@@ -13,7 +13,7 @@ Three cheap, crisp mechanisms; no learning yet — markers-first, like the earli
 
 (Open-language track, Gap 3.)"""
 
-from event_form import Relation, CAUSE, CONTRAST, SEQUENCE
+from core.events.event_form import Relation, CAUSE, CONTRAST, SEQUENCE
 
 # marker -> (relation kind, direction). direction "fwd": Rel(prev -> cur); "bwd": Rel(cur -> prev)
 # "because A B" reads cause after marker, so "A because B" => B causes A: cur causes prev.
