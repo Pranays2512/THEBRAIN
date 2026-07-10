@@ -15,9 +15,9 @@ import tempfile
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from tree_reason import solve
-from tree_learn import EightPuzzle, features, manhattan, scramble, GOAL
-from learned_guidance import LearnedHeuristic, collect_examples, GuidanceError
+from core.reasoning.tree_reason import solve
+from core.reasoning.tree_learn import EightPuzzle, features, manhattan, scramble, GOAL
+from core.reasoning.learned_guidance import LearnedHeuristic, collect_examples, GuidanceError
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

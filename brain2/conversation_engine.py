@@ -27,7 +27,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 from appraisal_engine import AppraisalEngine
 from core.math.word_math import solve as solve_word_math
 

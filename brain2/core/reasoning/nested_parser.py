@@ -21,8 +21,8 @@ recursive grammar. Deeper nesting and boolean conditions (and/or) are the next r
 
 import re
 
-from structural_parser import build_brain
-from means_ends import FactSource, PolicySource, MeansEndsSolver, Need
+from core.reasoning.structural_parser import build_brain
+from core.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need
 
 SUPER = {"heaviest": ("mass", max), "lightest": ("mass", min),
          "fastest": ("speed", max), "slowest": ("speed", min),

@@ -22,7 +22,7 @@ import random
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from means_ends import ev          # local lazy tuple-formula evaluator
+from core.reasoning.means_ends import ev          # local lazy tuple-formula evaluator
 
 OPS = ("+", "-", "*", "/")
 CONSTS = (0.5, 2.0)

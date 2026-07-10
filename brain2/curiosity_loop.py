@@ -23,7 +23,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 from inductive_engine import InductiveLearner
 
 

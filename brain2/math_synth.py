@@ -26,7 +26,7 @@ add, sub, mul, pow — each grounded in the last. If yes, the brain LEARNED math
     /opt/homebrew/bin/python3.13 math_synth.py       # proof + library
     from math_synth import LearnedArithmetic         # importable module
 """
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 
 # ── work budget: grounded arithmetic is O(value) (unary recursion), so a bad

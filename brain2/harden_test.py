@@ -52,9 +52,9 @@ def run():
     check("CE.nearest unknown", lambda: CE.nearest("zzz", ["speed"], CE.build(["the speed of light"])))
 
     # parsers — garbage / empty / no entities
-    import structural_parser as SP
-    import nested_parser as NP
-    import deeper_grammar as DG
+    from core.reasoning import structural_parser as SP
+    from core.reasoning import nested_parser as NP
+    from core.reasoning import deeper_grammar as DG
     fkb, mem = SP.build_brain()
     P = SP.StructuralParser({"rocket"}, {"mass"}, {})
     check("SP.parse empty", lambda: P.parse(""))

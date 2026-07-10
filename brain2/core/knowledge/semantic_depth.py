@@ -20,8 +20,8 @@ complementary path; truly primitive new concepts still need that.
 
 import re
 
-from structural_parser import build_brain
-from means_ends import FactSource, PolicySource, MeansEndsSolver, Need, Policy
+from core.reasoning.structural_parser import build_brain
+from core.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need, Policy
 
 DEF_OP = {"times": "*", "multiplied": "*", "product": "*",
           "divided": "/", "over": "/", "per": "/",

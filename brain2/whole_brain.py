@@ -24,9 +24,9 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 from core.knowledge.core_knowledge import CORE_FACTS
-from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
+from core.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
 import synth_engine as SE
 from core.store.brain_store import BrainStore
 from appraisal_engine import AppraisalEngine
@@ -398,8 +398,8 @@ class WholeBrain:
         measured blind-vs-learned node reduction. Domain-agnostic — demonstrated on the puzzle
         it is proven on, the same engine (tree_reason) the synthesis paths use."""
         import random
-        import learned_guidance as LG
-        from tree_learn import EightPuzzle, features, manhattan, scramble
+        from core.reasoning import learned_guidance as LG
+        from core.reasoning.tree_learn import EightPuzzle, features, manhattan, scramble
         h = LG.LearnedHeuristic(features)
         h.train(LG.collect_examples(EightPuzzle, scramble, manhattan))
         rng = random.Random(seed)
@@ -632,7 +632,7 @@ class WholeBrain:
         50'), and nested (superlative 'the fastest object', if/then). Answered by the SAME
         verified compute core (means-ends over facts+policies). Returns a string, or None to
         fall back to ask(). (Wires structural_parser / deeper_grammar / nested_parser.)"""
-        import structural_parser as SP, deeper_grammar as DG, nested_parser as NP
+        from core.reasoning import structural_parser as SP; from core.reasoning import deeper_grammar as DG; from core.reasoning import nested_parser as NP
         for M in (DG, NP):                              # inject THIS brain's live vocabulary
             M.ENTS = set(self.entities)
             M.RELS = set(self.relations)
@@ -674,7 +674,7 @@ class WholeBrain:
         The returned program is correct on the examples BY CONSTRUCTION and generalizes; None
         if no program in the DSL fits (honest miss)."""
         import program_synth as PS
-        from tree_reason import solve
+        from core.reasoning.tree_reason import solve
         path, _, nodes = solve(PS.Synthesize(list(examples)))
         if path is None:
             return {"program": None, "nodes": nodes}

@@ -17,8 +17,8 @@ numeric literals. Mixed and/or precedence and clause-vs-clause comparisons are t
 
 import re
 
-from structural_parser import build_brain
-from means_ends import FactSource, PolicySource, MeansEndsSolver, Need
+from core.reasoning.structural_parser import build_brain
+from core.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need
 
 SYN = {"velocity": "speed", "weight": "mass", "push": "force"}
 ENTS = {"rocket", "sample"}

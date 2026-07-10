@@ -22,7 +22,7 @@ from collections import Counter
 MIN_WEIGHT = 1.0     # drop low-confidence crowdsourced edges (junk like armadillo->book)
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 
 CN = os.path.join(os.path.dirname(__file__), "train", "conceptnet-assertions-5.7.0.csv.gz")
 # ConceptNet's dump is sorted ALPHABETICALLY BY RELATION, so taking the first-N edges

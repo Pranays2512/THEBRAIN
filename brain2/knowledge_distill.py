@@ -220,7 +220,7 @@ def teach(fkb, mem, facts, laws):
     laws in the next. (The old single-level check dropped every law whose input wasn't a raw
     fact, even when the brain could compute it.) A verified law's value is stored so the brain
     'knows' it; still one verifying object is enough to admit the reusable policy."""
-    from means_ends import Policy, FactSource, PolicySource, MeansEndsSolver, Need
+    from core.reasoning.means_ends import Policy, FactSource, PolicySource, MeansEndsSolver, Need
     ent_facts = {}
     for e, r, v in facts:
         fkb.learn(e, r, v)
@@ -261,7 +261,7 @@ def teach(fkb, mem, facts, laws):
 
 # ── offline self-test of the parser + teach + verify (no teacher calls) ──
 def _self_test():
-    from means_ends import PolicyMemory
+    from core.reasoning.means_ends import PolicyMemory
     mock = """
 OBJECT: capacitor
 FACT: capacitor | charge | 12
@@ -275,7 +275,7 @@ SENT: capacitance is the ratio of charge to voltage
     facts, laws, sents = parse_teacher(mock)
     fkb, mem = SimpleKB(), PolicyMemory()
     adm, rej = teach(fkb, mem, facts, laws)
-    from means_ends import FactSource, PolicySource, MeansEndsSolver, Need
+    from core.reasoning.means_ends import FactSource, PolicySource, MeansEndsSolver, Need
     solve = MeansEndsSolver([FactSource(fkb), PolicySource(mem)]).solve
     print("=== knowledge_distill self-test (offline, mock teacher output) ===")
     print("  parsed: %d facts, %d laws, %d sents" % (len(facts), len(laws), len(sents)))

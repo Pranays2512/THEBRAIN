@@ -29,7 +29,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 from brain_data import BrainData
 from core.store.type_oracle import TypeOracle
 import knowledge_distill as KD
-from means_ends import PolicyMemory
+from core.reasoning.means_ends import PolicyMemory
 
 FILES = (["data/taxonomy_core.txt"]
          + [f"data/math{i}.txt" for i in range(1, 10)]

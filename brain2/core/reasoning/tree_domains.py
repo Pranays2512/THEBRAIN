@@ -13,7 +13,7 @@ reasoning core is shared, each domain is a plug-in.
   Rewrite/proof   derive a target form from rules (a tiny formal system)
 """
 
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 
 # ── constraint satisfaction: N-Queens ────────────────────────────────────────

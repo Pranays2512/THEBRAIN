@@ -45,7 +45,7 @@ SAMPLE_QS = [
 
 
 def _coverage(kb, questions):
-    from neuro_bridge import Brain, RuleEyes
+    from core.reasoning.neuro_bridge import Brain, RuleEyes
     brain = Brain()
     kb.into(brain)
     eyes = RuleEyes()

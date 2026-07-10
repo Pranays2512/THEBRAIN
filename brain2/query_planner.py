@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 from appraisal_engine import AppraisalEngine
 from conversation_engine import oxford
 

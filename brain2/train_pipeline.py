@@ -67,7 +67,7 @@ class UnifiedTrainer:
         self.cache_path = cache_path      # teacher output cached here: teach ONCE, scale offline
         self.report = {}
         import knowledge_distill as KD
-        from means_ends import PolicyMemory
+        from core.reasoning.means_ends import PolicyMemory
         self.fkb = KD.SimpleKB()          # symbolic brain: exact taught facts
         self.mem = PolicyMemory()         # symbolic brain: policies/laws
         try:

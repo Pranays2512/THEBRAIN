@@ -55,7 +55,7 @@ def main():
     expect("OW rediscovers Kepler p~1.5", abs(sum(ps) / len(ps) - 1.5) < 0.05)
 
     # language — structural parse + verified compute, incl. compare + abstain
-    import structural_parser as SP
+    from core.reasoning import structural_parser as SP
     from core.grounding import context_embed as CE
     fkb, mem = SP.build_brain()
     PP = SP.StructuralParser({"rocket", "sample"}, {"force", "mass", "speed", "accel", "volume"}, {})

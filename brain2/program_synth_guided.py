@@ -25,7 +25,7 @@ import random
 
 import numpy as np
 
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 
 # ── richer DSL (string -> string) ────────────────────────────────────────────

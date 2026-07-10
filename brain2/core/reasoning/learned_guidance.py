@@ -24,8 +24,8 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from tree_reason import solve
-from tree_learn import EightPuzzle, features, manhattan, scramble
+from core.reasoning.tree_reason import solve
+from core.reasoning.tree_learn import EightPuzzle, features, manhattan, scramble
 
 
 class GuidanceError(ValueError):

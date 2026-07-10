@@ -63,7 +63,7 @@ def _demo():
     import sys
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from core.knowledge.knowledge_base import KnowledgeBase
-    from neuro_bridge import Brain, RuleEyes
+    from core.reasoning.neuro_bridge import Brain, RuleEyes
 
     kb = KnowledgeBase()
     print(f"=== core_knowledge — {load_core(kb)} vetted facts ===\n")

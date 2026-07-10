@@ -37,7 +37,7 @@ from collections import Counter, defaultdict
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-from reasoning_engine import ReasoningEngine
+from core.reasoning.reasoning_engine import ReasoningEngine
 from llm_extractor import LLMExtractor
 
 

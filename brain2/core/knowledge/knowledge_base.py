@@ -133,14 +133,14 @@ class KnowledgeBase:
 
 
 def _coverage(brain, questions):
-    from neuro_bridge import RuleEyes
+    from core.reasoning.neuro_bridge import RuleEyes
     eyes = RuleEyes()
     answered = sum(int(brain.answer(eyes.parse(q)).known) for q in questions)
     return answered, len(questions)
 
 
 def _demo():
-    from neuro_bridge import Brain
+    from core.reasoning.neuro_bridge import Brain
 
     questions = ["what is dog?", "what is apple?", "what is car?",
                  "what is whale?", "what is zorblax?"]

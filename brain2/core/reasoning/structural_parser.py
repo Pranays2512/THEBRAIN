@@ -23,8 +23,8 @@ full compositional grammar; nested clauses / conditionals are the next rung.
 import re
 
 from core.grounding import context_embed as CE
-from reasoning_engine import ReasoningEngine
-from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need, Policy
+from core.reasoning.reasoning_engine import ReasoningEngine
+from core.reasoning.means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need, Policy
 
 COMPARE = {"greater", "more", "less", "bigger", "smaller", "heavier", "lighter", "most", "than"}
 SYN = {"velocity": "speed", "weight": "mass", "push": "force", "pace": "speed"}

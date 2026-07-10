@@ -19,7 +19,7 @@ search guidance — exactly the tree_learn pattern. It does not invent new
 primitives. Within the DSL, every program it returns is correct on the spec.
 """
 
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 
 # ── the DSL: composable string -> string primitives ──────────────────────────

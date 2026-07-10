@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from neuro_bridge import Mind, Brain, RuleEyes, GrammarMouth, Mouth, Query, Answer
+from core.reasoning.neuro_bridge import Mind, Brain, RuleEyes, GrammarMouth, Mouth, Query, Answer
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

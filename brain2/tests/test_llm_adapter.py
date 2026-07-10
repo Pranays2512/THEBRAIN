@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from llm_adapter import LLMEyes, LLMMouth, StubClient
-from neuro_bridge import Mind, Brain, Answer
+from core.reasoning.neuro_bridge import Mind, Brain, Answer
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"

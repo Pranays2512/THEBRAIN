@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import brain2
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 N_DIMS = 64
 

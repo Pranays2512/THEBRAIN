@@ -25,7 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from core.knowledge.knowledge_engine import KnowledgeEngine, KnowledgeError
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 
 class PlanningError(ValueError):

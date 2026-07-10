@@ -23,7 +23,7 @@ import random
 
 import numpy as np
 
-from tree_reason import SearchProblem, solve
+from core.reasoning.tree_reason import SearchProblem, solve
 
 GOAL = (1, 2, 3, 4, 5, 6, 7, 8, 0)
 

@@ -25,8 +25,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from reasoning_engine import ReasoningEngine
-from means_ends import Need, Policy, FactSource, ev
+from core.reasoning.reasoning_engine import ReasoningEngine
+from core.reasoning.means_ends import Need, Policy, FactSource, ev
 
 
 # ── policy memory with MANY policies per target ──────────────────────────────

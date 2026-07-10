@@ -30,7 +30,7 @@ def train(path, do_lm=False, do_brain=False):
 
     # 3. SYMBOLIC KNOWLEDGE (facts taught, laws VERIFIED before admit)
     import knowledge_distill as KD
-    from means_ends import PolicyMemory
+    from core.reasoning.means_ends import PolicyMemory
     fkb, mem = KD.SimpleKB(), PolicyMemory()
     rep["knowledge"] = d.teach_knowledge(fkb, mem)
 

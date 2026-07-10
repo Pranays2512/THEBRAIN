@@ -23,7 +23,7 @@ has procedural memory for exactly this).
 import random
 import time
 
-from tree_reason import solve
+from core.reasoning.tree_reason import solve
 from program_synth_guided import OPS, run, rand_name, rand_program, Synthesize
 from program_synth_tree import DecisionTree, collect, tree_scores
 
