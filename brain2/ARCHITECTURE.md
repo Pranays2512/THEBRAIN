@@ -12,9 +12,9 @@ training     train_all, train_pipeline, train_from_data, read_pdf_train,
 faculties    orchestrators + standing-loop drives: whole_brain, read_book,
   │          reading_loop, conversation_engine, query_planner, neuro-driven
   │          agents, curiosity/appraisal/autonomous loops
-adapters     IO edge (depends on core): llm_adapter, llm_extractor, mouth,
+adapters     IO edge (depends on engines): llm_adapter, llm_extractor, mouth,
   │          ocr_pdf, nl_front, chat, brain_repl, server, math_chat
-core         pure engines — the foundation
+engines      pure Python engines — the foundation
              ├── reasoning   reasoning_engine, tree_reason, means_ends,
              │               nested_parser, structural_parser, neuro_bridge, dual_process
              ├── synthesis   synth_engine, program_synth*, loop_synth*, dp_*,
@@ -30,20 +30,17 @@ core         pure engines — the foundation
                              parse_template, corpus_scale, coverage_harness
 ```
 
-The native C++ module `brain2` (`brain2.cpython-*.so`) is imported as `import brain2`
-and is left at the repo root — it is not part of this package tree.
+## The native C++ core
 
-> **Note — `core/` is shared.** The `core/` directory pre-existed as the C++ engine
-> **source** (`*.hpp`, `*.cu`, `*.cuh` — ~36 files compiled into the `brain2` `.so`).
-> The Python `core/` engine subpackages (`reasoning/`, `synthesis/`, …) were added
-> alongside that source, so `core/` currently holds both. They don't interfere (the
-> headers are inert to Python imports), but a future cleanup could split them —
-> e.g. move the Python engines to `engines/` or the C++ source to `cpp/`.
+`core/` holds the **C++ engine source** (`*.hpp`, `*.cu`, `*.cuh`). Together with
+`brain2.cpp` at the repo root and `CMakeLists.txt`, it compiles into the native module
+`brain2.cpython-*.so`, imported from Python as `import brain2`. The C++ `core/` is not
+part of the Python package tree and is not imported with `from core...`.
 
 ## Rules
 
 - **Import direction is downward.** Cross-package imports use the full path,
-  e.g. `from core.reasoning.reasoning_engine import ReasoningEngine`,
+  e.g. `from engines.reasoning.reasoning_engine import ReasoningEngine`,
   `from adapters.mouth import Mouth`. A module never imports from a package above its
   own layer. (Package `__init__.py` facades were evaluated but not adopted — populating
   them triggered import-time circular loading; full-path imports are the interface.)
@@ -59,8 +56,8 @@ and is left at the repo root — it is not part of this package tree.
 Two imports point upward and are kept as-is (resolving them would require changing
 call structure, which this refactor does not do). See `_refactor/exceptions.md`.
 
-- `core/knowledge/fact_extractor` → `faculties/conversation_engine`
-  (`fact_extractor` is itself imported by `core/knowledge`, so it cannot move up).
+- `engines/knowledge/fact_extractor` → `faculties/conversation_engine`
+  (`fact_extractor` is itself imported by `engines/knowledge`, so it cannot move up).
 - `adapters/nl_front` → `training/student_trainer`
   (`nl_front` invokes the student trainer from its front-end path).
 
@@ -71,3 +68,4 @@ call structure, which this refactor does not do). See `_refactor/exceptions.md`.
 `component_validation`). The restructure was performed one package at a time; after
 every move `_refactor/gate.py` re-ran all six and required byte-identical output, so
 runtime behavior is provably unchanged.
+
