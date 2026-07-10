@@ -79,6 +79,16 @@ class WholeBrain:
         self.kre = ReasoningEngine()
         for s, r, o in CORE_FACTS:
             self.kre.learn(s, r, o)
+        # LOAD crisp facts learned from reading (survives restart, accumulates)
+        lf = os.path.join(self.store.path, "learned_facts.json")
+        if os.path.exists(lf):
+            try:
+                import json as _json
+                for tri in _json.load(open(lf)):
+                    if isinstance(tri, (list, tuple)) and len(tri) == 3:
+                        self.kre.learn(str(tri[0]), str(tri[1]), str(tri[2]))
+            except Exception:
+                pass
         self.kre.set_transitive("isa")
         for prop in ("has", "can", "lives_in"):
             self.kre.add_rule("isa", prop, prop)

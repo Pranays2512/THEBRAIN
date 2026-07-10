@@ -108,21 +108,35 @@ def do_persist(bt):
     """KEEP: bridge every learned triple into the faculties, run the loop, save_state()."""
     print("\n[keep] bridging triples -> faculties, running loop, persisting ...", flush=True)
     try:
+        import json
         from faculties.whole_brain import WholeBrain
         wb = WholeBrain()
         kept = 0
+        crisp = {}                                    # (s,r,o) -> for crisp reasoning store
         for (s, r), v in bt.numeric.items():
             if wb.remember(s, r, str(v)):
                 kept += 1
         for tri in getattr(getattr(bt, "kre", None), "kb", None).facts if getattr(
                 getattr(bt, "kre", None), "kb", None) else []:
             if isinstance(tri, (list, tuple)) and len(tri) == 3:
-                if wb.remember(str(tri[0]), str(tri[1]), str(tri[2])):
+                s, r, o = str(tri[0]), str(tri[1]), str(tri[2])
+                if wb.remember(s, r, o):              # fuzzy associative memory
                     kept += 1
+                if not o.replace(".", "").replace("-", "").isdigit():   # crisp: skip numeric junk
+                    crisp[(s, r, o)] = True
+                    wb.kre.learn(s, r, o)             # crisp reasoning, this session
+        # persist crisp facts so ask() reasons over them after restart (merge + dedup)
+        lf = os.path.join(wb.store.path, "learned_facts.json")
+        prior = set()
+        if os.path.exists(lf):
+            try: prior = {tuple(x) for x in json.load(open(lf))}
+            except Exception: pass
+        allf = sorted(prior | set(crisp.keys()))
+        json.dump([list(t) for t in allf], open(lf, "w"))
         loop = wb.run_loop(ticks=3)
         saved = wb.save_state()
-        print(f"  bridged {kept} triples | loop {loop.get('ticks_run')} ticks "
-              f"| persisted {saved}", flush=True)
+        print(f"  bridged {kept} triples | crisp facts {len(crisp)} (+{len(allf)-len(prior)} new, "
+              f"{len(allf)} total) | loop {loop.get('ticks_run')} ticks | persisted {saved}", flush=True)
     except Exception as e:
         print(f"  skipped ({type(e).__name__}: {e})", flush=True)
 
