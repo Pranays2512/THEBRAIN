@@ -30,8 +30,15 @@ core         pure engines — the foundation
                              parse_template, corpus_scale, coverage_harness
 ```
 
-The native C++ module `brain2` (`.so`) is imported as `import brain2` and is left at
-the repo root — it is not part of this package tree.
+The native C++ module `brain2` (`brain2.cpython-*.so`) is imported as `import brain2`
+and is left at the repo root — it is not part of this package tree.
+
+> **Note — `core/` is shared.** The `core/` directory pre-existed as the C++ engine
+> **source** (`*.hpp`, `*.cu`, `*.cuh` — ~36 files compiled into the `brain2` `.so`).
+> The Python `core/` engine subpackages (`reasoning/`, `synthesis/`, …) were added
+> alongside that source, so `core/` currently holds both. They don't interfere (the
+> headers are inert to Python imports), but a future cleanup could split them —
+> e.g. move the Python engines to `engines/` or the C++ source to `cpp/`.
 
 ## Rules
 
