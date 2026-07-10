@@ -228,13 +228,13 @@ _sr = EventReader(E_ENT, E_VERBS, type_of=E_ORACLE, constraints=E_CON, predictor
 _sr.read("the cat ate the fish")                # first event -> surprise 1.0 -> salient
 ok("surprise gates episodic salience", len(_sr.salient) == 1)
 ok("curiosity ranks weak-model verbs", "eat" in _sr.curiosity())
-from mouth import ask as _ask
+from adapters.mouth import ask as _ask
 ok("mouth turns a salient event into a question",
    _ask(_sr.salient[0]) == "Why did the cat eat the fish?")
 
 
 # ── the owned mouth: structure -> English, comprehension grammar run backward ──
-from mouth import say_event, say_fact
+from adapters.mouth import say_event, say_fact
 ok("mouth: past tense", say_event(Event("eat", "dog", "fish", "past", POS)) == "The dog ate the fish.")
 ok("mouth: present 3sg morphology", say_event(Event("chase", "dog", "cat", "present", POS)) == "The dog chases the cat.")
 ok("mouth: negation realized", say_event(Event("eat", "cat", "fish", "past", NEG)) == "The cat did not eat the fish.")
@@ -268,11 +268,11 @@ ok("loader event: negation parsed", _bd.events[1][1].polarity == NEG and _bd.eve
 ok("loader grounds types from ISA", "animal" in (_bd.type_oracle()("dog") or frozenset()))
 ok("loader predictor learns transitions",
    (lambda p: (_bd.train_predictor(p), p.base["chase"] == 1)[1])(EventPredictor()))
-_mtmp = dict(__import__("mouth").MORPH)
+_mtmp = dict(__import__("adapters.mouth", fromlist=["_"]).MORPH)
 _bd.load_morph()
 ok("loader MORPH upgrades the mouth (child->fluent)",
    say_event(Event("teach", "a", "b", "past", POS)) == "The a taught the b.")
-__import__("mouth").MORPH.clear(); __import__("mouth").MORPH.update(_mtmp)   # restore
+__import__("adapters.mouth", fromlist=["_"]).MORPH.clear(); __import__("adapters.mouth", fromlist=["_"]).MORPH.update(_mtmp)   # restore
 
 # v2 loader: UNIT (dimensional verifier), ASK (questions), verifiable laws
 _v2 = BrainData.parse("""the block has mass 4 => FACT: block | mass | 4
@@ -287,7 +287,7 @@ ok("loader parses UNIT dimensions", _v2.units["force"] == (1, 1, -2))
 ok("loader parses ASK question", _v2.questions[0][1] == {"entity": "block", "rel": "mass"})
 _dr = _v2.dim_report()
 ok("dimensional verifier: consistent vs nonsense", _dr["consistent"] == 1 and _dr["violation"] == 1)
-_fkb2, _mem2 = __import__("knowledge_distill").SimpleKB(), __import__("means_ends").PolicyMemory()
+_fkb2, _mem2 = __import__("knowledge_distill").SimpleKB(), __import__("core.reasoning.means_ends", fromlist=["_"]).PolicyMemory()
 _v2.teach_knowledge(_fkb2, _mem2)
 ok("worked-example law verifies (no waste)", _fkb2.ask("block", "force")[0] == 12.0)
 

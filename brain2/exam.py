@@ -13,7 +13,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from brain_data import BrainData
 from event_predict import EventPredictor
 from core.events.event_form import Event, POS, NEG
-from mouth import say_event
+from adapters.mouth import say_event
 import knowledge_distill as KD
 from core.reasoning.means_ends import PolicyMemory
 from core.store.type_oracle import TypeOracle

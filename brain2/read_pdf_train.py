@@ -26,9 +26,9 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("TESSDATA_PREFIX", "/opt/homebrew/opt/tesseract/share/tessdata")
 
-from ocr_pdf import ocr
+from adapters.ocr_pdf import ocr
 from read_book import sentences, BookTrainer, _print_report
-from llm_adapter import OllamaClient, SafeClient
+from adapters.llm_adapter import OllamaClient, SafeClient
 
 CLOUD_MODEL = "qwen3-coder:480b-cloud"
 

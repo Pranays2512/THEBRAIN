@@ -149,7 +149,7 @@ def _build(llm=None, use_cpp=False, use_brain=False):
     llm_parser = None
     if llm:                                       # attach the rung-3 LLM tier
         from rung3_parser import LLMParser
-        from llm_adapter import OllamaClient, StubClient
+        from adapters.llm_adapter import OllamaClient, StubClient
         client = OllamaClient("qwen3:1.7B") if llm == "real" else StubClient({
             "oomph": '{"entity":"rocket","rel":"force"}'})   # idiom only the LLM cracks
         llm_parser = LLMParser(client, entities | set(facts), solvable)

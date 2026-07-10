@@ -21,7 +21,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from llm_adapter import LLMClient, StubClient, OllamaClient   # noqa: F401 (re-exported)
+from adapters.llm_adapter import LLMClient, StubClient, OllamaClient   # noqa: F401 (re-exported)
 
 EXTRACT_SYSTEM = (
     "Extract the facts stated in the text as a JSON array of [subject, relation, "

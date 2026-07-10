@@ -114,7 +114,7 @@ class UnifiedTrainer:
         teacher = None
         need = self.refresh or any(t not in cache for t in self.seeds)
         if need and self.use_teacher:
-            from llm_adapter import OllamaClient, SafeClient
+            from adapters.llm_adapter import OllamaClient, SafeClient
             teacher = SafeClient(OllamaClient(self.teacher_model))
         parse_pairs, struct_lines = [], []
         for topic in self.seeds:
@@ -146,7 +146,7 @@ class UnifiedTrainer:
     # 1. DISTILL — expand the corpus via the teacher (qwen-coder), cleaned into sentences
     def stage_distill(self):
         if self.use_teacher:
-            from llm_adapter import OllamaClient, SafeClient
+            from adapters.llm_adapter import OllamaClient, SafeClient
             teacher = SafeClient(OllamaClient(self.teacher_model))
             for s in self.seeds:
                 out = teacher.complete("Write four short simple factual sentences about %s. "

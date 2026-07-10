@@ -12,7 +12,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from llm_adapter import LLMEyes, LLMMouth, StubClient
+from adapters.llm_adapter import LLMEyes, LLMMouth, StubClient
 from core.reasoning.neuro_bridge import Mind, Brain, Answer
 
 PASS = "\033[92mPASS\033[0m"

@@ -26,7 +26,7 @@ def _say(ev):
     """Synthesize a plain sentence for a structure-only Event, via the mouth (so the parser /
     student LM still get a (sentence -> structure) pair). Falls back to a literal join."""
     try:
-        from mouth import say_event
+        from adapters.mouth import say_event
         return say_event(ev).rstrip(".").lower()
     except Exception:
         return " ".join(x for x in ("the", ev.agent, ev.verb, ev.patient) if x)
@@ -135,7 +135,7 @@ class BrainData:
 
     def load_morph(self):
         """Populate the mouth's learned morphology table (upgrades say_event fluency)."""
-        import mouth
+        from adapters import mouth
         mouth.MORPH.update(self.morph)
         return len(self.morph)
 

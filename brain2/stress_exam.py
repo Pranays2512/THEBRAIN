@@ -20,7 +20,7 @@ import knowledge_distill as KD
 from core.reasoning.means_ends import PolicyMemory
 from core.events.event_form import Event, POS
 from core.events.event_verify import EventStore, classify
-from mouth import say_event
+from adapters.mouth import say_event
 
 FILES = (["data/taxonomy_core.txt"]
          + [f"data/math{i}.txt" for i in range(1, 10)]

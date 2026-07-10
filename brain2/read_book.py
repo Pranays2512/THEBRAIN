@@ -38,7 +38,7 @@ from collections import Counter, defaultdict
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 from core.reasoning.reasoning_engine import ReasoningEngine
-from llm_extractor import LLMExtractor
+from adapters.llm_extractor import LLMExtractor
 
 
 def sentences(text, max_sents=None):
@@ -259,7 +259,7 @@ def _print_report(rep):
 
 
 def _offline_proof():
-    from llm_adapter import StubClient
+    from adapters.llm_adapter import StubClient
     book = (
         "The lion is an animal. The tiger is an animal. The sparrow is a bird. "
         "The eagle is a bird. The trout is a fish. The animal is a living_thing. "
@@ -285,7 +285,7 @@ def _offline_proof():
 
 
 def _real(path, model):
-    from llm_adapter import OllamaClient
+    from adapters.llm_adapter import OllamaClient
     print("=" * 68)
     print(f"  read_book — {path}  (teacher: Ollama {model})")
     print("=" * 68)

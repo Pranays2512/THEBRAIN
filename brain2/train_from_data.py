@@ -80,7 +80,7 @@ def train(path, do_lm=False, do_brain=False):
 
 
 def _demo(rep, fkb, oracle, predictor):
-    from mouth import say_event
+    from adapters.mouth import say_event
     from core.events.event_parse import parse_event
     from core.events.event_form import Event, POS
     print("=== trained from data ===")

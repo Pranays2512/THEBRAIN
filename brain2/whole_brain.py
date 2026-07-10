@@ -93,7 +93,7 @@ class WholeBrain:
                           ("density", ("mass", "volume"), ("/", "mass", "volume")),
                           ("momentum", ("mass", "speed"), ("*", "mass", "speed")),
                           ("energy", ("mass", "speed"), ("*", 0.5, ("*", "mass", ("^", "speed", 2))))]:
-            self.mem.add(__import__("means_ends").Policy(t, ins, e))
+            self.mem.add(__import__("core.reasoning.means_ends", fromlist=["_"]).Policy(t, ins, e))
         self.entities = {"rocket", "sample"}
         self.relations = {"force", "density", "momentum", "energy", "mass", "speed", "accel", "volume"}
         self.concepts = {s for s, _, _ in CORE_FACTS} | {o for _, _, o in CORE_FACTS}
@@ -213,7 +213,7 @@ class WholeBrain:
         self.reader.acquire()                   # learn verbs seen enough times -> future crisp
         s = self.reader.stats
         e = evs[-1]
-        from mouth import say_event
+        from adapters.mouth import say_event
         desc = say_event(e).rstrip(".")            # the brain says it in its OWN learned grammar
         cause = " (CAUSE)" if rel is not None else ""
         if s["admit"] > b.get("admit", 0):
@@ -296,7 +296,7 @@ class WholeBrain:
         in training; this is the in-process, torch-free generator. Wires prob_compute."""
         from core.math.prob_compute import ProbLM
         if corpus is None:                              # build from what the brain has read
-            from mouth import say_event
+            from adapters.mouth import say_event
             corpus = [say_event(e) for e in getattr(self.reader, "events", [])]
             corpus += ["a dog is an animal", "an animal is a living thing",
                        "the rocket has large mass", "energy depends on mass and speed"]
@@ -579,7 +579,7 @@ class WholeBrain:
         prediction error -> attention -> a question worth answering."""
         if not self.reader.salient:
             return None
-        from mouth import ask
+        from adapters.mouth import ask
         return {"question": ask(self.reader.salient[-1]),
                 "curious_about": self.reader.curiosity()}
 
