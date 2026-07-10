@@ -2,7 +2,7 @@
 
 132 modules that used to sit flat in one directory are now grouped into **5 layered
 packages**. Dependencies point downward (a package imports only from packages below
-it), with two documented exceptions.
+it), with three documented exceptions.
 
 ```
 tests        the acceptance + unit suites; may import anything below
@@ -60,6 +60,9 @@ call structure, which this refactor does not do). See `_refactor/exceptions.md`.
   (`fact_extractor` is itself imported by `engines/knowledge`, so it cannot move up).
 - `adapters/nl_front` → `training/student_trainer`
   (`nl_front` invokes the student trainer from its front-end path).
+- `engines/reasoning/neuro_bridge` → `faculties/conversation_engine`, `faculties/query_planner`
+  (a middle-of-stack bridge: imported by engines modules yet wires up two faculties —
+  no placement removes the up-edge).
 
 ## Verification
 
