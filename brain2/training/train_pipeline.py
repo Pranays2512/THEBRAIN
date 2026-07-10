@@ -66,7 +66,7 @@ class UnifiedTrainer:
         self.refresh = refresh            # re-query the teacher even if a cache entry exists
         self.cache_path = cache_path      # teacher output cached here: teach ONCE, scale offline
         self.report = {}
-        import knowledge_distill as KD
+        from training import knowledge_distill as KD
         from core.reasoning.means_ends import PolicyMemory
         self.fkb = KD.SimpleKB()          # symbolic brain: exact taught facts
         self.mem = PolicyMemory()         # symbolic brain: policies/laws
@@ -109,7 +109,7 @@ class UnifiedTrainer:
         (or all, if refresh); each topic is written back immediately so a slow/rate-limited
         run can be killed and resumed without losing progress. With a full cache this makes
         zero teacher calls, so scaling the model (dim/layers/epochs) is a cheap offline loop."""
-        import knowledge_distill as KD
+        from training import knowledge_distill as KD
         cache = self._load_cache()
         teacher = None
         need = self.refresh or any(t not in cache for t in self.seeds)

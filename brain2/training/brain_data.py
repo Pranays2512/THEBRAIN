@@ -143,7 +143,7 @@ class BrainData:
         """dim_consistent for a 'LAW: t = expr' string, using the UNITs. True/False/None."""
         from core.grounding.domain_features import dim_consistent
         from core.reasoning.means_ends import Policy
-        import knowledge_distill as KD
+        from training import knowledge_distill as KD
         try:
             target, expr = (x.strip() for x in law_struct[4:].split("=", 1))
             tree = KD.infix_to_tree(expr)
@@ -155,7 +155,7 @@ class BrainData:
         """Teach the symbolic brain: DIMENSIONAL filter first (drop provably-nonsense laws using
         the UNITs — the hard filter runs before the compute gate), then the tested distiller
         (facts learned, remaining laws verified numerically). Two verifiers, not one."""
-        import knowledge_distill as KD
+        from training import knowledge_distill as KD
         structs, dim_dropped = [], 0
         for s in self.structs:
             if s.startswith("LAW:") and self.units and self._law_dim(s) is False:

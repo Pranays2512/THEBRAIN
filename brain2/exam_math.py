@@ -18,7 +18,7 @@ import re
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-import knowledge_distill as KD
+from training import knowledge_distill as KD
 
 MATH_FILES = [f"data/math{i}.txt" for i in range(1, 10)]
 

@@ -14,7 +14,7 @@ import sys
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-from brain_data import BrainData
+from training.brain_data import BrainData
 
 
 def train(path, do_lm=False, do_brain=False):
@@ -29,7 +29,7 @@ def train(path, do_lm=False, do_brain=False):
     rep["morph_loaded"] = d.load_morph()
 
     # 3. SYMBOLIC KNOWLEDGE (facts taught, laws VERIFIED before admit)
-    import knowledge_distill as KD
+    from training import knowledge_distill as KD
     from core.reasoning.means_ends import PolicyMemory
     fkb, mem = KD.SimpleKB(), PolicyMemory()
     rep["knowledge"] = d.teach_knowledge(fkb, mem)

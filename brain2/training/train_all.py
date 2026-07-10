@@ -26,9 +26,9 @@ import time
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-from brain_data import BrainData
+from training.brain_data import BrainData
 from core.store.type_oracle import TypeOracle
-import knowledge_distill as KD
+from training import knowledge_distill as KD
 from core.reasoning.means_ends import PolicyMemory
 
 FILES = (["data/taxonomy_core.txt"]

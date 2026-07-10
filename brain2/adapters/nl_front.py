@@ -24,7 +24,7 @@ from core.reasoning.means_ends import Policy
 from policy_pack import PACK
 from core.synthesis.policy_proposer import MultiPolicyMemory, Solver
 from nl_query import NLQueryParser, load_glove, _rel_words, STOP
-from student_trainer import Student, load_dataset, DATA
+from training.student_trainer import Student, load_dataset, DATA
 
 STRONG = 0.9      # lexical confidence at/above which we trust the matcher over the student
 CONF_FLOOR = 0.85  # student confidence floor: real keyword hits score ~1.0 (the

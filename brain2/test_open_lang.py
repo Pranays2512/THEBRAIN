@@ -251,7 +251,7 @@ ok("mouth: honest silence on unlearned relation", say_fact("drone", "wisdom", 9,
 
 
 # ── brain_data loader: one tagged corpus -> every subsystem ──────────────────
-from brain_data import BrainData
+from training.brain_data import BrainData
 _SAMPLE = """the box has mass 5 => FACT: box | mass | 5
 force equals mass times acceleration => LAW: force = mass * acceleration
 the dog chased the cat => EVENT: chase | dog | cat | past | +
@@ -287,7 +287,7 @@ ok("loader parses UNIT dimensions", _v2.units["force"] == (1, 1, -2))
 ok("loader parses ASK question", _v2.questions[0][1] == {"entity": "block", "rel": "mass"})
 _dr = _v2.dim_report()
 ok("dimensional verifier: consistent vs nonsense", _dr["consistent"] == 1 and _dr["violation"] == 1)
-_fkb2, _mem2 = __import__("knowledge_distill").SimpleKB(), __import__("core.reasoning.means_ends", fromlist=["_"]).PolicyMemory()
+_fkb2, _mem2 = __import__("training.knowledge_distill", fromlist=["_"]).SimpleKB(), __import__("core.reasoning.means_ends", fromlist=["_"]).PolicyMemory()
 _v2.teach_knowledge(_fkb2, _mem2)
 ok("worked-example law verifies (no waste)", _fkb2.ask("block", "force")[0] == 12.0)
 

@@ -14,9 +14,9 @@ import re
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-from brain_data import BrainData
+from training.brain_data import BrainData
 from core.store.type_oracle import TypeOracle
-import knowledge_distill as KD
+from training import knowledge_distill as KD
 from core.reasoning.means_ends import PolicyMemory
 from core.events.event_form import Event, POS
 from core.events.event_verify import EventStore, classify

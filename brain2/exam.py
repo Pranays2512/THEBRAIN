@@ -10,11 +10,11 @@ Run:  /opt/homebrew/bin/python3.13 exam.py
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-from brain_data import BrainData
+from training.brain_data import BrainData
 from faculties.event_predict import EventPredictor
 from core.events.event_form import Event, POS, NEG
 from adapters.mouth import say_event
-import knowledge_distill as KD
+from training import knowledge_distill as KD
 from core.reasoning.means_ends import PolicyMemory
 from core.store.type_oracle import TypeOracle
 from core.events.event_parse import parse_event
