@@ -22,7 +22,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from knowledge_base import KnowledgeBase
+from core.knowledge.knowledge_base import KnowledgeBase
 from neuro_bridge import Mind, Brain, RuleEyes, GrammarMouth
 
 

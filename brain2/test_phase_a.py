@@ -10,7 +10,7 @@ from core.store.parse_template import Template, tokenize, match, slot_example, a
 from core.store.template_memory import TemplateMemory
 from core.store.coverage_harness import coverage
 from core.grounding.domain_features import dims_of, dim_consistent, success_rate_feature
-from concept_memory import ConceptMemory
+from core.knowledge.concept_memory import ConceptMemory
 from means_ends import Policy
 
 R = []

@@ -50,7 +50,7 @@ def _isa_closure(triples):
 class TypeOracle:
     def __init__(self, triples=None, similar=None, sim_threshold=0.6):
         if triples is None:
-            from core_knowledge import CORE_FACTS
+            from core.knowledge.core_knowledge import CORE_FACTS
             triples = CORE_FACTS
         self.closure = _isa_closure(triples)
         self.similar = similar                  # optional token -> [(other, score)] fuzzy hook

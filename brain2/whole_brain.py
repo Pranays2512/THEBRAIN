@@ -25,7 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from reasoning_engine import ReasoningEngine
-from core_knowledge import CORE_FACTS
+from core.knowledge.core_knowledge import CORE_FACTS
 from means_ends import PolicyMemory, FactSource, PolicySource, MeansEndsSolver, Need
 import synth_engine as SE
 from core.store.brain_store import BrainStore
@@ -64,8 +64,8 @@ class WholeBrain:
         self._proposer = None                       # lazy online_proposer2 (guided code synth)
         try:
             import json
-            from concept_memory import ConceptMemory
-            from semantic_memory import SemanticMemory
+            from core.knowledge.concept_memory import ConceptMemory
+            from core.knowledge.semantic_memory import SemanticMemory
             cp = os.path.join(self.store.path, "concepts.json")
             sp = os.path.join(self.store.path, "semantic.json")
             # LOAD prior sessions' discoveries so the brain accumulates across restarts
@@ -446,7 +446,7 @@ class WholeBrain:
         known concepts into a point outside every category; admitted only if verifiably
         novel (nearest known concept farther than the cluster radius). Proposes — grounding
         still decides usefulness."""
-        import concept_blend as CB
+        from core.knowledge import concept_blend as CB
         # CE vectors are SPARSE co-occurrence dicts; densify to aligned lists over the shared
         # context vocabulary so concept_blend's per-dimension fuse/distance is well-defined.
         grounded = [c for c in (self.concepts | self.relations) if c in self.vecs]

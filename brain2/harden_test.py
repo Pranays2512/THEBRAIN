@@ -87,7 +87,7 @@ def run():
 
     # analogy / semantic — empty / malformed
     from core.events import analogy_struct as AS
-    import semantic_depth as SD
+    from core.knowledge import semantic_depth as SD
     check("AS.align empty", lambda: AS.align([], []))
     check("AS.align_greedy empty", lambda: AS.align_greedy([], []))
     fkb2, mem2 = SP.build_brain()

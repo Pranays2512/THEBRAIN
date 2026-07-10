@@ -11,8 +11,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from core_knowledge import CORE_FACTS, load_core
-from knowledge_base import KnowledgeBase
+from core.knowledge.core_knowledge import CORE_FACTS, load_core
+from core.knowledge.knowledge_base import KnowledgeBase
 from neuro_bridge import Brain, RuleEyes
 from reasoning_engine import ReasoningEngine
 

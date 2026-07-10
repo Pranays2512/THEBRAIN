@@ -73,7 +73,7 @@ def main():
     expect("AS maps sun->nucleus", emap and emap.get("sun") == "nucleus" and score >= 2)
 
     # semantic_depth — learns a new concept from a definition, verified
-    import semantic_depth as SD
+    from core.knowledge import semantic_depth as SD
     fkb2, mem2 = SP.build_brain()
     L = SD.ConceptLearner(fkb2, mem2, {"force", "mass", "speed", "accel", "volume"})
     tgt, _ = L.learn_definition("momentum is mass times speed")

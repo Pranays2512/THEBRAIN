@@ -22,7 +22,7 @@ import sys
 from collections import defaultdict, deque
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from knowledge_engine import KnowledgeEngine, KnowledgeError
+from core.knowledge.knowledge_engine import KnowledgeEngine, KnowledgeError
 
 
 class ReasoningEngine:

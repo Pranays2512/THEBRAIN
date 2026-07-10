@@ -26,8 +26,8 @@ import sys
 from collections import Counter
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from fact_extractor import FactExtractor
-from world_knowledge import load_conceptnet
+from core.knowledge.fact_extractor import FactExtractor
+from core.knowledge.world_knowledge import load_conceptnet
 
 
 def _norm(token):

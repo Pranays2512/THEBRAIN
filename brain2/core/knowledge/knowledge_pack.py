@@ -19,8 +19,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from knowledge_base import KnowledgeBase
-from core_knowledge import load_core
+from core.knowledge.knowledge_base import KnowledgeBase
+from core.knowledge.core_knowledge import load_core
 
 
 def build_pack(out_path=None, extra_tsv=None, extra_nt=None, conceptnet=True):

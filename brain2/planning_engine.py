@@ -24,7 +24,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from knowledge_engine import KnowledgeEngine, KnowledgeError
+from core.knowledge.knowledge_engine import KnowledgeEngine, KnowledgeError
 from tree_reason import SearchProblem, solve
 
 

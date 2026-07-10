@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from knowledge_engine import KnowledgeEngine, KnowledgeError
+from core.knowledge.knowledge_engine import KnowledgeEngine, KnowledgeError
 
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"
