@@ -668,16 +668,21 @@ class WholeBrain:
         repeated synthesis learns the right space per task FAMILY and NEW tasks transfer by
         signature. Falls back to the static engine if the proposer is unavailable — the
         verifier gates every result, so guidance changes SPEED, never correctness."""
+    def _guided_solve(self, ex, kind, oracle):
+        """Pass to proposer if available, otherwise direct."""
         if self._proposer is None:
             try:
-                from engines.synthesis.online_proposer2 import FeatureProposer
-                self._proposer = FeatureProposer()
+                from engines.synthesis.unified_proposer import UnifiedProposer
+                self._proposer = UnifiedProposer()
             except Exception:
                 self._proposer = False
         if self._proposer:
-            name, code, _ = self._proposer.solve(ex, kind, oracle)
-            if code:
-                return name, code
+            # UnifiedProposer expects a problem dict
+            res = self._proposer.solve({"type": kind, "data": ex, "oracle": oracle})
+            if res and "code" in res:
+                return res.get("policy", "code_synth"), res["code"]
+            # Fallback if the proposer couldn't solve it
+            return None, None
         return SE.solve(ex, kind)                        # static-order fallback
 
     def ask_rich(self, q):

@@ -23,8 +23,8 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from engines.reasoning.tree_reason import solve
-from engines.synthesis.program_synth_guided import OPS, run, Synthesize
-from engines.synthesis.program_synth_tree import DecisionTree, collect, tree_scores
+from engines.synthesis._program_synth_guided import OPS, run, Synthesize
+from engines.synthesis._program_synth_tree import DecisionTree, collect, tree_scores
 
 
 def train_policy(seed=1):

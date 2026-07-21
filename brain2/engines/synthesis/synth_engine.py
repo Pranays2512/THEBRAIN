@@ -16,11 +16,11 @@ coverage (how many the brain writes, no LLM) and which space solved each.
 """
 
 from engines.synthesis import composable_synth as C
-from engines.synthesis import loop_synth3 as L3
-from engines.synthesis import loop_synth4 as L4
+from engines.synthesis import _loop_synth_v3 as L3
+from engines.synthesis import _loop_synth_v4 as L4
 from engines.synthesis import dp_proposer as DP
-from engines.synthesis import loop_synth as L1          # earlier fold synthesizer (fallback coverage)
-from engines.synthesis import loop_synth2 as L2         # two-accumulator + conditional synthesizer (fallback)
+from engines.synthesis import _loop_synth as L1          # earlier fold synthesizer (fallback coverage)
+from engines.synthesis import _loop_synth_v2 as L2         # two-accumulator + conditional synthesizer (fallback)
 
 
 # ── backends: each takes examples in (args, out) form, returns Python code or None

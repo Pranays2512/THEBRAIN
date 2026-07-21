@@ -24,7 +24,7 @@ import random
 import numpy as np
 
 from engines.synthesis.composable_synth import (INITS, RANGES, GUARDS, UPDATES, EARLIES, FINALS, run)
-from engines.synthesis.program_synth_tree import DecisionTree
+from engines.synthesis._program_synth_tree import DecisionTree
 
 IK, RK = INITS, RANGES
 GK, UK, EK, FK = list(GUARDS), list(UPDATES), list(EARLIES), list(FINALS)

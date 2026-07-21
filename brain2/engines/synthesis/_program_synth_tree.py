@@ -23,8 +23,8 @@ import random
 import numpy as np
 
 from engines.reasoning.tree_reason import SearchProblem, solve
-from engines.synthesis.program_synth_guided import OPS, run, features, rand_name, rand_program, make_hard_tasks
-from engines.synthesis.program_synth_policy import learn_policy, policy_scores as linear_scores, PolicySynth
+from engines.synthesis._program_synth_guided import OPS, run, features, rand_name, rand_program, make_hard_tasks
+from engines.synthesis._program_synth_policy import learn_policy, policy_scores as linear_scores, PolicySynth
 
 
 # ── a small, dependency-free multiclass decision tree ────────────────────────
@@ -153,7 +153,7 @@ def main():
 
     rows = {"blind": [0, 0], "linear": [0, 0], "tree": [0, 0]}
     for ex, _ in tasks:
-        from engines.synthesis.program_synth_guided import Synthesize
+        from engines.synthesis._program_synth_guided import Synthesize
         pb, _, nb = solve(Synthesize(ex, max_len=6, prior=None), max_nodes=600_000)
         pl, _, nl = solve(PolicySynth(ex, W, max_len=6), max_nodes=600_000)
         pt, _, nt = solve(TreeSynth(ex, tree, max_len=6), max_nodes=600_000)

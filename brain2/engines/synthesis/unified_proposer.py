@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from engines.synthesis.program_synth_tree import DecisionTree
+from engines.synthesis._program_synth_tree import DecisionTree
 from engines.math.math_engine import MathEngine, render
 from engines.code.code_engine import CodeEngine
 
