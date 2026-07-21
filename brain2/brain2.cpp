@@ -190,6 +190,8 @@ PYBIND11_MODULE(brain2, m) {
              float reward_mod) { s.update(to_vec(arr), bmu, reward_mod); },
           py::arg("input"), py::arg("bmu"), py::arg("reward_mod") = 1.0f,
           "Update SOM weights toward input centered on bmu")
+      .def("hebbian_nudge", &SOM::hebbian_nudge, py::arg("neuron_a"), py::arg("neuron_b"), py::arg("strength") = 0.05f,
+           "Nudge neuron_a toward neuron_b for topology bridging")
       .def(
           "neuron_weights",
           [](const SOM &s, int i) { return to_np(s.neuron_weights(i)); },
@@ -877,6 +879,8 @@ PYBIND11_MODULE(brain2, m) {
            py::arg("value"))
       .def("resolve_fact", &Brain::resolve_fact, py::arg("entity"), py::arg("rel"),
            py::arg("value"), "Trusted intentional overwrite (bypasses the conflict gate)")
+      .def("learn_from_crisp", &Brain::learn_from_crisp, py::arg("entity"), py::arg("rel"),
+           py::arg("value"), "Teaching Bridge: Pushes a verified fact to fuzzy memory & topology")
       .def("crisp_quarantined", &Brain::crisp_quarantined,
            "Count of conflicting fact-writes held out of the truth store")
       .def_readwrite("strict_facts", &Brain::strict_facts_,

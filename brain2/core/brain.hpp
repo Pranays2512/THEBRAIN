@@ -167,6 +167,32 @@ public:
         crisp_quarantine.erase(key);
     }
 
+    // Teaching Bridge: The crisp layer pushes a verified fact (e.g. mass*accel=force)
+    // into the fuzzy brain's associative memory and topological space.
+    void learn_from_crisp(const std::string& entity, const std::string& rel, double value) {
+        // 1. Audit / gating
+        teach_fact(entity, rel, value);
+
+        // 2. Write to fuzzy associative memory (BindingMemory)
+        // Vectorize the scalar value as magnitude along a reserved dimension/vector,
+        // or just rely on language.encode(str(value)) for now which gives a unique vector.
+        std::vector<float> v_ent = language.encode(entity);
+        std::vector<float> v_rel = language.encode(rel);
+        std::vector<float> v_val = language.encode(std::to_string(value));
+        binding.bind(v_ent, v_rel, v_val);
+
+        // 3. Topology Bridge (if both are known symbols, nudge them together)
+        if (symbolic.knows(entity) && symbolic.knows(rel)) {
+            try {
+                int bmu_ent = som.find_bmu(v_ent);
+                int bmu_rel = som.find_bmu(v_rel);
+                som.hebbian_nudge(bmu_ent, bmu_rel, 0.05f);
+            } catch (...) {
+                // Ignore SOM exceptions during topology update
+            }
+        }
+    }
+
     size_t crisp_quarantined() const {
         size_t n = 0;
         for (const auto& kv : crisp_quarantine) n += kv.second.size();

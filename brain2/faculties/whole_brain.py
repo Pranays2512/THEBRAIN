@@ -30,6 +30,8 @@ from engines.reasoning.means_ends import PolicyMemory, FactSource, PolicySource,
 from engines.synthesis import synth_engine as SE
 from engines.store.brain_store import BrainStore
 from faculties.appraisal_engine import AppraisalEngine
+from faculties.event_bus import bus
+from faculties.curiosity_bridge import CuriosityBridge
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
 # Paraphrase -> canonical token, so routing isn't brittle to exact wording. A real
@@ -61,7 +63,18 @@ CODE_TASKS["fibonacci"] = ("int1", CODE_TASKS["fibonacci"][1], _fib)
 class WholeBrain:
     def __init__(self):
         self.store = BrainStore()
-        self._proposer = None                       # lazy online_proposer2 (guided code synth)
+        try:
+            from engines.synthesis.unified_proposer import UnifiedProposer
+            self._proposer = UnifiedProposer()
+        except ImportError:
+            self._proposer = None
+
+        try:
+            from engines.reasoning.dual_process_engine import DualProcessSolver, train_policy
+            self.dual_solver = DualProcessSolver(train_policy())
+        except ImportError:
+            self.dual_solver = None
+
         try:
             import json
             from engines.knowledge.concept_memory import ConceptMemory
@@ -160,6 +173,18 @@ class WholeBrain:
             if sims and sims[0][0] >= 0.6 and (len(sims) < 2 or sims[0][0] - sims[1][0] >= 0.1):
                 self.ctx_map[w] = sims[0][1]
 
+        # Topology and Curiosity Bridges
+        if self.brain is not None:
+            self.curiosity_bridge = CuriosityBridge(self.brain, self._proposer, self.kre)
+            bus.subscribe("verified_fact", self._on_verified_fact)
+            
+    def _on_verified_fact(self, data):
+        if self.brain is not None:
+            try:
+                self.brain.learn_from_crisp(str(data["entity"]), str(data["rel"]), float(data["value"]))
+            except Exception:
+                pass
+
     def ask(self, text):
         toks = [self.ctx_map.get(SYNONYMS.get(t, t), SYNONYMS.get(t, t))
                 for t in re.findall(r"[a-z_]+", text.lower())]
@@ -189,6 +214,8 @@ class WholeBrain:
         if rel and ent:
             v = MeansEndsSolver([FactSource(self.fkb), PolicySource(self.mem)]).solve(Need(ent, rel))
             if v is not None:
+                bus.publish("solved_problem")
+                bus.publish("verified_fact", {"entity": ent, "rel": rel, "value": v})
                 return ("compute", f"{ent}.{rel} = {v:.4g}", True)
         # FACTUAL: abilities
         if "can" in ts:
@@ -217,7 +244,10 @@ class WholeBrain:
         # richer query comprehension (compare / compound / boolean / nested) before giving up
         rich = self.ask_rich(text)
         if rich is not None:
+            bus.publish("solved_problem")
             return ("compute", rich, True)
+        
+        bus.publish("unsolved_problem")
         return ("none", "I don't know.", False)
 
     def _read_event(self, text):
@@ -263,6 +293,10 @@ class WholeBrain:
         # novelty (token-level) is the differentiating readable signal; `neural` carries the
         # real C++ SOM/predictor state (bmu/surprise/valence) — meaningful once the Brain is
         # semantically grounded + trained (a fresh SOM collapses these to ~constant).
+        
+        if novelty > 0.2:
+            bus.publish("novelty_spike", novelty)
+            
         return {"novelty": round(novelty, 2), "utterance": ap.type, "felt": felt,
                 "perceived": self.brain is not None, "neural": neural}
 
@@ -275,6 +309,10 @@ class WholeBrain:
         # real 'how expected was this?' signal, distinct from lexical novelty above.
         if kind == "event" and self.reader.last_surprise is not None:
             perc["surprise"] = round(self.reader.last_surprise, 2)
+            
+        if hasattr(self, 'curiosity_bridge') and self.curiosity_bridge is not None:
+            self.curiosity_bridge.tick()
+            
         return {"perception": perc, "answer": {"kind": kind, "msg": msg, "verified": ok}}
 
     # ── self-extension + verification faculties (formerly orphaned, now wired in) ──

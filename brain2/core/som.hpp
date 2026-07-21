@@ -274,6 +274,30 @@ public:
         // For now, nodes simply drift.
     }
 
+    // Topology Bridge: Nudge neuron_a's weights toward neuron_b's weights
+    // Called when a crisp structural relationship (e.g., isa) is learned,
+    // pulling the concepts closer in the fuzzy latent space.
+    void hebbian_nudge(int neuron_a, int neuron_b, float strength = 0.05f) {
+        if (neuron_a < 0 || neuron_a >= n_neurons || neuron_b < 0 || neuron_b >= n_neurons) return;
+        std::lock_guard<std::mutex> lock(*update_mtx_);
+        
+        float* wa = &weights_[neuron_a * n_dims];
+        const float* wb = &weights_[neuron_b * n_dims];
+        
+        for (int j = 0; j < n_dims; j++) {
+            wa[j] += strength * (wb[j] - wa[j]);
+        }
+        
+        // Also add a graph edge if they aren't already connected
+        if (std::find(neighbors_[neuron_a].begin(), neighbors_[neuron_a].end(), neuron_b) == neighbors_[neuron_a].end()) {
+            if (neighbors_[neuron_a].size() < (size_t)max_neighbors) {
+                neighbors_[neuron_a].push_back(neuron_b);
+            } else {
+                neighbors_[neuron_a][0] = neuron_b; // Very naive replacement
+            }
+        }
+    }
+
     std::vector<float> neuron_weights(int i) const {
         if (i < 0 || i >= n_neurons)
             throw std::out_of_range("SOM::neuron_weights: out of range");
