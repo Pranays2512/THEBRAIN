@@ -220,6 +220,32 @@ public:
         return table_.count(sym) > 0;
     }
 
+    /**
+     * ground() — SOM-grounding soft update (Fix C).
+     *
+     * Called from Brain::perceive() after the SOM step when the current word
+     * is also registered in Symbolic.  Nudges the symbol's vector toward the
+     * observed SOM activation so the two spaces stay geometrically aligned.
+     *
+     * Rate is tiny (lr=0.005 default) — the seeded vector is SHAPED, not
+     * overwritten.  Only operates on NONE-op symbols (numbers, constants,
+     * variables); operator semantics (+, -, *, …) stay fixed.
+     */
+    void ground(const std::string& symbol,
+                const std::vector<float>& som_act,
+                float lr = 0.005f) {
+        if ((int)som_act.size() != n_dims) return;
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = table_.find(symbol);
+        if (it == table_.end()) return;
+        if (it->second.op != SymbolOp::NONE) return;  // preserve operator semantics
+        auto& vec = it->second.vec;
+        for (int i = 0; i < n_dims; i++)
+            vec[i] += lr * (som_act[i] - vec[i]);
+        float n2 = norm(vec);
+        if (n2 > 1e-8f) for (auto& x : vec) x /= n2;
+    }
+
     int symbol_count() const {
         std::lock_guard<std::mutex> lock(*mtx_);
         return (int)table_.size();

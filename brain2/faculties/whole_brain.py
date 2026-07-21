@@ -164,6 +164,13 @@ class WholeBrain:
         toks = [self.ctx_map.get(SYNONYMS.get(t, t), SYNONYMS.get(t, t))
                 for t in re.findall(r"[a-z_]+", text.lower())]
         ts = set(toks)
+        
+        # BASIC MATH: raw arithmetic questions / word problems (if the word_math engine can solve it)
+        from engines.math.word_math import solve as solve_word_math
+        math_ans = solve_word_math(text)
+        if math_ans is not None:
+            return ("compute", math_ans, True)
+            
         if CODE_WORDS & ts:
             return self._code(toks)
         # RICHER queries first (compare / compound / boolean / nested) — they'd otherwise be

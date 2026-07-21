@@ -47,11 +47,15 @@ class NeuralLM:
         self.E = self.rng.standard_normal((V, self.d)) * s
         self.W1 = self.rng.standard_normal((self.h, self.k * self.d)) * s
         self.b1 = np.zeros(self.h)
+        import time
+        import sys as _sys
+        _t0 = time.time()
         self.W2 = self.rng.standard_normal((V, self.h)) * s
         self.b2 = np.zeros(V)
+        total_items = self.epochs * len(pairs)
         for ep in range(self.epochs):
             self.rng.shuffle(pairs)
-            for ctx, tgt in pairs:
+            for i, (ctx, tgt) in enumerate(pairs):
                 x = self.E[ctx].reshape(-1)
                 hpre = self.W1 @ x + self.b1
                 hh = np.tanh(hpre)
@@ -67,6 +71,21 @@ class NeuralLM:
                 self.W1 -= self.lr * dW1; self.b1 -= self.lr * db1
                 for j, wid in enumerate(ctx):
                     self.E[wid] -= self.lr * dx[j]
+                
+                # Progress bar every 200 pairs
+                iter_done = ep * len(pairs) + i + 1
+                if iter_done % 200 == 0 or iter_done == total_items:
+                    elapsed = time.time() - _t0
+                    rate = elapsed / iter_done
+                    rem = (total_items - iter_done) * rate
+                    eta_str = f"{int(rem//60)}m {int(rem%60)}s"
+                    pct = 100 * iter_done / max(total_items, 1)
+                    bar_len = 30
+                    filled = int(bar_len * pct // 100)
+                    bar = '█' * filled + '-' * (bar_len - filled)
+                    _sys.stdout.write(f"\r    [LM/Numpy] |{bar}| {pct:.1f}%  Epoch {ep+1}/{self.epochs}  ETA: {eta_str}   ")
+                    _sys.stdout.flush()
+        print()
         return self
 
     def dist(self, context):

@@ -75,3 +75,25 @@ endif()
 if(USE_CUDA)
     target_link_libraries(test_brain PRIVATE CUDA::cudart)
 endif()
+
+# ── Router Unit Tests (no pybind11 dependency) ───────────────────────────────
+
+add_executable(test_internalrouter test_internalrouter.cpp)
+target_include_directories(test_internalrouter PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(test_internalrouter PRIVATE OpenMP::OpenMP_CXX)
+endif()
+
+add_executable(test_externalrouter test_externalrouter.cpp)
+target_include_directories(test_externalrouter PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(test_externalrouter PRIVATE OpenMP::OpenMP_CXX)
+endif()
+
+message(STATUS "Router tests: test_internalrouter, test_externalrouter")
+
+add_executable(test_fixes test_fixes.cpp)
+target_include_directories(test_fixes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(test_fixes PRIVATE OpenMP::OpenMP_CXX)
+endif()

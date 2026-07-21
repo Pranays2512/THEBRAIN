@@ -81,10 +81,13 @@ class NeuralLMTorch:
         import time as _time
         _t0 = _time.time()
         _every = max(1, self.epochs // 10)
+        import sys as _sys
         for ep in range(self.epochs):
             perm = torch.randperm(n, device=self.device)
             _el = 0.0
-            for i in range(0, n, self.batch):          # MINI-BATCH: caps memory regardless of corpus
+            steps = list(range(0, n, self.batch))
+            total_steps = len(steps)
+            for step_idx, i in enumerate(steps):
                 idx = perm[i:i + self.batch]
                 logits = self.model(X[idx])[:, -1, :]  # predict next from last position
                 loss = lossf(logits, Y[idx])
@@ -92,9 +95,23 @@ class NeuralLMTorch:
                 loss.backward()
                 opt.step()
                 _el = loss.item()
-            if ep % _every == 0 or ep == self.epochs - 1:
-                print("    epoch %d/%d  loss %.3f  (%.1fs)" % (
-                    ep + 1, self.epochs, _el, _time.time() - _t0), flush=True)
+                
+                # Progress bar update every 10 steps or at end
+                if step_idx % 10 == 0 or step_idx == total_steps - 1:
+                    elapsed = _time.time() - _t0
+                    total_iter_done = (ep * total_steps) + step_idx + 1
+                    total_iters = self.epochs * total_steps
+                    rate = elapsed / total_iter_done
+                    rem = (total_iters - total_iter_done) * rate
+                    eta_str = f"{int(rem//60)}m {int(rem%60)}s"
+                    
+                    pct = 100 * total_iter_done / total_iters
+                    bar_len = 30
+                    filled = int(bar_len * pct // 100)
+                    bar = '█' * filled + '-' * (bar_len - filled)
+                    _sys.stdout.write(f"\r    [LM] |{bar}| {pct:.1f}%  Epoch {ep+1}/{self.epochs}  Loss {_el:.3f}  ETA: {eta_str}   ")
+                    _sys.stdout.flush()
+        print()  # newline after progress bar
         self.model.eval()
         self._pad = pad
         return self
@@ -108,14 +125,18 @@ class NeuralLMTorch:
         p = torch.softmax(self.model(x)[0, -1], dim=-1).tolist()
         return {self.i2w[i]: p[i] for i in range(len(p))}
 
-    def generate(self, max_len=14, seed=0):
+    def generate(self, prompt=None, max_len=14, seed=0):
         torch.manual_seed(seed)
         out = []
+        if prompt:
+            out.extend(prompt)
         for _ in range(max_len):
             d = self.dist(out)
             for sp in ("<s>", "<unk>", "<pad>"):
                 d.pop(sp, None)
             words = list(d)
+            if not words:
+                break
             probs = torch.tensor([d[w] for w in words])
             nxt = words[torch.multinomial(probs / probs.sum(), 1).item()]
             if nxt == "</s>":

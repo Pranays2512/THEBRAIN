@@ -95,6 +95,41 @@ class PhysicsEngine:
             raise PhysicsError("lhs must be a single variable symbol")
         self.laws[name] = (lhs_symbol, rhs_expr)
 
+    def load_from_knowledge(self, facts):
+        """Parse equation-like facts from the Knowledge Engine into executable laws.
+        
+        Scans all (subject, relation, object) triples for patterns like:
+            second_law | can | written_as_f=ma  ->  F = m*a
+            kinetic_energy | equals | 0.5*m*v^2 ->  KE = 0.5*m*v^2
+        
+        The parser converts simple infix equation strings into the tuple format
+        the engine already understands. Returns the count of laws loaded.
+        """
+        loaded = 0
+        for s, r, o in facts:
+            # Pattern 1: "written_as_X=Y" or "equals_X=Y"
+            eq_str = None
+            if "written_as_" in o:
+                eq_str = o.split("written_as_", 1)[1]
+            elif "equals_" in o:
+                eq_str = o.split("equals_", 1)[1]
+            elif r in ("equals", "defined_as", "formula") and "=" in o:
+                eq_str = o
+            
+            if eq_str and "=" in eq_str:
+                try:
+                    name = s.replace(" ", "_")
+                    lhs_str, rhs_str = eq_str.split("=", 1)
+                    lhs_str, rhs_str = lhs_str.strip(), rhs_str.strip()
+                    if lhs_str and rhs_str:
+                        rhs_tree = _parse_infix(rhs_str)
+                        if rhs_tree is not None:
+                            self.add_law(name, lhs_str.upper(), rhs_tree)
+                            loaded += 1
+                except Exception:
+                    pass   # skip unparseable equations — honest fail
+        return loaded
+
     def variables(self, name):
         lhs, rhs = self.laws[name]
         out = {lhs}
@@ -127,6 +162,79 @@ class PhysicsEngine:
         return round(value, 6), [formula, f"{target} = {subst} = {round(value, 6)}"]
 
 
+# ── infix equation parser: "m*a" -> ("*", "m", "a") ─────────────────────────
+def _parse_infix(s):
+    """Parse a simple infix equation string into the tuple format.
+    Handles: *, /, +, -, ^, and 0.5 as a float literal.
+    Operator precedence: ^ > * / > + -
+    Returns None if unparseable."""
+    s = s.strip()
+    if not s:
+        return None
+    try:
+        return _parse_add(s)
+    except Exception:
+        return None
+
+
+def _parse_add(s):
+    """Handle + and - (lowest precedence)."""
+    depth = 0
+    # scan right-to-left for + or - not inside parens
+    for i in range(len(s) - 1, 0, -1):
+        if s[i] == '(':
+            depth += 1
+        elif s[i] == ')':
+            depth -= 1
+        elif depth == 0 and s[i] in ('+', '-'):
+            left = _parse_add(s[:i].strip())
+            right = _parse_mul(s[i + 1:].strip())
+            return (s[i], left, right)
+    return _parse_mul(s)
+
+
+def _parse_mul(s):
+    """Handle * and / (medium precedence)."""
+    depth = 0
+    for i in range(len(s) - 1, 0, -1):
+        if s[i] == '(':
+            depth += 1
+        elif s[i] == ')':
+            depth -= 1
+        elif depth == 0 and s[i] in ('*', '/'):
+            left = _parse_mul(s[:i].strip())
+            right = _parse_pow(s[i + 1:].strip())
+            return (s[i], left, right)
+    return _parse_pow(s)
+
+
+def _parse_pow(s):
+    """Handle ^ (highest precedence, right-associative)."""
+    depth = 0
+    for i in range(len(s)):
+        if s[i] == '(':
+            depth += 1
+        elif s[i] == ')':
+            depth -= 1
+        elif depth == 0 and s[i] == '^':
+            left = _parse_atom(s[:i].strip())
+            right = _parse_pow(s[i + 1:].strip())
+            return ("^", left, right)
+    return _parse_atom(s)
+
+
+def _parse_atom(s):
+    """Parse a single token: number, variable, or parenthesized expression."""
+    s = s.strip()
+    if s.startswith('(') and s.endswith(')'):
+        return _parse_add(s[1:-1])
+    try:
+        v = float(s)
+        return int(v) if v == int(v) else v
+    except ValueError:
+        return s   # variable name
+
+
 def _subst(expr, env):
     if isinstance(expr, str) and expr in env:
         return env[expr]
@@ -156,6 +264,26 @@ def _demo():
             print(f"      {s}")
         print()
 
+    # Demo: loading a law from Knowledge Engine facts
+    print("=== loading laws from Knowledge Engine facts ===\n")
+    fake_facts = [
+        ("second_law", "can", "written_as_F=m*a"),
+        ("speed_law", "equals", "v=d/t"),
+        ("kinetic_energy", "defined_as", "KE=0.5*m*v^2"),
+    ]
+    pe2 = PhysicsEngine()
+    n = pe2.load_from_knowledge(fake_facts)
+    print(f"  Loaded {n} laws from KB facts.")
+    for name in pe2.laws:
+        lhs, rhs = pe2.laws[name]
+        print(f"    {name}: {lhs} = {render(rhs)}")
+    if "second_law" in pe2.laws:
+        val, steps = pe2.solve("second_law", "F", m=5, a=10)
+        print(f"\n  Solve F from KB-learned second_law: F = {val}")
+        for s in steps:
+            print(f"      {s}")
+
 
 if __name__ == "__main__":
     _demo()
+

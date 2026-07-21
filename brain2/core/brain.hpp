@@ -55,6 +55,9 @@
 #include "analogy.hpp"
 #include "logic_engine.hpp"
 #include "policy_engine.hpp"
+// Routing layer (internal signal router + fuzzy↔crisp membrane)
+#include "internalrouter.hpp"
+#include "externalrouter.hpp"
 
 #include <vector>
 #include <string>
@@ -122,6 +125,12 @@ public:
     // fuzzy binding memory — the crisp half of the brain.
     PolicyMemory          policy_mem;
     std::map<std::pair<std::string, std::string>, double> crisp_facts;
+
+    // ── Routing layer ───────────────────────────────────────────────────────
+    // InternalRouter: decides which cognitive mode the brain is in each step.
+    // ExternalRouter: packages outbound signals + gates inbound crisp facts/policies.
+    InternalRouter  router_;
+    ExternalRouter  ext_router_;
     // Conflicting writes are QUARANTINED here (not applied to the truth store) so a caller
     // can't silently poison a fact by writing a different value. Held for audit/resolution.
     std::map<std::pair<std::string, std::string>, std::vector<double>> crisp_quarantine;
@@ -204,6 +213,71 @@ public:
         return eng.learn(target, entity);
     }
 
+    // ── Router public API ────────────────────────────────────────────────────
+
+    /**
+     * route() — query the InternalRouter for the current cognitive mode.
+     * Call AFTER perceive() to get the mode that should govern downstream
+     * modules for this step.
+     *
+     * @param pr  PerceiveResult from the most recent perceive() call.
+     */
+    RoutingDecision route(const PerceiveResult& pr) const noexcept {
+        auto is = build_internal_state();
+        return router_.decide(
+            pr.prediction_error,
+            emotion.arousal,
+            emotion.valence,
+            pr.salience,
+            is.wm_load,
+            emotion.approach_mode(),
+            pr.episodic_stored,
+            global_ws.winner_id());
+    }
+
+    /**
+     * pack_outbound() — bundle the latest brain state into an OutboundSignal
+     * for the Python crisp layer.  Includes the InternalRouter decision so
+     * the crisp layer knows what mode the fuzzy brain is in.
+     *
+     * @param pr   PerceiveResult from the most recent perceive() call.
+     * @param mode The RoutingDecision.mode from route() (pass it in to avoid
+     *             recomputing internal state twice).
+     */
+    OutboundSignal pack_outbound(const PerceiveResult& pr,
+                                 RouteMode mode) const noexcept {
+        auto is = build_internal_state();
+        return ext_router_.pack(
+            pr.prediction_error,
+            pr.valence,
+            pr.arousal,
+            pr.salience,
+            is.wm_load,
+            pr.bmu,
+            pr.self_concept,
+            global_ws.winner_id(),
+            pr.episodic_stored,
+            mode);
+    }
+
+    /**
+     * accept_fact() — membrane-gated inbound fact from the Python crisp layer.
+     * Only verified=true facts are admitted.  Conflicts go to quarantine.
+     * Returns true if the fact was accepted into crisp_facts.
+     */
+    bool accept_fact(const InboundFact& f) {
+        return ext_router_.accept_fact(f).accepted;
+    }
+
+    /**
+     * accept_policy() — membrane-gated inbound policy from the Python crisp layer.
+     * Only verified=true policies are admitted into policy_mem.
+     * Returns true if the policy was accepted.
+     */
+    bool accept_policy(const InboundPolicy& p) {
+        return ext_router_.accept_policy(p).accepted;
+    }
+
     std::unordered_map<std::string, double> profile_times_;
     std::vector<std::string> spoken_words;
 
@@ -278,6 +352,8 @@ private:
     std::vector<float>          prev_input_;   // buffered for 1-step-ahead prediction
     bool                        have_prev_act_ = false;
     std::vector<float>          last_act_map_;   // last SOM activation for grounding
+    std::string                 last_word_;      // [Fix C] last symbolically-known word perceived
+    bool                        pending_daydream_ = false; // [Fix A] consumed by tick()
 
     // σ-gating: online EWMA of CE errors for self-calibrating thresholds
     // WM gate fires at err > mu + 1*sigma (~16% rate), episodic at mu + 2*sigma (~2.5%)
@@ -373,6 +449,20 @@ public:
           mtx_(std::make_unique<std::mutex>()) {
         symbolic.seed_math_symbols();
         som_max_neurons_ = som.n_neurons * 3;      // auto-grow cap: up to 3x the initial grid
+
+        // Wire ExternalRouter callbacks → Brain (avoids circular #include).
+        // Only verified facts/policies will reach these callbacks because the
+        // ExternalRouter's accept_fact() / accept_policy() gate at the door.
+        ext_router_.set_fact_writer([this](const std::string& e,
+                                           const std::string& r,
+                                           double v) {
+            this->teach_fact(e, r, v);
+        });
+        ext_router_.set_policy_writer([this](const std::string& t,
+                                              const std::vector<std::string>& ins,
+                                              const ExprPtr& expr) {
+            this->policy_add(t, ins, expr);
+        });
     }
 
     Brain(Brain&&)            = default;
@@ -483,6 +573,11 @@ public:
         int bmu      = som.find_bmu(input);
         auto act_map = som.activation_map(input);
         som.update(input, bmu, 1.f + emotion.lr_modulator() * 0.5f);
+        // [Fix C] SOM→Symbolic grounding: soft-nudge the symbolic vector
+        // of the last symbolically-known word toward the current SOM
+        // activation map, keeping both spaces geometrically aligned.
+        if (!last_word_.empty() && symbolic.knows(last_word_))
+            symbolic.ground(last_word_, act_map);
         auto t1 = std::chrono::high_resolution_clock::now();
         profile_times_["SOM"] += std::chrono::duration<double, std::micro>(t1 - t0).count();
         
@@ -661,6 +756,10 @@ public:
         auto end_all = std::chrono::high_resolution_clock::now();
         profile_times_["Total_Perceive"] += std::chrono::duration<double, std::micro>(end_all - start_all).count();
 
+        // ── InternalRouter auto-actions (Fixes A + B) ────────────────────────
+        //   After building r, run the InternalRouter and act on its decision
+        //   WITHOUT holding the perceive mutex (daydream/imagination acquire
+        //   their own locks internally).
         PerceiveResult r;
         r.bmu              = bmu;
         r.prediction_error = error;
@@ -671,6 +770,47 @@ public:
         r.arousal          = emotion.arousal;
         r.salience         = attn_result.score;
         r.self_concept     = self_model.current_concept(istate);
+
+        {
+            auto rd = route(r);  // InternalRouter decision for this step
+
+            // [Fix A] CONSOLIDATE mode → auto-trigger daydream() for replay
+            // Only fire on every 8th step to avoid stalling the perceive loop.
+            if (rd.trigger_replay && (step_ % 8 == 0)) {
+                // Release the perceive mutex before daydream acquires its own
+                // (daydream is lock_guard-protected internally)
+                // We call it AFTER the lock_guard scope ends, via a deferred flag.
+                // Since we still hold the lock here, schedule it as a tail-call.
+                // Simplest safe approach: call directly — daydream's mutex is the
+                // SAME mtx_, so we'd deadlock.  Instead, skip the lock inside:
+                // daydream() is already guarded.  We can't call it while holding
+                // the lock.  Store the flag and call after return.
+                // → Set a member flag; caller checks it.
+                pending_daydream_ = true;
+            }
+
+            // [Fix B] IMAGINE mode → simulate from current WM context
+            // Run offline — imagination locks its own mutex around the predictor.
+            // predictor is NOT the same mutex, so this is safe to call here.
+            if (rd.mode == RouteMode::IMAGINE && !working_mem.empty()) {
+                auto wm_ctx = working_mem.context();
+                if (!wm_ctx.empty()) {
+                    // Use 5 simulation steps (lightweight, non-blocking)
+                    int sim_steps = static_cast<int>(rd.imagination_gain * 5.f) + 3;
+                    auto sim = imagination.simulate(wm_ctx, sim_steps);
+                    // [Fix B] Feed coherent imagination frames back into WM as
+                    // soft priming — lets the brain "continue the thought"
+                    if (sim.coherence > 0.5f && sim.frames.size() > 1) {
+                        for (size_t fi = 1; fi < sim.frames.size(); fi += 2) {
+                            working_mem.gate(sim.frames[fi], emotion.salience() * 0.3f);
+                        }
+                        working_mem.tick();
+                        profile_times_["Imagination"] += 0.f;  // placeholder counter
+                    }
+                }
+            }
+        }
+
         return r;
     }
 
@@ -997,6 +1137,25 @@ public:
     }
 
     // Reset sequence boundary (call between unrelated sequences)
+    /**
+     * tick() — [Fix A] Consume any pending daydream scheduled by perceive().
+     *
+     * perceive() cannot call daydream() directly (both hold mtx_).  Instead it
+     * sets pending_daydream_=true and the caller calls tick() between perceive
+     * steps.  A lightweight, non-blocking design: if no daydream is pending the
+     * call is a single bool check.
+     *
+     * Typical usage:
+     *   auto pr = brain.perceive(vec);
+     *   brain.tick();   // drains any queued daydream
+     */
+    void tick() {
+        if (pending_daydream_) {
+            pending_daydream_ = false;
+            daydream();
+        }
+    }
+
     void reset_sequence() {
         predictor.reset();
         working_mem.clear();
@@ -1010,6 +1169,8 @@ public:
     // HEAR: hear a word grounded to last SOM activation (not blended WM context)
     // This ensures word vectors learn clean concept activations, not blends.
     void hear(const std::string& word) {
+        // [Fix C] track last symbolically-known word for SOM→Symbolic grounding
+        if (symbolic.knows(word)) last_word_ = word;
         if (!last_act_map_.empty()) {
             language.hear(word, last_act_map_);
         } else {

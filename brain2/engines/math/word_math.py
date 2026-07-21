@@ -26,10 +26,10 @@ NUM_WORDS = {
 # verbs that REMOVE from the running quantity vs ADD to it
 SUBTRACT = {"give", "gave", "given", "lose", "lost", "spend", "spent", "eat",
             "ate", "sell", "sold", "remove", "removed", "drop", "dropped",
-            "away", "take", "took", "use", "used", "break", "broke"}
+            "away", "take", "took", "use", "used", "break", "broke", "minus"}
 ADD = {"get", "got", "buy", "bought", "add", "added", "receive", "received",
        "gain", "gained", "find", "found", "more", "pick", "picked", "earn",
-       "earned", "collect", "collected"}
+       "earned", "collect", "collected", "plus"}
 
 
 def _tokens(text):

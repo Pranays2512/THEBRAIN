@@ -915,7 +915,71 @@ PYBIND11_MODULE(brain2, m) {
           [](Brain &b) -> HierarchicalPredictor & { return b.h_predictor; },
           py::return_value_policy::reference_internal)
       .def_property_readonly("step", &Brain::step)
-      .def_property_readonly("initialized", &Brain::initialized);
+      .def_property_readonly("initialized", &Brain::initialized)
+
+      // ── Router methods (Fix A/B + crisp membrane) ─────────────────────────
+      .def("route",
+           [](Brain& b, const PerceiveResult& pr) {
+             return b.route(pr);
+           },
+           py::arg("pr"),
+           "Run InternalRouter on a PerceiveResult and return a RoutingDecision")
+      .def("tick",
+           &Brain::tick,
+           "Drain any pending daydream scheduled by perceive() (Fix A)")
+      .def("pack_outbound",
+           [](Brain& b, const PerceiveResult& pr, RouteMode mode) {
+             auto sig = b.pack_outbound(pr, mode);
+             // Return as Python dict — maps OutboundSignal fields to Python
+             py::dict d;
+             d["novelty"]      = sig.novelty;
+             d["valence"]      = sig.valence;
+             d["arousal"]      = sig.arousal;
+             d["salience"]     = sig.salience;
+             d["wm_load"]      = sig.wm_load;
+             d["bmu"]          = sig.bmu;
+             d["self_concept"] = sig.self_concept;
+             d["gw_winner"]    = sig.gw_winner;
+             d["gate_open"]    = sig.gate_open;
+             d["confidence"]   = sig.confidence;
+             d["domain_hint"]  = sig.domain_hint;
+             // mode_name: stringify the InternalRouter mode for Python
+             d["mode_name"]    = std::string(route_mode_name((RouteMode)sig.internal_mode));
+             // episodic_stored is part of PerceiveResult, not OutboundSignal
+             d["episodic_stored"] = pr.episodic_stored;
+             return d;
+           },
+           py::arg("pr"), py::arg("mode"),
+           "Package the brain state as an outbound signal dict for Python")
+      .def("accept_fact",
+           [](Brain& b, const std::string& entity, const std::string& relation,
+              double value, bool verified, const std::string& source) {
+             InboundFact f;
+             f.entity   = entity;
+             f.relation = relation;
+             f.value    = value;
+             f.verified = verified;
+             f.source   = source;
+             return b.accept_fact(f);
+           },
+           py::arg("entity"), py::arg("relation"), py::arg("value"),
+           py::arg("verified") = false, py::arg("source") = "python",
+           "Membrane-gated inbound fact from the crisp layer (only verified=True passes)")
+      .def("accept_policy",
+           [](Brain& b, const std::string& target,
+              const std::vector<std::string>& inputs, const py::object& expr,
+              bool verified, const std::string& source) {
+             InboundPolicy p;
+             p.target   = target;
+             p.inputs   = inputs;
+             p.expr     = py_to_expr(expr);
+             p.verified = verified;
+             p.source   = source;
+             return b.accept_policy(p);
+           },
+           py::arg("target"), py::arg("inputs"), py::arg("expr"),
+           py::arg("verified") = false, py::arg("source") = "python",
+           "Membrane-gated inbound policy from the crisp layer (only verified=True passes)");
 
   // ── PossibilityNode ──────────────────────────────────────────────
   py::class_<PossibilityNode>(m, "PossibilityNode")

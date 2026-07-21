@@ -49,11 +49,21 @@ def ev(expr, env):
         return -ev(expr[1], env)
     a = ev(expr[1], env)
     b = ev(expr[2], env)
-    if op == "+": return a + b
-    if op == "-": return a - b
-    if op == "*": return a * b
-    if op == "/": return a / b
-    if op == "^": return a ** b
+
+    # Lazy-load the synthesized brain arithmetic 
+    global _learned_arithmetic
+    if '_learned_arithmetic' not in globals():
+        from engines.synthesis.math_synth import LearnedArithmetic, safe_call
+        _learned_arithmetic = LearnedArithmetic(verbose=False)
+        # Store safe_call helper too
+        global _safe_call
+        _safe_call = safe_call
+
+    if op == "+": return _safe_call(_learned_arithmetic.lib["add"], int(a), int(b))
+    if op == "-": return _safe_call(_learned_arithmetic.lib["sub"], int(a), int(b))
+    if op == "*": return _safe_call(_learned_arithmetic.lib["mul"], int(a), int(b))
+    if op == "/": return a / b  # Floor math_synth doesn't do floats/division yet
+    if op == "^": return _safe_call(_learned_arithmetic.lib["pow"], int(a), int(b))
     raise ValueError(f"unknown op {op!r}")
 
 
