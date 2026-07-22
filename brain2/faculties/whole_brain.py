@@ -30,8 +30,12 @@ from engines.reasoning.means_ends import PolicyMemory, FactSource, PolicySource,
 from engines.synthesis import synth_engine as SE
 from engines.store.brain_store import BrainStore
 from faculties.appraisal_engine import AppraisalEngine
-from faculties.event_bus import bus
+from faculties.autonomous_loop import Proposer
+from engines.knowledge.knowledge_engine import KnowledgeEngine
 from faculties.curiosity_bridge import CuriosityBridge
+from middleware.event_bus import bus
+from routing.crisp_external_router import CrispExternalRouter, CrispFact
+from routing.crisp_internal_router import CrispInternalRouter
 
 CODE_WORDS = {"function", "code", "algorithm", "write", "implement", "program", "def"}
 # Paraphrase -> canonical token, so routing isn't brittle to exact wording. A real
@@ -173,15 +177,20 @@ class WholeBrain:
             if sims and sims[0][0] >= 0.6 and (len(sims) < 2 or sims[0][0] - sims[1][0] >= 0.1):
                 self.ctx_map[w] = sims[0][1]
 
-        # Topology and Curiosity Bridges
+        # Topology and Curiosity Bridges + Middleware Routers
+        self.int_router = CrispInternalRouter()
+        self.ext_router = None
+        
         if self.brain is not None:
             self.curiosity_bridge = CuriosityBridge(self.brain, self._proposer, self.kre)
+            self.ext_router = CrispExternalRouter(self.brain)
             bus.subscribe("verified_fact", self._on_verified_fact)
             
     def _on_verified_fact(self, data):
-        if self.brain is not None:
+        if self.ext_router is not None:
             try:
-                self.brain.learn_from_crisp(str(data["entity"]), str(data["rel"]), float(data["value"]))
+                fact = CrispFact(entity=str(data["entity"]), relation=str(data["rel"]), value=float(data["value"]), verified=True)
+                self.ext_router.push_fact(fact)
             except Exception:
                 pass
 
@@ -190,65 +199,94 @@ class WholeBrain:
                 for t in re.findall(r"[a-z_]+", text.lower())]
         ts = set(toks)
         
-        # BASIC MATH: raw arithmetic questions / word problems (if the word_math engine can solve it)
-        from engines.math.word_math import solve as solve_word_math
-        math_ans = solve_word_math(text)
-        if math_ans is not None:
-            return ("compute", math_ans, True)
-            
-        if CODE_WORDS & ts:
-            return self._code(toks)
-        # RICHER queries first (compare / compound / boolean / nested) — they'd otherwise be
-        # mis-caught by the single-fact compute path or the event reader.
-        _RICH = {"heavier", "lighter", "faster", "slower", "denser", "bigger", "greater",
-                 "more", "less", "than", "heaviest", "lightest", "fastest", "slowest",
-                 "densest", "biggest"}
-        if (_RICH & ts) or " and " in f" {text.lower()} " or " or " in f" {text.lower()} " \
-                or sum(t in self.relations for t in toks) >= 2:
-            r = self.ask_rich(text)
-            if r is not None:
-                return ("compute", r, True)
-        # COMPUTE (before the loose 'is'/'can' factual checks)
-        rel = next((t for t in toks if t in self.relations), None)
-        ent = next((t for t in toks if t in self.entities), None)
-        if rel and ent:
-            v = MeansEndsSolver([FactSource(self.fkb), PolicySource(self.mem)]).solve(Need(ent, rel))
-            if v is not None:
-                bus.publish("solved_problem")
-                bus.publish("verified_fact", {"entity": ent, "rel": rel, "value": v})
-                return ("compute", f"{ent}.{rel} = {v:.4g}", True)
-        # FACTUAL: abilities
-        if "can" in ts:
-            subj = next((t for t in toks if t in self.concepts and self.kre.ask_all(t, "can")), None)
-            if subj:
-                return ("factual", f"{subj} can: {sorted(self.kre.ask_all(subj, 'can'))}", True)
-        # FACTUAL: is-a, only among KNOWN concepts (so 'meaning of life' -> unknown)
-        known = [t for t in toks if t in self.concepts]
-        if "is" in ts and len(known) >= 2:
-            for x in known:
-                for y in known:
-                    if x != y and self.kre.reaches(x, "isa", y)[0]:
-                        return ("factual", f"Yes — {' -> '.join(self.kre.reaches(x,'isa',y)[1])}", True)
-            return ("factual", f"No (no isa path among {known})", True)
-        # OPEN-LANGUAGE: a DECLARATIVE (not a question) -> read it as a verified event.
-        # Question-hood keys on the first token / '?', not word-presence, so "the dog did not
-        # eat the fish" (declarative, has 'did') still reads as an event.
         first = toks[0] if toks else ""
         is_question = text.strip().endswith("?") or first in {
             "what", "how", "why", "who", "can", "is", "are", "does", "did", "will",
             "could", "would", "should", "which", "when", "where"}
-        if not is_question:
-            ev = self._read_event(text)
-            if ev is not None:
-                return ev
-        # richer query comprehension (compare / compound / boolean / nested) before giving up
-        rich = self.ask_rich(text)
-        if rich is not None:
-            bus.publish("solved_problem")
-            return ("compute", rich, True)
+        appraisal = "question" if is_question else "statement"
+
+        solution_type = "none"
+        ans_msg = "I don't know."
+        is_verified = False
+        confidence = 0.0
+        fact_data = None
         
-        bus.publish("unsolved_problem")
-        return ("none", "I don't know.", False)
+        # 1. Math
+        from engines.math.word_math import solve as solve_word_math
+        math_ans = solve_word_math(text)
+        
+        # 2. Rich queries
+        _RICH = {"heavier", "lighter", "faster", "slower", "denser", "bigger", "greater",
+                 "more", "less", "than", "heaviest", "lightest", "fastest", "slowest",
+                 "densest", "biggest"}
+        rich_query = (_RICH & ts) or " and " in f" {text.lower()} " or " or " in f" {text.lower()} " \
+                or sum(t in self.relations for t in toks) >= 2
+        
+        # Evaluate
+        if math_ans is not None:
+            solution_type, ans_msg, is_verified, confidence = "compute", math_ans, True, 1.0
+        elif CODE_WORDS & ts:
+            kind, m, v = self._code(toks)
+            solution_type, ans_msg, is_verified, confidence = kind, m, v, (1.0 if v else 0.0)
+        elif rich_query:
+            r = self.ask_rich(text)
+            if r is not None:
+                solution_type, ans_msg, is_verified, confidence = "compute", r, True, 1.0
+        else:
+            rel = next((t for t in toks if t in self.relations), None)
+            ent = next((t for t in toks if t in self.entities), None)
+            if rel and ent:
+                v = MeansEndsSolver([FactSource(self.fkb), PolicySource(self.mem)]).solve(Need(ent, rel))
+                if v is not None:
+                    solution_type = "compute"
+                    ans_msg = f"{ent}.{rel} = {v:.4g}"
+                    is_verified = True
+                    confidence = 1.0
+                    fact_data = {"entity": ent, "rel": rel, "value": v}
+            elif "can" in ts:
+                subj = next((t for t in toks if t in self.concepts and self.kre.ask_all(t, "can")), None)
+                if subj:
+                    solution_type, ans_msg, is_verified, confidence = "factual", f"{subj} can: {sorted(self.kre.ask_all(subj, 'can'))}", True, 1.0
+            elif "is" in ts and len([t for t in toks if t in self.concepts]) >= 2:
+                known = [t for t in toks if t in self.concepts]
+                found = False
+                for x in known:
+                    for y in known:
+                        if x != y and self.kre.reaches(x, "isa", y)[0]:
+                            solution_type, ans_msg, is_verified, confidence = "factual", f"Yes — {' -> '.join(self.kre.reaches(x,'isa',y)[1])}", True, 1.0
+                            found = True
+                            break
+                    if found: break
+                if not found:
+                    solution_type, ans_msg, is_verified, confidence = "factual", f"No (no isa path among {known})", True, 1.0
+            elif not is_question:
+                ev = self._read_event(text)
+                if ev is not None:
+                    solution_type, ans_msg, is_verified = ev
+                    confidence = 1.0 if is_verified else 0.5
+            else:
+                rich = self.ask_rich(text)
+                if rich is not None:
+                    solution_type, ans_msg, is_verified, confidence = "compute", rich, True, 1.0
+
+        # Router Decides Actions
+        decision = self.int_router.decide(
+            confidence=confidence,
+            solution_type=solution_type,
+            appraisal_type=appraisal,
+            is_verified=is_verified
+        )
+
+        if decision.trigger_teach and fact_data:
+            bus.publish("verified_fact", fact_data)
+            
+        if decision.trigger_propose:
+            bus.publish("unsolved_problem")
+            
+        if is_verified:
+            bus.publish("solved_problem")
+
+        return (solution_type, ans_msg, is_verified)
 
     def _read_event(self, text):
         """Read a declarative into an Event and report the membrane's disposition. Returns a

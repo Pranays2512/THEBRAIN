@@ -1,0 +1,41 @@
+*{
+
+margin:0;
+
+padding:0;
+
+box-sizing:border-box;
+
+}
+
+html{
+
+font-size:16px;
+
+}
+
+body{
+
+font-family:
+"Patrick Hand",
+"Caveat",
+cursive,
+sans-serif;
+
+background: var(--bg-color);
+color: var(--text);
+overflow:hidden;
+
+}
+
+button{
+
+font:inherit;
+
+}
+
+input{
+
+font:inherit;
+
+}

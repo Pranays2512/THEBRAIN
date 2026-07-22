@@ -1,0 +1,88 @@
+:root{
+
+--mouse-x:50vw;
+--mouse-y:50vh;
+
+}
+
+/* Every clay object inherits this */
+
+.material{
+
+position:relative;
+
+overflow:hidden;
+
+isolation:isolate;
+
+}
+
+/* Dynamic highlight */
+
+.material::before{
+
+content:"";
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+background:
+
+radial-gradient(
+
+500px circle at
+
+var(--mouse-x)
+
+var(--mouse-y),
+
+var(--material-highlight),
+
+transparent 60%
+
+);
+
+opacity:.55;
+
+transition:
+
+background .12s linear;
+
+}
+
+/* Surface grain */
+
+.material::after{
+
+content:"";
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+opacity:.035;
+
+background-image:
+
+radial-gradient(
+
+circle,
+
+var(--material-grain) .45px,
+
+transparent .55px
+
+);
+
+background-size:
+
+6px 6px;
+
+mix-blend-mode:multiply;
+
+}

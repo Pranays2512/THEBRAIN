@@ -1,0 +1,47 @@
+.command-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    width: 600px;
+    max-width: 90vw;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    z-index: 9999;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.command-dialog [cmdk-input] {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+    border: none;
+    border-bottom: 1px solid #eaeaea;
+    outline: none;
+}
+
+.command-dialog [cmdk-list] {
+    padding-top: 12px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.command-dialog [cmdk-item] {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.command-dialog [cmdk-item][data-selected] {
+    background: #f0f0f0;
+}
+
+.command-dialog [cmdk-group-heading] {
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+}

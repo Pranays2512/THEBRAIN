@@ -1,0 +1,106 @@
+.clay-icon-button{
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+border: var(--button-border, none);
+outline:none;
+
+cursor:pointer;
+
+border-radius:50%;
+
+position:relative;
+
+overflow:hidden;
+
+transition:
+transform .25s,
+box-shadow .25s,
+background .25s;
+
+background: var(--button-bg);
+box-shadow: var(--button-shadow);
+}
+
+.clay-icon-button svg{
+width:20px;
+height:20px;
+stroke-width:2;
+}
+
+.clay-icon-button:hover{
+transform:translateY(-2px);
+box-shadow: var(--button-hover-shadow);
+}
+
+.clay-icon-button:active{
+transform:translateY(1px) scale(.96);
+box-shadow: var(--button-active-shadow);
+}
+
+.icon-sm{
+
+width:40px;
+height:40px;
+
+}
+
+.icon-md{
+
+width:52px;
+height:52px;
+
+}
+
+.icon-lg{
+
+width:64px;
+height:64px;
+
+}
+
+.variant-default{
+color: var(--button-text);
+}
+
+.variant-mint{
+background: var(--button-mint-bg);
+color: var(--button-mint-text);
+}
+
+.variant-dark{
+
+background:
+
+linear-gradient(
+180deg,
+#424242,
+#282828
+);
+
+color:white;
+
+}
+
+.active{
+
+transform:translateY(-2px);
+
+box-shadow:
+
+0 24px 40px rgba(0,0,0,.18),
+
+0 0 0 5px rgba(208,240,226,.5),
+
+inset 0 2px 2px rgba(255,255,255,.95);
+
+}
+
+.disabled{
+
+opacity:.4;
+pointer-events:none;
+
+}

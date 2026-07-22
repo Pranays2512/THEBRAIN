@@ -27,9 +27,10 @@ from engines.synthesis._program_synth_guided import OPS, run, features, rand_nam
 from engines.synthesis._program_synth_policy import learn_policy, policy_scores as linear_scores, PolicySynth
 
 
-# ── a small, dependency-free multiclass decision tree ────────────────────────
-class DecisionTree:
+# ── a small, dependency-free multiclass decision tree (fallback) ─────────────
+class PyDecisionTree:
     def __init__(self, n_ops, max_depth=10, min_samples=15):
+
         self.n_ops = n_ops
         self.max_depth = max_depth
         self.min_samples = min_samples
@@ -73,6 +74,11 @@ class DecisionTree:
             node = node[2] if x[node[1]] > 0.5 else node[3]
         return node[1]
 
+
+try:
+    from brain2 import DecisionTree
+except ImportError:
+    DecisionTree = PyDecisionTree
 
 # ── training data: prefixes of solved programs (goal-conditioned) ────────────
 def collect(n_tasks=8000, seed=1):

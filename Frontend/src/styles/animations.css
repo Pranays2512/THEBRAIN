@@ -1,0 +1,21 @@
+.sidebar,
+.chat,
+.topbar,
+.composer{
+
+transition:
+
+transform .35s ease,
+
+box-shadow .35s ease;
+
+}
+
+.sidebar:hover,
+.chat:hover{
+
+transform:
+
+translateY(-2px);
+
+}

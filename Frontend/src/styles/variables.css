@@ -1,0 +1,135 @@
+:root{
+  --bg-color: #f4f1eb;
+  --bg-grid-color: rgba(0,0,0,0.06);
+  --bg-noise-color: rgba(0,0,0,0.3);
+  
+  --paper: #E8E3DF;
+  --surface: #E8E3DF;
+  --surface2: #DCD6D0;
+  --text: #383634;
+  --muted: #8C8782;
+  --mint: #7BAE99;
+  
+  --composer-gradient: linear-gradient(180deg, #fafafa, #ececec);
+  --message-user-bg: linear-gradient(180deg, #dcf7ea, #ccecdc);
+  --message-ai-bg: linear-gradient(180deg, #ffffff, #f4f4f4);
+  --message-shadow: 
+    -10px 10px 24px rgba(186, 178, 170, 0.55),
+    10px -10px 24px rgba(255, 255, 255, 0.4),
+    inset -4px 4px 10px rgba(255,255,255,0.2),
+    inset 4px -4px 10px rgba(186, 178, 170, 0.25);
+  --message-border: 1px solid rgba(0, 0, 0, 0.06);
+  
+  --avatar-ai-bg: linear-gradient(180deg, #ffffff, #efefef);
+  --avatar-user-bg: linear-gradient(180deg, #222, #444);
+  --avatar-ai-text: #383634;
+  --avatar-user-text: white;
+  
+  --button-bg: linear-gradient(180deg, #ffffff, #f3f3f3);
+  --button-text: #2f2f2f;
+  --button-border: 1px solid rgba(0, 0, 0, 0.06);
+  --button-shadow: 
+    -6px 6px 16px rgba(186, 178, 170, 0.65), 
+    6px -6px 16px rgba(255,255,255,0.4),
+    inset -2px 2px 5px rgba(255,255,255,0.15), 
+    inset 2px -2px 5px rgba(186, 178, 170, 0.35);
+  --button-hover-shadow: 
+    -8px 8px 20px rgba(186, 178, 170, 0.75), 
+    8px -8px 20px rgba(255,255,255,0.4),
+    inset -2px 2px 5px rgba(255,255,255,0.25), 
+    inset 2px -2px 5px rgba(186, 178, 170, 0.35);
+  --button-active-shadow: 
+    inset 4px -4px 10px rgba(186, 178, 170, 0.55),
+    inset -4px 4px 10px rgba(255,255,255,0.1);
+  --button-mint-bg: linear-gradient(180deg, #dff7ee, #cdeedf);
+  --button-mint-text: #0f5d42;
+  
+  --topbar-shadow: 0 10px 24px rgba(0,0,0,0.06);
+  
+  --radius-xl: 38px;
+  --radius-lg: 28px;
+  --radius-md: 22px;
+  --transition: .45s cubic-bezier(.2,.8,.2,1);
+
+  --shadow-xl:
+    12px 12px 24px rgba(186, 178, 170, 0.7),
+    -12px -12px 24px rgba(255, 255, 255, 0.8);
+  --ambient-shadow:
+    6px 6px 12px rgba(186, 178, 170, 0.6),
+    -6px -6px 12px rgba(255, 255, 255, 0.8);
+  --inner-highlight:
+    inset 6px 6px 12px rgba(255,255,255,.9),
+    inset -6px -6px 12px rgba(186, 178, 170, 0.4);
+  --composer-shadow: 0 4px 12px rgba(0,0,0,.08);
+  --composer-border: 1px solid rgba(255, 255, 255, 0.7);
+  
+  --material-highlight: rgba(255,255,255,.28);
+  --material-grain: rgba(0,0,0,.28);
+  
+  --glass: transparent;
+}
+
+[data-theme="dark"] {
+  --bg-color: #14161A;
+  --bg-grid-color: rgba(255, 255, 255, 0.018);
+  --bg-noise-color: rgba(255, 255, 255, 0.03);
+  
+  --paper: #14161A;
+  --surface: #191C21;
+  --surface2: #1D2025;
+  --text: #F4F5F7;
+  --text-secondary: #A7AFB9;
+  --muted: #7A818C;
+  --mint: #9AE8C7;
+  
+  --composer-gradient: linear-gradient(180deg, #23272E, #1D2025);
+  --message-user-bg: linear-gradient(180deg, #1d3329, #14241d);
+  --message-ai-bg: #21252B;
+  
+  --message-shadow: 
+    -12px 12px 28px rgba(0,0,0,.8),
+    12px -12px 28px rgba(255,255,255,.015),
+    inset -2px 2px 4px rgba(255,255,255,.01),
+    inset 2px -2px 4px rgba(0,0,0,.5);
+  --message-border: 1px solid rgba(0, 0, 0, 0.5);
+  --topbar-shadow: 0 10px 25px rgba(0,0,0,0.45);
+
+  --shadow-xl:
+    0 18px 50px rgba(0, 0, 0, 0.45);
+  --ambient-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45);
+  --inner-highlight: none;
+  
+  --composer-shadow: 
+    -12px 12px 28px rgba(0,0,0,.8), 
+    12px -12px 28px rgba(255,255,255,.015),
+    inset -2px 2px 4px rgba(255,255,255,.01),
+    inset 2px -2px 4px rgba(0,0,0,.5);
+  
+  --avatar-ai-bg: #21252B;
+  --avatar-user-bg: linear-gradient(180deg, #1f362b, #15251d);
+  --avatar-ai-text: #F4F5F7;
+  --avatar-user-text: #9AE8C7;
+  
+  --button-bg: linear-gradient(180deg, #23272E, #1D2025);
+  --button-text: #EFEFEF;
+  --button-border: 1px solid rgba(0, 0, 0, 0.6);
+  --button-shadow: 
+    -6px 6px 14px rgba(0,0,0,.8), 
+    6px -6px 14px rgba(255,255,255,.015),
+    inset -1px 1px 2px rgba(255,255,255,.01), 
+    inset 1px -1px 3px rgba(0,0,0,.5);
+  --button-hover-shadow: 
+    -8px 8px 18px rgba(0,0,0,.85), 
+    8px -8px 18px rgba(255,255,255,.02),
+    inset -1px 1px 2px rgba(255,255,255,.02), 
+    inset 1px -1px 3px rgba(0,0,0,.5);
+  --button-active-shadow: 
+    inset 3px -3px 6px rgba(0,0,0,.8),
+    inset -2px 2px 4px rgba(255,255,255,.01);
+  --button-mint-bg: linear-gradient(180deg, #1f362b, #15251d);
+  --button-mint-text: #9AE8C7;
+  
+  --material-highlight: rgba(255,255,255,.04);
+  --material-grain: rgba(0,0,0,.5);
+}

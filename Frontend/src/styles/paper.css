@@ -1,0 +1,67 @@
+.paper{
+
+position:relative;
+
+background:
+
+linear-gradient(
+90deg,
+rgba(0,0,0,.03) 1px,
+transparent 1px),
+
+linear-gradient(
+rgba(0,0,0,.03) 1px,
+transparent 1px),
+
+var(--paper);
+
+background-size:
+
+42px 42px,
+42px 42px,
+100% 100%;
+
+}
+
+.paper::before{
+
+content:"";
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+opacity:.05;
+
+background-image:
+
+radial-gradient(circle,
+rgba(0,0,0,.4) .4px,
+transparent .5px);
+
+background-size:
+
+6px 6px;
+
+}
+
+.paper::after{
+
+content:"";
+
+position:absolute;
+
+inset:0;
+
+pointer-events:none;
+
+background:
+
+radial-gradient(
+circle at top,
+rgba(255,255,255,.6),
+transparent 65%);
+
+}

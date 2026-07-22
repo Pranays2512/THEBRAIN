@@ -1,4 +1,4 @@
-from faculties.event_bus import bus
+from middleware.event_bus import bus
 
 class CuriosityBridge:
     """

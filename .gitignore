@@ -68,3 +68,5 @@ graphify-out/
 brain2/graphify-out/
 # OCR'd corpus (regenerable from the source PDF)
 brain2/data/ncert_class_10_science.txt
+.agents/
+ncert_class1_english/

@@ -39,6 +39,8 @@
 #include "core/predictive_coding.hpp"
 #include "core/procedural_memory.hpp"
 #include "core/policy_engine.hpp"
+#include "core/decision_tree.hpp"
+#include "core/tree_reason.hpp"
 
 namespace py = pybind11;
 using namespace brain2;
@@ -98,7 +100,13 @@ PYBIND11_MODULE(brain2, m) {
   }, "Mine the invariants that hold across all (args, y) examples");
   m.def("inv_check", [to_examples](py::list examples, std::vector<std::string> admitted) {
     return brain2::check_invariants(to_examples(examples), admitted);
-  }, "Return the first admitted invariant a candidate violates, or '' if it passes");
+  }, "Check if candidate programs violate known invariants");
+
+  // ── decision tree (fast AST router) ───────────────────────────────────────
+  py::class_<DecisionTree>(m, "DecisionTree")
+      .def(py::init<int, int, int>(), py::arg("n_ops"), py::arg("max_depth")=10, py::arg("min_samples")=15)
+      .def("fit", &DecisionTree::fit)
+      .def("predict_dist", &DecisionTree::predict_dist);
 
   // ── refuter core (native port of refuter.py): find break + valid scope ──
   m.def("refute_int1",
@@ -1289,4 +1297,8 @@ PYBIND11_MODULE(brain2, m) {
       .def("learn", &PolicyEngine::learn, py::arg("target"), py::arg("entity"),
            py::arg("tol") = 1e-6)
       .def_property_readonly("work", &PolicyEngine::work);
+
+  // ── A* Search Engine (tree_reason) ───────────────────────────────────
+  m.def("solve_astar", &brain2::solve_astar, "A* search algorithm native C++ wrapper",
+        py::arg("problem"), py::arg("max_nodes") = 500000);
 }

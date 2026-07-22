@@ -1,0 +1,7 @@
+.chat,
+.composer {
+    background: var(--surface);
+    border: none;
+    box-shadow: var(--ambient-shadow), var(--inner-highlight);
+    border-radius: var(--radius-xl);
+}
