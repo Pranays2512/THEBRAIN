@@ -54,6 +54,11 @@ def _item(text):
 
 def solve(text):
     """Return a worked answer string, or None if it isn't a clean +/- problem."""
+    if len(text) > 150:
+        return None
+    low = text.lower()
+    if any(k in low for k in ("input", "output", "test case", "sequence", "array", "algorithm", "problem", "code", "piles", "ducks")):
+        return None
     tokens = _tokens(text)
     nums = _numbers(tokens)
     if len(nums) < 2:
@@ -70,7 +75,7 @@ def solve(text):
     item = _item(text)
     noun = f" {item}" if item else ""
     # keep the noun plural-ish as given; just report the count and the working
-    return f"{result}{noun}. ({expr} = {result})"
+    return f"The result is {result}{noun}. The calculation is {expr} = {result}."
 
 
 def _demo():

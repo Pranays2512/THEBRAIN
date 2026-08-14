@@ -25,15 +25,43 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from engines.knowledge.knowledge_engine import KnowledgeEngine, KnowledgeError
 
 
+# Relations that must NOT auto-propagate down the isa hierarchy.
+# 'isa' itself can't be its own premise (circular); 'instance_of' likewise.
+_DEFAULT_NON_INHERITABLE = frozenset({"isa", "instance_of", "example_of"})
+
+
 class ReasoningEngine:
     def __init__(self, kb=None):
         self.kb = kb or KnowledgeEngine()
         self.rules = []          # (a, b, c): X a Y & Y b Z  =>  X c Z
         self.transitive = set()  # relations r where r chains: X r Y r Z => X r Z
+        # Relations excluded from auto-inheritance (structural / meta relations).
+        self._non_inheritable = set(_DEFAULT_NON_INHERITABLE)
 
     # ── facts + rules ────────────────────────────────────────────────────────
     def learn(self, subj, rel, obj):
-        return self.kb.learn(subj, rel, obj)
+        """Store a fact and auto-register isa-inheritance for the relation.
+
+        The key generalization fix: teaching `acid turns_litmus red` automatically
+        registers the rule `isa ∘ turns_litmus → turns_litmus`, so any subclass
+        (e.g. HCL isa acid) will inherit the property without an explicit fact.
+
+        Relations in self._non_inheritable (default: 'isa', 'instance_of') are
+        not auto-inherited — they are structural, not domain properties.
+        """
+        result = self.kb.learn(subj, rel, obj)
+        # Auto-register: subclasses inherit this relation via isa hierarchy.
+        if rel not in self._non_inheritable:
+            rule = ("isa", rel, rel)
+            if rule not in self.rules:
+                self.rules.append(rule)
+        return result
+
+    def mark_non_inheritable(self, *relations):
+        """Prevent a relation from being auto-inherited down the isa chain.
+        Call this BEFORE learning any facts that use the relation.
+        """
+        self._non_inheritable.update(relations)
 
     def add_rule(self, prem1, prem2, concl):
         """X prem1 Y AND Y prem2 Z  =>  X concl Z."""
@@ -220,6 +248,57 @@ class ReasoningEngine:
         rel, obj = KnowledgeEngine._norm(rel), KnowledgeEngine._norm(obj)
         return sorted({s for s, r, o in self.kb.facts if r == rel and o == obj})
 
+    def abduce_category(self, subj, min_confidence=0.5):
+        """Abductive reasoning: infer what CATEGORY `subj` belongs to by finding
+        which known entities share the most effects/properties with it.
+
+        e.g. teach("acid",  "turns_litmus", "red")
+             teach("hcl",   "turns_litmus", "red")
+             abduce_category("hcl")
+             -> [("acid", 1.0, {"turns_litmus": "red"}, "hcl shares all known effects of acid")]
+
+        The result is a HYPOTHESIS (not a verified fact). It must be checked by the
+        membrane (conjecture_sandbox or human confirmation) before being stored.
+
+        Returns a list of (category, confidence, shared_effects, explanation) tuples,
+        sorted by confidence descending. Empty list = no category hypothesis found.
+        """
+        subj = KnowledgeEngine._norm(subj)
+
+        # 1. Collect all (rel, obj) pairs that subj exhibits
+        subj_effects = {(r, o) for s, r, o in self.kb.facts if s == subj}
+        if not subj_effects:
+            return []
+
+        # 2. Find every other entity and how many of subj's effects they share
+        # Only consider entities that have at least 1 known effect (exclude bare names)
+        candidates = {}
+        for s, r, o in self.kb.facts:
+            if s == subj:
+                continue
+            effect = (r, o)
+            if effect in subj_effects:
+                if s not in candidates:
+                    candidates[s] = set()
+                candidates[s].add(effect)
+
+        # 3. Score: confidence = |shared effects| / |candidate's total effects|
+        # High confidence means subj exhibits ALL of what the candidate does.
+        results = []
+        for cat, shared in candidates.items():
+            cat_effects = {(r, o) for s, r, o in self.kb.facts if s == cat}
+            if not cat_effects:
+                continue
+            confidence = len(shared) / len(cat_effects)
+            if confidence >= min_confidence:
+                shared_map = {r: o for r, o in shared}
+                expl = (f"{subj} shares {len(shared)}/{len(cat_effects)} known "
+                        f"effects of {cat} (confidence={confidence:.0%}) → "
+                        f"hypothesis: {subj} isa {cat}")
+                results.append((cat, round(confidence, 4), shared_map, expl))
+
+        return sorted(results, key=lambda x: -x[1])
+
     def relations_into(self, obj):
         """All relations r for which some (s, r, obj) exists — lets a question
         about `obj` infer which relation it is asking over."""
@@ -243,6 +322,19 @@ class ReasoningEngine:
         _, why = self.ask(subj, rel)
         return why
 
+    def explain_chain(self, subj, rel):
+        """Return (value, chain_steps) where chain_steps is a human-readable
+        list of derivation steps. Used by BrainQL EXPLAIN and INHERIT."""
+        obj, why = self.ask(subj, rel)
+        if obj is None:
+            return None, []
+        steps = [why] if why else []
+        # Include isa ancestry for transparency
+        ancestors = list(self.closure(subj, "isa").keys())
+        if ancestors:
+            steps.append(f"isa-ancestors of {subj}: {', '.join(ancestors)}")
+        return obj, steps
+
     def knows(self, subj, rel, obj):
         ans, _ = self.ask(subj, rel)
         return ans == KnowledgeEngine._norm(obj)
@@ -252,7 +344,11 @@ class ReasoningEngine:
         import json
         self.kb.save(path + ".kb.json")
         with open(path, "w") as f:
-            json.dump({"rules": self.rules, "transitive": sorted(self.transitive)}, f, indent=2)
+            json.dump({
+                "rules": self.rules,
+                "transitive": sorted(self.transitive),
+                "non_inheritable": sorted(self._non_inheritable),
+            }, f, indent=2)
 
     @classmethod
     def load(cls, path):
@@ -262,6 +358,7 @@ class ReasoningEngine:
             d = json.load(f)
         re.rules = [tuple(r) for r in d.get("rules", [])]
         re.transitive = set(d.get("transitive", []))
+        re._non_inheritable = set(d.get("non_inheritable", _DEFAULT_NON_INHERITABLE))
         return re
 
 

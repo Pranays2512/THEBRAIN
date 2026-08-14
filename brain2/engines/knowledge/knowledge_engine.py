@@ -47,6 +47,7 @@ class KnowledgeEngine:
         self._entities = set()       # tokens seen as subject or object (decode set)
         self.facts = []              # ordered list of (subj, rel, obj), unique
         self._factset = set()        # same facts as a set — O(1) dedup (was O(N)/call)
+        self._fact_dict = {}         # fast exact lookup (subj, rel) -> obj
 
     # ── token -> deterministic concept vector ────────────────────────────────
     def _vec(self, token):
@@ -61,7 +62,7 @@ class KnowledgeEngine:
     def _norm(token):
         if not isinstance(token, str):
             raise KnowledgeError(f"token must be a string, got {type(token).__name__}")
-        t = token.strip()
+        t = token.strip().lower()
         if not t:
             raise KnowledgeError("token must be non-empty")
         return t
@@ -76,6 +77,7 @@ class KnowledgeEngine:
         self._entities.update((subj, obj))
         self.facts.append((subj, rel, obj))
         self._factset.add((subj, rel, obj))
+        self._fact_dict[(subj, rel)] = obj
         return True
 
     def _fact_set(self):
@@ -103,6 +105,9 @@ class KnowledgeEngine:
         """Return (object_token, confidence) reachable from subj via rel in
         `hops` steps, or (None, 0.0) if unknown."""
         subj, rel = self._norm(subj), self._norm(rel)
+        if (subj, rel) in self._fact_dict:
+            return self._fact_dict[(subj, rel)], 1.0
+            
         if subj not in self._entities:
             return None, 0.0
         hops = max(1, int(hops))

@@ -20,6 +20,7 @@ import brain2
 
 # ─── Global State ────────────────────────────────────────────────────────────
 b: brain2.Brain = None
+bi_instance = None
 brain_lock        = threading.Lock()
 clients: set      = set()
 daydreaming_active = True
@@ -119,6 +120,13 @@ def daydream_loop(loop):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_brain()
+    global bi_instance
+    from adapters.brain_interface import BrainInterface
+    from adapters.llm_adapter import OllamaClient
+    print("Loading BrainInterface (LLM: qwen3:1.7B)...", flush=True)
+    bi_instance = BrainInterface(OllamaClient("qwen3:1.7B"))
+    print("BrainInterface loaded ✓", flush=True)
+
     loop = asyncio.get_running_loop()
     t = threading.Thread(target=daydream_loop, args=(loop,), daemon=True)
     t.start()
@@ -270,48 +278,61 @@ async def chat_endpoint(req: ChatRequest):
 
         # ── SEMANTIC QUERY / GENERAL STATEMENT ───────────────────────────
         else:
-            parse_words = [w.replace("?","").replace(".","") for w in words if w.strip("?.")]
-
-            # Remap "what is X" → "X is"
-            if len(parse_words) >= 2 and parse_words[0] == "what" and parse_words[1] in ("is","isa"):
-                parse_words = parse_words[2:] + ["isa"]
-
-            # Remap "is" → "isa"
-            parse_words = ["isa" if w == "is" else w for w in parse_words]
-
-            # Store subject / relation / object into scratchpad
-            slot_ops = [OP_STORE_SUBJ, OP_STORE_REL, OP_STORE_OBJ]
-            for i, w in enumerate(parse_words[:3]):
-                if not w: continue
-                vec = b.language.encode(w)
-                b.scratchpad.write(["subject","relation","object"][i], vec, "parse")
-                b.force_reason_step(slot_ops[i], "parse")
-
-            b.scratchpad.write("goal", b.language.encode("reply"), "goal")
-
-            if is_query:
-                b.force_reason_step(OP_BIND_QUERY, "reply")
-                conf_out = b.get_last_confidence()
-                b.force_reason_step(OP_SPEAK, "reply")
-                spoken = b.get_spoken_words()
-                b.clear_spoken_words()
-                if spoken and conf_out >= 0.25:
-                    reply = spoken[-1]
-                    if reply in ("", "binding", "color"): reply = "I don't know."
-                else:
-                    reply = "I don't know."
-                mode = "query"
-            else:
-                b.force_reason_step(OP_BIND_ISA, "reply")
-                reply = "Got it, I'll remember that."
-                mode  = "learn"
+            # We defer this outside the lock so we don't block daydreaming while the LLM generates
+            pass
 
         # Episodic commit
         sv = b.scratchpad.read("subject")
         if sv:
             b.commit_episode(1.0, sv[:16])
 
+    # If none of the exact-match math/causal paths handled it, delegate to the unified BrainInterface
+    if not is_algebra and not is_prob and not is_area and not is_power and not is_perm and not is_causal and not is_episodic:
+        if bi_instance:
+            # We are outside the lock, so the LLM generation can take its time
+            res = bi_instance.respond(text)
+            reply = res["reply"]
+            mode = res["kind"]
+            conf_out = 1.0 if res["verified"] else 0.0
+        else:
+            reply = "I don't know."
+            mode = "error"
+            conf_out = 0.0
+
     return {"reply": reply, "confidence": round(conf_out, 3), "mode": mode}
+
+class TeachRequest(BaseModel):
+    subject: str
+    relation: str
+    object: str
+
+@app.post("/api/teach")
+async def teach_endpoint(req: TeachRequest):
+    if bi_instance:
+        added = bi_instance.teach(req.subject, req.relation, req.object)
+        return {"ok": True, "added": added, "msg": f"Got it: {req.subject} {req.relation} {req.object}"}
+    return {"ok": False, "msg": "BrainInterface not loaded"}
+
+class BqlRequest(BaseModel):
+    query: str
+
+@app.post("/api/bql")
+async def bql_endpoint(req: BqlRequest):
+    if bi_instance:
+        from engines.reasoning.brainql import parse_bql_block, BrainQLParseError
+        try:
+            queries = parse_bql_block(req.query)
+            # Use internal _execute to get the raw BrainQLResult objects
+            results = bi_instance._execute(queries)
+            # Serialize the first result
+            if results:
+                r = results[0]
+                return {"ok": True, "known": r.known, "value": r.value, "chain": r.chain}
+            return {"ok": True, "results": []}
+        except BrainQLParseError as e:
+            return {"ok": False, "error": str(e)}
+    return {"ok": False, "msg": "BrainInterface not loaded"}
+
 
 # ─── WebSocket ────────────────────────────────────────────────────────────────
 @app.websocket("/ws")

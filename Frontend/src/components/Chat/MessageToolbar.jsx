@@ -2,13 +2,7 @@ import {
 
 Copy,
 
-RotateCcw,
-
-Pencil,
-
-ThumbsUp,
-
-ThumbsDown
+RotateCcw
 
 } from "lucide-react";
 
@@ -20,7 +14,7 @@ onCopy,
 
 onRetry,
 
-onEdit
+retryDisabled = false
 
 }){
 
@@ -42,25 +36,7 @@ icon={<RotateCcw size={15}/>}
 
 onClick={onRetry}
 
-/>
-
-<ClayIconButton
-
-icon={<Pencil size={15}/>}
-
-onClick={onEdit}
-
-/>
-
-<ClayIconButton
-
-icon={<ThumbsUp size={15}/>}
-
-/>
-
-<ClayIconButton
-
-icon={<ThumbsDown size={15}/>}
+disabled={retryDisabled}
 
 />
 

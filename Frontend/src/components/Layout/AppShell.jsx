@@ -11,10 +11,13 @@ export default function AppShell({ children }) {
         <>
             <Background enabled={doodlesEnabled} />
             <div className="app-shell">
-                <Sidebar />
+                <Sidebar
+                    doodlesEnabled={doodlesEnabled}
+                    setDoodlesEnabled={setDoodlesEnabled}
+                />
                 <main className="app-main">
                     <section className="app-content">
-                        <Topbar doodlesEnabled={doodlesEnabled} setDoodlesEnabled={setDoodlesEnabled} />
+                        <Topbar />
                         {children}
                     </section>
                 </main>

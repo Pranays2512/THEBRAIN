@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import MessageToolbar from "./MessageToolbar";
 import BlockRenderer from "./Blocks/BlockRenderer";
 
@@ -21,48 +20,57 @@ export default function ChatMessage({
     role,
     blocks = [],
     status,
-    createdAt
+    createdAt,
+    promptText = "",
+    onResendMessage
 }) {
     const msgStatus = status || "complete";
+    const text = blocks.filter(b => b.type === "text").map(b => b.text).join("\n");
+    const canShowToolbar = msgStatus === "complete" || msgStatus === "error" || msgStatus === "cancelled";
 
     return (
         <div className={`message-row ${role}`}>
             <div className="message-avatar">
                 {role === "assistant" ? <InfinityAvatar isThinking={msgStatus === "streaming"} /> : "You"}
             </div>
-            <div className="message-card material">
-                <BlockRenderer blocks={blocks} />
-                
-                {msgStatus === "streaming" && (
-                    <span className="typing-cursor" />
-                )}
-                {msgStatus === "error" && (
-                    <div className="error-badge">
-                        Generation failed
-                    </div>
-                )}
-                {msgStatus === "cancelled" && (
-                    <div className="cancelled-badge">
-                        Stopped
-                    </div>
-                )}
+            <div className="message-stack">
+                <div className={`message-card material ${role}`}>
+                    <BlockRenderer blocks={blocks} />
+                    
+                    {msgStatus === "streaming" && (
+                        <span className="typing-cursor" />
+                    )}
+                    {msgStatus === "error" && (
+                        <div className="error-badge">
+                            Generation failed
+                        </div>
+                    )}
+                    {msgStatus === "cancelled" && (
+                        <div className="cancelled-badge">
+                            Stopped
+                        </div>
+                    )}
 
-                <div className="message-time">
-                    {
-                        createdAt
-                        ? new Date(createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                        : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                    }
+                    <div className="message-time">
+                        {
+                            createdAt
+                            ? new Date(createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        }
+                    </div>
                 </div>
 
-                {role === "assistant" && (msgStatus === "complete" || msgStatus === "error" || msgStatus === "cancelled") && (
+                {canShowToolbar && (
                     <MessageToolbar
                         onCopy={() => {
-                            const text = blocks.filter(b => b.type === "text").map(b => b.text).join("\n");
                             navigator.clipboard.writeText(text);
                         }}
-                        onRetry={() => {}}
-                        onEdit={() => {}}
+                        onRetry={() => {
+                            if (promptText && onResendMessage) {
+                                onResendMessage(promptText);
+                            }
+                        }}
+                        retryDisabled={!promptText || !onResendMessage}
                     />
                 )}
             </div>

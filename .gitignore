@@ -12,18 +12,57 @@ venv/
 venv2/
 .env
 
-# C/C++ build artifacts
+# C/C++ build artifacts & binaries
 *.o
 *.a
 *.so
 *.dylib
+*.out
 build_cpp/
+build_cmake/
+brain2/build/
+brain3/build/
+brain3/build_cmake/
+brain3/build_cpp/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
 
-# Models & large data
+# Compiled standalone test binaries without extensions
+**/*_test
+**/test_*
+!**/*.cpp
+!**/*.hpp
+!**/*.java
+!**/*.py
+!**/*.sh
+!**/*.md
+!**/*.json
+!**/*.txt
+!**/*.jar
+!**/*.h
+!**/*.cu
+!**/*.cuh
+!**/*.log
+!**/*.ppm
+**/demo_*
+!**/demo_*.cpp
+!**/demo_*.hpp
+!**/demo_*.java
+!**/demo_*.py
+!**/demo_*.sh
+!**/demo_*.md
+!**/demo_*.json
+!**/demo_*.txt
+
+# Java build artifacts
+*.class
+brain3/out_java/
+out_java/
+target/
+
+# Models & large data & trained weights
 *.bin
 *.pt
 *.pth
@@ -34,10 +73,22 @@ Makefile
 *.npy
 models/
 checkpoints/
+brain3/out/
 
 # Logs
 *.log
 logs/
+!*brain_development.log
+
+# Node / Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+node_modules/
+
+# Obsidian / Graph indexing
+.obsidian/
+obsidian_vault/
 
 # macOS
 .DS_Store
@@ -45,6 +96,7 @@ logs/
 .LSOverride
 .claude
 .remember
+
 # IDE
 .vscode/
 .idea/
@@ -66,6 +118,7 @@ brain2/trained/
 # generated code-graph output (regenerable, large)
 graphify-out/
 brain2/graphify-out/
+
 # OCR'd corpus (regenerable from the source PDF)
 brain2/data/ncert_class_10_science.txt
 .agents/

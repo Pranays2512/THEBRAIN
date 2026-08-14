@@ -4,7 +4,26 @@ import useAutoScroll from "../../hooks/useAutoScroll";
 
 import "./ChatView.css";
 
-export default function ChatView({ messages }) {
+function getText(blocks = []) {
+    return blocks
+        .filter(block => block.type === "text")
+        .map(block => block.text)
+        .join("\n")
+        .trim();
+}
+
+function findPromptForMessage(messages, index) {
+    const message = messages[index];
+    if (message.role === "user") return getText(message.blocks);
+
+    for (let i = index - 1; i >= 0; i -= 1) {
+        if (messages[i].role === "user") return getText(messages[i].blocks);
+    }
+
+    return "";
+}
+
+export default function ChatView({ messages, onResendMessage }) {
 
     const {
 
@@ -74,6 +93,10 @@ export default function ChatView({ messages }) {
                                     <ChatMessage
 
                                         {...message}
+
+                                        promptText={findPromptForMessage(messages, item.index)}
+
+                                        onResendMessage={onResendMessage}
 
                                     />
 

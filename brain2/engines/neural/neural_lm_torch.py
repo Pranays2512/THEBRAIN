@@ -58,62 +58,109 @@ class NeuralLMTorch:
         toks = re.findall(r"[a-zA-Z_]+|\d+\.?\d*|=>|[|:=()+\-*/]", line.lower())
         return ["<s>"] + toks + ["</s>"]
 
-    def train(self, corpus):
-        words = sorted({w for ln in corpus for w in self._tok(ln)} | {"<unk>", "<pad>"})
-        self.w2i = {w: i for i, w in enumerate(words)}
-        self.i2w = words
-        pad = self.w2i["<pad>"]
-        seqs = [[self.w2i[w] for w in self._tok(ln)] for ln in corpus]
-        # sliding windows -> (context, next)
+    def train(self, corpus, ckpt_path="trained/lm_checkpoint.pt"):
+        import os
+        import sys
+        import time as _time
+        
+        # Load checkpoint if exists to resume
+        if os.path.exists(ckpt_path):
+            d = torch.load(ckpt_path, map_location=self.device, weights_only=False)
+            self.w2i, self.i2w, self._pad = d["w2i"], d["i2w"], d["pad"]
+            start_ep, start_step = d.get("ep", 0), d.get("step", 0)
+            words = self.i2w
+            print(f"    [LM] Resuming from {ckpt_path} (Epoch {start_ep+1}, Step {start_step})")
+        else:
+            words = sorted({w for ln in corpus for w in self._tok(ln)} | {"<unk>", "<pad>"})
+            self.w2i = {w: i for i, w in enumerate(words)}
+            self.i2w = words
+            self._pad = self.w2i["<pad>"]
+            start_ep, start_step = 0, 0
+
+        pad = self._pad
+        seqs = [[self.w2i.get(w, self.w2i["<unk>"]) for w in self._tok(ln)] for ln in corpus]
         X, Y = [], []
         for s in seqs:
             for i in range(1, len(s)):
                 ctx = s[max(0, i - self.ctx):i]
                 ctx = [pad] * (self.ctx - len(ctx)) + ctx
                 X.append(ctx); Y.append(s[i])
+                
         X = torch.tensor(X, device=self.device)
         Y = torch.tensor(Y, device=self.device)
+        
         self.model = _LM(len(words), self.dim, self.heads, self.layers, self.ctx).to(self.device)
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.lr)
+        
+        if os.path.exists(ckpt_path):
+            self.model.load_state_dict(d["state"])
+            opt.load_state_dict(d["opt"])
+            
         lossf = nn.CrossEntropyLoss()
         self.model.train()
         n = X.size(0)
-        import time as _time
         _t0 = _time.time()
-        _every = max(1, self.epochs // 10)
-        import sys as _sys
-        for ep in range(self.epochs):
-            perm = torch.randperm(n, device=self.device)
-            _el = 0.0
-            steps = list(range(0, n, self.batch))
-            total_steps = len(steps)
-            for step_idx, i in enumerate(steps):
-                idx = perm[i:i + self.batch]
-                logits = self.model(X[idx])[:, -1, :]  # predict next from last position
-                loss = lossf(logits, Y[idx])
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-                _el = loss.item()
+        
+        steps = list(range(0, n, self.batch))
+        total_steps = len(steps)
+        total_iters = self.epochs * total_steps
+        iters_done = (start_ep * total_steps) + start_step
+        
+        try:
+            for ep in range(start_ep, self.epochs):
+                # Ensure deterministic permutation per epoch based on epoch index
+                torch.manual_seed(ep)
+                perm = torch.randperm(n, device=self.device)
+                _el = 0.0
                 
-                # Progress bar update every 10 steps or at end
-                if step_idx % 10 == 0 or step_idx == total_steps - 1:
-                    elapsed = _time.time() - _t0
-                    total_iter_done = (ep * total_steps) + step_idx + 1
-                    total_iters = self.epochs * total_steps
-                    rate = elapsed / total_iter_done
-                    rem = (total_iters - total_iter_done) * rate
-                    eta_str = f"{int(rem//60)}m {int(rem%60)}s"
+                step_start_idx = start_step if ep == start_ep else 0
+                
+                for step_idx in range(step_start_idx, total_steps):
+                    i = steps[step_idx]
+                    idx = perm[i:i + self.batch]
+                    logits = self.model(X[idx])[:, -1, :]
+                    loss = lossf(logits, Y[idx])
+                    opt.zero_grad()
+                    loss.backward()
+                    opt.step()
+                    _el = loss.item()
+                    iters_done += 1
                     
-                    pct = 100 * total_iter_done / total_iters
-                    bar_len = 30
-                    filled = int(bar_len * pct // 100)
-                    bar = '█' * filled + '-' * (bar_len - filled)
-                    _sys.stdout.write(f"\r    [LM] |{bar}| {pct:.1f}%  Epoch {ep+1}/{self.epochs}  Loss {_el:.3f}  ETA: {eta_str}   ")
-                    _sys.stdout.flush()
-        print()  # newline after progress bar
+                    if step_idx % 10 == 0 or step_idx == total_steps - 1:
+                        elapsed = _time.time() - _t0
+                        recent_iters = iters_done - ((start_ep * total_steps) + start_step)
+                        if recent_iters > 0:
+                            rate = elapsed / recent_iters
+                            rem = (total_iters - iters_done) * rate
+                            eta_str = f"{int(rem//60)}m {int(rem%60)}s"
+                        else:
+                            eta_str = "..."
+                            
+                        pct = 100 * iters_done / total_iters
+                        bar_len = 30
+                        filled = int(bar_len * pct // 100)
+                        bar = '█' * filled + '-' * (bar_len - filled)
+                        sys.stdout.write(f"\r    [LM] |{bar}| {pct:.1f}%  Epoch {ep+1}/{self.epochs}  Loss {_el:.3f}  ETA: {eta_str}   ")
+                        sys.stdout.flush()
+                        
+                # Epoch complete, save checkpoint
+                os.makedirs(os.path.dirname(ckpt_path) or ".", exist_ok=True)
+                torch.save({"state": self.model.state_dict(), "opt": opt.state_dict(), "w2i": self.w2i, "i2w": self.i2w,
+                            "pad": self._pad, "ep": ep + 1, "step": 0}, ckpt_path)
+                start_step = 0
+                
+        except KeyboardInterrupt:
+            print(f"\n    [LM] Paused by user. Saving checkpoint to {ckpt_path}...")
+            os.makedirs(os.path.dirname(ckpt_path) or ".", exist_ok=True)
+            torch.save({"state": self.model.state_dict(), "opt": opt.state_dict(), "w2i": self.w2i, "i2w": self.i2w,
+                        "pad": self._pad, "ep": ep, "step": step_idx}, ckpt_path)
+            print("    [LM] Exiting safely.")
+            sys.exit(0)
+            
+        print()
+        if os.path.exists(ckpt_path):
+            os.remove(ckpt_path)  # Cleanup checkpoint when fully done
         self.model.eval()
-        self._pad = pad
         return self
 
     @torch.no_grad()

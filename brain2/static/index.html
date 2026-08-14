@@ -3,34 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Brain | Neumorphic UI</title>
-    <!-- Modern typography matching the design reference -->
+    <title>The Brain | Dual-Process Cognitive Architecture</title>
+    <!-- Modern typography matching design reference -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/clay.css?v=3">
+    <link rel="stylesheet" href="/static/clay.css?v=4">
 </head>
 <body>
     
     <div class="app-container">
-        <!-- Main Chat Card (Extruded Neumorphic shape) -->
+        <!-- Left Panel: Main Chat Card -->
         <main class="chat-card">
             
             <header class="chat-header">
-                <h1>Brain AI</h1>
-                <div id="status-indicator" class="status-indicator"></div>
+                <div class="header-title">
+                    <h1>Brain AI</h1>
+                    <span class="subtitle">Neurosymbolic Engine</span>
+                </div>
+                <div id="status-indicator" class="status-indicator" title="Cognitive Loop Status"></div>
             </header>
 
             <div id="chat-history" class="chat-history">
                 <div class="msg-wrapper brain-msg-wrapper">
-                    <div class="msg brain-msg">System initialized. Awaiting input.</div>
+                    <div class="msg brain-msg">
+                        System initialized. Awaiting input.
+                        <div class="msg-meta">
+                            <span class="badge badge-kind">system</span>
+                            <span class="badge badge-verified">VERIFIED ✓</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="input-area">
-                <!-- Inset Neumorphic pill shape -->
                 <div class="input-wrapper">
-                    <input type="text" id="user-input" autocomplete="off" autofocus placeholder="Search or ask anything...">
-                    <button id="send-btn" class="icon-btn">
-                        <!-- Simple SVG send icon -->
+                    <input type="text" id="user-input" autocomplete="off" autofocus placeholder="Ask math, science, or teach a concept...">
+                    <button id="send-btn" class="icon-btn" title="Send message">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -40,8 +47,62 @@
             </div>
             
         </main>
+
+        <!-- Right Panel: Neural & Cognitive Telemetry Dashboard -->
+        <aside class="dashboard-card">
+            <header class="dashboard-header">
+                <h2>Neural Telemetry</h2>
+                <span class="live-pill">LIVE WS</span>
+            </header>
+
+            <!-- SOM Activation Matrix (8x8) -->
+            <section class="telemetry-section">
+                <h3>Self-Organizing Map (8x8)</h3>
+                <div id="som-grid" class="som-grid">
+                    <!-- 64 cells dynamically generated -->
+                </div>
+            </section>
+
+            <!-- Cognitive & Emotional State Gauges -->
+            <section class="telemetry-section">
+                <h3>Cognitive State</h3>
+                <div class="gauge-group">
+                    <div class="gauge-item">
+                        <div class="gauge-label"><span>Arousal / Novelty</span><span id="val-arousal">0.50</span></div>
+                        <div class="gauge-track"><div id="bar-arousal" class="gauge-fill fill-mint" style="width: 50%;"></div></div>
+                    </div>
+                    <div class="gauge-item">
+                        <div class="gauge-label"><span>Valence (Confidence)</span><span id="val-valence">0.80</span></div>
+                        <div class="gauge-track"><div id="bar-valence" class="gauge-fill fill-cyan" style="width: 80%;"></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Active Working Memory -->
+            <section class="telemetry-section">
+                <h3>Working Memory</h3>
+                <div class="wm-card">
+                    <div class="wm-row"><span class="wm-key">Subject:</span><span id="wm-subject" class="wm-val">--</span></div>
+                    <div class="wm-row"><span class="wm-key">Relation:</span><span id="wm-relation" class="wm-val">--</span></div>
+                    <div class="wm-row"><span class="wm-key">Object:</span><span id="wm-object" class="wm-val">--</span></div>
+                </div>
+            </section>
+
+            <!-- Live Knowledge Injection (Teach) -->
+            <section class="telemetry-section teach-section">
+                <h3>Teach Concept</h3>
+                <form id="teach-form" class="teach-form">
+                    <input type="text" id="teach-subj" placeholder="Subject (e.g. hcl)" required>
+                    <input type="text" id="teach-rel" placeholder="Relation (e.g. turns_litmus)" required>
+                    <input type="text" id="teach-obj" placeholder="Object (e.g. red)" required>
+                    <button type="submit" class="clay-btn">Teach Brain</button>
+                </form>
+                <div id="teach-status" class="teach-status"></div>
+            </section>
+        </aside>
     </div>
 
-    <script src="/static/app.js?v=5"></script>
+    <script src="/static/app.js?v=6"></script>
 </body>
 </html>
+

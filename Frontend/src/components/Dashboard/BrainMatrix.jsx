@@ -1,73 +1,33 @@
-import { useEffect, useState } from "react";
+import useTelemetry from "../../hooks/useTelemetry";
 import { motion } from "framer-motion";
 
-const NUM_NODES = 35;
-const CONNECTIONS_PER_NODE = 2;
-
-function generateNodes() {
-    return Array.from({ length: NUM_NODES }).map((_, i) => ({
-        id: i,
-        x: Math.random() * 90 + 5,
-        y: Math.random() * 90 + 5,
-        size: Math.random() * 4 + 2,
-    }));
-}
-
-function generateLinks(nodes) {
-    const links = [];
-    nodes.forEach(node => {
-        for (let i = 0; i < CONNECTIONS_PER_NODE; i++) {
-            const target = nodes[Math.floor(Math.random() * NUM_NODES)];
-            if (target.id !== node.id) {
-                links.push({ source: node, target });
-            }
-        }
-    });
-    return links;
-}
-
 export default function BrainMatrix() {
-    const [nodes, setNodes] = useState([]);
-    const [links, setLinks] = useState([]);
-
-    useEffect(() => {
-        const n = generateNodes();
-        setNodes(n);
-        setLinks(generateLinks(n));
-    }, []);
+    const { somActivation } = useTelemetry();
 
     return (
-        <svg style={{ width: "100%", height: "100%" }} viewBox="0 0 100 100" preserveAspectRatio="none">
-            {links.map((link, i) => (
-                <motion.line
-                    key={i}
-                    x1={`${link.source.x}%`}
-                    y1={`${link.source.y}%`}
-                    x2={`${link.target.x}%`}
-                    y2={`${link.target.y}%`}
-                    stroke="var(--text)"
-                    strokeOpacity={0.15}
-                    strokeWidth={0.2}
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 2, delay: Math.random() * 1.5 }}
-                />
-            ))}
-            {nodes.map(node => (
-                <motion.circle
-                    key={node.id}
-                    cx={`${node.x}%`}
-                    cy={`${node.y}%`}
-                    r={node.size / 2}
-                    fill="var(--mint)"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1, opacity: [0.6, 1, 0.6] }}
-                    transition={{ 
-                        scale: { duration: 0.5 },
-                        opacity: { repeat: Infinity, duration: 2 + Math.random() * 2 }
-                    }}
-                />
-            ))}
-        </svg>
+        <div style={{ width: "100%", height: "100%", padding: "12px", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: "6px" }}>
+            {somActivation.map((val, i) => {
+                const isActive = val > 0.05;
+                const opacity = Math.min(val * 0.9 + 0.15, 1.0);
+                return (
+                    <motion.div
+                        key={i}
+                        animate={{
+                            scale: isActive ? 1.05 : 1.0,
+                            opacity: opacity,
+                        }}
+                        transition={{ duration: 0.3 }}
+                        style={{
+                            aspectRatio: "1",
+                            borderRadius: "6px",
+                            backgroundColor: isActive ? "var(--mint)" : "rgba(160, 165, 176, 0.2)",
+                            boxShadow: isActive ? "0 0 10px rgba(139, 212, 186, 0.8)" : "none",
+                            border: isActive ? "1px solid var(--mint)" : "1px solid rgba(255,255,255,0.05)"
+                        }}
+                        title={`Neuron ${i}: ${(val * 100).toFixed(0)}%`}
+                    />
+                );
+            })}
+        </div>
     );
 }

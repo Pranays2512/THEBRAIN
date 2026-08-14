@@ -1,16 +1,20 @@
 .chat-area-layout {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   height: 100%;
   width: 100%;
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .chat-area-messages {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 1000px;
+  max-width: 100%;
+  padding: 0 48px;
+  box-sizing: border-box;
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden; /* ChatView will handle its own scrolling */
   mask-image: linear-gradient(to bottom, transparent 0%, black 40px);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 40px);
@@ -18,7 +22,18 @@
 
 .chat-area-composer {
   flex-shrink: 0;
-  padding: 0 32px 16px 32px;
+  padding: 0 48px 24px 48px;
   width: 100%;
-  max-width: 1000px;
+  max-width: 100%;
+  box-sizing: border-box;
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+.chat-area-layout.has-artifact .chat-area-messages,
+.chat-area-layout.has-artifact .chat-area-composer {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+
+

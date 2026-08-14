@@ -1,0 +1,160 @@
+cmake_minimum_required(VERSION 3.16)
+project(Brain3 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ── Include Directories ──────────────────────────────────────────────────────
+# All headers are included relative to the brain3 root. No more -I flags needed.
+include_directories(
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/fuzzy/core
+    ${CMAKE_SOURCE_DIR}/crisp/core
+    ${CMAKE_SOURCE_DIR}/fuzzy
+    ${CMAKE_SOURCE_DIR}/crisp
+)
+
+# ── Platform: macOS Accelerate Framework ─────────────────────────────────────
+if(APPLE)
+    find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
+    set(PLATFORM_LIBS ${ACCELERATE_FRAMEWORK})
+    add_compile_options(-Wno-deprecated-declarations)
+else()
+    set(PLATFORM_LIBS "")
+endif()
+
+# ── JNI Bridge ───────────────────────────────────────────────────────────────
+# On macOS, find_package(JNI) requires AWT which is not needed.
+# Use JAVA_HOME directly to find JNI headers.
+if(DEFINED ENV{JAVA_HOME})
+    set(_JDK "$ENV{JAVA_HOME}")
+elseif(APPLE)
+    execute_process(COMMAND /usr/libexec/java_home
+                    OUTPUT_VARIABLE _JDK OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
+
+if(_JDK AND EXISTS "${_JDK}/include/jni.h")
+    set(JNI_FOUND TRUE)
+    set(JNI_INCLUDE_DIRS "${_JDK}/include" "${_JDK}/include/darwin" "${_JDK}/include/linux")
+    include_directories(${JNI_INCLUDE_DIRS})
+    add_library(brainjni SHARED
+        adapters/jni/BrainJNI.cpp
+    )
+    target_link_libraries(brainjni ${PLATFORM_LIBS})
+    set_target_properties(brainjni PROPERTIES OUTPUT_NAME "brainjni")
+    message(STATUS "JNI bridge enabled: ${_JDK}")
+else()
+    message(WARNING "JNI not found — skipping BrainJNI.cpp bridge build")
+endif()
+
+# ── Helper: add a phase test ─────────────────────────────────────────────────
+function(add_phase_test name source)
+    add_executable(${name} ${source})
+    target_link_libraries(${name} ${PLATFORM_LIBS})
+endfunction()
+
+# ── Test Targets ─────────────────────────────────────────────────────────────
+add_phase_test(test_phase1_synth      test_phase1_synth.cpp)
+add_phase_test(test_phase2_synth      test_phase2_synth.cpp)
+add_phase_test(test_phase3_synth      test_phase3_synth.cpp)
+add_phase_test(test_phase4_synth      test_phase4_synth.cpp)
+add_phase_test(test_phase5_synth      test_phase5_synth.cpp)
+add_phase_test(test_phase6_synth      test_phase6_synth.cpp)
+add_phase_test(test_phase7_reasoning  test_phase7_reasoning.cpp)
+add_phase_test(test_phase8_integration test_phase8_integration.cpp)
+
+# ── Per-engine test targets ───────────────────────────────────────────────────
+add_phase_test(test_math_engines
+    crisp/engines/math/math_full_test.cpp)
+
+add_phase_test(code_engine_test
+    crisp/engines/code/code_engine_test.cpp)
+
+add_phase_test(crisp_reasoning_test
+    crisp/engines/reasoning/crisp_reasoning_test.cpp)
+
+add_phase_test(crisp_store_test
+    crisp/engines/store/crisp_store_test.cpp)
+
+add_phase_test(crisp_knowledge_test
+    crisp/engines/knowledge/crisp_knowledge_test.cpp)
+
+add_phase_test(crisp_math_test
+    crisp/engines/math/crisp_math_test.cpp)
+
+# ── Demos ─────────────────────────────────────────────────────────────────────
+add_executable(demo_vision demo_vision.cpp)
+target_include_directories(demo_vision PRIVATE .)
+target_link_libraries(demo_vision PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_general_play demo_general_play.cpp)
+target_include_directories(demo_general_play PRIVATE .)
+target_link_libraries(demo_general_play PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_self_play demo_self_play.cpp)
+target_include_directories(demo_self_play PRIVATE .)
+target_link_libraries(demo_self_play PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_sleep demo_sleep.cpp)
+target_include_directories(demo_sleep PRIVATE .)
+target_link_libraries(demo_sleep PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_intuition demo_intuition.cpp)
+target_include_directories(demo_intuition PRIVATE .)
+target_link_libraries(demo_intuition PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_neuro_symbolic demo_neuro_symbolic.cpp)
+target_include_directories(demo_neuro_symbolic PRIVATE .)
+target_link_libraries(demo_neuro_symbolic PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_cognitive_bridge demo_cognitive_bridge.cpp)
+target_include_directories(demo_cognitive_bridge PRIVATE .)
+target_link_libraries(demo_cognitive_bridge PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_batch_training demo_batch_training.cpp)
+target_include_directories(demo_batch_training PRIVATE .)
+target_link_libraries(demo_batch_training PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_language_training demo_language_training.cpp)
+target_include_directories(demo_language_training PRIVATE .)
+target_link_libraries(demo_language_training PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_brain2_dataset demo_brain2_dataset.cpp)
+target_include_directories(demo_brain2_dataset PRIVATE .)
+target_link_libraries(demo_brain2_dataset PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_curriculum_training demo_curriculum_training.cpp)
+target_include_directories(demo_curriculum_training PRIVATE .)
+target_link_libraries(demo_curriculum_training PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_glove_import demo_glove_import.cpp)
+target_include_directories(demo_glove_import PRIVATE .)
+target_link_libraries(demo_glove_import PRIVATE ${PLATFORM_LIBS})
+
+add_executable(demo_native_chat demo_native_chat.cpp)
+target_include_directories(demo_native_chat PRIVATE .)
+target_link_libraries(demo_native_chat PRIVATE ${PLATFORM_LIBS})
+
+add_executable(train_brain train_brain.cpp)
+target_include_directories(train_brain PRIVATE .)
+target_link_libraries(train_brain PRIVATE ${PLATFORM_LIBS})
+
+# ── CTest integration ─────────────────────────────────────────────────────────
+enable_testing()
+add_test(NAME phase1  COMMAND test_phase1_synth)
+add_test(NAME phase2  COMMAND test_phase2_synth)
+add_test(NAME phase3  COMMAND test_phase3_synth)
+add_test(NAME phase4  COMMAND test_phase4_synth)
+add_test(NAME phase5  COMMAND test_phase5_synth)
+add_test(NAME phase6  COMMAND test_phase6_synth)
+add_test(NAME phase7  COMMAND test_phase7_reasoning)
+add_test(NAME phase8  COMMAND test_phase8_integration)
+add_test(NAME code_engine  COMMAND code_engine_test)
+add_test(NAME crisp_store  COMMAND crisp_store_test)
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+message(STATUS "Brain3 configured.")
+message(STATUS "  Include root: ${CMAKE_SOURCE_DIR}")
+message(STATUS "  Platform libs: ${PLATFORM_LIBS}")
+message(STATUS "  Build dir: ${CMAKE_BINARY_DIR}")
+message(STATUS "  Run: cmake --build build && ctest --test-dir build")

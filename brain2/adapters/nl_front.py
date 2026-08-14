@@ -18,12 +18,11 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from engines.reasoning.reasoning_engine import ReasoningEngine
 from engines.reasoning.means_ends import Policy
-from policy_pack import PACK
 from engines.synthesis.policy_proposer import MultiPolicyMemory, Solver
-from nl_query import NLQueryParser, load_glove, _rel_words, STOP
+from adapters.nl_query import NLQueryParser, load_glove, _rel_words, STOP
 from training.student_trainer import Student, load_dataset, DATA
 
 STRONG = 0.9      # lexical confidence at/above which we trust the matcher over the student
@@ -56,7 +55,8 @@ class Front:
             return self.brain.policy_solve(ent, rel)
         if self.cpp is not None:                  # C++ brain2.PolicyEngine
             return self.cpp.solve(ent, rel)
-        return Solver(self.kb, self.mem, use_proposer=True).solve(ent, rel)
+        from engines.reasoning.means_ends import MeansEndsSolver, FactSource, PolicySource, Need
+        return MeansEndsSolver([FactSource(self.kb), PolicySource(self.mem)]).solve(Need(ent, rel))
 
     def resolve(self, q):
         """Confidence ladder: a tier is accepted only when it's CONFIDENT, not
@@ -72,15 +72,22 @@ class Front:
         # 1. strong lexical that AGREES with the student
         if lr is not None and sc >= STRONG and lr == srel:
             return ent, lr, "lexical"
-        # 2. the student, when its wordmax confidence clears the floor (it
-        #    overrides lexical false-friends like 'work out' -> force)
+        # 2. the student
         if conf >= CONF_FLOOR:
-            return ent, srel, "student"
+            # Only return student if the solver actually has an answer for it.
+            # Otherwise, escalate to LLM!
+            if self._solve(ent, srel) is not None:
+                return ent, srel, "student"
+                
         # 3. escalate: the LLM (invoked only here — the expensive tail)
         if self.llm is not None:
-            le, lrel = self.llm.parse(q)
-            if (le or ent) and lrel in self.solvable:
-                return (le or ent), lrel, "llm"
+            prompt = q + "\n\nPick the relation EXACTLY from this list of valid relations: " + ", ".join(list(self.solvable))
+            parsed = self.llm.parse(prompt)
+            if parsed and parsed.kind == "factual":
+                le = parsed.payload.get("subject")
+                lrel = parsed.payload.get("relation")
+                if (le or ent) and lrel in self.solvable:
+                    return (le or ent), lrel, "llm"
         return ent, None, "none"
 
     def answer(self, q):
@@ -88,10 +95,12 @@ class Front:
         val = self._solve(ent, rel)
         if val is None:
             return "I don't know.", "none"
-        return f"{ent}.{rel} = {val:.4g}", src
+        if isinstance(val, (int, float)):
+            return f"{ent}.{rel} = {val:.4g}", src
+        return f"{ent}.{rel} = {val}", src
 
 
-def _build(llm=None, use_cpp=False, use_brain=False):
+def _build(llm=None, use_cpp=False, use_brain=False, llm_model="qwen3:1.7B"):
     kb = ReasoningEngine()
     facts = {
         "rocket": {"mass": 1000, "accel": 12, "speed": 300, "volume": 2.0,
@@ -102,6 +111,9 @@ def _build(llm=None, use_cpp=False, use_brain=False):
     for ent, fs in facts.items():
         for r, v in fs.items():
             kb.learn(ent, r, str(v))
+    PACK = [("force", ("mass", "accel"), ("*", "mass", "accel")),
+            ("density", ("mass", "volume"), ("/", "mass", "volume")),
+            ("momentum", ("mass", "speed"), ("*", "mass", "speed"))]
     policies = list(PACK) + [
         # align distillation vocab with the executive: teacher used 'energy';
         # executive only had ke/pe, so add energy = kinetic energy (½mv²).
@@ -150,7 +162,7 @@ def _build(llm=None, use_cpp=False, use_brain=False):
     if llm:                                       # attach the rung-3 LLM tier
         from rung3_parser import LLMParser
         from adapters.llm_adapter import OllamaClient, StubClient
-        client = OllamaClient("qwen3:1.7B") if llm == "real" else StubClient({
+        client = OllamaClient(llm_model) if llm == "real" else StubClient({
             "oomph": '{"entity":"rocket","rel":"force"}'})   # idiom only the LLM cracks
         llm_parser = LLMParser(client, entities | set(facts), solvable)
     return Front(kb, mem, lexical, student, solvable, llm_parser, cpp_engine, brain)

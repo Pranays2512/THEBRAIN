@@ -38,8 +38,8 @@ export default function DoodleGraph({ data, color = "var(--text)", label, detail
                 
                 <svg viewBox="-2 -2 104 104" preserveAspectRatio="none" style={{ flex: 1, overflow: 'visible' }}>
                     <defs>
-                    <filter id={`doodle-displacement-${label.replace(/\s+/g, '')}`}>
-                        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+                    <filter id={`doodle-displacement-${label.replace(/\s+/g, '')}`} colorInterpolationFilters="sRGB">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
                         <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
                     </filter>
                 </defs>

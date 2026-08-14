@@ -1,0 +1,387 @@
+#pragma once
+/*
+ * scratchpad.hpp — Scratchpad Memory, Component 11 of Brain v2
+ *
+ * External memory tape for deliberate, step-by-step reasoning.
+ * Bypasses Working Memory's 7-slot limit entirely.
+ *
+ * Like paper for a human doing math:
+ *   - Write intermediate results to named slots
+ *   - Read them back in later steps
+ *   - No decay, no capacity limit, no interference with WM
+ *
+ * Also supports:
+ *   - Stack (push/pop) for recursive reasoning
+ *   - History per slot (last N writes) for backtracking
+ *   - Slot tagging (what kind of value is stored here)
+ *   - Diff: compare two slots (are they similar?)
+ */
+
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <deque>
+#include <cmath>
+#include <algorithm>
+#include <mutex>
+#include <memory>
+#include <fstream>
+#include <stdexcept>
+#include "fuzzy/core/sparse_tensor.hpp"
+
+namespace brain2 {
+
+struct ScratchSlot {
+    SparseVector              value;      // current value
+    std::deque<SparseVector>  history;    // last N values
+    std::string                     tag;        // "number", "result", "premise", etc.
+    int                             write_count;
+    static constexpr int            MAX_HISTORY = 8;
+};
+
+// Tree node for heuristic possibility planning (means-ends analysis)
+struct PossibilityNode {
+    int                 id;
+    int                 parent_id;
+    std::vector<float>  state;
+    float               h_cost; // Heuristic cost (distance to goal). Lower is better.
+    std::vector<int>    children;
+};
+
+
+class Scratchpad {
+public:
+    int n_dims;
+
+private:
+    std::unordered_map<std::string, ScratchSlot> slots_;
+    std::vector<std::vector<float>>              stack_;  // push/pop stack
+    std::vector<std::string>                     write_order_; // insertion order
+    
+    // Possibility Tree
+    std::unordered_map<int, PossibilityNode>     tree_;
+    int                                          current_node_id_ = -1;
+    int                                          next_node_id_ = 0;
+    
+    std::unique_ptr<std::mutex>                  mtx_;
+
+    static float cosine(const std::vector<float>& a,
+                        const std::vector<float>& b) noexcept {
+        float dot = 0.f, na = 0.f, nb = 0.f;
+        size_t n = std::min(a.size(), b.size());
+        for (size_t i = 0; i < n; i++) {
+            dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i];
+        }
+        if (na < 1e-8f || nb < 1e-8f) return 0.f;
+        return dot / (std::sqrt(na) * std::sqrt(nb));
+    }
+
+public:
+    Scratchpad() : n_dims(0), mtx_(std::make_unique<std::mutex>()) {}
+
+    Scratchpad(int n_dims) : n_dims(n_dims),
+                              mtx_(std::make_unique<std::mutex>()) {}
+
+    Scratchpad(Scratchpad&&)            = default;
+    Scratchpad& operator=(Scratchpad&&) = default;
+
+    // Enable Copying for Branch Simulation (Means-Ends Analysis)
+    Scratchpad(const Scratchpad& other) : n_dims(other.n_dims), mtx_(std::make_unique<std::mutex>()) {
+        std::lock_guard<std::mutex> lock(*other.mtx_);
+        slots_ = other.slots_;
+        stack_ = other.stack_;
+        write_order_ = other.write_order_;
+        tree_ = other.tree_;
+        current_node_id_ = other.current_node_id_;
+        next_node_id_ = other.next_node_id_;
+    }
+
+    Scratchpad& operator=(const Scratchpad& other) {
+        if (this != &other) {
+            std::lock_guard<std::mutex> lock1(*mtx_);
+            std::lock_guard<std::mutex> lock2(*other.mtx_);
+            n_dims = other.n_dims;
+            slots_ = other.slots_;
+            stack_ = other.stack_;
+            write_order_ = other.write_order_;
+            tree_ = other.tree_;
+            current_node_id_ = other.current_node_id_;
+            next_node_id_ = other.next_node_id_;
+        }
+        return *this;
+    }
+
+    // Write concept vector to named slot
+    void write(const std::string& name,
+               const std::vector<float>& vec,
+               const std::string& tag = "") {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto& slot = slots_[name];
+        if (slot.write_count == 0) write_order_.push_back(name);
+        if (!slot.value.empty()) {
+            slot.history.push_back(slot.value);
+            if ((int)slot.history.size() > ScratchSlot::MAX_HISTORY) {
+                slot.history.pop_front();
+            }
+        }
+        slot.value = SparseVector::from_dense(vec);
+        if (!tag.empty()) slot.tag = tag;
+        slot.write_count++;
+    }
+
+    // Read concept vector from named slot
+    // Returns zero vector if slot doesn't exist
+    std::vector<float> read(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = slots_.find(name);
+        if (it != slots_.end()) return it->second.value.to_dense();
+        return std::vector<float>(n_dims, 0.f);
+    }
+
+    // Check if slot exists and has a value
+    bool has(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return slots_.count(name) > 0 && !slots_.at(name).value.empty();
+    }
+
+    // Read previous value (one step back in history)
+    std::vector<float> read_prev(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = slots_.find(name);
+        if (it == slots_.end() || it->second.history.empty())
+            return std::vector<float>(n_dims, 0.f);
+        return it->second.history.back().to_dense();
+    }
+
+    // How similar are two slots? (for convergence check)
+    float similarity(const std::string& a, const std::string& b) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto ia = slots_.find(a);
+        auto ib = slots_.find(b);
+        if (ia == slots_.end() || ib == slots_.end()) return 0.f;
+        return cosine(ia->second.value.to_dense(), ib->second.value.to_dense());
+    }
+
+    // How much did slot change on last write? (convergence signal)
+    float delta(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = slots_.find(name);
+        if (it == slots_.end() || it->second.history.empty()) return 1.f;
+        return 1.f - cosine(it->second.value.to_dense(), it->second.history.back().to_dense());
+    }
+
+    // Stack operations (for recursive reasoning)
+    void push(const std::vector<float>& vec) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        stack_.push_back(vec);
+    }
+
+    std::vector<float> pop() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (stack_.empty()) return std::vector<float>(n_dims, 0.f);
+        auto v = stack_.back();
+        stack_.pop_back();
+        return v;
+    }
+
+    std::vector<float> peek() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (stack_.empty()) return std::vector<float>(n_dims, 0.f);
+        return stack_.back();
+    }
+
+    // Copy one slot to another
+    void copy(const std::string& src, const std::string& dst) {
+        auto v = read(src);
+        write(dst, v);
+    }
+
+    // Accumulate: slot[name] = blend(slot[name], vec, alpha)
+    void accumulate(const std::string& name,
+                    const std::vector<float>& vec,
+                    float alpha = 0.5f) {
+        auto current = read(name);
+        std::vector<float> blended(n_dims, 0.f);
+        for (int i = 0; i < n_dims && i < (int)vec.size(); i++)
+            blended[i] = (1.f - alpha) * current[i] + alpha * vec[i];
+        write(name, blended);
+    }
+
+    // List all slot names in write order
+    std::vector<std::string> slot_names() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return write_order_;
+    }
+
+    // Delete a slot
+    void erase(const std::string& name) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        slots_.erase(name);
+        write_order_.erase(
+            std::remove(write_order_.begin(), write_order_.end(), name),
+            write_order_.end());
+    }
+
+    // Clear everything (new problem)
+    void clear() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        slots_.clear();
+        stack_.clear();
+        write_order_.clear();
+    }
+
+    int slot_count() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return (int)slots_.size();
+    }
+
+    int stack_size() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return (int)stack_.size();
+    }
+
+    std::string tag(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = slots_.find(name);
+        return it == slots_.end() ? "" : it->second.tag;
+    }
+
+    int write_count(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        auto it = slots_.find(name);
+        return it == slots_.end() ? 0 : it->second.write_count;
+    }
+
+    // ---------------------------------------------------------
+    // Possibility Tree Operations
+    // ---------------------------------------------------------
+
+    // Start a new planning tree with an initial root state
+    int start_tree(const std::vector<float>& initial_state) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        tree_.clear();
+        next_node_id_ = 0;
+        PossibilityNode root = {next_node_id_++, -1, initial_state, 0.f, {}};
+        tree_[root.id] = root;
+        current_node_id_ = root.id;
+        return current_node_id_;
+    }
+
+    // Expand the current node with a new branch
+    // h_cost: Heuristic cost. Lower = closer to goal.
+    int branch(const std::vector<float>& state, float h_cost) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.empty() || current_node_id_ == -1) return -1;
+        
+        PossibilityNode child = {next_node_id_++, current_node_id_, state, h_cost, {}};
+        tree_[child.id] = child;
+        tree_[current_node_id_].children.push_back(child.id);
+        return child.id;
+    }
+
+    // Explicitly navigate to a specific node (backtracking)
+    void move_to(int node_id) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.count(node_id)) {
+            current_node_id_ = node_id;
+        }
+    }
+
+    // Move to the child branch that has the lowest h_cost (closest to goal)
+    int move_to_best_child() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (tree_.empty() || current_node_id_ == -1) return -1;
+        
+        const auto& children = tree_[current_node_id_].children;
+        if (children.empty()) return current_node_id_; // Nowhere to go
+
+        int best_id = children[0];
+        float best_cost = tree_[best_id].h_cost;
+
+        for (size_t i = 1; i < children.size(); i++) {
+            float cost = tree_[children[i]].h_cost;
+            if (cost < best_cost) {
+                best_cost = cost;
+                best_id = children[i];
+            }
+        }
+        current_node_id_ = best_id;
+        return current_node_id_;
+    }
+
+    // Get the state of the currently active tree branch (now includes interleaved slots!)
+    std::vector<float> current_tree_state() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        std::vector<float> state(n_dims, 0.f);
+        
+        // Interleave 4 primary math/reasoning slots to preserve positional orthogonality
+        int chunk_size = n_dims / 4; 
+        std::vector<std::string> keys = {"subject", "object", "a_operator", "focus"};
+        
+        for (int k = 0; k < 4; k++) {
+            auto it = slots_.find(keys[k]);
+            if (it != slots_.end() && !it->second.value.empty()) {
+                auto dense_val = it->second.value.to_dense();
+                for (int i = 0; i < chunk_size && i < (int)dense_val.size(); i++) {
+                    state[k * chunk_size + i] = dense_val[i];
+                }
+            }
+        }
+        
+        // Add the base tree context lightly
+        if (!tree_.empty() && current_node_id_ != -1) {
+            auto& base = tree_.at(current_node_id_).state;
+            for (int i = 0; i < n_dims && i < (int)base.size(); i++) {
+                state[i] += base[i] * 0.1f;
+            }
+        }
+        return state;
+    }
+    
+    // Clear the planning tree entirely
+    void clear_tree() {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        tree_.clear();
+        current_node_id_ = -1;
+        next_node_id_ = 0;
+    }
+    
+    // Get all nodes in the tree
+    std::vector<PossibilityNode> get_tree() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        std::vector<PossibilityNode> nodes;
+        for (const auto& kv : tree_) {
+            nodes.push_back(kv.second);
+        }
+        return nodes;
+    }
+    
+    // Get current node ID
+
+    int current_node() const {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        return current_node_id_;
+    }
+
+    void expand_dims(int new_dims) {
+        std::lock_guard<std::mutex> lock(*mtx_);
+        if (new_dims <= n_dims) return;
+        
+        for (auto& [name, slot] : slots_) {
+            slot.value.size_ = new_dims;
+            for (auto& h : slot.history) h.size_ = new_dims;
+        }
+        
+        for (auto& v : stack_) {
+            v.resize(new_dims, 0.f);
+        }
+        
+        for (auto& [id, node] : tree_) {
+            node.state.resize(new_dims, 0.f);
+        }
+        
+        n_dims = new_dims;
+    }
+};
+
+} // namespace brain2

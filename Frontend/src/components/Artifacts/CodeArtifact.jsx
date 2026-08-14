@@ -18,6 +18,8 @@ artifact.data.language
 
 }
 
+embedded
+
 >
 
 {artifact.data.code}

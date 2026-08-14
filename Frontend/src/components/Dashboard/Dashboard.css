@@ -94,3 +94,14 @@
         grid-column: span 1;
     }
 }
+
+.matrix-node {
+    opacity: 0.6;
+    animation: pulseNode ease-in-out infinite;
+    will-change: opacity;
+}
+
+@keyframes pulseNode {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}

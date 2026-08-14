@@ -24,7 +24,7 @@ ORDERS the search, the verifier-backed executive still produces the answer.
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from engines.reasoning.reasoning_engine import ReasoningEngine
 from engines.reasoning.means_ends import Need, Policy, FactSource, ev
 

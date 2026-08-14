@@ -49,57 +49,36 @@ mix-blend-mode:multiply;
 }
 
 .bg-light{
-
-position:absolute;
-
-border-radius:50%;
-
-filter:blur(140px);
-
-animation:
-
-floatLight 14s ease-in-out infinite;
-
+    position:absolute;
+    border-radius:50%;
+    animation: floatLight 14s ease-in-out infinite;
+    will-change: transform;
 }
 
 .light-1{
-
-width:420px;
-height:420px;
-
-left:-100px;
-top:120px;
-
-background:#ffffff88;
-
+    width:700px;
+    height:700px;
+    left:-240px;
+    top:-20px;
+    background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 65%);
 }
 
 .light-2{
-
-width:340px;
-height:340px;
-
-right:-60px;
-top:100px;
-
-background:#d8f4e4aa;
-
-animation-delay:3s;
-
+    width:600px;
+    height:600px;
+    right:-190px;
+    top:-30px;
+    background: radial-gradient(circle, rgba(216,244,228,0.6) 0%, rgba(216,244,228,0) 65%);
+    animation-delay:3s;
 }
 
 .light-3{
-
-width:500px;
-height:500px;
-
-bottom:-180px;
-left:40%;
-
-background:#fff7df88;
-
-animation-delay:6s;
-
+    width:800px;
+    height:800px;
+    bottom:-330px;
+    left:30%;
+    background: radial-gradient(circle, rgba(255,247,223,0.5) 0%, rgba(255,247,223,0) 65%);
+    animation-delay:6s;
 }
 
 @keyframes floatLight{

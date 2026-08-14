@@ -21,6 +21,7 @@ from engines.synthesis import _loop_synth_v4 as L4
 from engines.synthesis import dp_proposer as DP
 from engines.synthesis import _loop_synth as L1          # earlier fold synthesizer (fallback coverage)
 from engines.synthesis import _loop_synth_v2 as L2         # two-accumulator + conditional synthesizer (fallback)
+from engines.synthesis import graph_synth as GS           # graph vocabulary expansion (BFS/DFS/Dijkstra/etc.)
 
 
 # ── backends: each takes examples in (args, out) form, returns Python code or None
@@ -120,12 +121,19 @@ def b_dp(ex):
     return None
 
 
+def b_graph(ex):
+    """Graph synthesizer: tries BFS/DFS/Dijkstra/etc. templates against examples."""
+    name, code = GS.synthesize(ex)
+    return code if name else None
+
+
 ROUTES = {              # input kind -> ordered backends to try
     "int1":  [("composable_guided", b_composable_guided), ("composable", b_composable),
               ("early", b_early), ("fold", b_fold), ("two", b_two)],
     "int2":  [("while", b_while)],
     "list":  [("list", b_list), ("dp", b_dp)],
     "listt": [("member", b_member)],
+    "graph": [("graph", b_graph)],   # graph vocabulary: BFS/DFS/Dijkstra/components/topo
 }
 
 

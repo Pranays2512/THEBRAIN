@@ -29,6 +29,7 @@ from engines.math.integral_engine import IntegralEngine, render as render_expr
 from engines.math.algebra_engine import AlgebraEngine, AlgebraError
 from faculties.conversation_engine import ConversationEngine
 from faculties.query_planner import QueryPlanner
+from engines.reasoning.brainql import BrainQLQuery, BrainQLResult, BrainQLExecutor
 
 
 # ── the contract ─────────────────────────────────────────────────────────────
@@ -153,15 +154,32 @@ class GrammarMouth(Mouth):
             return f"The integral is {a.value} + C{tag}."
         if a.kind == "solve":
             return f"x = {a.value} (verified)." if a.known else f"I can't solve that: {a.note}."
-        if a.kind == "language":
+        if a.kind in ("language", "factual", "compute", "code"):
             return a.value
         return f"I couldn't understand that ({a.note})."
 
 
-# ── the Mind: eyes -> brain -> mouth ─────────────────────────────────────────
+
+# ── the Mind: eyes → brain → mouth ────────────────────────────────────────────
 class Mind:
-    def __init__(self, eyes: Eyes, brain: Brain, mouth: Mouth):
-        self.eyes, self.brain, self.mouth = eyes, brain, mouth
+    def __init__(self, eyes, brain: Brain, mouth: Mouth,
+                 bql_mouth=None, bql_executor=None):
+        """eyes may be a RuleEyes, LLMEyes, or BrainQLEyes.
+
+        bql_mouth  : a BrainQLMouth instance for rendering BrainQLResults.
+                     If None and eyes emits BrainQL, falls back to
+                     bql_executor.re-based template rendering.
+        bql_executor: a BrainQLExecutor. If None, one is created from brain.lang.r.
+        """
+        self.eyes = eyes
+        self.brain = brain
+        self.mouth = mouth
+        self.bql_mouth = bql_mouth
+        # Build a BrainQL executor backed by the same ReasoningEngine the brain uses
+        if bql_executor is not None:
+            self.bql_exec = bql_executor
+        else:
+            self.bql_exec = BrainQLExecutor(brain.lang.r)
 
     def teach(self, s, rel, o):
         return self.brain.teach(s, rel, o)
@@ -169,8 +187,35 @@ class Mind:
     def set_transitive(self, rel):
         self.brain.set_transitive(rel)
 
-    def respond(self, text):
-        return self.mouth.render(self.brain.answer(self.eyes.parse(text)))
+    def respond(self, text: str) -> str:
+        """Full pipeline: text → Eyes → [BrainQL | math Query] → Brain → Mouth → text."""
+        parsed = self.eyes.parse(text)
+
+        # — BrainQL path —
+        if isinstance(parsed, list) and parsed and isinstance(parsed[0], BrainQLQuery):
+            results = self.bql_exec.run_block(parsed)
+            # Use bql_mouth if available; else fallback template
+            if self.bql_mouth is not None:
+                parts = [self.bql_mouth.render_result(r) for r in results]
+            else:
+                parts = [self._fallback_render(r) for r in results]
+            return " ".join(parts)
+
+        # — math / language Query path (unchanged) —
+        return self.mouth.render(self.brain.answer(parsed))
+
+    def _fallback_render(self, result: BrainQLResult) -> str:
+        """Deterministic BrainQL rendering when no bql_mouth is available."""
+        if not result.known:
+            note = result.note or "no answer"
+            return f"I don't know ({note})."
+        v = result.value
+        if result.op in ("TEACH",):
+            return f"Got it: {result.subj} {result.rel} {v}."
+        if result.op in ("CHAIN",):
+            items = ", ".join(v) if isinstance(v, list) else str(v)
+            return f"{result.subj} isa: {items}."
+        return f"{result.subj} {result.rel}: {v}."
 
 
 def _demo():

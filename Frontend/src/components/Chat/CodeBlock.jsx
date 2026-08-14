@@ -10,7 +10,8 @@ import {
 } from "react-syntax-highlighter";
 
 import {
-    oneDark
+    oneDark,
+    oneLight
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import "./CodeBlock.css";
@@ -19,7 +20,9 @@ export default function CodeBlock({
 
     language,
 
-    children
+    children,
+
+    embedded = false
 
 }){
 
@@ -41,69 +44,69 @@ export default function CodeBlock({
 
     return(
 
-        <div className="code-wrapper">
+        <div className={`code-wrapper ${embedded ? "code-wrapper-embedded" : ""}`}>
 
-            <div className="code-header">
+            {!embedded && (
+                <div className="code-header">
 
-                <span>
+                    <span>
 
-                    {language.toUpperCase()}
+                        {language.toUpperCase()}
 
-                </span>
+                    </span>
 
-                <button
+                    <button
 
-                    className="copy-button"
+                        className="copy-button"
 
-                    onClick={copy}
+                        onClick={copy}
 
-                >
+                    >
 
-                    {
+                        {
 
-                        copied
+                            copied
 
-                        ?
+                            ?
 
-                        <Check size={16}/>
+                            <Check size={16}/>
 
-                        :
+                            :
 
-                        <Copy size={16}/>
+                            <Copy size={16}/>
 
-                    }
+                        }
 
-                </button>
+                    </button>
 
-            </div>
+                </div>
+            )}
 
             <SyntaxHighlighter
-
                 language={language}
-
-                style={oneDark}
-
+                style={embedded ? oneLight : oneDark}
                 showLineNumbers
-
                 customStyle={{
-
-                    margin:0,
-
-                    borderRadius:0,
-
-                    background:"transparent",
-
-                    fontSize:"14px",
-
-                    padding:"22px"
-
+                    margin: 0,
+                    borderRadius: embedded ? 0 : "16px",
+                    background: embedded ? "transparent" : "rgba(0,0,0,0.03)",
+                    fontSize: "15px",
+                    fontFamily: "'Shantell Sans', 'Patrick Hand', 'Caveat', cursive, monospace",
+                    padding: embedded ? "10px 4px 16px" : "18px",
+                    minHeight: embedded ? "100%" : undefined
                 }}
-
+                codeTagProps={{
+                    style: {
+                        fontFamily: "'Shantell Sans', 'Patrick Hand', 'Caveat', cursive, monospace",
+                        fontSize: "15px",
+                        lineHeight: "1.7"
+                    }
+                }}
             >
-
                 {children}
-
             </SyntaxHighlighter>
+
+
 
         </div>
 

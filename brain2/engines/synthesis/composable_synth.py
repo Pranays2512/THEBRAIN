@@ -28,21 +28,77 @@ proposer. Bounded here to demonstrate the principle.)
     python3 composable_synth.py
 """
 
-INITS = [(0, 1), (0, 0), (1, 1)]
-RANGES = [("1", "n + 1"), ("2", "n"), ("0", "n")]
-GUARDS = {"None": None, "n % i == 0": lambda i, n: n % i == 0,
-          "i % 2 == 0": lambda i, n: i % 2 == 0}
-UPDATES = {  # (UA code, UB code): (UA fn, UB fn)
-    ("a + i", "b"):  (lambda a, b, i: a + i, lambda a, b, i: b),
-    ("a + 1", "b"):  (lambda a, b, i: a + 1, lambda a, b, i: b),
-    ("b", "a + b"):  (lambda a, b, i: b,     lambda a, b, i: a + b),
-    ("a * i", "b"):  (lambda a, b, i: a * i, lambda a, b, i: b),
-    ("a + i * i", "b"): (lambda a, b, i: a + i * i, lambda a, b, i: b),
+INITS = [
+    (0, 1),   # accumulator=0, counter=1  (sum, count)
+    (0, 0),   # both zero                 (double accumulator)
+    (1, 1),   # both one                  (product, fibonacci base)
+    (1, 0),   # product=1, count=0        (factorial, product)
+    (0, -1),  # accumulator=0, sentinel=-1 (argmax/argmin patterns)
+]
+
+RANGES = [
+    ("1", "n + 1"),   # 1..n inclusive        (triangular, factorial, divisors)
+    ("2", "n"),       # 2..n-1                (primality inner)
+    ("0", "n"),       # 0..n-1                (0-indexed loops)
+    ("1", "n"),       # 1..n-1                (skip last)
+    ("2", "n + 1"),   # 2..n inclusive        (even/odd from 2)
+]
+
+GUARDS = {
+    "None":           None,
+    "n % i == 0":     lambda i, n: n % i == 0,    # divisibility
+    "i % 2 == 0":     lambda i, n: i % 2 == 0,    # even elements
+    "i % 2 != 0":     lambda i, n: i % 2 != 0,    # odd elements
+    "i * i <= n":     lambda i, n: i * i <= n,    # sqrt bound (primality)
+    "n % i != 0":     lambda i, n: n % i != 0,    # non-divisors
+    "i <= n // 2":    lambda i, n: i <= n // 2,   # half-range
 }
-EARLIES = {"None": None, "a >= n": lambda a, b, i, n: a >= n,
-           "a > n": lambda a, b, i, n: a > n}
-FINALS = {"a": lambda a, b, i: a, "b": lambda a, b, i: b,
-          "-1": lambda a, b, i: -1}
+
+UPDATES = {  # (UA code, UB code): (UA fn, UB fn)
+    # ── additive accumulation ──────────────────────────────────────────────
+    ("a + i",     "b"):      (lambda a, b, i: a + i,         lambda a, b, i: b),
+    ("a + 1",     "b"):      (lambda a, b, i: a + 1,         lambda a, b, i: b),
+    ("a + i * i", "b"):      (lambda a, b, i: a + i * i,     lambda a, b, i: b),
+    ("a + i * i * i", "b"):  (lambda a, b, i: a + i**3,      lambda a, b, i: b),
+    # ── multiplicative accumulation (NEW: factorial, products, powers) ─────
+    ("a * i",     "b"):      (lambda a, b, i: a * i,         lambda a, b, i: b),
+    ("a * b",     "b + 1"):  (lambda a, b, i: a * b,         lambda a, b, i: b + 1),  # nCr-like
+    ("a * i * i", "b"):      (lambda a, b, i: a * i * i,     lambda a, b, i: b),
+    # ── two-state (fibonacci-style carry) ─────────────────────────────────
+    ("b",         "a + b"):  (lambda a, b, i: b,             lambda a, b, i: a + b),
+    ("b",         "a * b"):  (lambda a, b, i: b,             lambda a, b, i: a * b),  # NEW: geometric sequence
+    ("b",         "a + i"):  (lambda a, b, i: b,             lambda a, b, i: a + i),
+    # ── conditional / min-max tracking (NEW) ──────────────────────────────
+    ("a + 1",     "b + i"):  (lambda a, b, i: a + 1,         lambda a, b, i: b + i),  # count+sum pair
+    ("max(a,i)",  "b"):      (lambda a, b, i: max(a, i),     lambda a, b, i: b),      # running max
+    ("min(a,i) if a>=0 else i", "b"):
+                             (lambda a, b, i: min(a, i) if a >= 0 else i,
+                              lambda a, b, i: b),                                      # running min
+}
+
+# Remove placeholder entries that need `n` in lambda (can't close over it simply)
+UPDATES = {k: v for k, v in UPDATES.items()
+           if k not in [("a * n + i", "b"), ("a + n % i", "b")]}
+
+EARLIES = {
+    "None":           None,
+    "a >= n":         lambda a, b, i, n: a >= n,    # sum reached threshold
+    "a > n":          lambda a, b, i, n: a > n,     # exceeded threshold
+    "a == n":         lambda a, b, i, n: a == n,    # exact match
+    "n % i == 0":     lambda a, b, i, n: n % i == 0,  # NEW: found first divisor
+    "a * a > n":      lambda a, b, i, n: a * a > n, # NEW: squared exceeds (sqrt stop)
+    "b == 0":         lambda a, b, i, n: b == 0,    # NEW: second accumulator zeroed
+}
+
+FINALS = {
+    "a":    lambda a, b, last: a,
+    "b":    lambda a, b, last: b,
+    "-1":   lambda a, b, last: -1,
+    "i":    lambda a, b, last: last,                # NEW: return last loop index
+    "a + b":lambda a, b, last: a + b,               # NEW: sum of both accumulators
+    "a - 1":lambda a, b, last: a - 1,               # NEW: off-by-one correction
+    "b - 1":lambda a, b, last: b - 1,               # NEW: off-by-one on second
+}
 
 
 def _rng(lo, hi, n):

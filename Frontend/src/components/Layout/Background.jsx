@@ -30,8 +30,8 @@ export default function Background({ enabled = true }) {
                 <svg key={doodleIndex} className="bg-sketch" viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
                     {/* Hand-drawn ink pen filter */}
                     <defs>
-                        <filter id="pen-sketch" x="-10%" y="-10%" width="120%" height="120%">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+                        <filter id="pen-sketch" x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
                             <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
                         </filter>
                     </defs>

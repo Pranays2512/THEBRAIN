@@ -9,7 +9,11 @@ import {
     LayoutDashboard,
     Settings,
     HelpCircle,
-    LogOut
+    LogOut,
+    Bell,
+    Search,
+    Moon,
+    Sun
 } from "lucide-react";
 
 import {
@@ -18,13 +22,15 @@ import {
 } from "../Common";
 import { useChatContext } from "../../context/ChatContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
+import { useTheme } from "../../context/ThemeContext";
 
 import "./Sidebar.css";
 
-export default function Sidebar(){
+export default function Sidebar({ doodlesEnabled, setDoodlesEnabled }){
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const settingsRef = useRef(null);
+    const { theme, toggleTheme } = useTheme();
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -70,6 +76,37 @@ export default function Sidebar(){
                         onClick={() => setIsCollapsed(true)}
                         variant="default"
                     />
+                </div>
+
+                <div className="sidebar-utilities">
+                    <div className="sidebar-doodles" title="Toggle Background Doodles">
+                        <span>Doodles</span>
+                        <div className="on-off-switch" onClick={() => setDoodlesEnabled(!doodlesEnabled)}>
+                            <div className={`switch-bg ${doodlesEnabled ? 'on' : 'off'}`} />
+                            <span className={doodlesEnabled ? 'active text' : 'text'}>ON</span>
+                            <span className={!doodlesEnabled ? 'active text' : 'text'}>OFF</span>
+                        </div>
+                    </div>
+                    <div className="sidebar-action-grid">
+                        <ClayIconButton
+                            size="sm"
+                            icon={theme === 'light' ? <Moon/> : <Sun/>}
+                            onClick={toggleTheme}
+                        />
+                        <ClayIconButton
+                            size="sm"
+                            icon={<Search/>}
+                        />
+                        <ClayIconButton
+                            size="sm"
+                            icon={<Bell/>}
+                        />
+                        <ClayIconButton
+                            size="sm"
+                            variant="mint"
+                            icon={<User/>}
+                        />
+                    </div>
                 </div>
 
                     <nav className="chat-list">
