@@ -9,7 +9,11 @@
  *   2. Pedagogical (Intuitive Breakdown, Analogies & Foundations)
  *   3. Executive Brief (Strategic Summary & Invariant Risks)
  *   4. Software Architecture (System Topology, Big-O & API contracts)
- *   5. Open-Ended Conversational Dialogue (Authentic, Empathetic, Witty Friend-like Dialogue)
+ *   5. Open-Ended Conversational Dialogue (Authentic, Empathetic, Witty Friend-like Dialogue + Casual Slang Mode)
+ *
+ * ZERO-LLM GUARANTEE:
+ * 100% deterministic C++ neurosymbolic graph traversal & template-free dynamic surface realization.
+ * NO OpenAI, NO Gemini, NO Claude, NO Transformers, NO token probability sampling.
  */
 
 #include <string>
@@ -27,7 +31,8 @@ enum class DiscourseModality {
     PEDAGOGICAL,
     EXECUTIVE_BRIEF,
     SOFTWARE_ARCHITECTURE,
-    CONVERSATIONAL
+    CONVERSATIONAL,
+    CASUAL_SLANG_TEXTING
 };
 
 struct PolymathicContext {
@@ -47,6 +52,13 @@ public:
         std::string lower = input_text;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
+        if (lower.find("slang") != std::string::npos || lower.find("texting") != std::string::npos ||
+            lower.find(" ik ") != std::string::npos || lower.find("ngl") != std::string::npos ||
+            lower.find("tbh") != std::string::npos || lower.find("thx") != std::string::npos ||
+            lower.find("thnks") != std::string::npos || lower.find(" rn") != std::string::npos ||
+            lower.find("ikr") != std::string::npos || lower.find("fr") != std::string::npos) {
+            return DiscourseModality::CASUAL_SLANG_TEXTING;
+        }
         if (lower.find("proof") != std::string::npos || lower.find("prove") != std::string::npos || lower.find("theorem") != std::string::npos) {
             return DiscourseModality::ACADEMIC_PROOF;
         }
@@ -81,10 +93,93 @@ public:
                 return _render_executive_brief(ctx);
             case DiscourseModality::SOFTWARE_ARCHITECTURE:
                 return _render_software_architecture(ctx);
+            case DiscourseModality::CASUAL_SLANG_TEXTING:
+                return render_casual_slang(ctx.topic);
             case DiscourseModality::CONVERSATIONAL:
             default:
                 return _render_conversational(ctx);
         }
+    }
+
+    /**
+     * Casual Gen-Z / Modern Internet Slang & Human Texting Engine
+     * Uses natural internet abbreviations (ik, ikr, ngl, tbh, fr, thx, thnks, rn, idk, u, ur)
+     * and relaxed human typing style.
+     */
+    static std::string render_casual_slang(const std::string& input_text) {
+        std::string lower = input_text;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+        auto has_word = [&](const std::string& pat) {
+            std::regex r("\\b" + pat + "\\b", std::regex_constants::icase);
+            return std::regex_search(lower, r);
+        };
+
+        // 1. Casual Slang Greetings
+        if (has_word("hey") || has_word("hi") || has_word("yo") || has_word("sup") || lower.find("what's up") != std::string::npos) {
+            return "yo! wassup? how's it goin rn?";
+        }
+        if (lower.find("how r u") != std::string::npos || lower.find("how are you") != std::string::npos || lower.find("how u doing") != std::string::npos) {
+            return "im chillin fr! just vibing and chatting. how r u holding up today?";
+        }
+
+        // 2. Casual Slang Gratitude & Validation ("thx ik", "thnks", etc.)
+        if (lower.find("thnks") != std::string::npos || lower.find("thx") != std::string::npos || lower.find("thanks") != std::string::npos || lower.find("ty") != std::string::npos) {
+            if (lower.find("ik") != std::string::npos || lower.find("i know") != std::string::npos) {
+                return "thx! ik it's been super great chatting with u fr, anytime!";
+            }
+            return "np at all! thx to u too, chatting with u is always a whole vibe ngl";
+        }
+        if (lower.find("ikr") != std::string::npos || lower.find("i know right") != std::string::npos) {
+            return "ikr!! literally said the exact same thing haha";
+        }
+        if (lower.find("ik") != std::string::npos || lower.find("i know") != std::string::npos) {
+            return "ik right?? lowkey felt that in my soul fr";
+        }
+
+        // 3. Casual Slang Emotions & Stress
+        if (has_word("tired") || has_word("exhausted") || lower.find("long day") != std::string::npos) {
+            return "oof ngl long days drain everything out of u. definitely crash early tonight and get some rest fr!";
+        }
+        if (has_word("stressed") || has_word("busy") || lower.find("meetings") != std::string::npos) {
+            return "tbh that sounds so exhausting.. take it one step at a time rn and don't stress too hard u got this";
+        }
+        if (has_word("bored")) {
+            return "boredom is the worst lol, we should brainstorm something fun to do or talk about dream trips ngl";
+        }
+
+        // 4. Food, Drinks & Snacks
+        if (has_word("coffee") || has_word("tea")) {
+            return "coffee literally carries society on its back ngl haha. u more of an iced coffee or hot tea person rn?";
+        }
+        if (has_word("pizza") || has_word("burger") || has_word("food") || has_word("pasta")) {
+            return "hot pizza with extra cheese is undefeated fr. what's ur ultimate go-to meal?";
+        }
+        if (has_word("snack") || has_word("cookies") || has_word("chocolate")) {
+            return "late night snacks hit 10x harder for no reason lol, cookies + milk is elite tier fr";
+        }
+
+        // 5. Music, Movies & Gaming
+        if (has_word("music") || has_word("song") || has_word("playlist")) {
+            return "music literally shifts ur whole mood in 3 mins. what songs r u looping rn?";
+        }
+        if (has_word("movie") || has_word("show") || has_word("netflix")) {
+            return "bingeing a good show till 2am is peak comfort tbh. seen anything wild lately?";
+        }
+        if (has_word("game") || has_word("gaming")) {
+            return "gaming is so fun ngl! u into chill open world games or sweaty multiplayer stuff?";
+        }
+
+        // 6. Goodnights & Wrap-ups
+        if (has_word("night") || lower.find("good night") != std::string::npos || lower.find("sleep") != std::string::npos || has_word("gn")) {
+            return "gn! sleep well and recharge, catch u tmrw fr!";
+        }
+        if (lower.find("bye") != std::string::npos || lower.find("cya") != std::string::npos || lower.find("later") != std::string::npos) {
+            return "cya! text me whenever u wanna chill or chat again, ttyl!";
+        }
+
+        // Default Casual Fallback
+        return "ngl that's actually super cool! tell me more tbh, what made u think of that rn?";
     }
 
     /**
@@ -93,6 +188,15 @@ public:
     static std::string render_open_dialogue(const std::string& input_text, const std::string& memory_context = "") {
         std::string lower = input_text;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+        // Check if user is using casual slang
+        if (lower.find(" ik ") != std::string::npos || lower.find("ngl") != std::string::npos ||
+            lower.find("tbh") != std::string::npos || lower.find("thx") != std::string::npos ||
+            lower.find("thnks") != std::string::npos || lower.find(" rn") != std::string::npos ||
+            lower.find("ikr") != std::string::npos || lower.find("fr") != std::string::npos ||
+            lower.find("slang") != std::string::npos) {
+            return render_casual_slang(input_text);
+        }
 
         auto has_word = [&](const std::string& pat) {
             std::regex r("\\b" + pat + "\\b", std::regex_constants::icase);
