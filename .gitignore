@@ -18,6 +18,8 @@ venv2/
 *.so
 *.dylib
 *.out
+out/
+brain3/out/
 build_cpp/
 build_cmake/
 brain2/build/
