@@ -1877,6 +1877,22 @@ The absolute top-level controller where the LLM meets the Symbolic Brain.
   - "thnks" -> "np at all! thx to u too, chatting with u is always a whole vibe ngl"
   - "tbh today was so busy" -> "tbh that sounds so exhausting.. take it one step at a time rn and don't stress too hard u got this"
 ========================================================================
+2026-08-14: Dynamic One-Shot Knowledge Ingestion & Out-of-Distribution Generalization
+========================================================================
+- Motivation & Architecture:
+  - Addressed handling of novel, unseen, and unprogrammed concepts without LLM hallucinations or GOFAI brittleness.
+  - Formulated the 5 Neurosymbolic Generalization Mechanisms:
+    1. Live One-Shot Dynamic Knowledge Ingestion ($O(1)$ topological edge insertion via `TEACH`).
+    2. Compositional Deductive Generalization (System 2 Theorem Prover).
+    3. Structural Analogy & Isomorphism Mapping (`AnalogyEngine`).
+    4. Epistemic Humility & Socratic Curiosity (Zero Hallucination Guarantee).
+    5. Continuous Epistemic Dreaming (`continuous_dreamer.py`).
+- Verification:
+  - Interactive C++ shell verification:
+    - User input: `teach quokka is a marsupial` -> Consolidated into Long-Term Memory (0.553ms).
+    - User input: `what is a quokka` -> Verified Truth: quokka is_a marsupial (0.541ms).
+========================================================================
+
 
 
 

@@ -106,7 +106,9 @@ public:
             "DISCOVER", "INFER_EQUATION", "CURIOSITY_GAPS", "CURIOSITY_TICK",
             "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT"
         };
-        if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0) {
+        if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
+            (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
+            upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0) {
             for (const auto& op : bql_ops) {
                 if (upper == op || upper.rfind(op + " ", 0) == 0) {
                     return clean_text;
@@ -168,28 +170,26 @@ public:
             return "ANALOGY " + src + " TO " + tgt + " PROJECT core";
         }
 
-        // 7. Explicit Memory / Knowledge Teaching ("Remember that X is a Y", "Teach that X is a Y")
-        std::regex teach_regex(R"((?:remember that|teach that|learn that|note that)\s+([\w]+)\s+(?:is a|is an|is)\s+([\w]+))", std::regex_constants::icase);
+        // 7. Explicit Memory / Knowledge Teaching ("Remember that X is a Y", "Teach that X is a Y", "Teach X is a Y")
+        std::regex teach_regex(R"((?:remember|teach|learn|note)\s+(?:that\s+)?([\w]+)\s+(?:is\s+an|is\s+a|is)\s+([\w]+))", std::regex_constants::icase);
         std::smatch teach_match;
         if (std::regex_search(clean_text, teach_match, teach_regex)) {
             return "TEACH " + teach_match[1].str() + " is_a " + teach_match[2].str();
         }
 
-        // 8. Pedagogical Concept Inquiries ("Teach me about X", "Explain X simply")
+        // 8. Pedagogical Concept Inquiries ("Teach me about X", "Explain simply X")
         std::regex teach_me_regex(R"((?:teach me about|explain simply|learn about)\s+([\w]+))", std::regex_constants::icase);
         std::smatch teach_me_match;
         if (std::regex_search(clean_text, teach_me_match, teach_me_regex)) {
             return "LOOKUP " + teach_me_match[1].str() + " is_a";
         }
 
-        // 8. Knowledge Entity Queries ("What is X", "Lookup X")
-        std::regex what_is_regex(R"((?:what is|who is|what are)\s+([\w]+)\s+(?:a|an|the)?\s*([\w]*))", std::regex_constants::icase);
+        // 9. Knowledge Entity Queries ("What is a X", "What is X", "Who is X")
+        std::regex what_is_regex(R"((?:what is|who is|what are)\s+(?:a\s+|an\s+|the\s+)?([\w]+))", std::regex_constants::icase);
         std::smatch what_match;
         if (std::regex_search(clean_text, what_match, what_is_regex)) {
             std::string ent = what_match[1].str();
-            std::string rel = what_match[2].str();
-            if (rel.empty()) rel = "is_a";
-            return "LOOKUP " + ent + " " + rel;
+            return "LOOKUP " + ent + " is_a";
         }
 
         // 9. General Strategic / Pedagogical Planning ("Explain X", "Plan X", "Brief on X")
