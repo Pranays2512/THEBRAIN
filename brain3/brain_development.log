@@ -1791,5 +1791,31 @@ The absolute top-level controller where the LLM meets the Symbolic Brain.
      - Verified successful build via `cmake --build build_cmake --target brain_master`.
 ================================================================================
 
+========================================================================
+2026-08-14: Scaled 9-Curriculum Omniscience Ingestion Suite (DSA, STEM & Logic)
+========================================================================
+- Context & Motivation:
+  - User requested expanding training scale into coding/DSA patterns, STEM laws, and predicate logic without breaking the Brain.
+- Architecture & Files Modified:
+  1. `training/hf_curriculum_trainer.py`:
+     - Upgraded from 6 to 9 Curricula:
+       • 1. `SciQCurriculum`: Science Knowledge & Biology
+       • 2. `GSM8KCurriculum`: Multi-step Arithmetic Derivations
+       • 3. `OpenBookQACurriculum`: Core Physical Principles
+       • 4. `ARCCurriculum`: Scientific Abstraction & Causality
+       • 5. `SVAMPCurriculum`: Word Problem Equations
+       • 6. `CommonsenseQACurriculum`: Relational Associations
+       • 7. `DSACurriculum`: Algorithmic Classification, Big-O Complexity & Invariants
+       • 8. `FormulaSTEMCurriculum`: Advanced Physics & Chemistry Laws (Schrödinger, Gibbs, Arrhenius, Carnot, Snell)
+       • 9. `FormalLogicCurriculum`: Predicate Logic Invariants & Transitive Deductions
+     - Real-time ANSI Progress Bars with live telemetry and `DiskGuard` zero-disk accumulation.
+  2. `training/test_hf_trainer.py`:
+     - Added tests `test_09_dsa_curriculum_processing`, `test_10_stem_formulas_curriculum_processing`, `test_11_formal_logic_curriculum_processing`.
+     - 12 / 12 Tests Passed (100%) in 0.38s with 0.00MB disk delta.
+  3. Scaled Verification:
+     - Ran 3-cycle 9-curriculum streaming execution: Ingested 785 BrainQL queries (395 facts + 390 reflexes) in 13.17s.
+========================================================================
+
+
 
 

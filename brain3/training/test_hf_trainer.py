@@ -21,6 +21,9 @@ from brain3.training.hf_curriculum_trainer import (
     ARCCurriculum,
     SVAMPCurriculum,
     CommonsenseQACurriculum,
+    DSACurriculum,
+    FormulaSTEMCurriculum,
+    FormalLogicCurriculum,
     BrainBridge,
     HFCurriculumTrainer
 )
@@ -126,7 +129,44 @@ class TestHFCurriculumTrainer(unittest.TestCase):
         cmds = CommonsenseQACurriculum.process_row(sample_row)
         self.assertIn("TEACH birds related_to tree_nest", cmds)
 
-    def test_09_brain_pipe_bridge_e2e(self):
+    def test_09_dsa_curriculum_processing(self):
+        """Test DSA algorithmic complexity and invariant extraction."""
+        sample_row = {
+            "algorithm": "binary_search",
+            "complexity": "O_log_n",
+            "requires": "sorted_array"
+        }
+        cmds = DSACurriculum.process_row(sample_row)
+        self.assertIn("TEACH binary_search time_complexity o_log_n", cmds)
+        self.assertIn("TEACH binary_search requires sorted_array", cmds)
+        self.assertIn("INSTINCT_TRAIN dsa_binary_search -> binary_search", cmds)
+
+    def test_10_stem_formulas_curriculum_processing(self):
+        """Test STEM & physics/chemistry law extraction into causal equations."""
+        sample_row = {
+            "law_name": "schrodinger",
+            "domain": "quantum",
+            "equation": "H * psi = E * psi",
+            "relation": "relates_hamiltonian"
+        }
+        cmds = FormulaSTEMCurriculum.process_row(sample_row)
+        self.assertIn("TEACH schrodinger domain quantum", cmds)
+        self.assertIn("CAUSAL_DEFINE H * psi = E * psi", cmds)
+
+    def test_11_formal_logic_curriculum_processing(self):
+        """Test formal logic inference rule and invariant extraction."""
+        sample_row = {
+            "premise1": "is_a",
+            "premise2": "is_a",
+            "conclusion": "is_a",
+            "assertion": "p_and_not_p",
+            "value": "FALSE"
+        }
+        cmds = FormalLogicCurriculum.process_row(sample_row)
+        self.assertIn("TEACH_RULE is_a is_a -> is_a", cmds)
+        self.assertIn("INSTINCT_TRAIN logic_p_and_not_p -> FALSE", cmds)
+
+    def test_12_brain_pipe_bridge_e2e(self):
         """Test end-to-end communication with BrainPipeServer, fact ingestion, reflex firing, and sleep consolidation."""
         bridge = BrainBridge(base_dir=".")
         try:

@@ -136,6 +136,25 @@ class ZeroDiskHFStreamer:
         ],
         "tau/commonsense_qa": [
             {"question": "Where do birds typically lay eggs?", "question_concept": "birds", "choices": {"label": ["A", "B"], "text": ["tree nest", "underwater"]}, "answerKey": "A"}
+        ],
+        "openai/openai_humaneval": [
+            {"task_id": "HumanEval/0", "prompt": "def has_close_elements(numbers: List[float], threshold: float) -> bool:", "canonical_solution": "for i in range(len(numbers)):\n  for j in range(i+1, len(numbers)):\n    if abs(numbers[i] - numbers[j]) < threshold: return True\nreturn False", "entry_point": "has_close_elements", "algorithm": "two_pointers", "complexity": "O_n_squared", "requires": "nested_iteration"},
+            {"task_id": "HumanEval/1", "prompt": "def binary_search(arr: List[int], target: int) -> int:", "canonical_solution": "left, right = 0, len(arr) - 1\nwhile left <= right:\n  mid = (left + right) // 2\n  if arr[mid] == target: return mid\n  elif arr[mid] < target: left = mid + 1\n  else: right = mid - 1\nreturn -1", "entry_point": "binary_search", "algorithm": "binary_search", "complexity": "O_log_n", "requires": "sorted_array"},
+            {"task_id": "HumanEval/2", "prompt": "def dijkstra_shortest_path(graph, start):", "canonical_solution": "heap = [(0, start)]", "entry_point": "dijkstra", "algorithm": "dijkstra", "complexity": "O_E_log_V", "requires": "non_negative_weights"}
+        ],
+        "stem_formulas": [
+            {"law_name": "schrodinger", "domain": "quantum", "equation": "H * psi = E * psi", "relation": "relates_hamiltonian_to_wavefunction"},
+            {"law_name": "gibbs_free_energy", "domain": "thermodynamics", "equation": "dG = dH - T * dS", "relation": "spontaneity_criterion"},
+            {"law_name": "arrhenius_kinetics", "domain": "chemistry", "equation": "k = A * exp(-Ea / (R * T))", "relation": "temperature_dependence_of_rate"},
+            {"law_name": "carnot_efficiency", "domain": "thermodynamics", "equation": "eta = 1.0 - Tc / Th", "relation": "maximum_heat_engine_efficiency"},
+            {"law_name": "snells_law", "domain": "optics", "equation": "n1 * sin(theta1) = n2 * sin(theta2)", "relation": "refraction_index_to_angle"}
+        ],
+        "formal_logic": [
+            {"rule_name": "transitive_subsumption", "premise1": "is_a", "premise2": "is_a", "conclusion": "is_a"},
+            {"rule_name": "transitive_partonomy", "premise1": "part_of", "premise2": "part_of", "conclusion": "part_of"},
+            {"rule_name": "transitive_causality", "premise1": "causes", "premise2": "causes", "conclusion": "causes"},
+            {"rule_name": "modus_ponens", "domain": "logic", "premise1": "implies", "premise2": "true", "conclusion": "consequent_true"},
+            {"rule_name": "law_of_non_contradiction", "domain": "invariant", "assertion": "p_and_not_p", "value": "FALSE"}
         ]
     }
 
@@ -395,6 +414,76 @@ class CommonsenseQACurriculum:
         return bql_commands
 
 
+class DSACurriculum:
+    """Extracts data structure & algorithm patterns, complexities, and invariants."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        entry = row.get("entry_point", "")
+        algo = row.get("algorithm", "")
+        comp = row.get("complexity", "")
+        req = row.get("requires", "")
+        
+        algo_name = FactExtractor.clean_token(algo or entry)
+        if algo_name:
+            if comp:
+                bql_commands.append(f"TEACH {algo_name} time_complexity {FactExtractor.clean_token(comp)}")
+            if req:
+                bql_commands.append(f"TEACH {algo_name} requires {FactExtractor.clean_token(req)}")
+            
+            # Reflex compilation for algorithmic intent matching
+            bql_commands.append(f"INSTINCT_TRAIN dsa_{algo_name} -> {algo_name}")
+
+        return bql_commands
+
+
+class FormulaSTEMCurriculum:
+    """Extracts advanced physics, chemistry, and thermodynamics laws into Causal & Math equations."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        law = FactExtractor.clean_token(row.get("law_name", ""))
+        domain = FactExtractor.clean_token(row.get("domain", "physics"))
+        eq = row.get("equation", "")
+        rel = FactExtractor.clean_token(row.get("relation", "relates"))
+
+        if law:
+            bql_commands.append(f"TEACH {law} domain {domain}")
+            bql_commands.append(f"TEACH {law} {rel} law_equation")
+            if "=" in eq:
+                parts = eq.split("=")
+                lhs = parts[0].strip()
+                rhs = parts[1].strip()
+                bql_commands.append(f"CAUSAL_DEFINE {lhs} = {rhs}")
+            else:
+                bql_commands.append(f"TEACH {law} formula {FactExtractor.clean_token(eq)}")
+
+        return bql_commands
+
+
+class FormalLogicCurriculum:
+    """Extracts predicate logic inference rules and invariant refutation constraints."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        p1 = row.get("premise1", "")
+        p2 = row.get("premise2", "")
+        concl = row.get("conclusion", "")
+        assertion = row.get("assertion", "")
+        val = row.get("value", "")
+
+        if p1 and p2 and concl:
+            bql_commands.append(f"TEACH_RULE {p1} {p2} -> {concl}")
+        
+        if assertion and val:
+            bql_commands.append(f"INSTINCT_TRAIN logic_{assertion} -> {val}")
+
+        return bql_commands
+
+
 # ============================================================================
 # 4. BRAIN 3 PIPE BRIDGE & TRAINING EXECUTOR
 # ============================================================================
@@ -604,6 +693,60 @@ class HFCurriculumTrainer:
         pb.finish(status=f"✓ Ingested {taught} associations")
         return taught
 
+    def train_dsa(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="💻 [DSA & Algorithms]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("openai/openai_humaneval", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = DSACurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Compiling {len(queries)} DSA rules...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} DSA rules")
+        return taught
+
+    def train_stem_formulas(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="⚗️  [STEM & Physics/Chem]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("stem_formulas", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = FormulaSTEMCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Teaching {len(queries)} STEM laws...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} STEM laws")
+        return taught
+
+    def train_formal_logic(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="⚖️  [Formal Logic & Rules]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("formal_logic", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = FormalLogicCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Inducing {len(queries)} logic rules...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} logic rules")
+        return taught
+
     def probe_brain_health(self) -> Dict[str, Any]:
         """Interrogates the Brain with high-speed diagnostic probes across all faculties."""
         probe_queries = [
@@ -649,7 +792,7 @@ class HFCurriculumTrainer:
 
     def run_continuous_training(self, cycles: int = 10, batch_size: int = 50):
         print(f"\n\033[1;35m========================================================================\033[0m")
-        print(f"\033[1;36m🧠  THE BRAIN 3: SCALED 6-CURRICULUM TRAINING PIPELINE\033[0m")
+        print(f"\033[1;36m🧠  THE BRAIN 3: SCALED 9-CURRICULUM OMNISCIENCE TRAINING PIPELINE\033[0m")
         print(f"    \033[1;37mCycles:\033[0m {cycles}  |  \033[1;37mBatch per Curriculum:\033[0m {batch_size} rows  |  \033[1;32mZero-Disk Stream\033[0m")
         print(f"\033[1;35m========================================================================\033[0m")
 
@@ -659,25 +802,34 @@ class HFCurriculumTrainer:
             offset = (cycle - 1) * batch_size
             print(f"\n\033[1;33m🌀 --- CYCLE {cycle}/{cycles} [Offset: {offset}] ---\033[0m")
             
-            # 1. SciQ
+            # 1. SciQ Science
             self.train_sciq(offset=offset, max_rows=batch_size)
             
-            # 2. GSM8K
+            # 2. GSM8K Arithmetic Reflexes
             self.train_gsm8k(offset=offset, max_rows=batch_size)
             
-            # 3. OpenBookQA
+            # 3. OpenBookQA Principles
             self.train_openbookqa(offset=offset, max_rows=batch_size)
 
-            # 4. AI2 ARC Science
+            # 4. AI2 ARC Science Inferences
             self.train_arc(offset=offset, max_rows=batch_size)
 
             # 5. SVAMP Word Math
             self.train_svamp(offset=offset, max_rows=batch_size)
 
-            # 6. CommonsenseQA
+            # 6. CommonsenseQA Associations
             self.train_commonsense_qa(offset=offset, max_rows=batch_size)
 
-            # 7. Sleep Consolidation
+            # 7. DSA & Algorithmic Patterns
+            self.train_dsa(offset=offset, max_rows=batch_size)
+
+            # 8. STEM & Physics/Chemistry Laws
+            self.train_stem_formulas(offset=offset, max_rows=batch_size)
+
+            # 9. Formal Logic & Transitive Rules
+            self.train_formal_logic(offset=offset, max_rows=batch_size)
+
+            # 10. 4-Phase Sleep Consolidation
             sleep_pb = BrainProgressBar(total=4, prefix="🌙 [Sleep Consolidation]", bar_length=20, unit="phase")
             sleep_pb.update(1, status="Phase 1: Rule Induction & Pruning")
             time.sleep(0.04)
@@ -688,7 +840,7 @@ class HFCurriculumTrainer:
             self.brain.sleep_consolidate()
             sleep_pb.finish(status="Phase 4: Checkpointed")
 
-            # 8. Diagnostic Health Probe
+            # 11. Diagnostic Health Probe
             health = self.probe_brain_health()
             print(
                 f"  \033[1;32m🩺 [Health Telemetry]\033[0m "
@@ -699,10 +851,10 @@ class HFCurriculumTrainer:
             )
 
             self.metrics["cycles_completed"] += 1
-            self.metrics["curricula_completed"] += 6
+            self.metrics["curricula_completed"] += 9
             cycle_pb.update(1, status=f"Completed Cycle {cycle}/{cycles}")
 
-        cycle_pb.finish(status="All Cycles Completed Successfully")
+        cycle_pb.finish(status="All 9-Curriculum Cycles Completed Successfully")
 
     def close(self):
         self.brain.close()
