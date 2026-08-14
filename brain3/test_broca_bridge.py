@@ -60,7 +60,25 @@ async def run_tests():
             stop_disc = await client.post("/discovery/stop")
             print(f"   ✓ Stop Signal: {stop_disc.json().get('natural_reply', '')}")
 
-            # 5. Test POST /chat/stream (SSE Protocol matching Frontend)
+            # 5. Test Quantitative Finance & Survival Instinct Endpoints
+            print("\n5. Testing Quantitative Finance & Survival Instinct Branch ...")
+            fin_status = await client.get("/finance/survival_status")
+            assert fin_status.status_code == 200
+            print(f"   ✓ Finance Survival Status: {fin_status.json().get('natural_reply', '')[:100]}...")
+
+            ob = await client.get("/finance/orderbook/BTC/USDT")
+            assert ob.status_code == 200
+            print(f"   ✓ BTC/USDT Order Book L2 Depth Loaded.")
+
+            kelly_res = await client.post("/finance/kelly", json={"win_prob": 0.58, "win_loss_ratio": 1.6})
+            assert kelly_res.status_code == 200
+            print(f"   ✓ Kelly Allocation Sizing Computed.")
+
+            sim_res = await client.post("/finance/simulate", json={"symbol": "BTC/USDT", "ticks": 25, "drift": 0.0005, "vol": 0.01})
+            assert sim_res.status_code == 200
+            print(f"   ✓ 25-Tick Market Simulation Cycle Complete.")
+
+            # 6. Test POST /chat/stream (SSE Protocol matching Frontend)
             test_queries = [
                 {"q": "290 / 2", "expected": "145"},
                 {"q": "What if gravity causes acceleration?", "expected": "acceleration"},

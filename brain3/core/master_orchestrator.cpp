@@ -132,6 +132,16 @@ int main(int argc, char** argv) {
             std::cout << resp.natural_reply << "\n";
             return 0;
         }
+        if (mode == "--finance-status" || mode == "--survival-status") {
+            CognitiveResponse resp = orch.process("FINANCE_STATUS");
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
+        if (mode == "--finance-sim") {
+            CognitiveResponse resp = orch.process("SIMULATE_MARKET_CYCLE BTC/USDT 100 0.0005 0.015");
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
         if (mode == "--sleep") {
             std::cout << orch.sleep_consolidate() << "\n";
             return 0;

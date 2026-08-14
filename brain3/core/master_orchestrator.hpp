@@ -33,6 +33,7 @@
 #include "self_play_discovery_daemon.hpp"
 #include "knowledge_ingestion_engine.hpp"
 #include "cross_domain_conjecture_hunter.hpp"
+#include "../finance/finance_orchestrator.hpp"
 
 namespace brain3 {
 namespace core {
@@ -56,6 +57,7 @@ private:
     KnowledgeIngestionEngine ingestion_engine_{nullptr};
     CrossDomainConjectureHunter conjecture_hunter_{nullptr, nullptr};
     SelfPlayDiscoveryDaemon discovery_daemon_{&policy_engine_, &conjecture_hunter_};
+    brain3::finance::FinanceOrchestrator finance_orchestrator_{10000.0};
 
 public:
     MasterOrchestrator() {
@@ -139,7 +141,9 @@ public:
             "DISCOVER", "INFER_EQUATION", "CURIOSITY_GAPS", "CURIOSITY_TICK",
             "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT",
             "POLICY", "EMIT_POLICY", "START_SELF_PLAY", "STOP_SELF_PLAY", "DISCOVERY_STATUS", "STEP_DISCOVERY",
-            "INGEST", "INGEST_ALL", "CROSS_DOMAIN_HUNT", "CROSS_DOMAIN_STATUS"
+            "INGEST", "INGEST_ALL", "CROSS_DOMAIN_HUNT", "CROSS_DOMAIN_STATUS",
+            "FINANCE_STATUS", "SURVIVAL_STATUS", "ORDER_BOOK", "MICROSTRUCTURE", "TRADE_ORDER",
+            "KELLY_SIZE", "STAT_ARB_SCAN", "SIMULATE_MARKET_CYCLE", "INJECT_DRAWDOWN_PAIN", "RESET_LIFE_FORCE"
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
             (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
@@ -346,6 +350,22 @@ public:
             std::string status_json = conjecture_hunter_.get_status_json();
             resp.natural_reply = "🔬 **Cross-Domain Isomorphism Hunter Status**:\n" + status_json;
             resp.raw_output = status_json;
+            return resp;
+        }
+
+        // Quantitative Finance & Survival Instinct Branch Dispatch
+        if (bql == "FINANCE_STATUS" || bql == "SURVIVAL_STATUS" ||
+            bql.rfind("ORDER_BOOK", 0) == 0 || bql.rfind("MICROSTRUCTURE", 0) == 0 ||
+            bql.rfind("TRADE_ORDER", 0) == 0 || bql.rfind("KELLY_SIZE", 0) == 0 ||
+            bql.rfind("STAT_ARB_SCAN", 0) == 0 || bql.rfind("SIMULATE_MARKET_CYCLE", 0) == 0 ||
+            bql.rfind("INJECT_DRAWDOWN_PAIN", 0) == 0 || bql.rfind("RESET_LIFE_FORCE", 0) == 0) {
+            std::string fin_out = finance_orchestrator_.execute_command(bql);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = (fin_out.find("\"error\"") == std::string::npos);
+            resp.engine_used = "finance_survival_branch";
+            resp.natural_reply = "💹 **Quantitative Finance & Survival Instinct Response**:\n" + fin_out;
+            resp.raw_output = fin_out;
             return resp;
         }
 

@@ -171,6 +171,70 @@ async def cross_domain_hunt():
 async def cross_domain_status():
     return await brain_mgr.query("CROSS_DOMAIN_STATUS")
 
+# Quantitative Finance & Survival Instinct Branch Endpoints
+@app.get("/finance/survival_status")
+async def finance_survival_status():
+    return await brain_mgr.query("FINANCE_STATUS")
+
+@app.get("/finance/orderbook/{symbol:path}")
+async def finance_orderbook(symbol: str):
+    return await brain_mgr.query(f"ORDER_BOOK {symbol}")
+
+@app.get("/finance/microstructure/{symbol:path}")
+async def finance_microstructure(symbol: str):
+    return await brain_mgr.query(f"MICROSTRUCTURE {symbol}")
+
+class TradeOrderRequest(BaseModel):
+    symbol: str = "BTC/USDT"
+    side: str = "BUY"
+    type: str = "MARKET"
+    price: float = 0.0
+    quantity: float = 1.0
+
+@app.post("/finance/trade")
+async def finance_trade(req: TradeOrderRequest):
+    return await brain_mgr.query(f"TRADE_ORDER {req.symbol} {req.side} {req.type} {req.price} {req.quantity}")
+
+class KellyRequest(BaseModel):
+    win_prob: float = 0.55
+    win_loss_ratio: float = 1.5
+
+@app.post("/finance/kelly")
+async def finance_kelly(req: KellyRequest):
+    return await brain_mgr.query(f"KELLY_SIZE {req.win_prob} {req.win_loss_ratio}")
+
+class StatArbRequest(BaseModel):
+    symbol_a: str = "BTC/USDT"
+    symbol_b: str = "ETH/USDT"
+
+@app.post("/finance/stat_arb")
+async def finance_stat_arb(req: StatArbRequest):
+    return await brain_mgr.query(f"STAT_ARB_SCAN {req.symbol_a} {req.symbol_b}")
+
+class SimulateMarketRequest(BaseModel):
+    symbol: str = "BTC/USDT"
+    ticks: int = 50
+    drift: float = 0.0005
+    vol: float = 0.01
+
+@app.post("/finance/simulate")
+async def finance_simulate(req: SimulateMarketRequest):
+    return await brain_mgr.query(f"SIMULATE_MARKET_CYCLE {req.symbol} {req.ticks} {req.drift} {req.vol}")
+
+class InjectPainRequest(BaseModel):
+    loss_amount: float = 1000.0
+
+@app.post("/finance/inject_pain")
+async def finance_inject_pain(req: InjectPainRequest):
+    return await brain_mgr.query(f"INJECT_DRAWDOWN_PAIN {req.loss_amount}")
+
+class ResetFinanceRequest(BaseModel):
+    initial_capital: float = 10000.0
+
+@app.post("/finance/reset")
+async def finance_reset(req: ResetFinanceRequest):
+    return await brain_mgr.query(f"RESET_LIFE_FORCE {req.initial_capital}")
+
 @app.post("/chat/stream")
 async def chat_stream(request: Request):
     try:
