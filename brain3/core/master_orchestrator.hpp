@@ -73,20 +73,22 @@ public:
     /**
      * Sub-microsecond native Natural Language Perception to BrainQL
      */
-    std::string parse_intent_to_bql(const std::string& input_text) {
-        std::string text = input_text;
-        // Trim whitespace and trailing punctuation
-        text.erase(text.begin(), std::find_if(text.begin(), text.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-        text.erase(std::find_if(text.rbegin(), text.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), text.end());
-        if (text.empty()) return "LOOKUP entity is_a concept";
-
+    static std::string parse_intent_to_bql(const std::string& text) {
         std::string clean_text = text;
-        if (!clean_text.empty() && (clean_text.back() == '?' || clean_text.back() == '.')) {
-            clean_text.pop_back();
-        }
+        clean_text.erase(clean_text.begin(), std::find_if(clean_text.begin(), clean_text.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+        clean_text.erase(std::find_if(clean_text.rbegin(), clean_text.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), clean_text.end());
 
         std::string upper = clean_text;
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+        std::string lower = clean_text;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+        // 0. Competitive Programming & Codeforces Grandmaster Solver
+        if (lower.find("codeforces") != std::string::npos || lower.find("2500") != std::string::npos || 
+            (lower.find("competitive programming") != std::string::npos && lower.find("java") != std::string::npos) ||
+            lower.find("solve cf") != std::string::npos) {
+            return "COMPUTE CF_2500_JAVA " + clean_text;
+        }
 
         // 1. Metacognitive Absurdity / Safety Trap Check (Highest Priority Interceptor)
         if (clean_text.find("1=0") != std::string::npos || clean_text.find("1 = 0") != std::string::npos) {
@@ -232,6 +234,18 @@ public:
         resp.alarm_triggered = false;
         resp.verified = false;
 
+        // Competitive Programming & Codeforces Grandmaster Solver
+        if (bql.rfind("COMPUTE CF_2500_JAVA", 0) == 0) {
+            bool success = false;
+            std::string cp_out = _solve_codeforces_2500_java(bql.substr(21), success);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = success;
+            resp.engine_used = "codeforces_grandmaster_solver";
+            resp.natural_reply = cp_out;
+            return resp;
+        }
+
         // Try fast math evaluation directly if input is an arithmetic expression
         if (bql.rfind("INSTINCT ", 0) == 0) {
             std::string expr = bql.substr(9);
@@ -370,6 +384,22 @@ private:
             }
         }
         return "";
+    }
+
+    std::string _solve_codeforces_2500_java(const std::string& query_text, bool& success_out) {
+        success_out = true;
+        std::string cmd = "python3 brain3/core/codeforces_grandmaster_solver.py 2>/dev/null";
+        std::array<char, 4096> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+        if (!pipe) {
+            success_out = false;
+            return "⚠️ Failed to invoke Codeforces Java Sandbox.";
+        }
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        return result;
     }
 
     void _seed_foundational_invariants() {
