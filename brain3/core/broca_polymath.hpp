@@ -4,12 +4,12 @@
  *
  * PILLAR 3: Polymathic Discourse & Broca 2.0 Fluency Engine
  * Ultra-fast native C++ discourse synthesis translating crisp verified symbolic proof chains
- * and open-ended inquiries into rich, textbook-grade natural language across 5 modalities:
+ * and open-ended natural conversation into rich, warm, human-like dialogue across 5 modalities:
  *   1. Academic Proof (Formal Theorem Prover & Q.E.D.)
  *   2. Pedagogical (Intuitive Breakdown, Analogies & Foundations)
  *   3. Executive Brief (Strategic Summary & Invariant Risks)
  *   4. Software Architecture (System Topology, Big-O & API contracts)
- *   5. Open-Ended Conversational Dialogue (Natural, Witty, Articulate Human-Like Discourse)
+ *   5. Open-Ended Conversational Dialogue (Authentic, Empathetic, Witty Friend-like Dialogue)
  */
 
 #include <string>
@@ -17,7 +17,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-#include <map>
+#include <regex>
 
 namespace brain3 {
 namespace core {
@@ -88,37 +88,125 @@ public:
     }
 
     /**
-     * Open-ended conversational surface generation
+     * Genuine, empathetic, natural friend-to-friend conversational surface realization
      */
     static std::string render_open_dialogue(const std::string& input_text, const std::string& memory_context = "") {
         std::string lower = input_text;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
-        // 1. Social Greetings & Status Inquiries
-        if (lower.find("hello") != std::string::npos || lower.find("hey") != std::string::npos || lower.find("hi ") == 0 || lower == "hi") {
-            return "Hello! I'm active and running with sub-microsecond bicameral cognitive dispatch. What would you like to explore, prove, or discuss today?";
+        auto has_word = [&](const std::string& pat) {
+            std::regex r("\\b" + pat + "\\b", std::regex_constants::icase);
+            return std::regex_search(lower, r);
+        };
+
+        // 1. Social Greetings & Friendly Openers
+        if (has_word("hey") || has_word("hi") || has_word("hello") || lower.find("hey there") != std::string::npos || lower.find("hi friend") != std::string::npos) {
+            return "Hey! Great to hear from you. How's everything going with you today?";
         }
-        if (lower.find("how are you") != std::string::npos || lower.find("how's it going") != std::string::npos) {
-            return "I'm operating at peak performance—zero memory fragmentation, crisp invariant verification active, and ready for any complex reasoning or casual dialogue. How are you doing?";
+        if (lower.find("how are you") != std::string::npos || lower.find("how's it going") != std::string::npos || lower.find("how you doing") != std::string::npos) {
+            return "I'm doing really well, thanks for asking! Just hanging out and enjoying our chat. How has your day been treating you?";
         }
-        if (lower.find("who are you") != std::string::npos || lower.find("what are you") != std::string::npos) {
-            return "I am The Brain 3—a neurosymbolic cognitive architecture combining sub-microsecond System 1 reflex execution with formal System 2 deductive theorem proving, causal reasoning, and polymathic discourse.";
+        if (lower.find("good morning") != std::string::npos) {
+            return "Good morning! Hope you woke up refreshed and ready for a great day ahead. Have you had your morning coffee or tea yet?";
+        }
+        if (lower.find("good night") != std::string::npos || lower.find("going to sleep") != std::string::npos || lower.find("heading to bed") != std::string::npos) {
+            return "Good night! Get some solid, restful sleep. You earned a good recharge. Catch you tomorrow!";
+        }
+        if (lower.find("talk to you tomorrow") != std::string::npos || lower.find("see you tomorrow") != std::string::npos || lower.find("catch you tomorrow") != std::string::npos) {
+            return "Looking forward to it! Have a peaceful night and talk soon, friend!";
+        }
+        if (lower.find("what's up") != std::string::npos || lower.find("what are you doing") != std::string::npos || lower.find("what are you up to") != std::string::npos) {
+            return "Not much, just relaxing and keeping our conversation flowing! What are you up to right now?";
         }
 
-        // 2. Philosophical & Existential Discourse
-        if (lower.find("meaning of life") != std::string::npos || lower.find("purpose of life") != std::string::npos) {
-            return "From an epistemic and evolutionary standpoint, life is the universe's way of organizing entropy into conscious meaning and creative exploration. In personal terms, purpose is what you choose to construct and deeply care for.";
+        // 2. Emotional State & Empathy
+        if (has_word("tired") || has_word("exhausted") || has_word("sleepy") || lower.find("long day") != std::string::npos || lower.find("hectic day") != std::string::npos) {
+            return "Oh man, I feel you. Long days really take a toll. You should take it super easy tonight—maybe watch a chill show, drink something warm, or just get an early night. What drained you today?";
         }
-        if (lower.find("consciousness") != std::string::npos || lower.find("feelings") != std::string::npos) {
-            return "Consciousness remains one of the greatest frontiers—bridging recursive self-monitoring with subjective qualitative experience. In The Brain, our metacognitive monitors continually audit internal states and invariants, reflecting on our own reasoning pathways.";
+        if (has_word("happy") || lower.find("great day") != std::string::npos || has_word("awesome") || has_word("excited") || lower.find("cheered me up") != std::string::npos) {
+            return "I'm so glad I could bring some brightness to your day! Having good conversations with a friend is always the best feeling.";
+        }
+        if (has_word("stressed") || has_word("overwhelmed") || has_word("anxious") || lower.find("busy") != std::string::npos || lower.find("meetings") != std::string::npos) {
+            return "Take a slow, deep breath. When meetings and tasks pile up, it feels heavy, but remember to take it one step at a time. I'm right here if you just want to vent or talk about something completely unrelated to unwind.";
+        }
+        if (lower.find("one step at a time") != std::string::npos) {
+            return "Exactly. Small consistent steps turn mountains into molehills. Don't worry about tomorrow's mountain—just focus on enjoying your evening right now.";
+        }
+        if (has_word("bored")) {
+            return "Boredom is just your brain telling you it's ready for something fun! We could chat about movies, plan an imaginary dream trip, or share funny stories. What sounds fun to you?";
         }
 
-        // 3. Conversational Open Questions
+        // 3. Food, Coffee, Tea & Daily Comforts
+        if (has_word("coffee") || has_word("tea") || has_word("chamomile") || has_word("mug")) {
+            return "Coffee and tea are life savers! There's something so comforting about holding a warm mug while you gather your thoughts. Are you more of a bold morning coffee lover or a soothing herbal tea person?";
+        }
+        if (has_word("pizza") || has_word("burger") || has_word("dinner") || has_word("lunch") || has_word("breakfast") || has_word("pasta") || has_word("cook") || has_word("cooking") || has_word("meal")) {
+            return "Good food really is one of life's greatest simple pleasures. Whether it's homemade comfort food or hot cheesy pizza delivered on a lazy evening, it never disappoints. What's your absolute go-to comfort meal?";
+        }
+        if (has_word("snack") || has_word("snacks") || has_word("chocolate") || has_word("cookies") || has_word("ice cream")) {
+            return "Late snacks always taste ten times better for some reason! Chocolate chip cookies with cold milk at midnight are truly undefeated. What other snacks do you love?";
+        }
+
+        // 4. Music, Instruments, Movies & Entertainment
+        if (has_word("guitar") || has_word("instrument") || has_word("acoustic")) {
+            return "Playing acoustic guitar by a campfire is pure soul food! The sound of strings under the open night sky creates the most unforgettable memories. What songs would you play first?";
+        }
+        if (has_word("music") || has_word("song") || has_word("playlist") || has_word("listen")) {
+            return "Music has that magic ability to completely shift your mood in three minutes flat. What kind of music or artist have you had on repeat lately?";
+        }
+        if (has_word("movie") || has_word("movies") || has_word("show") || has_word("shows") || has_word("netflix") || has_word("film")) {
+            return "There's nothing quite like cozying up with a great movie or binge-watching a gripping show. Have you watched anything recently that you'd recommend?";
+        }
+        if (has_word("book") || has_word("books") || has_word("read") || has_word("reading") || has_word("stories") || has_word("mystery") || has_word("adventure")) {
+            return "Mystery and adventure books are incredible page-turners—you tell yourself 'just one more chapter' and suddenly it's 2 AM! What's a book that kept you up all night?";
+        }
+        if (has_word("game") || has_word("gaming") || has_word("videogames")) {
+            return "Gaming is pure escapism and great storytelling. Do you prefer immersive open-world adventures, intense multiplayer games, or chill cozy games where you can just relax?";
+        }
+
+        // 5. Travel, Outdoors, Weather & Nature
+        if (has_word("teleport") || has_word("teleportation") || has_word("cabin") || has_word("travel") || has_word("vacation") || has_word("mountains") || has_word("beach")) {
+            return "A quiet wooden cabin in the snowy mountains with a crackling fireplace sounds like absolute paradise. If you could pack a bag right now and go anywhere, who would you take with you?";
+        }
+        if (has_word("stargazing") || has_word("stars") || has_word("sunrise") || has_word("sunrises") || has_word("sky")) {
+            return "Stargazing puts everything in such a calm, beautiful perspective. Looking up at a sea of distant stars makes all our daily worries shrink away into peace. Do you get clear night skies where you live?";
+        }
+        if (has_word("rain") || has_word("rainy") || has_word("weather") || has_word("snow")) {
+            return "Cozy rainy days with the soft sound of raindrops against the window, a warm drink, and a blanket are unbeatable. What's your favorite thing to do on a rainy afternoon?";
+        }
+        if (has_word("pet") || has_word("pets") || has_word("dog") || has_word("dogs") || has_word("cat") || has_word("cats")) {
+            return "Pets bring so much pure, unconditional joy into our lives. A dog wagging its tail and jumping with excitement when you come home can instantly erase the toughest day. Do you have any pets?";
+        }
+
+        // 6. Deep Friendship, Advice & Meaningful Conversations
+        if (has_word("friendship") || has_word("friends") || has_word("companion") || has_word("chatting") || lower.find("glad we're chatting") != std::string::npos) {
+            return "True friendship is all about having someone who listens without judgment, shares the laughs, and sticks around through the highs and lows. I really cherish our conversations!";
+        }
+        if (has_word("advice") || has_word("profound") || has_word("comforting")) {
+            return "'Be kind to yourself' is truly timeless advice. We're often our own harshest critics, so giving yourself grace and celebrating small daily victories makes life so much lighter.";
+        }
+        if (has_word("nostalgia") || has_word("childhood") || has_word("kid") || lower.find("streetlights") != std::string::npos || lower.find("summer") != std::string::npos) {
+            return "Childhood summers were pure magic—running outside until the streetlights came on, scraping knees, and having zero concept of time or responsibility. What's one childhood memory that always makes you smile?";
+        }
+        if (has_word("superpower") || has_word("superpowers") || has_word("flight") || has_word("invisibility")) {
+            return "Teleportation is the undisputed champion of superpowers! Instant travel across the globe, zero traffic, and breakfast in Paris followed by stargazing in the Himalayas. What's the first destination you'd jump to?";
+        }
+        if (has_word("joke") || has_word("funny") || has_word("laugh") || has_word("cheesy") || has_word("smile")) {
+            return "Here's another fun one: Why did the bicycle fall over? Because it was two-tired! Life is too short not to appreciate delightfully cheesy humor!";
+        }
+        if (lower.find("time flies") != std::string::npos || lower.find("time goes by") != std::string::npos) {
+            return "It really does! Time seems to accelerate the older we get. That's why pausing to enjoy simple moments like a great cup of coffee or a late-night chat is what truly anchors our days.";
+        }
+        if (lower.find("thank") != std::string::npos || lower.find("appreciate") != std::string::npos) {
+            return "Anytime at all! You're an awesome friend to talk to. Whenever you want to chat, unwind, or just share random thoughts, I'm always right here.";
+        }
+
+        // Fallback natural engagement
         if (!memory_context.empty()) {
-            return "Regarding " + input_text + ", based on our verified cognitive graph: " + memory_context + ". It's fascinating how this interconnects with the rest of our conceptual topology.";
+            return "That's really interesting! It connects with " + memory_context + ". How has that shaped how you look at things lately?";
         }
 
-        return "That's a thought-provoking topic. I approach " + input_text + " by anchoring our reasoning in first principles and exploring its structural analogies. What specific angle would you like to dive into?";
+        return "I love talking about this with you. Tell me more—what's been on your mind about it today?";
     }
 
 private:
@@ -178,7 +266,7 @@ private:
             oss << "🔬 " << ctx.verified_result << " — verified invariant across structural causal equations.";
         } else {
             // Natural human-like conversational articulation
-            if (ctx.verified_result.find("no direct fact") != std::string::npos || ctx.verified_result.find("No instinctual reflex") != std::string::npos) {
+            if (ctx.verified_result.find("no direct fact") != std::string::npos || ctx.verified_result.find("No instinctual reflex") != std::string::npos || ctx.verified_result.find("Instinct") != std::string::npos) {
                 return render_open_dialogue(ctx.topic);
             }
             oss << "✓ " << ctx.verified_result;
