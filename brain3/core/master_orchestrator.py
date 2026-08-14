@@ -74,8 +74,16 @@ class MasterCognitiveOrchestrator:
                 tgt = re.sub(r"\s+", "_", m.group(2).strip().lower())
                 return {"intent": "analogy_synthesis", "query": f"ANALOGY {src} TO {tgt} PROJECT core", "src": src, "tgt": tgt, "raw": t}
 
-        # Teaching / Learning Fact ("Remember that...", "X is a Y", "X has Y")
-        if t_lower.startswith("teach") or t_lower.startswith("learn") or t_lower.startswith("remember that") or " is a " in t_lower or " is an " in t_lower:
+        # Interrogative Knowledge Lookup ("What is...", "Who is...", "Define...", "Tell me about...")
+        interrogative_match = re.search(r"^(?:what is a|what is an|what is|who is|where is|define|tell me about|what does|meaning of)\s+([\w\s]+)", t_lower)
+        if interrogative_match:
+            concept = interrogative_match.group(1).replace(" mean", "").strip()
+            tokens = [w for w in re.findall(r"\w+", concept) if w not in ["the", "a", "an"]]
+            subj = "_".join(tokens) if tokens else concept.replace(" ", "_")
+            return {"intent": "knowledge_lookup", "query": f"LOOKUP {subj} is_a", "subj": subj, "rel": "is_a", "raw": t}
+
+        # Teaching / Learning Fact ("Remember that...", "teach that...", "X is a Y")
+        if (t_lower.startswith("teach") or t_lower.startswith("learn") or t_lower.startswith("remember that") or " is a " in t_lower or " is an " in t_lower) and not t_lower.startswith("what") and not t_lower.startswith("who"):
             clean_t = re.sub(r"^(?:please\s+)?(?:teach\s+|learn\s+|remember\s+that\s+)", "", t, flags=re.I)
             m = re.search(r"([\w\s]+)\s+(?:is a|is an|is)\s+([\w\s]+)", clean_t, re.I)
             if m:
@@ -116,6 +124,22 @@ class MasterCognitiveOrchestrator:
             result_obj = json.loads(raw_result_str)
         except Exception:
             result_obj = {"result": raw_result_str, "verified": False}
+
+        # Epistemic Web Grounding on Knowledge Misses
+        if intent in ["knowledge_lookup", "general_inquiry"] and (not result_obj.get("result") or result_obj.get("result") == "None" or "no direct fact" in str(result_obj.get("result", "")).lower()):
+            from brain3.core.epistemic_web_grounder import EpistemicWebGrounder
+            term_to_search = parsed.get("subj", user_input)
+            grounding = EpistemicWebGrounder.ground_concept(term_to_search)
+            if grounding["found"]:
+                if grounding.get("bql_triple"):
+                    self.brain.execute_bql(grounding["bql_triple"])
+                result_obj["result"] = grounding["summary"]
+                result_obj["verified"] = True
+                result_obj["source"] = f"web_grounded_{grounding['source']}"
+            else:
+                result_obj["result"] = grounding["summary"]
+                result_obj["verified"] = False
+                result_obj["source"] = "epistemic_gap"
 
         # 2. Metacognitive Auditing
         is_alarm = "ALARM" in str(result_obj.get("result", ""))
@@ -179,9 +203,15 @@ class MasterCognitiveOrchestrator:
             )
 
         if intent == "knowledge_lookup":
+            subj_clean = parsed.get("subj", "entity").replace("_", " ")
+            if result_obj.get("source") == "epistemic_gap":
+                return res_val
+            clean_res = res_val.replace("_", " ")
             if res_val and res_val != "None":
-                return f"📚 Knowledge Retrieval: **{parsed.get('subj')} {parsed.get('rel')}** is **{res_val}**."
-            return f"🔍 Knowledge Retrieval: Entity **{parsed.get('subj')}** is indexed in topological memory."
+                if "is_a" in parsed.get("rel", ""):
+                    return f"**{subj_clean.capitalize()}**: {clean_res}"
+                return f"**{subj_clean.capitalize()}** [{parsed.get('rel')}]: {clean_res}"
+            return f"Entity **{subj_clean}** is indexed in topological memory."
 
         return f"🧠 Cognitive Response: {res_val if res_val else 'Claim processed and audited through bicameral reasoning graph.'}"
 

@@ -21,6 +21,8 @@
 #include <iomanip>
 #include <regex>
 #include <memory>
+#include <cstdio>
+#include <array>
 
 #include "fuzzy/core/brain.hpp"
 #include "crisp/engines/reasoning/brainql.hpp"
@@ -279,6 +281,31 @@ public:
                 return resp;
             }
 
+            // Epistemic Web Grounding on Knowledge Misses
+            if (query.op == "LOOKUP" && (!res.verified || res.value.empty() || res.note.find("not found") != std::string::npos)) {
+                bool found = false;
+                std::string web_summary = _ground_via_web(query.subj, found);
+                if (found && !web_summary.empty()) {
+                    try {
+                        std::string clean_obj = web_summary.substr(0, 80);
+                        std::replace(clean_obj.begin(), clean_obj.end(), ' ', '_');
+                        brain_->brainql_engine.learn(query.subj, "is_a", clean_obj);
+                    } catch (...) {}
+                    
+                    resp.verified = true;
+                    resp.engine_used = "epistemic_web_grounder";
+                    std::string cap_subj = query.subj;
+                    if (!cap_subj.empty()) cap_subj[0] = std::toupper(cap_subj[0]);
+                    resp.natural_reply = "**" + cap_subj + "**: " + web_summary;
+                    return resp;
+                } else {
+                    resp.verified = false;
+                    resp.engine_used = "epistemic_gap";
+                    resp.natural_reply = "I searched across online encyclopedias and slang databases for '" + query.subj + "' but found no verified entries. I'd love to learn—could you tell me what it means?";
+                    return resp;
+                }
+            }
+
             // Fluent Broca 2.0 Polymath Discourse Articulation
             resp.engine_used = query.op;
             PolymathicContext pctx;
@@ -320,6 +347,31 @@ public:
     brain2::reasoning::BrainQLExecutor* get_executor() { return executor_.get(); }
 
 private:
+    std::string _ground_via_web(const std::string& term, bool& found_out) {
+        found_out = false;
+        std::string cmd = "python3 -c \"import json, sys; from brain3.core.epistemic_web_grounder import EpistemicWebGrounder; res = EpistemicWebGrounder.ground_concept(sys.argv[1]); print(json.dumps(res))\" \"" + term + "\" 2>/dev/null";
+        
+        std::array<char, 2048> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+        if (!pipe) return "";
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        
+        if (result.find("\"found\": true") != std::string::npos || result.find("\"found\":true") != std::string::npos) {
+            found_out = true;
+            size_t s_pos = result.find("\"summary\": \"");
+            if (s_pos != std::string::npos) {
+                size_t e_pos = result.find("\"", s_pos + 12);
+                if (e_pos != std::string::npos) {
+                    return result.substr(s_pos + 12, e_pos - (s_pos + 12));
+                }
+            }
+        }
+        return "";
+    }
+
     void _seed_foundational_invariants() {
         try {
             brain_->brainql_engine.learn("gravity", "causes", "acceleration");
