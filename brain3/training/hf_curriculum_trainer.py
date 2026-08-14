@@ -149,11 +149,34 @@ class ZeroDiskHFStreamer:
             {"law_name": "carnot_efficiency", "domain": "thermodynamics", "equation": "eta = 1.0 - Tc / Th", "relation": "maximum_heat_engine_efficiency"},
             {"law_name": "snells_law", "domain": "optics", "equation": "n1 * sin(theta1) = n2 * sin(theta2)", "relation": "refraction_index_to_angle"}
         ],
+        "finance_theorems": [
+            {"law_name": "black_scholes_merton", "domain": "quantitative_finance", "equation": "dV_dt + 0.5 * sigma^2 * S^2 * d2V_dS2 + r * S * dV_dS - r * V = 0", "relation": "risk_neutral_option_pde"},
+            {"law_name": "kelly_criterion", "domain": "quantitative_finance", "equation": "f_star = (p * b - q) / b", "relation": "optimal_growth_capital_fraction"},
+            {"law_name": "capital_asset_pricing_model", "domain": "quantitative_finance", "equation": "E_R = Rf + beta * (E_Rm - Rf)", "relation": "expected_asset_return"},
+            {"law_name": "order_flow_imbalance", "domain": "quantitative_finance", "equation": "delta_P = lambda_kyle * OFI", "relation": "price_impact_model"},
+            {"law_name": "covered_interest_parity", "domain": "quantitative_finance", "equation": "F = S * ((1 + rd) / (1 + rf))", "relation": "no_arbitrage_forex_identity"}
+        ],
+        "medicine_physiology": [
+            {"law_name": "michaelis_menten", "domain": "biochemistry_medicine", "equation": "v = (Vmax * S) / (Km + S)", "relation": "enzyme_catalysis_rate"},
+            {"law_name": "fick_principle", "domain": "cardiovascular_physiology", "equation": "CardiacOutput = VO2 / (CaO2 - CvO2)", "relation": "cardiac_output_measurement"},
+            {"law_name": "starling_equation", "domain": "renal_physiology", "equation": "Jv = Kf * ((Pc - Pi) - sigma * (pic - pii))", "relation": "capillary_fluid_filtration"},
+            {"law_name": "nernst_potential", "domain": "neurophysiology", "equation": "E = (R * T / (z * F)) * ln(Cout / Cin)", "relation": "equilibrium_membrane_potential"},
+            {"law_name": "henderson_hasselbalch", "domain": "acid_base_medicine", "equation": "pH = pKa + log(A_minus / HA)", "relation": "blood_buffer_balance"}
+        ],
+        "astrophysics_cosmology": [
+            {"law_name": "kepler_third_law", "domain": "orbital_mechanics", "equation": "T_squared = (4 * pi^2 / (G * M)) * a_cubed", "relation": "orbital_period_harmonic"},
+            {"law_name": "hubble_lemaitre_law", "domain": "cosmology", "equation": "v_recession = H0 * distance", "relation": "cosmic_metric_expansion"},
+            {"law_name": "chandrasekhar_limit", "domain": "stellar_astrophysics", "equation": "M_limit = 1.44 * M_solar", "relation": "white_dwarf_electron_degeneracy_bound"},
+            {"law_name": "schwarzschild_radius", "domain": "general_relativity", "equation": "r_s = (2 * G * M) / c_squared", "relation": "event_horizon_boundary"},
+            {"law_name": "hawking_temperature", "domain": "black_hole_thermodynamics", "equation": "T_H = (hbar * c^3) / (8 * pi * G * M * kB)", "relation": "black_hole_radiation_temperature"}
+        ],
         "formal_logic": [
             {"rule_name": "transitive_subsumption", "premise1": "is_a", "premise2": "is_a", "conclusion": "is_a"},
             {"rule_name": "transitive_partonomy", "premise1": "part_of", "premise2": "part_of", "conclusion": "part_of"},
             {"rule_name": "transitive_causality", "premise1": "causes", "premise2": "causes", "conclusion": "causes"},
             {"rule_name": "modus_ponens", "domain": "logic", "premise1": "implies", "premise2": "true", "conclusion": "consequent_true"},
+            {"rule_name": "modus_tollens", "domain": "logic", "premise1": "implies", "premise2": "consequent_false", "conclusion": "antecedent_false"},
+            {"rule_name": "bayesian_epistemic_update", "domain": "epistemology", "assertion": "bayes_rule_valid", "value": "TRUE"},
             {"rule_name": "law_of_non_contradiction", "domain": "invariant", "assertion": "p_and_not_p", "value": "FALSE"}
         ]
     }
@@ -484,6 +507,104 @@ class FormalLogicCurriculum:
         return bql_commands
 
 
+class FinanceCurriculum:
+    """Extracts quantitative finance, market microstructure, and arbitrage invariants."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        law = FactExtractor.clean_token(row.get("law_name", ""))
+        domain = FactExtractor.clean_token(row.get("domain", "finance"))
+        eq = row.get("equation", "")
+        rel = FactExtractor.clean_token(row.get("relation", "governs"))
+
+        if law:
+            bql_commands.append(f"TEACH {law} domain {domain}")
+            bql_commands.append(f"TEACH {law} {rel} finance_equation")
+            if "=" in eq:
+                parts = eq.split("=")
+                lhs = parts[0].strip()
+                rhs = parts[1].strip()
+                bql_commands.append(f"CAUSAL_DEFINE {lhs} = {rhs}")
+            else:
+                bql_commands.append(f"TEACH {law} formula {FactExtractor.clean_token(eq)}")
+            bql_commands.append(f"INSTINCT_TRAIN finance_{law} -> {law}")
+
+        return bql_commands
+
+
+class PhysiologyMedicineCurriculum:
+    """Extracts human physiology, biochemistry, and pharmacological causal chains."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        law = FactExtractor.clean_token(row.get("law_name", ""))
+        domain = FactExtractor.clean_token(row.get("domain", "medicine"))
+        eq = row.get("equation", "")
+        rel = FactExtractor.clean_token(row.get("relation", "regulates"))
+
+        if law:
+            bql_commands.append(f"TEACH {law} domain {domain}")
+            bql_commands.append(f"TEACH {law} {rel} physiological_pathway")
+            if "=" in eq:
+                parts = eq.split("=")
+                lhs = parts[0].strip()
+                rhs = parts[1].strip()
+                bql_commands.append(f"CAUSAL_DEFINE {lhs} = {rhs}")
+            else:
+                bql_commands.append(f"TEACH {law} mechanism {FactExtractor.clean_token(eq)}")
+
+        return bql_commands
+
+
+class AstrophysicsCosmologyCurriculum:
+    """Extracts orbital dynamics, stellar astrophysics, and cosmological spacetime invariants."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        law = FactExtractor.clean_token(row.get("law_name", ""))
+        domain = FactExtractor.clean_token(row.get("domain", "astrophysics"))
+        eq = row.get("equation", "")
+        rel = FactExtractor.clean_token(row.get("relation", "describes"))
+
+        if law:
+            bql_commands.append(f"TEACH {law} domain {domain}")
+            bql_commands.append(f"TEACH {law} {rel} cosmological_invariant")
+            if "=" in eq:
+                parts = eq.split("=")
+                lhs = parts[0].strip()
+                rhs = parts[1].strip()
+                bql_commands.append(f"CAUSAL_DEFINE {lhs} = {rhs}")
+            else:
+                bql_commands.append(f"TEACH {law} metric {FactExtractor.clean_token(eq)}")
+
+        return bql_commands
+
+
+class PhilosophyEpistemologyCurriculum:
+    """Extracts epistemology, logic syllogisms, and ethical invariant axioms."""
+
+    @staticmethod
+    def process_row(row: Dict[str, Any]) -> List[str]:
+        bql_commands = []
+        p1 = row.get("premise1", "")
+        p2 = row.get("premise2", "")
+        concl = row.get("conclusion", "")
+        assertion = row.get("assertion", "")
+        val = row.get("value", "")
+
+        if p1 and p2 and concl:
+            bql_commands.append(f"TEACH_RULE {p1} {p2} -> {concl}")
+        
+        if assertion and val:
+            bql_commands.append(f"INSTINCT_TRAIN philosophy_{assertion} -> {val}")
+
+        return bql_commands
+
+
+
 # ============================================================================
 # 4. BRAIN 3 PIPE BRIDGE & TRAINING EXECUTOR
 # ============================================================================
@@ -747,6 +868,78 @@ class HFCurriculumTrainer:
         pb.finish(status=f"✓ Ingested {taught} logic rules")
         return taught
 
+    def train_finance(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="💹 [Quantitative Finance]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("finance_theorems", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = FinanceCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Ingesting {len(queries)} finance laws...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} finance laws")
+        return taught
+
+    def train_medicine(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="🧬 [Medicine & Physiology]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("medicine_physiology", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = PhysiologyMedicineCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Ingesting {len(queries)} physiology pathways...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} pathways")
+        return taught
+
+    def train_astrophysics(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="🌌 [Astrophysics & Space]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("astrophysics_cosmology", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = AstrophysicsCosmologyCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Ingesting {len(queries)} cosmological invariants...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} invariants")
+        return taught
+
+    def train_philosophy(self, offset: int = 0, max_rows: int = 50) -> int:
+        pb = BrainProgressBar(total=max_rows, prefix="🏛️  [Philosophy & Ethics]", unit="row")
+        queries = []
+        for row in ZeroDiskHFStreamer.stream_rows("formal_logic", config="default", split="train", offset_start=offset, max_rows=max_rows, progress_bar=pb):
+            cmds = PhilosophyEpistemologyCurriculum.process_row(row)
+            queries.extend(cmds)
+
+        taught = 0
+        if queries:
+            pb.update(0, status=f"Ingesting {len(queries)} philosophical axioms...", force=True)
+            res = self.brain.execute_batch(queries)
+            taught = res.get("success", 0)
+            self.metrics["facts_taught"] += taught
+            self.metrics["total_queries_executed"] += len(queries)
+
+        pb.finish(status=f"✓ Ingested {taught} axioms")
+        return taught
+
     def probe_brain_health(self) -> Dict[str, Any]:
         """Interrogates the Brain with high-speed diagnostic probes across all faculties."""
         probe_queries = [
@@ -792,7 +985,7 @@ class HFCurriculumTrainer:
 
     def run_continuous_training(self, cycles: int = 10, batch_size: int = 50):
         print(f"\n\033[1;35m========================================================================\033[0m")
-        print(f"\033[1;36m🧠  THE BRAIN 3: SCALED 9-CURRICULUM OMNISCIENCE TRAINING PIPELINE\033[0m")
+        print(f"\033[1;36m🧠  THE BRAIN 3: SCALED 13-CURRICULUM OMNI-FIELD TRAINING PIPELINE\033[0m")
         print(f"    \033[1;37mCycles:\033[0m {cycles}  |  \033[1;37mBatch per Curriculum:\033[0m {batch_size} rows  |  \033[1;32mZero-Disk Stream\033[0m")
         print(f"\033[1;35m========================================================================\033[0m")
 
@@ -829,7 +1022,19 @@ class HFCurriculumTrainer:
             # 9. Formal Logic & Transitive Rules
             self.train_formal_logic(offset=offset, max_rows=batch_size)
 
-            # 10. 4-Phase Sleep Consolidation
+            # 10. Quantitative Finance & Microstructure
+            self.train_finance(offset=offset, max_rows=batch_size)
+
+            # 11. Medicine, Anatomy & Physiology
+            self.train_medicine(offset=offset, max_rows=batch_size)
+
+            # 12. Astrophysics, Cosmology & Relativity
+            self.train_astrophysics(offset=offset, max_rows=batch_size)
+
+            # 13. Philosophy, Epistemology & Ethics
+            self.train_philosophy(offset=offset, max_rows=batch_size)
+
+            # 14. 4-Phase Sleep Consolidation
             sleep_pb = BrainProgressBar(total=4, prefix="🌙 [Sleep Consolidation]", bar_length=20, unit="phase")
             sleep_pb.update(1, status="Phase 1: Rule Induction & Pruning")
             time.sleep(0.04)
@@ -840,7 +1045,7 @@ class HFCurriculumTrainer:
             self.brain.sleep_consolidate()
             sleep_pb.finish(status="Phase 4: Checkpointed")
 
-            # 11. Diagnostic Health Probe
+            # 15. Diagnostic Health Probe
             health = self.probe_brain_health()
             print(
                 f"  \033[1;32m🩺 [Health Telemetry]\033[0m "
@@ -851,10 +1056,10 @@ class HFCurriculumTrainer:
             )
 
             self.metrics["cycles_completed"] += 1
-            self.metrics["curricula_completed"] += 9
+            self.metrics["curricula_completed"] += 13
             cycle_pb.update(1, status=f"Completed Cycle {cycle}/{cycles}")
 
-        cycle_pb.finish(status="All 9-Curriculum Cycles Completed Successfully")
+        cycle_pb.finish(status="All 13-Curriculum Omni-Field Cycles Completed Successfully")
 
     def close(self):
         self.brain.close()

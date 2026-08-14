@@ -166,7 +166,60 @@ class TestHFCurriculumTrainer(unittest.TestCase):
         self.assertIn("TEACH_RULE is_a is_a -> is_a", cmds)
         self.assertIn("INSTINCT_TRAIN logic_p_and_not_p -> FALSE", cmds)
 
-    def test_12_brain_pipe_bridge_e2e(self):
+    def test_12_finance_curriculum_processing(self):
+        """Test Quantitative Finance equation and invariant extraction."""
+        from brain3.training.hf_curriculum_trainer import FinanceCurriculum
+        sample_row = {
+            "law_name": "black_scholes_merton",
+            "domain": "quantitative_finance",
+            "equation": "dV_dt + 0.5 * sigma^2 * S^2 * d2V_dS2 + r * S * dV_dS - r * V = 0",
+            "relation": "risk_neutral_option_pde"
+        }
+        cmds = FinanceCurriculum.process_row(sample_row)
+        self.assertIn("TEACH black_scholes_merton domain quantitative_finance", cmds)
+        self.assertIn("CAUSAL_DEFINE dV_dt + 0.5 * sigma^2 * S^2 * d2V_dS2 + r * S * dV_dS - r * V = 0", cmds)
+
+    def test_13_medicine_curriculum_processing(self):
+        """Test Medicine & Physiology pathway extraction."""
+        from brain3.training.hf_curriculum_trainer import PhysiologyMedicineCurriculum
+        sample_row = {
+            "law_name": "michaelis_menten",
+            "domain": "biochemistry_medicine",
+            "equation": "v = (Vmax * S) / (Km + S)",
+            "relation": "enzyme_catalysis_rate"
+        }
+        cmds = PhysiologyMedicineCurriculum.process_row(sample_row)
+        self.assertIn("TEACH michaelis_menten domain biochemistry_medicine", cmds)
+        self.assertIn("CAUSAL_DEFINE v = (Vmax * S) / (Km + S)", cmds)
+
+    def test_14_astrophysics_curriculum_processing(self):
+        """Test Astrophysics & Cosmology invariant extraction."""
+        from brain3.training.hf_curriculum_trainer import AstrophysicsCosmologyCurriculum
+        sample_row = {
+            "law_name": "schwarzschild_radius",
+            "domain": "general_relativity",
+            "equation": "r_s = (2 * G * M) / c_squared",
+            "relation": "event_horizon_boundary"
+        }
+        cmds = AstrophysicsCosmologyCurriculum.process_row(sample_row)
+        self.assertIn("TEACH schwarzschild_radius domain general_relativity", cmds)
+        self.assertIn("CAUSAL_DEFINE r_s = (2 * G * M) / c_squared", cmds)
+
+    def test_15_philosophy_curriculum_processing(self):
+        """Test Philosophy & Epistemology axiom induction."""
+        from brain3.training.hf_curriculum_trainer import PhilosophyEpistemologyCurriculum
+        sample_row = {
+            "premise1": "implies",
+            "premise2": "consequent_false",
+            "conclusion": "antecedent_false",
+            "assertion": "bayes_rule_valid",
+            "value": "TRUE"
+        }
+        cmds = PhilosophyEpistemologyCurriculum.process_row(sample_row)
+        self.assertIn("TEACH_RULE implies consequent_false -> antecedent_false", cmds)
+        self.assertIn("INSTINCT_TRAIN philosophy_bayes_rule_valid -> TRUE", cmds)
+
+    def test_16_brain_pipe_bridge_e2e(self):
         """Test end-to-end communication with BrainPipeServer, fact ingestion, reflex firing, and sleep consolidation."""
         bridge = BrainBridge(base_dir=".")
         try:
@@ -211,3 +264,4 @@ class TestHFCurriculumTrainer(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
