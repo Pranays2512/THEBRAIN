@@ -44,5 +44,17 @@ class TestNativeMasterOrchestrator(unittest.TestCase):
         self.assertIn("CF 1000F", out)
         self.assertIn("PASSED", out)
 
+    def test_06_algorithmic_policy_engine(self):
+        """Test The Brain's formal Algorithmic Policy & Invariant Engine for LLM Mouth code synthesis."""
+        list_out = self.run_query("POLICY")
+        self.assertIn("divide_and_conquer_dp_monge", list_out)
+        self.assertIn("offline_segment_tree_frequency", list_out)
+
+        prompt_out = self.run_query("POLICY divide_and_conquer_dp_monge")
+        self.assertIn("Quadrangle Inequality", prompt_out)
+        self.assertIn("O(K * N log N)", prompt_out)
+        self.assertIn("FastScanner", prompt_out)
+
 if __name__ == "__main__":
     unittest.main()
+

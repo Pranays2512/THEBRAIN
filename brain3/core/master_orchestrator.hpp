@@ -28,6 +28,7 @@
 #include "crisp/engines/reasoning/brainql.hpp"
 #include "crisp/engines/math/math_engine.hpp"
 #include "broca_polymath.hpp"
+#include "algorithmic_policy_engine.hpp"
 
 namespace brain3 {
 namespace core {
@@ -47,6 +48,7 @@ class MasterOrchestrator {
 private:
     std::unique_ptr<brain2::Brain> brain_;
     std::unique_ptr<brain2::reasoning::BrainQLExecutor> executor_;
+    AlgorithmicPolicyEngine policy_engine_;
 
 public:
     MasterOrchestrator() {
@@ -108,7 +110,8 @@ public:
             "CAUSAL_DEFINE", "CAUSAL_OBSERVE", "INTERVENE", "COUNTERFACTUAL", "WHAT_IF",
             "ANALOGY", "ANALOGY_DEFINE", "REFUTE", "META_VERIFY", "CRITIQUE",
             "DISCOVER", "INFER_EQUATION", "CURIOSITY_GAPS", "CURIOSITY_TICK",
-            "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT"
+            "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT",
+            "POLICY", "EMIT_POLICY"
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
             (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
@@ -243,6 +246,41 @@ public:
             resp.verified = success;
             resp.engine_used = "codeforces_grandmaster_solver";
             resp.natural_reply = cp_out;
+            return resp;
+        }
+
+        // Algorithmic Policy & Mathematical Invariant Engine
+        if (bql.rfind("POLICY", 0) == 0 || bql.rfind("EMIT_POLICY", 0) == 0) {
+            std::string policy_key;
+            size_t space_idx = bql.find(' ');
+            if (space_idx != std::string::npos) {
+                policy_key = bql.substr(space_idx + 1);
+                policy_key.erase(policy_key.begin(), std::find_if(policy_key.begin(), policy_key.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+                policy_key.erase(std::find_if(policy_key.rbegin(), policy_key.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), policy_key.end());
+            }
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.engine_used = "algorithmic_policy_engine";
+
+            if (!policy_key.empty() && policy_engine_.has_policy(policy_key)) {
+                AlgorithmicPolicy pol = policy_engine_.get_policy(policy_key);
+                resp.verified = true;
+                resp.natural_reply = pol.to_mouth_prompt("Java");
+                resp.raw_output = pol.to_json();
+            } else {
+                std::ostringstream oss;
+                oss << "📋 **The Brain's Mathematical Algorithmic Policies (Mind Core)**:\n\n";
+                for (const auto& p : policy_engine_.list_policies()) {
+                    AlgorithmicPolicy pol = policy_engine_.get_policy(p);
+                    oss << "• **" << p << "** (" << pol.paradigm << ")\n";
+                    oss << "  ├─ Invariant: `" << pol.mathematical_invariant << "`\n";
+                    oss << "  └─ Complexity Budget: `" << pol.time_complexity_budget << " | " << pol.space_complexity_budget << "`\n\n";
+                }
+                oss << "👉 Query `POLICY <policy_id>` to emit exact prompt specification for the LLM Mouth.";
+                resp.verified = true;
+                resp.natural_reply = oss.str();
+            }
             return resp;
         }
 

@@ -1968,6 +1968,14 @@ The absolute top-level controller where the LLM meets the Symbolic Brain.
   - Novel entities are ingested into the C++ semantic graph with taxonomic relations (`is_a`, `causes`, `has_part`).
   - Supports multi-turn cross-questioning, ontological inheritance, counterfactual intervention, cross-domain structural analogy, and autonomous CP code verification in JVM sandbox.
 ========================================================================
+2026-08-14: Algorithmic Policy Engine for Brain Mind / LLM Mouth Synthesis
+========================================================================
+- Architectural Role Decoupling:
+  - Validated foundational principle: "The Brain is the Mind / Policy Engine, The LLM is the Eyes and Mouth peripheral".
+  - Implemented `brain3/core/algorithmic_policy_engine.hpp` storing deterministic algorithmic policies, Quadrangle Inequality/Monge property invariants, recurrence definitions, asymptotic complexity bounds, and JVM zero-GC rules.
+  - The Brain emits structured policy specifications via `POLICY <key>` / `EMIT_POLICY <key>` to direct the LLM Mouth to synthesize exact code syntax without hardcoded templates.
+  - Compiled into `./brain3/brain_master` with 6/6 integration tests passing.
+========================================================================
 
 
 
