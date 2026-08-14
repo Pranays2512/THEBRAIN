@@ -31,9 +31,9 @@ class UniversalKnowledgeStreamer:
 
     CONCEPTNET_API = "https://api.conceptnet.io/query"
 
-    # Robust in-memory curated universal knowledge bases across all academic and real-world domains
+    # Comprehensive multi-domain universal knowledge base
     CURATED_UNIVERSAL_GRAPH = [
-        # --- Medicine, Anatomy & Biology ---
+        # --- Medicine, Anatomy & Neuroscience ---
         {"subj": "myocardium", "rel": "is_a", "obj": "cardiac_muscle_tissue", "domain": "medicine"},
         {"subj": "insulin", "rel": "regulates", "obj": "blood_glucose_level", "domain": "endocrinology"},
         {"subj": "mitochondria", "rel": "produces", "obj": "adenosine_triphosphate", "domain": "biology"},
@@ -42,8 +42,12 @@ class UniversalKnowledgeStreamer:
         {"subj": "antibiotics", "rel": "treats", "obj": "bacterial_infections", "domain": "pharmacology"},
         {"subj": "neuron", "rel": "transmits", "obj": "action_potentials", "domain": "neuroscience"},
         {"subj": "ribosome", "rel": "translates", "obj": "messenger_rna_into_protein", "domain": "genetics"},
+        {"subj": "synapse", "rel": "connects", "obj": "adjacent_neurons", "domain": "neuroscience"},
+        {"subj": "dopamine", "rel": "modulates", "obj": "reward_and_motor_control", "domain": "neurochemistry"},
+        {"subj": "hippocampus", "rel": "mediates", "obj": "episodic_memory_consolidation", "domain": "neuroanatomy"},
+        {"subj": "hemoglobin", "rel": "binds", "obj": "oxygen_molecules", "domain": "biochemistry"},
 
-        # --- Physics, Astronomy & Relativity ---
+        # --- Physics, Quantum Mechanics & Astronomy ---
         {"subj": "black_hole", "rel": "bounded_by", "obj": "event_horizon", "domain": "astrophysics"},
         {"subj": "photons", "rel": "travel_at", "obj": "speed_of_light", "domain": "optics"},
         {"subj": "general_relativity", "rel": "models", "obj": "spacetime_curvature", "domain": "physics"},
@@ -52,6 +56,9 @@ class UniversalKnowledgeStreamer:
         {"subj": "gravitational_waves", "rel": "caused_by", "obj": "binary_black_hole_mergers", "domain": "astrophysics"},
         {"subj": "higgs_boson", "rel": "confers", "obj": "mass_to_gauge_bosons", "domain": "particle_physics"},
         {"subj": "thermodynamics_second_law", "rel": "dictates", "obj": "universal_entropy_increase", "domain": "physics"},
+        {"subj": "schrodinger_equation", "rel": "describes", "obj": "quantum_wavefunction_evolution", "domain": "quantum_mechanics"},
+        {"subj": "heisenberg_uncertainty", "rel": "limits", "obj": "simultaneous_position_and_momentum_precision", "domain": "quantum_mechanics"},
+        {"subj": "dark_matter", "rel": "accounts_for", "obj": "galactic_rotation_curves", "domain": "cosmology"},
 
         # --- Chemistry & Materials Science ---
         {"subj": "graphene", "rel": "composed_of", "obj": "two_dimensional_carbon_lattice", "domain": "materials_science"},
@@ -59,6 +66,7 @@ class UniversalKnowledgeStreamer:
         {"subj": "catalyst", "rel": "lowers", "obj": "reaction_activation_energy", "domain": "physical_chemistry"},
         {"subj": "dna_double_helix", "rel": "stabilized_by", "obj": "hydrogen_bonds", "domain": "biochemistry"},
         {"subj": "periodic_table", "rel": "organized_by", "obj": "atomic_number", "domain": "chemistry"},
+        {"subj": "endothermic_reaction", "rel": "absorbs", "obj": "thermal_energy", "domain": "thermodynamics"},
 
         # --- Computer Science & Algorithmic Foundations ---
         {"subj": "turing_machine", "rel": "formalizes", "obj": "general_computation", "domain": "computer_science"},
@@ -69,8 +77,18 @@ class UniversalKnowledgeStreamer:
         {"subj": "b_tree", "rel": "used_in", "obj": "database_indexing_systems", "domain": "systems"},
         {"subj": "rsa_cryptography", "rel": "relies_on", "obj": "prime_factorization_hardness", "domain": "cryptography"},
         {"subj": "raft_consensus", "rel": "guarantees", "obj": "distributed_state_replication", "domain": "distributed_systems"},
+        {"subj": "dijkstra_algorithm", "rel": "finds", "obj": "single_source_shortest_paths", "domain": "graph_algorithms"},
+        {"subj": "llvm_compiler", "rel": "uses", "obj": "static_single_assignment_form", "domain": "compiler_design"},
+        {"subj": "bloom_filter", "rel": "provides", "obj": "probabilistic_set_membership", "domain": "data_structures"},
 
-        # --- World Geography, History & Civilization ---
+        # --- Human Common Sense, Emotions & Psychology ---
+        {"subj": "empathy", "rel": "fosters", "obj": "interpersonal_trust", "domain": "psychology"},
+        {"subj": "curiosity", "rel": "drives", "obj": "epistemic_exploration", "domain": "cognitive_science"},
+        {"subj": "gratitude", "rel": "improves", "obj": "psychological_wellbeing", "domain": "positive_psychology"},
+        {"subj": "deep_sleep", "rel": "facilitates", "obj": "neural_plasticity_and_memory_consolidation", "domain": "sleep_science"},
+        {"subj": "cognitive_dissonance", "rel": "caused_by", "obj": "contradictory_beliefs", "domain": "social_psychology"},
+
+        # --- History, Civilizations & Philosophy ---
         {"subj": "amazon_river", "rel": "discharges_into", "obj": "atlantic_ocean", "domain": "geography"},
         {"subj": "mount_everest", "rel": "located_in", "obj": "himalayas", "domain": "geography"},
         {"subj": "magna_carta", "rel": "signed_in", "obj": "year_1215", "domain": "history"},
@@ -78,8 +96,6 @@ class UniversalKnowledgeStreamer:
         {"subj": "renaissance", "rel": "originated_in", "obj": "florence_italy", "domain": "history"},
         {"subj": "un_security_council", "rel": "consists_of", "obj": "five_permanent_members", "domain": "geopolitics"},
         {"subj": "panama_canal", "rel": "connects", "obj": "atlantic_and_pacific_oceans", "domain": "geography"},
-
-        # --- Philosophy, Logic & Law ---
         {"subj": "modus_ponens", "rel": "valid_form_of", "obj": "deductive_inference", "domain": "formal_logic"},
         {"subj": "habeas_corpus", "rel": "protects_against", "obj": "unlawful_detention", "domain": "jurisprudence"},
         {"subj": "epistemology", "rel": "studies", "obj": "nature_and_scope_of_knowledge", "domain": "philosophy"},
