@@ -29,6 +29,7 @@
 #include "crisp/engines/math/math_engine.hpp"
 #include "broca_polymath.hpp"
 #include "algorithmic_policy_engine.hpp"
+#include "self_play_discovery_daemon.hpp"
 
 namespace brain3 {
 namespace core {
@@ -49,6 +50,7 @@ private:
     std::unique_ptr<brain2::Brain> brain_;
     std::unique_ptr<brain2::reasoning::BrainQLExecutor> executor_;
     AlgorithmicPolicyEngine policy_engine_;
+    SelfPlayDiscoveryDaemon discovery_daemon_{&policy_engine_};
 
 public:
     MasterOrchestrator() {
@@ -111,7 +113,7 @@ public:
             "ANALOGY", "ANALOGY_DEFINE", "REFUTE", "META_VERIFY", "CRITIQUE",
             "DISCOVER", "INFER_EQUATION", "CURIOSITY_GAPS", "CURIOSITY_TICK",
             "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT",
-            "POLICY", "EMIT_POLICY"
+            "POLICY", "EMIT_POLICY", "START_SELF_PLAY", "STOP_SELF_PLAY", "DISCOVERY_STATUS", "STEP_DISCOVERY"
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
             (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
@@ -121,6 +123,19 @@ public:
                     return clean_text;
                 }
             }
+        }
+
+        if (lower.find("start self play") != std::string::npos || lower.find("start discovery") != std::string::npos || lower == "start_self_play") {
+            return "START_SELF_PLAY";
+        }
+        if (lower.find("stop self play") != std::string::npos || lower.find("stop discovery") != std::string::npos || lower == "stop_self_play") {
+            return "STOP_SELF_PLAY";
+        }
+        if (lower.find("discovery status") != std::string::npos || lower.find("self play status") != std::string::npos || lower == "discovery_status") {
+            return "DISCOVERY_STATUS";
+        }
+        if (lower.find("step discovery") != std::string::npos || lower == "step_discovery") {
+            return "STEP_DISCOVERY";
         }
 
         // 3. Fast Arithmetic / Instinct Math (e.g. "290 / 2", "50 * 4 + 10")
@@ -246,6 +261,52 @@ public:
             resp.verified = success;
             resp.engine_used = "codeforces_grandmaster_solver";
             resp.natural_reply = cp_out;
+            return resp;
+        }
+
+        // Continuous Self-Play & Invariant Discovery Daemon
+        if (bql == "START_SELF_PLAY") {
+            discovery_daemon_.start();
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "self_play_discovery_daemon";
+            resp.natural_reply = "🚀 Continuous Self-Play & Invariant Discovery Daemon started in background (24/7 autonomous exploration active).";
+            return resp;
+        }
+        if (bql == "STOP_SELF_PLAY") {
+            discovery_daemon_.stop();
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "self_play_discovery_daemon";
+            resp.natural_reply = "⏹️ Continuous Self-Play Daemon stopped.";
+            return resp;
+        }
+        if (bql == "DISCOVERY_STATUS" || bql == "SELF_PLAY_STATUS") {
+            auto tel = discovery_daemon_.get_telemetry();
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "self_play_discovery_daemon";
+            std::ostringstream oss;
+            oss << "🔬 **The Brain Autonomous Discovery Telemetry**:\n"
+                << "  • Status: " << (tel.is_running ? "🟢 ACTIVE (Exploratory Cycles Running)" : "⚪ IDLE") << "\n"
+                << "  • Total Autonomous Cycles: " << tel.total_cycles << "\n"
+                << "  • Machine-Verified Lemmas: " << tel.verified_lemmas << "\n"
+                << "  • Latest Invariant Derived: " << tel.latest_discovery << "\n"
+                << "  • Last Exploration Latency: " << std::fixed << std::setprecision(3) << tel.last_cycle_duration_ms << " ms";
+            resp.natural_reply = oss.str();
+            return resp;
+        }
+        if (bql == "STEP_DISCOVERY") {
+            discovery_daemon_.step_once();
+            auto tel = discovery_daemon_.get_telemetry();
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "self_play_discovery_daemon";
+            resp.natural_reply = "🔬 [Self-Play Step]: " + tel.latest_discovery;
             return resp;
         }
 
@@ -494,6 +555,58 @@ private:
         }
 
         return oss.str();
+    }
+
+public:
+    static std::string escape_json(const std::string& s) {
+        std::ostringstream o;
+        for (auto c = s.cbegin(); c != s.cend(); c++) {
+            if (*c == '"') o << "\\\"";
+            else if (*c == '\\') o << "\\\\";
+            else if (*c == '\b') o << "\\b";
+            else if (*c == '\f') o << "\\f";
+            else if (*c == '\n') o << "\\n";
+            else if (*c == '\r') o << "\\r";
+            else if (*c == '\t') o << "\\t";
+            else if ('\x00' <= *c && *c <= '\x1f') {
+                o << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(*c);
+            } else {
+                o << *c;
+            }
+        }
+        return o.str();
+    }
+
+    std::string process_json(const std::string& input_str) {
+        std::string query = input_str;
+        // Parse if input is JSON: {"query": "..."} or {"text": "..."}
+        if (query.rfind("{\"query\":", 0) == 0 || query.rfind("{\"text\":", 0) == 0) {
+            size_t q_pos = query.find(": \"");
+            if (q_pos == std::string::npos) q_pos = query.find(":\"");
+            if (q_pos != std::string::npos) {
+                size_t start = query.find("\"", q_pos + 1);
+                if (start != std::string::npos) {
+                    size_t end = query.rfind("\"");
+                    if (end != std::string::npos && end > start) {
+                        query = query.substr(start + 1, end - start - 1);
+                    }
+                }
+            }
+        }
+
+        CognitiveResponse resp = process(query);
+        std::ostringstream json_out;
+        json_out << "{"
+                 << "\"status\": \"ok\","
+                 << "\"natural_reply\": \"" << escape_json(resp.natural_reply) << "\","
+                 << "\"bql_query\": \"" << escape_json(resp.bql_query) << "\","
+                 << "\"engine_used\": \"" << escape_json(resp.engine_used) << "\","
+                 << "\"latency_ms\": " << std::fixed << std::setprecision(4) << resp.latency_ms << ","
+                 << "\"verified\": " << (resp.verified ? "true" : "false") << ","
+                 << "\"alarm_triggered\": " << (resp.alarm_triggered ? "true" : "false") << ","
+                 << "\"raw_output\": \"" << escape_json(resp.raw_output) << "\""
+                 << "}";
+        return json_out.str();
     }
 };
 

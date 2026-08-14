@@ -83,11 +83,29 @@ void run_interactive(MasterOrchestrator& orch) {
     }
 }
 
+void run_json_stream(MasterOrchestrator& orch) {
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        // Trim
+        line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+        line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
+        if (line.empty()) continue;
+        if (line == "exit" || line == "quit") break;
+
+        std::string json_response = orch.process_json(line);
+        std::cout << json_response << "\n" << std::flush;
+    }
+}
+
 int main(int argc, char** argv) {
     MasterOrchestrator orch;
 
     if (argc > 1) {
         std::string mode = argv[1];
+        if (mode == "--json-stream" || mode == "--json") {
+            run_json_stream(orch);
+            return 0;
+        }
         if (mode == "--interactive" || mode == "-i") {
             run_interactive(orch);
             return 0;
