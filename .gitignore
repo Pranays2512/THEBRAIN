@@ -32,6 +32,7 @@ cmake_install.cmake
 Makefile
 
 # Compiled standalone test binaries without extensions
+brain3/brain_master
 **/*_test
 **/test_*
 !**/*.cpp

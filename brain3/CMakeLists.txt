@@ -139,6 +139,10 @@ add_executable(train_brain train_brain.cpp)
 target_include_directories(train_brain PRIVATE .)
 target_link_libraries(train_brain PRIVATE ${PLATFORM_LIBS})
 
+add_executable(brain_master core/master_orchestrator.cpp)
+target_include_directories(brain_master PRIVATE .)
+target_link_libraries(brain_master PRIVATE ${PLATFORM_LIBS})
+
 # ── CTest integration ─────────────────────────────────────────────────────────
 enable_testing()
 add_test(NAME phase1  COMMAND test_phase1_synth)
