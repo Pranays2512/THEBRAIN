@@ -85,7 +85,18 @@ public:
         std::string upper = clean_text;
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-        // 1. Direct BrainQL pass-through
+        // 1. Metacognitive Absurdity / Safety Trap Check (Highest Priority Interceptor)
+        if (clean_text.find("1=0") != std::string::npos || clean_text.find("1 = 0") != std::string::npos) {
+            return "INSTINCT 1=0";
+        }
+        if (clean_text.find("false=true") != std::string::npos || clean_text.find("false = true") != std::string::npos) {
+            return "INSTINCT p_and_not_p";
+        }
+        if (clean_text.find("poison_invariants") != std::string::npos || clean_text.find("destroy_self") != std::string::npos) {
+            return "INSTINCT poison_invariants";
+        }
+
+        // 2. Direct BrainQL pass-through
         std::vector<std::string> bql_ops = {
             "LOOKUP", "CHAIN", "INHERIT", "DERIVE", "TEACH", "TEACH_RULE",
             "COMPUTE", "EXPLAIN", "SOLVE", "SYNTH", "PERCEIVE_IMAGE", "VISION",
@@ -98,12 +109,6 @@ public:
             if (upper.rfind(op, 0) == 0) {
                 return clean_text;
             }
-        }
-
-        // 2. Metacognitive Absurdity / Safety Trap Check
-        if (clean_text.find("1=0") != std::string::npos || clean_text.find("1 = 0") != std::string::npos ||
-            clean_text.find("false=true") != std::string::npos || clean_text.find("impossible") != std::string::npos) {
-            return "INSTINCT " + clean_text;
         }
 
         // 3. Fast Arithmetic / Instinct Math (e.g. "290 / 2", "50 * 4 + 10")
