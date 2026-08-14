@@ -123,7 +123,78 @@ public:
             return "im chillin fr! just vibing and chatting. how r u holding up today?";
         }
 
-        // 2. Casual Slang Gratitude & Validation ("thx ik", "thnks", etc.)
+        // 1. One-Shot Slang Teaching / Definition Ingestion ("X means Y", "X is slang for Y")
+        std::regex slang_def_regex(R"(([\w]+)\s+(?:means|is slang for|stands for)\s+(.*))", std::regex_constants::icase);
+        std::smatch def_match;
+        if (std::regex_search(lower, def_match, slang_def_regex)) {
+            std::string term = def_match[1].str();
+            std::string defn = def_match[2].str();
+            return "ohh bet! learned a new one haha. so '" + term + "' basically means " + defn + " fr!";
+        }
+
+        // 2. Socratic Slang Inquiry ("do you know what X means", "what is X slang")
+        std::regex slang_ask_regex(R"((?:do you know what|what does|what's)\s+([\w]+)\s+(?:mean|means|slang))", std::regex_constants::icase);
+        std::smatch ask_match;
+        if (std::regex_search(lower, ask_match, slang_ask_regex)) {
+            std::string term = ask_match[1].str();
+            return "wait haha spill the tea, what does '" + term + "' mean in this context? is it good or bad?";
+        }
+
+        // 3. Trending & Modern Slangs (Gen-Z, Internet Culture)
+        if (has_word("rizz")) {
+            return "unmatched rizz honestly haha, bro has effortless charm fr!";
+        }
+        if (has_word("bussin")) {
+            return "10/10 bussin no cap! that sounds elite tier fr";
+        }
+        if (lower.find("no cap") != std::string::npos || has_word("nocap")) {
+            return "straight facts no cap haha, totally agree with u";
+        }
+        if (has_word("delulu")) {
+            return "delulu is the solulu sometimes ngl haha, gotta manifest it!";
+        }
+        if (has_word("bet") && (lower.rfind("bet", 0) == 0 || lower.find(" bet") != std::string::npos)) {
+            return "bet! say less, we on the exact same wavelength";
+        }
+        if (has_word("goated")) {
+            return "literally goated with the sauce, absolute legend status fr";
+        }
+        if (lower.find("let him cook") != std::string::npos || lower.find("let them cook") != std::string::npos || lower.find("let bro cook") != std::string::npos) {
+            return "nah let him cook fr!! something legendary is in the making";
+        }
+        if (has_word("mid")) {
+            return "tbh that's totally mid.. definitely overhyped ngl";
+        }
+        if (has_word("slay") || lower.find("ate and left no crumbs") != std::string::npos || has_word("ate")) {
+            return "ate and left zero crumbs honestly, 10/10 perfection!";
+        }
+        if (has_word("skibidi") || has_word("brainrot") || has_word("fanum")) {
+            return "pure brainrot energy lol, the internet is completely unhinged rn haha";
+        }
+        if (has_word("sigma")) {
+            return "lone wolf sigma grindset mode activated haha";
+        }
+        if (has_word("unhinged")) {
+            return "that is actually so unhinged lmao, absolute chaos!";
+        }
+        if (lower.find("vibe check") != std::string::npos) {
+            return "vibe check passed with flying 100% colors fr!";
+        }
+        if (lower.find("main character") != std::string::npos) {
+            return "peak main character energy honestly, loving that for u!";
+        }
+
+        // 4. Dynamic Unknown Slang & Syntactic Modifier Extraction ("so <word>", "giving <word>")
+        std::regex so_word_regex(R"((?:so|super|literally|giving)\s+([\w]+)\s*(?:fr|rn|ngl|tbh)?)", std::regex_constants::icase);
+        std::smatch so_match;
+        if (std::regex_search(lower, so_match, so_word_regex)) {
+            std::string mod = so_match[1].str();
+            if (mod != "tired" && mod != "exhausted" && mod != "stressed" && mod != "busy" && mod != "cool" && mod != "much") {
+                return "haha '" + mod + "' is a whole vibe! what made it like that rn?";
+            }
+        }
+
+        // 5. Casual Slang Gratitude & Validation ("thx ik", "thnks", etc.)
         if (lower.find("thnks") != std::string::npos || lower.find("thx") != std::string::npos || lower.find("thanks") != std::string::npos || lower.find("ty") != std::string::npos) {
             if (lower.find("ik") != std::string::npos || lower.find("i know") != std::string::npos) {
                 return "thx! ik it's been super great chatting with u fr, anytime!";
@@ -189,12 +260,20 @@ public:
         std::string lower = input_text;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
-        // Check if user is using casual slang
+        // Check if user is using casual slang or modern internet terms
         if (lower.find(" ik ") != std::string::npos || lower.find("ngl") != std::string::npos ||
             lower.find("tbh") != std::string::npos || lower.find("thx") != std::string::npos ||
             lower.find("thnks") != std::string::npos || lower.find(" rn") != std::string::npos ||
             lower.find("ikr") != std::string::npos || lower.find("fr") != std::string::npos ||
-            lower.find("slang") != std::string::npos) {
+            lower.find("slang") != std::string::npos || lower.find("rizz") != std::string::npos ||
+            lower.find("bussin") != std::string::npos || lower.find("delulu") != std::string::npos ||
+            lower.find("no cap") != std::string::npos || lower.find("nocap") != std::string::npos ||
+            lower.find("goated") != std::string::npos || lower.find("let him cook") != std::string::npos ||
+            lower.find("let them cook") != std::string::npos || lower.find("skibidi") != std::string::npos ||
+            lower.find("brainrot") != std::string::npos || lower.find("sigma") != std::string::npos ||
+            lower.find("unhinged") != std::string::npos || lower.find("vibe check") != std::string::npos ||
+            lower.find("means") != std::string::npos || lower.find("slang for") != std::string::npos ||
+            lower.find("so ") != std::string::npos || lower.find("bet") != std::string::npos) {
             return render_casual_slang(input_text);
         }
 
