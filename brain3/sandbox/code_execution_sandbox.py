@@ -124,3 +124,74 @@ class CodeExecutionSandbox:
                         os.remove(p)
                     except Exception:
                         pass
+
+    def execute_java(self, java_code: str, stdin_input: str = "") -> Dict[str, Any]:
+        """Compiles and executes Java code in an isolated JVM sandbox."""
+        start_time = time.perf_counter()
+        
+        # Extract public class name or default to Main
+        import re
+        class_match = re.search(r"public\s+class\s+([A-Za-z0-9_]+)", java_code)
+        class_name = class_match.group(1) if class_match else "Main"
+        
+        temp_dir = tempfile.mkdtemp(prefix="brain_java_")
+        src_path = os.path.join(temp_dir, f"{class_name}.java")
+        with open(src_path, "w") as f:
+            f.write(java_code)
+
+        try:
+            # 1. Compile with javac
+            compile_proc = subprocess.run(
+                ["javac", src_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=self.timeout_sec
+            )
+            if compile_proc.returncode != 0:
+                elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+                return {
+                    "success": False,
+                    "exit_code": compile_proc.returncode,
+                    "stdout": "",
+                    "stderr": "Java Compilation Error:\n" + compile_proc.stderr.strip(),
+                    "latency_ms": elapsed_ms,
+                    "timeout": False
+                }
+
+            # 2. Execute with java
+            run_proc = subprocess.run(
+                ["java", "-Xmx256m", "-Xss64m", "-cp", temp_dir, class_name],
+                input=stdin_input,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=self.timeout_sec
+            )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            return {
+                "success": run_proc.returncode == 0,
+                "exit_code": run_proc.returncode,
+                "stdout": run_proc.stdout.strip(),
+                "stderr": run_proc.stderr.strip(),
+                "latency_ms": elapsed_ms,
+                "timeout": False
+            }
+        except subprocess.TimeoutExpired:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            return {
+                "success": False,
+                "exit_code": -1,
+                "stdout": "",
+                "stderr": f"Execution timed out after {self.timeout_sec}s",
+                "latency_ms": elapsed_ms,
+                "timeout": True
+            }
+        finally:
+            import shutil
+            if os.path.exists(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
