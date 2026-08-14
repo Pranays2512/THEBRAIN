@@ -8,6 +8,8 @@
  * Run:
  *   ./brain3/brain_master --eval
  *   ./brain3/brain_master --interactive
+ *   ./brain3/brain_master --ingest-all
+ *   ./brain3/brain_master --cross-domain
  */
 
 #include <iostream>
@@ -64,7 +66,6 @@ void run_interactive(MasterOrchestrator& orch) {
         std::cout << "👤 YOU: ";
         if (!std::getline(std::cin, line)) break;
         
-        // Trim
         line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));
         line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
         if (line.empty()) continue;
@@ -86,7 +87,6 @@ void run_interactive(MasterOrchestrator& orch) {
 void run_json_stream(MasterOrchestrator& orch) {
     std::string line;
     while (std::getline(std::cin, line)) {
-        // Trim
         line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));
         line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), line.end());
         if (line.empty()) continue;
@@ -108,6 +108,22 @@ int main(int argc, char** argv) {
         }
         if (mode == "--interactive" || mode == "-i") {
             run_interactive(orch);
+            return 0;
+        }
+        if (mode == "--ingest-all") {
+            CognitiveResponse resp = orch.process("INGEST_ALL");
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
+        if (mode == "--ingest" && argc > 2) {
+            std::string path = argv[2];
+            CognitiveResponse resp = orch.process("INGEST " + path);
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
+        if (mode == "--cross-domain" || mode == "--hunt") {
+            CognitiveResponse resp = orch.process("CROSS_DOMAIN_HUNT");
+            std::cout << resp.natural_reply << "\n";
             return 0;
         }
         if (mode == "--query" && argc > 2) {

@@ -93,6 +93,10 @@ public:
         return res;
     }
 
+    const std::unordered_map<std::string, AlgorithmicPolicy>& get_all_policies() const {
+        return policies_;
+    }
+
 private:
     void _init_canonical_policies() {
         // Policy 1: Monge / Quadrangle Inequality D&C DP Optimization (CF 868F)

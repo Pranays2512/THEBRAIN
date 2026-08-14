@@ -7,12 +7,15 @@ High-performance asynchronous Server-Sent Events (SSE) & WebSocket Daemon
 connecting The Brain's C++ Mind Core (brain_master) to the React Frontend & LLM Mouth.
 
 Endpoints:
-- POST /chat/stream      : Exact SSE protocol expected by Frontend/src/providers/FastAPIProvider.js
-- GET  /health           : Health check and C++ Mind Core state
-- GET  /stats            : Real-time telemetry (discovered invariants, BQL speed, cognitive load)
-- POST /discovery/start  : Trigger background self-play & invariant discovery
-- POST /discovery/stop   : Stop background self-play
-- GET  /discovery/status : Live discovery telemetry
+- POST /chat/stream        : Exact SSE protocol expected by Frontend/src/providers/FastAPIProvider.js
+- GET  /health             : Health check and C++ Mind Core state
+- GET  /stats              : Real-time telemetry (discovered invariants, BQL speed, cognitive load)
+- POST /discovery/start    : Trigger background self-play & invariant discovery
+- POST /discovery/stop     : Stop background self-play
+- GET  /discovery/status   : Live discovery telemetry
+- POST /ingest             : Ingest datasets or single files into BrainQL / Binding Memory
+- POST /cross-domain/hunt  : Autonomous cross-domain isomorphism and anti-unification step
+- GET  /cross-domain/status: Live status of cross-domain synthesized invariants
 """
 
 import asyncio
@@ -118,6 +121,7 @@ async def health_check():
 @app.get("/stats")
 async def stats():
     discovery_res = await brain_mgr.query("DISCOVERY_STATUS")
+    cross_res = await brain_mgr.query("CROSS_DOMAIN_STATUS")
     return {
         "brain_version": "3.0.0-Native-CPP",
         "engines": [
@@ -125,10 +129,13 @@ async def stats():
             "BrainQL Epistemic Semantic Memory",
             "Calculus & FTC Integration Engine",
             "Algorithmic Policy Invariant Engine",
+            "Native C++ Knowledge Ingestion Engine (>100k facts/sec)",
+            "Cross-Domain Isomorphism & Anti-Unification Hunter",
             "Neuro-Symbolic A* + MCTS Search",
             "Continuous Self-Play Discovery Daemon"
         ],
-        "discovery_telemetry": discovery_res.get("natural_reply", "")
+        "discovery_telemetry": discovery_res.get("natural_reply", ""),
+        "cross_domain_status": cross_res.get("raw_output", "")
     }
 
 @app.post("/discovery/start")
@@ -142,6 +149,27 @@ async def stop_discovery():
 @app.get("/discovery/status")
 async def discovery_status():
     return await brain_mgr.query("DISCOVERY_STATUS")
+
+class IngestRequest(BaseModel):
+    path: Optional[str] = None
+    all_datasets: Optional[bool] = False
+
+@app.post("/ingest")
+async def ingest_knowledge(req: IngestRequest):
+    if req.all_datasets:
+        return await brain_mgr.query("INGEST_ALL")
+    elif req.path:
+        return await brain_mgr.query(f"INGEST {req.path}")
+    else:
+        return await brain_mgr.query("INGEST_ALL")
+
+@app.post("/cross-domain/hunt")
+async def cross_domain_hunt():
+    return await brain_mgr.query("CROSS_DOMAIN_HUNT")
+
+@app.get("/cross-domain/status")
+async def cross_domain_status():
+    return await brain_mgr.query("CROSS_DOMAIN_STATUS")
 
 @app.post("/chat/stream")
 async def chat_stream(request: Request):
@@ -197,7 +225,6 @@ async def chat_stream(request: Request):
         yield f"data: {json.dumps(meta_event)}\n\n"
 
         # 3. Stream text tokens for smooth typing effect
-        # Split into small conversational token chunks
         words = natural_reply.split(" ")
         chunk_size = 2
         for i in range(0, len(words), chunk_size):

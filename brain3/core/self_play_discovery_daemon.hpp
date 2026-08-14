@@ -9,6 +9,7 @@
  * 2. Erdős-Straus Modular Diophantine Decompositions
  * 3. Combinatorial Graph Parity & Topological Invariants
  * 4. Monge Metric Matrices & Dynamic Programming Recurrences
+ * 5. Autonomous Cross-Domain Isomorphisms & AST Anti-Unification Conjectures
  *
  * Automatically crystallizes verified lemmas into policy_store.json and
  * updates the AlgorithmicPolicyEngine dynamically.
@@ -29,6 +30,7 @@
 #include <algorithm>
 
 #include "algorithmic_policy_engine.hpp"
+#include "cross_domain_conjecture_hunter.hpp"
 #include "crisp/engines/math/calculus_engine.hpp"
 
 namespace brain3 {
@@ -55,14 +57,21 @@ private:
     std::string store_path_{"brain3/data/policy_store.json"};
 
     AlgorithmicPolicyEngine* policy_engine_ref_{nullptr};
+    CrossDomainConjectureHunter* conjecture_hunter_ref_{nullptr};
 
 public:
     SelfPlayDiscoveryDaemon(AlgorithmicPolicyEngine* policy_engine = nullptr,
+                            CrossDomainConjectureHunter* conjecture_hunter = nullptr,
                             const std::string& store_path = "brain3/data/policy_store.json")
-        : policy_engine_ref_(policy_engine), store_path_(store_path) {}
+        : policy_engine_ref_(policy_engine), conjecture_hunter_ref_(conjecture_hunter), store_path_(store_path) {}
 
     ~SelfPlayDiscoveryDaemon() {
         stop();
+    }
+
+    void set_conjecture_hunter(CrossDomainConjectureHunter* hunter) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        conjecture_hunter_ref_ = hunter;
     }
 
     void start(int sleep_interval_ms = 50) {
@@ -99,7 +108,7 @@ public:
      */
     bool step_once() {
         auto t0 = std::chrono::high_resolution_clock::now();
-        int domain = total_cycles_ % 4;
+        int domain = total_cycles_ % 5;
         bool discovered = false;
         std::string discovery_msg;
 
@@ -115,6 +124,9 @@ public:
                 break;
             case 3:
                 discovered = _explore_monge_dp_domain(discovery_msg);
+                break;
+            case 4:
+                discovered = _explore_cross_domain_hunter(discovery_msg);
                 break;
         }
 
@@ -143,7 +155,6 @@ private:
 
     // Domain 0: Calculus & Differential Forms
     bool _explore_calculus_domain(std::string& out_msg) {
-        // Synthesize composite function: f(x) = (x^p * sin(x)) / (exp(x) + c)
         uint64_t seed = total_cycles_ + 100;
         int p = (seed % 4) + 1;
         
@@ -220,6 +231,20 @@ private:
         out_msg = oss.str();
         _persist_lemma("monge_dp_" + std::to_string(seed), "Dynamic Programming Monotonicity", out_msg);
         return true;
+    }
+
+    // Domain 4: Autonomous Cross-Domain Isomorphism & Anti-Unification Hunter
+    bool _explore_cross_domain_hunter(std::string& out_msg) {
+        if (!conjecture_hunter_ref_) return false;
+        auto disc = conjecture_hunter_ref_->step_hunt();
+        if (disc.verified) {
+            std::ostringstream oss;
+            oss << "Cross-Domain Isomorphism Invariant [" << disc.source_domain << " <-> " << disc.target_domain 
+                << "]: " << disc.generalized_law_name << " -> " << disc.abstract_formula << " (Score: " << disc.structural_score << ")";
+            out_msg = oss.str();
+            return true;
+        }
+        return false;
     }
 
     void _persist_lemma(const std::string& key, const std::string& category, const std::string& statement) {

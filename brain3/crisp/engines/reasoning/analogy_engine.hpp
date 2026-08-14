@@ -224,6 +224,27 @@ public:
         domains["network"] = net;
     }
 
+    const std::unordered_map<std::string, DomainModel>& get_domains() const {
+        return domains;
+    }
+
+    void define_domain(const DomainModel& model) {
+        domains[model.name] = model;
+    }
+
+    void define_domain(const std::string& name, const std::vector<DomainTriple>& triples) {
+        DomainModel m;
+        m.name = name;
+        for (const auto& t : triples) {
+            m.add_triple(t.subj, t.rel, t.obj);
+        }
+        domains[name] = m;
+    }
+
+    AnalogyResult map_domains(const std::string& src, const std::string& tgt) {
+        return map_analogy(src, tgt);
+    }
+
     void define_triple(const std::string& domain_name, const std::string& s, const std::string& r, const std::string& o) {
         domains[domain_name].name = domain_name;
         domains[domain_name].add_triple(s, r, o);
