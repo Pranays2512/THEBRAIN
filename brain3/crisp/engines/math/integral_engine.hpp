@@ -41,10 +41,10 @@ public:
                 const std::string& var = "x",
                 double at = 1.3, double tol = 1e-4) const {
         if (!antideriv) return false;
-        auto d = simplify(_diff(antideriv, var));
+        auto d = CalculusEngine::diff(antideriv, var);
         try {
             std::map<std::string, double> env = {{var, at}};
-            return std::abs(ev(d, env) - ev(integrand, env)) < tol;
+            return std::abs(CalculusEngine::eval(d, env) - CalculusEngine::eval(integrand, env)) < tol;
         } catch (...) { return false; }
     }
 
@@ -104,6 +104,11 @@ private:
             return nullptr;
         }
 
+        if (op == "neg") {
+            auto in = _int(e->children[0], var);
+            return in ? ExprNode::make_op("neg", {in}) : nullptr;
+        }
+
         // Basic trig / exp: ∫ sin(x) = -cos(x), ∫ cos(x) = sin(x), ∫ exp(x) = exp(x)
         if (op == "sin" && is_var(e->children[0]) && e->children[0]->var == var)
             return ExprNode::make_op("neg",
@@ -113,10 +118,21 @@ private:
         if (op == "exp" && is_var(e->children[0]) && e->children[0]->var == var)
             return ExprNode::make_op("exp", {ExprNode::make_var(var)});
 
-        // ∫ 1/x dx = ln(x)
-        if (op == "/" && is_num(e->children[0]) && e->children[0]->val == 1.0
-                      && is_var(e->children[1]) && e->children[1]->var == var)
-            return ExprNode::make_op("ln", {ExprNode::make_var(var)});
+        // ∫ c/x dx = c * ln(x)
+        if (op == "/") {
+            const auto& num = e->children[0];
+            const auto& den = e->children[1];
+            if (!contains(num, var) && is_var(den) && den->var == var) {
+                if (is_num(num) && num->val == 1.0) {
+                    return ExprNode::make_op("ln", {ExprNode::make_var(var)});
+                }
+                return ExprNode::make_op("*", {num, ExprNode::make_op("ln", {ExprNode::make_var(var)})});
+            }
+            if (!contains(den, var)) {
+                auto in = _int(num, var);
+                return in ? ExprNode::make_op("/", {in, den}) : nullptr;
+            }
+        }
 
         return nullptr; // no rule applies
     }
