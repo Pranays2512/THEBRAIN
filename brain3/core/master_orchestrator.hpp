@@ -25,6 +25,7 @@
 #include "fuzzy/core/brain.hpp"
 #include "crisp/engines/reasoning/brainql.hpp"
 #include "crisp/engines/math/math_engine.hpp"
+#include "broca_polymath.hpp"
 
 namespace brain3 {
 namespace core {
@@ -96,18 +97,20 @@ public:
             return "INSTINCT poison_invariants";
         }
 
-        // 2. Direct BrainQL pass-through
+        // 2. Direct BrainQL pass-through (Only if uppercase opcode and not natural language inquiry)
         std::vector<std::string> bql_ops = {
-            "LOOKUP", "CHAIN", "INHERIT", "DERIVE", "TEACH", "TEACH_RULE",
+            "LOOKUP", "CHAIN", "INHERIT", "DERIVE", "TEACH_RULE", "TEACH",
             "COMPUTE", "EXPLAIN", "SOLVE", "SYNTH", "PERCEIVE_IMAGE", "VISION",
             "CAUSAL_DEFINE", "CAUSAL_OBSERVE", "INTERVENE", "COUNTERFACTUAL", "WHAT_IF",
             "ANALOGY", "ANALOGY_DEFINE", "REFUTE", "META_VERIFY", "CRITIQUE",
             "DISCOVER", "INFER_EQUATION", "CURIOSITY_GAPS", "CURIOSITY_TICK",
-            "AUTONOMOUS_CYCLE", "INSTINCT", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS"
+            "AUTONOMOUS_CYCLE", "INSTINCT_FIRE", "INSTINCT_TRAIN", "INSTINCT_STATUS", "INSTINCT"
         };
-        for (const auto& op : bql_ops) {
-            if (upper.rfind(op, 0) == 0) {
-                return clean_text;
+        if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0) {
+            for (const auto& op : bql_ops) {
+                if (upper == op || upper.rfind(op + " ", 0) == 0) {
+                    return clean_text;
+                }
             }
         }
 
@@ -147,7 +150,14 @@ public:
             }
         }
 
-        // 5. Cross-domain Structural Analogy ("Compare bird to airplane", "How is X like Y")
+        // 5. Deductive Proof Requests ("Prove that X is a Y", "Proof of X rel Y")
+        std::regex proof_regex(R"((?:prove that|proof that|show that|verify that)\s+([\w]+)\s+(?:is a|is an|is)\s+([\w]+))", std::regex_constants::icase);
+        std::smatch proof_match;
+        if (std::regex_search(clean_text, proof_match, proof_regex)) {
+            return "LOOKUP " + proof_match[1].str() + " is_a " + proof_match[2].str();
+        }
+
+        // 6. Cross-domain Structural Analogy ("Compare bird to airplane", "How is X like Y")
         std::regex comp_regex(R"((?:compare|analogy between|relate)\s+([\w\s]+?)\s+(?:to|and|with)\s+([\w\s]+))", std::regex_constants::icase);
         std::smatch comp_match;
         if (std::regex_search(clean_text, comp_match, comp_regex)) {
@@ -158,18 +168,46 @@ public:
             return "ANALOGY " + src + " TO " + tgt + " PROJECT core";
         }
 
-        // 6. Explicit Memory / Knowledge Teaching ("Remember that X is a Y", "Teach X rel Y")
+        // 7. Explicit Memory / Knowledge Teaching ("Remember that X is a Y", "Teach that X is a Y")
         std::regex teach_regex(R"((?:remember that|teach that|learn that|note that)\s+([\w]+)\s+(?:is a|is an|is)\s+([\w]+))", std::regex_constants::icase);
         std::smatch teach_match;
         if (std::regex_search(clean_text, teach_match, teach_regex)) {
             return "TEACH " + teach_match[1].str() + " is_a " + teach_match[2].str();
         }
 
-        // 7. General Knowledge Query ("What is X", "Explain X", "Plan X")
-        std::regex explain_regex(R"((?:how to|explain|plan|outline)\s+(.*))", std::regex_constants::icase);
+        // 8. Pedagogical Concept Inquiries ("Teach me about X", "Explain X simply")
+        std::regex teach_me_regex(R"((?:teach me about|explain simply|learn about)\s+([\w]+))", std::regex_constants::icase);
+        std::smatch teach_me_match;
+        if (std::regex_search(clean_text, teach_me_match, teach_me_regex)) {
+            return "LOOKUP " + teach_me_match[1].str() + " is_a";
+        }
+
+        // 8. Knowledge Entity Queries ("What is X", "Lookup X")
+        std::regex what_is_regex(R"((?:what is|who is|what are)\s+([\w]+)\s+(?:a|an|the)?\s*([\w]*))", std::regex_constants::icase);
+        std::smatch what_match;
+        if (std::regex_search(clean_text, what_match, what_is_regex)) {
+            std::string ent = what_match[1].str();
+            std::string rel = what_match[2].str();
+            if (rel.empty()) rel = "is_a";
+            return "LOOKUP " + ent + " " + rel;
+        }
+
+        // 9. General Strategic / Pedagogical Planning ("Explain X", "Plan X", "Brief on X")
+        std::regex explain_regex(R"((?:how to|explain|plan|outline|brief on|summary of)\s+(.*))", std::regex_constants::icase);
         std::smatch exp_match;
         if (std::regex_search(clean_text, exp_match, explain_regex)) {
-            return "EXPLAIN " + exp_match[1].str();
+            std::string body = exp_match[1].str();
+            std::istringstream iss(body);
+            std::vector<std::string> words;
+            std::string w;
+            while (iss >> w) words.push_back(w);
+            if (words.size() == 1) {
+                return "LOOKUP " + words[0] + " is_a";
+            }
+            if (words.size() == 2) {
+                return "EXPLAIN " + words[0] + " " + words[1] + " core";
+            }
+            return "EXPLAIN " + words[0] + " " + words[1] + " " + words[2];
         }
 
         if (upper.rfind("SOLVE ", 0) == 0 || clean_text.find('=') != std::string::npos) {
@@ -241,9 +279,19 @@ public:
                 return resp;
             }
 
-            // Fluent Broca Thought Articulation
+            // Fluent Broca 2.0 Polymath Discourse Articulation
             resp.engine_used = query.op;
-            resp.natural_reply = _articulate_broca_response(query, res);
+            PolymathicContext pctx;
+            pctx.topic = input_text;
+            pctx.engine_used = query.op;
+            pctx.verified_result = _articulate_broca_response(query, res);
+            pctx.proof_chain = res.chain;
+            pctx.latency_ms = resp.latency_ms;
+            pctx.verified = res.verified;
+            pctx.alarm_triggered = false;
+            pctx.modality = BrocaPolymath::detect_modality(input_text);
+
+            resp.natural_reply = BrocaPolymath::articulate(pctx);
             return resp;
         } catch (const std::exception& e) {
             auto end_time = std::chrono::high_resolution_clock::now();
