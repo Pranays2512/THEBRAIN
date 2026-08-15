@@ -33,6 +33,20 @@ Makefile
 
 # Compiled standalone test binaries without extensions
 brain3/brain_master
+brain3/crisp/engines/math/adversarial_epistemic_auditor
+brain3/crisp/engines/math/autonomous_frontier_solver_session
+brain3/crisp/engines/math/autonomous_phd_math_challenge
+brain3/crisp/engines/math/cross_domain_bridge_builder
+brain3/crisp/engines/math/formal_tactic_proof_engine
+brain3/crisp/engines/math/hierarchical_goal_decomposer
+brain3/crisp/engines/math/lyapunov_functional_synthesizer
+brain3/crisp/engines/math/neural_guided_mcts_navigator
+brain3/crisp/engines/math/smt_counterexample_hunter
+brain3/crisp/engines/math/symbolic_cas_calculator_engine
+brain3/crisp/engines/math/universal_axiomatic_knowledge_vault
+brain3/crisp/engines/math/unsolved_frontier_conjecture_engine
+brain3/crisp/engines/math/unsolved_problems_investigator
+brain3/core/universal_self_play_bootstrap_engine
 **/*_test
 **/test_*
 !**/*.cpp
