@@ -409,15 +409,15 @@ public:
         auto it = anomaly_registry.find(lower_key);
         if (it == anomaly_registry.end()) {
             // Keyword matching
-            if (lower_key.find("beta") != std::string::npos || lower_key.find("neutrino") != std::string::npos || lower_key.find("decay") != std::string::npos) {
+            if (lower_key.find("beta") != std::string::npos || lower_key.find("neutrino") != std::string::npos || lower_key.find("decay") != std::string::npos || lower_key.find("momentum") != std::string::npos) {
                 it = anomaly_registry.find("missing_beta_decay_momentum");
-            } else if (lower_key.find("quadratic") != std::string::npos || lower_key.find("imaginary") != std::string::npos || lower_key.find("complex") != std::string::npos || lower_key.find("root") != std::string::npos) {
+            } else if (lower_key.find("quadratic") != std::string::npos || lower_key.find("imaginary") != std::string::npos || lower_key.find("complex") != std::string::npos || lower_key.find("root") != std::string::npos || lower_key.find("equation") != std::string::npos) {
                 it = anomaly_registry.find("negative_quadratic_roots");
-            } else if (lower_key.find("rotation") != std::string::npos || lower_key.find("dark_matter") != std::string::npos || lower_key.find("galaxy") != std::string::npos || lower_key.find("galactic") != std::string::npos) {
+            } else if (lower_key.find("rotation") != std::string::npos || lower_key.find("dark matter") != std::string::npos || lower_key.find("dark_matter") != std::string::npos || lower_key.find("galaxy") != std::string::npos || lower_key.find("galactic") != std::string::npos) {
                 it = anomaly_registry.find("flat_galactic_rotation");
-            } else if (lower_key.find("sort") != std::string::npos || lower_key.find("radix") != std::string::npos || lower_key.find("comparison") != std::string::npos || lower_key.find("order") != std::string::npos) {
+            } else if (lower_key.find("sort") != std::string::npos || lower_key.find("radix") != std::string::npos || lower_key.find("comparison") != std::string::npos || lower_key.find("order") != std::string::npos || lower_key.find("linear time") != std::string::npos) {
                 it = anomaly_registry.find("comparison_sorting_lower_bound");
-            } else if (lower_key.find("dark_pool") != std::string::npos || lower_key.find("liquidity") != std::string::npos || lower_key.find("finance") != std::string::npos || lower_key.find("flash") != std::string::npos) {
+            } else if (lower_key.find("dark pool") != std::string::npos || lower_key.find("dark_pool") != std::string::npos || lower_key.find("liquidity") != std::string::npos || lower_key.find("finance") != std::string::npos || lower_key.find("flash") != std::string::npos || lower_key.find("inventory") != std::string::npos || lower_key.find("market") != std::string::npos) {
                 it = anomaly_registry.find("financial_latent_liquidity_burst");
             } else {
                 for (const auto& kv : anomaly_registry) {

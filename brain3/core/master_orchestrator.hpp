@@ -149,7 +149,8 @@ public:
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
             (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
-            upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0) {
+            upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0 &&
+            upper.rfind("DERIVE A ", 0) != 0 && upper.rfind("DERIVE NEW", 0) != 0 && upper.rfind("DERIVE LAW", 0) != 0 && upper.rfind("DERIVE CONCEPT", 0) != 0) {
             for (const auto& op : bql_ops) {
                 if (upper == op || upper.rfind(op + " ", 0) == 0) {
                     return clean_text;
@@ -201,7 +202,7 @@ public:
         if (upper.rfind("ABDUCTIVE_INVENT", 0) == 0 || upper == "LATENT_ENTITIES_STATUS") {
             return upper;
         }
-        std::regex abduct_regex(R"((?:invent|synthesize|create|derive|form)\s+(?:a\s+)?(?:new\s+)?(?:concept|idea|latent|primitive|entity|law)\s+(?:for|to solve|about)?\s*([\w\s]+)?)", std::regex_constants::icase);
+        std::regex abduct_regex(R"((?:invent|synthesize|create|derive|form)\s+(?:a\s+|an\s+|the\s+)?(?:new\s+)?(?:concept|idea|latent|primitive|entity|law)\s+(?:for|to solve|about|regarding)?\s*([\w\s]+)?)", std::regex_constants::icase);
         std::smatch abduct_match;
         if (std::regex_search(clean_text, abduct_match, abduct_regex)) {
             std::string target = abduct_match[1].str();
