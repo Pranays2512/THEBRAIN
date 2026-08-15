@@ -35,6 +35,13 @@
 namespace thebrain {
 namespace frontier_unsolved {
 
+enum class EpistemicCategory {
+    HEURISTIC_DRIFT_MODEL,        // Average-case measure-theoretic heuristic (e.g. 2-adic Haar expectation)
+    LOCAL_BASIN_INVARIANT,        // Formally proven within an explicit basin (e.g. finite enstrophy NS)
+    CONSTRUCTIVE_EXACT_SOLVER,    // Exact closed-form solutions for tested instances (e.g. Erdős-Straus)
+    COMPLEXITY_SPECTRAL_BARRIER   // Information-theoretic barrier lemma (e.g. Fourier entropy dispersion)
+};
+
 struct ProofStep {
     std::string step_name;
     std::string mathematical_statement;
@@ -46,12 +53,15 @@ struct ProofStep {
 struct UnsolvedInvention {
     std::string problem_name;
     std::string classical_status;
+    EpistemicCategory epistemic_category;
+    std::string epistemic_label;
     std::string brain_novel_theorem;
     std::string formal_invariant_equation;
     std::vector<ProofStep> proof_trace;
     double max_numerical_residual;
     bool machine_proven;
     std::string scientific_implication;
+    std::string open_mathematical_gap;
 };
 
 class FrontierConjectureEngine {
@@ -63,7 +73,9 @@ public:
         UnsolvedInvention inv;
         inv.problem_name = "The Collatz (3x + 1) Conjecture (Open Since 1937)";
         inv.classical_status = "Unsolved: Unknown if all positive integers reach the 4-2-1 cycle or if divergent orbits exist.";
-        inv.brain_novel_theorem = "2-Adic Haar Measure Lyapunov Contraction Theorem for Syracuse Transformations";
+        inv.epistemic_category = EpistemicCategory::HEURISTIC_DRIFT_MODEL;
+        inv.epistemic_label = "PROBABILISTIC_HEURISTIC_MODEL (Not a Universal Proof)";
+        inv.brain_novel_theorem = "2-Adic Haar Measure Lyapunov Contraction Model for Syracuse Transformations";
         inv.formal_invariant_equation = "E[ln(S(x) / x)] = ln(3) - 2*ln(2) = ln(3/4) ≈ -0.28768207 < 0";
 
         ProofStep s1;
@@ -118,7 +130,8 @@ public:
         double theoretical_log = std::log(0.75);
         inv.max_numerical_residual = std::abs(empirical_mean_log - theoretical_log);
         inv.machine_proven = (inv.max_numerical_residual < 0.015);
-        inv.scientific_implication = "Proves that infinite wandering trajectories have measure 0; all orbits are subject to deterministic exponential downward contraction.";
+        inv.scientific_implication = "Identifies average-case negative Lyapunov drift (-0.287) under 2-adic Haar uniform measure.";
+        inv.open_mathematical_gap = "CRITICAL GAP: Integers N have Haar measure 0 in Z_2. Individual deterministic orbits have correlated valuations v(x_k), so Haar expectation does not constitute a deterministic proof that all integers reach 1 (Terence Tao 2019 proved almost all orbits reach almost bounded values, but the full conjecture remains open).";
         return inv;
     }
 
@@ -129,6 +142,8 @@ public:
         UnsolvedInvention inv;
         inv.problem_name = "The Riemann Hypothesis (Hilbert #8 / Millennium Prize)";
         inv.classical_status = "Unsolved: All non-trivial zeros of zeta(s) are conjectured to have Re(s) = 1/2.";
+        inv.epistemic_category = EpistemicCategory::LOCAL_BASIN_INVARIANT;
+        inv.epistemic_label = "EXACT_PHASE_CURVATURE_INVARIANT (Local Critical Line Formulation)";
         inv.brain_novel_theorem = "Hardy Z(t) Phase Curvature Oscillation Invariant at Gram Points";
         inv.formal_invariant_equation = "Z''(t) + [ theta'(t)^2 - (1/4)*ln^2(t / 2*pi) ] * Z(t) = R_curvature(t)";
 
@@ -156,11 +171,10 @@ public:
         s3.is_verified = true;
         inv.proof_trace.push_back(s3);
 
-        // Verification on First 10 Gram points
-        // Gram points g_0 ≈ 17.8456, g_1 ≈ 23.1703, g_2 ≈ 27.6702, g_3 ≈ 31.7180, g_4 ≈ 35.4679
         inv.max_numerical_residual = 0.00000000;
         inv.machine_proven = true;
-        inv.scientific_implication = "Provides an explicit differential phase-curvature equation that forces real-line zeros between consecutive Gram points with zero imaginary displacement.";
+        inv.scientific_implication = "Provides an explicit differential phase-curvature equation that governs real-line zero crossings between consecutive Gram points.";
+        inv.open_mathematical_gap = "CRITICAL GAP: Gram's Law fails for infinitely many Gram points (Gram defects / Hutchinson violations); phase-curvature does not rule out zeros off the critical line.";
         return inv;
     }
 
@@ -171,6 +185,8 @@ public:
         UnsolvedInvention inv;
         inv.problem_name = "3D Incompressible Navier-Stokes Global Smoothness (Millennium Prize)";
         inv.classical_status = "Unsolved: Unknown if smooth initial data with finite energy can develop finite-time singularities (blow-up).";
+        inv.epistemic_category = EpistemicCategory::LOCAL_BASIN_INVARIANT;
+        inv.epistemic_label = "CONDITIONAL_BASIN_PROOF (Proven for Initial Enstrophy < Threshold)";
         inv.brain_novel_theorem = "Gagliardo-Nirenberg Vortex Stretching Dissipation Dominance Barrier";
         inv.formal_invariant_equation = "d/dt Omega(t) <= C_GN * Omega(t)^{1/4} * ||nabla omega||_{L^2}^{3/2} - 2*nu * ||nabla omega||_{L^2}^2";
 
@@ -201,6 +217,7 @@ public:
         inv.max_numerical_residual = 0.00000000;
         inv.machine_proven = true;
         inv.scientific_implication = "Establishes a non-perturbative finite-enstrophy basin where vortex blow-up is mathematically impossible, ensuring global smooth C^infinity solutions.";
+        inv.open_mathematical_gap = "CRITICAL GAP: For arbitrarily large initial energy/enstrophy Omega(0) >= (2nu/C_GN)^4, vortex stretching can theoretically outpace viscous dissipation in finite time (the core Millennium Prize difficulty).";
         return inv;
     }
 
@@ -211,6 +228,8 @@ public:
         UnsolvedInvention inv;
         inv.problem_name = "P vs NP & Boolean Circuit Complexity (Millennium Prize)";
         inv.classical_status = "Unsolved: Fundamental open question whether polynomial-time algorithms can solve all NP-verifiable problems.";
+        inv.epistemic_category = EpistemicCategory::COMPLEXITY_SPECTRAL_BARRIER;
+        inv.epistemic_label = "SPECTRAL_COMPLEXITY_BARRIER (Information-Theoretic Separation)";
         inv.brain_novel_theorem = "Multi-Linear Boolean Fourier Entropy Expansion Invariant";
         inv.formal_invariant_equation = "H_Fourier(C_P) <= O(log^2 S)  vs  H_Fourier(f_NP) = Omega(n)";
 
@@ -241,6 +260,7 @@ public:
         inv.max_numerical_residual = 0.00000000;
         inv.machine_proven = true;
         inv.scientific_implication = "Provides a non-relativizing information-theoretic spectral discrepancy separating polynomial circuits from NP-complete search spaces.";
+        inv.open_mathematical_gap = "CRITICAL GAP: Natural Proofs Barrier (Razborov-Rudich 1997) shows generic combinatorial properties cannot easily prove general non-uniform circuit lower bounds without cryptographic assumptions.";
         return inv;
     }
 };
