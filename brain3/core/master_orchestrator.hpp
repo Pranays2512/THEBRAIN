@@ -34,6 +34,7 @@
 #include "knowledge_ingestion_engine.hpp"
 #include "cross_domain_conjecture_hunter.hpp"
 #include "../finance/finance_orchestrator.hpp"
+#include "../crisp/engines/discovery/abductive_latent_engine.hpp"
 
 namespace brain3 {
 namespace core {
@@ -58,6 +59,7 @@ private:
     CrossDomainConjectureHunter conjecture_hunter_{nullptr, nullptr};
     SelfPlayDiscoveryDaemon discovery_daemon_{&policy_engine_, &conjecture_hunter_};
     brain3::finance::FinanceOrchestrator finance_orchestrator_{10000.0};
+    brain2::discovery::AbductiveDiscoveryEngine abductive_engine_;
 
 public:
     MasterOrchestrator() {
@@ -193,6 +195,24 @@ public:
             effect.erase(effect.begin(), std::find_if(effect.begin(), effect.end(), [](unsigned char ch) { return !std::isspace(ch); }));
             effect.erase(std::find_if(effect.rbegin(), effect.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), effect.end());
             return "CHAIN " + cause + " " + effect;
+        }
+
+        // Abductive Latent Concept & Axiom Relaxation Inventions
+        if (upper.rfind("ABDUCTIVE_INVENT", 0) == 0 || upper == "LATENT_ENTITIES_STATUS") {
+            return upper;
+        }
+        std::regex abduct_regex(R"((?:invent|synthesize|create|derive|form)\s+(?:a\s+)?(?:new\s+)?(?:concept|idea|latent|primitive|entity|law)\s+(?:for|to solve|about)?\s*([\w\s]+)?)", std::regex_constants::icase);
+        std::smatch abduct_match;
+        if (std::regex_search(clean_text, abduct_match, abduct_regex)) {
+            std::string target = abduct_match[1].str();
+            target.erase(target.begin(), std::find_if(target.begin(), target.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+            target.erase(std::find_if(target.rbegin(), target.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), target.end());
+            if (target.empty()) target = "missing_beta_decay_momentum";
+            return "ABDUCTIVE_INVENT " + target;
+        }
+        std::regex latent_status_regex(R"((?:what|show|list|get)\s+(?:all\s+)?(?:latent\s+|invented\s+)?(?:entities|primitives|inventions|concepts))", std::regex_constants::icase);
+        if (std::regex_search(clean_text, latent_status_regex)) {
+            return "LATENT_ENTITIES_STATUS";
         }
 
         // Cross-Domain Structure Mapping Analogies
@@ -349,6 +369,37 @@ public:
             resp.engine_used = "cross_domain_conjecture_hunter";
             std::string status_json = conjecture_hunter_.get_status_json();
             resp.natural_reply = "🔬 **Cross-Domain Isomorphism Hunter Status**:\n" + status_json;
+            resp.raw_output = status_json;
+            return resp;
+        }
+
+        // MCTS-Driven Abductive Latent Synthesis & Axiom Relaxation Engine
+        if (bql.rfind("ABDUCTIVE_INVENT", 0) == 0) {
+            std::string anomaly_key = "missing_beta_decay_momentum";
+            if (bql.length() > 16) {
+                anomaly_key = bql.substr(16);
+                anomaly_key.erase(anomaly_key.begin(), std::find_if(anomaly_key.begin(), anomaly_key.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+                anomaly_key.erase(std::find_if(anomaly_key.rbegin(), anomaly_key.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), anomaly_key.end());
+            }
+            if (anomaly_key.empty()) anomaly_key = "missing_beta_decay_momentum";
+
+            auto inv_res = abductive_engine_.invent_latent_concept(anomaly_key, 100, 5);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = inv_res.success;
+            resp.engine_used = "abductive_latent_engine";
+            resp.natural_reply = inv_res.proof_explanation;
+            resp.proof_chain = inv_res.transformation_trace;
+            resp.raw_output = abductive_engine_.get_status_json();
+            return resp;
+        }
+        if (bql == "LATENT_ENTITIES_STATUS") {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "abductive_latent_engine";
+            std::string status_json = abductive_engine_.get_status_json();
+            resp.natural_reply = "💡 **The Brain MCTS Latent Inventions & Relaxed Axioms Store**:\n" + status_json;
             resp.raw_output = status_json;
             return resp;
         }

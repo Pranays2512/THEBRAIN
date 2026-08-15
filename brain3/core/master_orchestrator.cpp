@@ -142,6 +142,17 @@ int main(int argc, char** argv) {
             std::cout << resp.natural_reply << "\n";
             return 0;
         }
+        if (mode == "--abductive-invent" || mode == "--invent") {
+            std::string anomaly = (argc > 2) ? argv[2] : "missing_beta_decay_momentum";
+            CognitiveResponse resp = orch.process("ABDUCTIVE_INVENT " + anomaly);
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
+        if (mode == "--latent-status") {
+            CognitiveResponse resp = orch.process("LATENT_ENTITIES_STATUS");
+            std::cout << resp.natural_reply << "\n";
+            return 0;
+        }
         if (mode == "--sleep") {
             std::cout << orch.sleep_consolidate() << "\n";
             return 0;

@@ -78,15 +78,28 @@ async def run_tests():
             assert sim_res.status_code == 200
             print(f"   ✓ 25-Tick Market Simulation Cycle Complete.")
 
-            # 6. Test POST /chat/stream (SSE Protocol matching Frontend)
+            # 6. Test MCTS Abductive Latent Synthesis Endpoints
+            print("\n6. Testing MCTS Abductive Latent Synthesis & Axiom Relaxation Endpoints ...")
+            latent_status = await client.get("/discovery/latent_entities")
+            assert latent_status.status_code == 200
+            print(f"   ✓ Latent Entities Status Endpoint Reporting.")
+
+            abduct_inv = await client.post("/discovery/abductive_invent", json={"anomaly": "missing_beta_decay_momentum"})
+            assert abduct_inv.status_code == 200
+            abduct_json = abduct_inv.json()
+            assert "neutrino_nu" in abduct_json.get("natural_reply", "")
+            print(f"   ✓ Abductive Synthesis Invented: 'neutrino_nu' for Beta Decay.")
+
+            # 7. Test POST /chat/stream (SSE Protocol matching Frontend)
             test_queries = [
                 {"q": "290 / 2", "expected": "145"},
                 {"q": "What if gravity causes acceleration?", "expected": "acceleration"},
                 {"q": "POLICY divide_and_conquer_dp_monge", "expected": "Quadrangle Inequality"},
+                {"q": "invent a new concept for beta decay", "expected": "neutrino_nu"},
                 {"q": "STEP_DISCOVERY", "expected": "Calculus Invariant"}
             ]
 
-            print("\n5. Testing POST /chat/stream (Frontend SSE Transport) ...")
+            print("\n7. Testing POST /chat/stream (Frontend SSE Transport) ...")
             for item in test_queries:
                 q = item["q"]
                 print(f"\n   👤 User Query: \"{q}\"")

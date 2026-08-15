@@ -235,6 +235,18 @@ class ResetFinanceRequest(BaseModel):
 async def finance_reset(req: ResetFinanceRequest):
     return await brain_mgr.query(f"RESET_LIFE_FORCE {req.initial_capital}")
 
+# MCTS-Driven Abductive Latent Synthesis Endpoints
+class AbductiveInventRequest(BaseModel):
+    anomaly: str = "missing_beta_decay_momentum"
+
+@app.post("/discovery/abductive_invent")
+async def discovery_abductive_invent(req: AbductiveInventRequest):
+    return await brain_mgr.query(f"ABDUCTIVE_INVENT {req.anomaly}")
+
+@app.get("/discovery/latent_entities")
+async def discovery_latent_entities():
+    return await brain_mgr.query("LATENT_ENTITIES_STATUS")
+
 @app.post("/chat/stream")
 async def chat_stream(request: Request):
     try:
