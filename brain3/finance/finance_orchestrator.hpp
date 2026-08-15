@@ -344,7 +344,7 @@ public:
 
             auto opp = multi_scanner_.process_incoming_tick(sym, price, bid, ask, vol, change_pct);
 
-            if (opp.side == "NEUTRAL" || opp.recommended_size_inr < 1.0) {
+            if (opp.side == "NEUTRAL" || opp.recommended_size_inr < 0.0001) {
                 std::ostringstream oss;
                 oss << "{"
                     << "\"status\":\"MONITORING\","

@@ -216,6 +216,13 @@ class MultiStreamMarketFeed:
         except queue.Empty:
             return None
 
+    def stream_ticks(self) -> Generator[MultiAssetTick, None, None]:
+        """Yield ticks continuously while feed is running."""
+        while self.running:
+            tick = self.get_next_tick(timeout=0.05)
+            if tick:
+                yield tick
+
 if __name__ == "__main__":
     feed = MultiStreamMarketFeed()
     print("Starting Multi-Stream Market Ingestion across Crypto, Indian Equities, and Global Stocks...")

@@ -137,7 +137,7 @@ public:
 
     // Execute the scored opportunity
     TradeRecord execute_opportunity(const ScoredTradeOpportunity& opp) {
-        if (opp.side == "NEUTRAL" || opp.recommended_size_inr < 1.0 || !survival_.is_alive()) {
+        if (opp.side == "NEUTRAL" || opp.recommended_size_inr < 0.0001 || !survival_.is_alive()) {
             TradeRecord no_op;
             no_op.symbol = opp.symbol;
             no_op.realized_pnl = 0.0;

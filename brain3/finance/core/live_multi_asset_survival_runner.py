@@ -195,28 +195,29 @@ class LiveMultiAssetSurvivalRunner:
             border_style=state_color
         )
 
-    def run_live_loop(self, max_ticks: int = 10000):
-        """Run continuous multi-stream execution loop until ₹100,000 cap or -₹100 ruin floor."""
-        console.clear()
+    def run_live_loop(self, max_ticks: int = 500, duration_seconds: float = 0.0):
+        """Main live trading loop reading tick firehose."""
         self.feed.start()
-        time.sleep(1.5)  # Allow WebSocket and worker threads to populate initial stream cache
+        start_time = time.time()
+        tick_count = 0
 
         LOGS_DIR = FINANCE_DIR / "logs"
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self.state_file = LOGS_DIR / "live_session_state.json"
-        
-        with Live(console=console, refresh_per_second=4, screen=False) as live:
-            tick_count = 0
-            while self.running:
-                tick = self.feed.get_next_tick(timeout=0.2)
-                if not tick:
-                    continue
+
+        with Live(console=console, refresh_per_second=8) as live:
+            for tick in self.feed.stream_ticks():
+                if not self.running:
+                    break
 
                 tick_count += 1
-                cmd = f"MULTI_ASSET_TICK {tick.symbol} {tick.price:.4f} {tick.best_bid:.4f} {tick.best_ask:.4f} {tick.volume:.2f} {tick.change_24h_pct:.2f}"
+                self.recent_ticks.append(tick)
+
+                # Send tick to C++ Brain
+                cmd = f"MULTI_ASSET_TICK {tick.symbol} {tick.price:.2f} {tick.best_bid:.2f} {tick.best_ask:.2f} {tick.volume:.2f} {tick.change_24h_pct:.2f}"
                 resp = self.send_command(cmd)
 
-                action_desc = "SCANNING_STREAMS"
+                action_desc = f"SCANNING {tick.symbol}"
                 if resp:
                     status_type = resp.get("status", "")
                     if status_type == "MULTI_TRADE_EXECUTED":
@@ -225,7 +226,7 @@ class LiveMultiAssetSurvivalRunner:
                     elif status_type == "MONITORING":
                         action_desc = f"SCANNED {tick.symbol} (Alpha={resp.get('alpha_score', 0):.2f})"
                     elif status_type == "BRAIN_DEAD":
-                        action_desc = "TERMINAL RUIN REACHED (-₹100 Floor Breached)"
+                        action_desc = f"TERMINAL RUIN REACHED (₹{self.ruin_floor:.2f} Floor Breached)"
                         self.running = False
 
                 # Periodically update status and persist state
@@ -239,18 +240,22 @@ class LiveMultiAssetSurvivalRunner:
 
                 # Check stopping conditions:
                 if current_eq <= self.ruin_floor:
-                    live.update(self.generate_ui_panel(tick, "[bold red]STRICT -₹100 RUIN FLOOR BREACHED — HALTING[/bold red]"))
-                    console.print(f"\n[bold red]💀 TERMINAL STOP: Capital reached ₹{current_eq:,.2f} <= -₹100.00 ruin floor.[/bold red]\n")
+                    live.update(self.generate_ui_panel(tick, f"[bold red]STRICT ₹{self.ruin_floor:.2f} RUIN FLOOR BREACHED — HALTING[/bold red]"))
+                    console.print(f"\n[bold red]💀 TERMINAL STOP: Capital reached ₹{current_eq:,.4f} <= ₹{self.ruin_floor:.2f} ruin floor.[/bold red]\n")
                     break
 
                 if current_eq >= self.cap_limit:
-                    live.update(self.generate_ui_panel(tick, "[bold green]1 LAKH (₹100,000) CAP ACHIEVED — APEX SUCCESS[/bold green]"))
-                    console.print(f"\n[bold green]🏆 APEX ABUNDANCE ACHIEVED: Capital reached ₹{current_eq:,.2f} >= ₹100,000.00![/bold green]\n")
+                    live.update(self.generate_ui_panel(tick, f"[bold green]CAP LIMIT ₹{self.cap_limit:,.2f} ACHIEVED — APEX SUCCESS[/bold green]"))
+                    console.print(f"\n[bold green]🏆 APEX ABUNDANCE ACHIEVED: Capital reached ₹{current_eq:,.4f} >= ₹{self.cap_limit:,.2f}![/bold green]\n")
                     break
 
                 live.update(self.generate_ui_panel(tick, action_desc))
 
                 if max_ticks > 0 and tick_count >= max_ticks:
+                    break
+
+                if duration_seconds > 0 and (time.time() - start_time) >= duration_seconds:
+                    console.print(f"\n[bold cyan]⏱️ DURATION COMPLETE: Finished {duration_seconds:.1f}s live trading run.[/bold cyan]\n")
                     break
 
         self.persist_session_state()
@@ -263,9 +268,9 @@ class LiveMultiAssetSurvivalRunner:
             data = {
                 "timestamp": time.time(),
                 "datetime": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "initial_capital": self.initial_capital,
                 "current_equity": self.last_status.get("current_equity", self.initial_capital),
                 "peak_equity": self.last_status.get("peak_equity", self.initial_capital),
+                "starting_capital": self.initial_capital,
                 "ruin_floor": self.ruin_floor,
                 "cap_limit": self.cap_limit,
                 "life_force_pct": self.last_status.get("life_force_pct", 50.0),
@@ -273,7 +278,7 @@ class LiveMultiAssetSurvivalRunner:
                 "is_alive": self.last_status.get("is_alive", True),
                 "total_trades": len(self.trades_executed),
                 "active_universe_count": len(snapshot),
-                "recent_trades": self.trades_executed[-10:],
+                "recent_trades": self.trades_executed[-15:],
                 "active_market_sample": [
                     {
                         "symbol": t.symbol,
@@ -297,13 +302,16 @@ def main():
     parser.add_argument("--initial", type=float, default=1000.0, help="Initial mock capital in INR (default: 1000.0)")
     parser.add_argument("--floor", type=float, default=-100.0, help="Strict ruin floor in INR (default: -100.0)")
     parser.add_argument("--cap", type=float, default=100000.0, help="Cap limit in INR (default: 100000.0)")
-    parser.add_argument("--ticks", type=int, default=500, help="Max ticks to process (default: 500)")
+    parser.add_argument("--burn", type=float, default=0.02, help="Metabolic upkeep burn per tick (default: 0.02)")
+    parser.add_argument("--ticks", type=int, default=0, help="Max ticks to process (0 = infinite / duration based)")
+    parser.add_argument("--duration", type=float, default=60.0, help="Duration in seconds (default: 60.0)")
     args = parser.parse_args()
 
     runner = LiveMultiAssetSurvivalRunner(
         initial_capital=args.initial,
         ruin_floor=args.floor,
-        cap_limit=args.cap
+        cap_limit=args.cap,
+        metabolic_burn=args.burn
     )
 
     def sig_handler(sig, frame):
@@ -312,7 +320,7 @@ def main():
         sys.exit(0)
 
     signal.signal(signal.SIGINT, sig_handler)
-    runner.run_live_loop(max_ticks=args.ticks)
+    runner.run_live_loop(max_ticks=args.ticks, duration_seconds=args.duration)
 
 if __name__ == "__main__":
     main()
