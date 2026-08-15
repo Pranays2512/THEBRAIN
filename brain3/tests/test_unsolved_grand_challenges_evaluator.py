@@ -4,9 +4,9 @@ brain3/tests/test_unsolved_grand_challenges_evaluator.py
 
 Unit and integration tests for The Brain's Universal Unsolved Grand Challenges Evaluation Engine:
 1. Compiles and executes the full evaluation across all 7 grand challenges
-2. Validates that ALL test cases and all residue classes/conditions are evaluated (zero partial coverage)
+2. Validates that ALL test cases and all residue classes/conditions are evaluated
 3. Confirms exact 128-bit integer solutions across all 6 Mordell open residue classes mod 840
-4. Verifies precise reporting of what is proven, what remains open, and the identified bottleneck barrier
+4. Verifies explicit EpistemicProvenance and literature benchmarking
 """
 
 import subprocess
@@ -45,22 +45,22 @@ class TestUnsolvedGrandChallengesEvaluator(unittest.TestCase):
         self.assertIn("Mordell_mod_840_res_529", out)
         self.assertIn("Giant_Prime_104729", out)
         self.assertIn("Giant_Prime_1299709", out)
-        self.assertIn("EXACT ZERO ERROR", out)
-        self.assertIn("EXACT_SOLUTIONS_FOR_ALL_TESTED_SETS", out)
+        self.assertIn("4xyz - p(yz+xz+xy) = 0 EXACT", out)
+        self.assertIn("EXACT_SOLUTIONS_FOR_TESTED_SETS", out)
 
         # 2. Collatz (3x + 1) Conjecture
         self.assertIn("The Collatz (3x + 1) / Syracuse Conjecture", out)
         self.assertIn("Collatz_2Adic_Haar_Drift", out)
         self.assertIn("E[ln(S(x)/x)] = ln(3/4)", out)
-        self.assertIn("Collatz_Cycle_Elimination", out)
-        self.assertIn("Collatz_Extreme_Orbit_27", out)
-        self.assertIn("Collatz_Conway_Turing_Boundary", out)
+        self.assertIn("Collatz_Cycle_Elimination_Literature_Bounds", out)
+        self.assertIn("Collatz_Deterministic_Trajectory_27", out)
+        self.assertIn("Collatz_Conway_Undecidability_Barrier", out)
 
         # 3. Riemann Hypothesis
         self.assertIn("The Riemann Hypothesis", out)
         self.assertIn("Riemann_First_Zeros_Critical_Line", out)
         self.assertIn("Riemann_Li_Positivity_Criterion", out)
-        self.assertIn("Riemann_Montgomery_Odlyzko_GUE_Bridge", out)
+        self.assertIn("Riemann_Montgomery_Odlyzko_GUE_Analogy", out)
 
         # 4. 3D Navier-Stokes Regularity
         self.assertIn("3D Incompressible Navier-Stokes Global Regularity", out)
@@ -86,7 +86,7 @@ class TestUnsolvedGrandChallengesEvaluator(unittest.TestCase):
         self.assertIn("Wilson_Loop_Area_Law", out)
 
         # Overall Completion Banner
-        self.assertIn("ALL 7 GRAND CHALLENGES COMPREHENSIVELY EVALUATED ACROSS ALL TEST CASES", out)
+        self.assertIn("ALL 7 CHALLENGES BENCHMARKED AGAINST LITERATURE", out)
 
 if __name__ == "__main__":
     unittest.main()
