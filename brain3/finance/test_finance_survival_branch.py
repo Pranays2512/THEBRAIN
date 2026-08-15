@@ -8,6 +8,7 @@ import subprocess
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -164,6 +165,23 @@ class TestFinanceSurvivalBranch(unittest.TestCase):
         self.assertGreater(res.get("win_rate_pct"), 50.0)
         self.assertGreater(res.get("profit_factor"), 1.0)
         self.assertGreater(res.get("final_capital"), -100.0)
+
+    def test_11_multi_stream_market_feed_and_alpha_scanner(self):
+        """Test concurrent multi-asset ingestion and high-conviction alpha trade execution."""
+        from brain3.finance.adapters.multi_stream_market_feed import MultiStreamMarketFeed
+        feed = MultiStreamMarketFeed()
+        feed.start()
+        time.sleep(1.0)
+        snapshot = feed.get_market_snapshot()
+        self.assertGreater(len(snapshot), 5)
+
+        # Test MULTI_ASSET_TICK command in C++ engine
+        item = list(snapshot.values())[0]
+        cmd = f"MULTI_ASSET_TICK {item.symbol} {item.price:.4f} {item.best_bid:.4f} {item.best_ask:.4f} {item.volume:.2f} {item.change_24h_pct:.2f}"
+        res = self._query_finance_json(cmd)
+        self.assertIn("status", res)
+        self.assertIn(res["status"], ["MULTI_TRADE_EXECUTED", "MONITORING"])
+        feed.stop()
 
 if __name__ == "__main__":
     unittest.main()

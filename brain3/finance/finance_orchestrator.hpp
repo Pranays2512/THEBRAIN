@@ -14,6 +14,7 @@
 #include "core/survival_instinct_engine.hpp"
 #include "core/cross_asset_arbitrage_hunter.hpp"
 #include "core/autonomous_trading_instinct_engine.hpp"
+#include "core/multi_asset_scanner_engine.hpp"
 
 namespace brain3 {
 namespace finance {
@@ -25,6 +26,7 @@ private:
     SurvivalInstinctEngine survival_engine_;
     CrossAssetArbitrageHunter stat_arb_hunter_;
     AutonomousTradingInstinctEngine autonomous_engine_;
+    MultiAssetScannerEngine multi_scanner_;
 
     std::mt19937_64 rng_{42};
 
@@ -34,7 +36,8 @@ public:
                                  double cap_limit = 100000.0,
                                  double metabolic_burn = 0.02)
         : survival_engine_(initial_capital, ruin_floor, cap_limit, metabolic_burn),
-          autonomous_engine_(initial_capital, ruin_floor, cap_limit, metabolic_burn) {
+          autonomous_engine_(initial_capital, ruin_floor, cap_limit, metabolic_burn),
+          multi_scanner_(survival_engine_) {
         // Initialize default books
         get_or_create_book("NIFTY50/INR", 24500.0);
         get_or_create_book("BANKNIFTY/INR", 51200.0);
@@ -321,6 +324,58 @@ public:
                 << "\"capital_after\":" << tr.capital_after << ","
                 << "\"life_force_pct\":" << tr.life_force_after << ","
                 << "\"strategy\":\"" << tr.strategy_used << "\","
+                << "\"is_winner\":" << (tr.is_winner ? "true" : "false") << ","
+                << "\"survival_state\":\"" << survival_engine_.state_string() << "\""
+                << "}";
+            return oss.str();
+        }
+
+        if (opcode == "MULTI_ASSET_TICK") {
+            std::string sym;
+            double price = 0.0, bid = 0.0, ask = 0.0, vol = 0.0, change_pct = 0.0;
+            iss >> sym >> price >> bid >> ask >> vol >> change_pct;
+
+            if (!survival_engine_.is_alive()) {
+                return "{\"status\":\"BRAIN_DEAD\",\"reason\":\"RUIN_FLOOR_REACHED\"}";
+            }
+
+            // Incur slight metabolic upkeep
+            survival_engine_.metabolic_tick();
+
+            auto opp = multi_scanner_.process_incoming_tick(sym, price, bid, ask, vol, change_pct);
+
+            if (opp.side == "NEUTRAL" || opp.recommended_size_inr < 1.0) {
+                std::ostringstream oss;
+                oss << "{"
+                    << "\"status\":\"MONITORING\","
+                    << "\"symbol\":\"" << sym << "\","
+                    << "\"price\":" << std::fixed << std::setprecision(2) << price << ","
+                    << "\"alpha_score\":" << std::setprecision(3) << opp.alpha_score << ","
+                    << "\"ofi\":" << std::setprecision(3) << opp.ofi << ","
+                    << "\"vwap_dev\":" << std::setprecision(4) << opp.vwap_dev << ","
+                    << "\"current_equity\":" << survival_engine_.current_equity() << ","
+                    << "\"life_force_pct\":" << survival_engine_.life_force() << ","
+                    << "\"survival_state\":\"" << survival_engine_.state_string() << "\""
+                    << "}";
+                return oss.str();
+            }
+
+            auto tr = multi_scanner_.execute_opportunity(opp);
+
+            std::ostringstream oss;
+            oss << "{"
+                << "\"status\":\"MULTI_TRADE_EXECUTED\","
+                << "\"trade_id\":" << tr.trade_id << ","
+                << "\"symbol\":\"" << tr.symbol << "\","
+                << "\"side\":\"" << tr.side << "\","
+                << "\"entry_price\":" << std::fixed << std::setprecision(2) << tr.entry_price << ","
+                << "\"exit_price\":" << tr.exit_price << ","
+                << "\"quantity\":" << std::setprecision(4) << tr.quantity << ","
+                << "\"realized_pnl\":" << std::setprecision(2) << tr.realized_pnl << ","
+                << "\"capital_after\":" << tr.capital_after << ","
+                << "\"life_force_pct\":" << tr.life_force_after << ","
+                << "\"strategy\":\"" << tr.strategy_used << "\","
+                << "\"alpha_score\":" << std::setprecision(3) << opp.alpha_score << ","
                 << "\"is_winner\":" << (tr.is_winner ? "true" : "false") << ","
                 << "\"survival_state\":\"" << survival_engine_.state_string() << "\""
                 << "}";
