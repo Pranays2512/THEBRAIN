@@ -30,7 +30,7 @@ private:
 
 public:
     explicit FinanceOrchestrator(double initial_capital = 1000.0,
-                                 double ruin_floor = -1000.0,
+                                 double ruin_floor = -100.0,
                                  double cap_limit = 100000.0,
                                  double metabolic_burn = 0.02)
         : survival_engine_(initial_capital, ruin_floor, cap_limit, metabolic_burn),
@@ -209,6 +209,120 @@ public:
                 << "\"strategy\":\"" << tr.strategy_used << "\","
                 << "\"is_winner\":" << (tr.is_winner ? "true" : "false") << ","
                 << "\"survival_state\":\"" << autonomous_engine_.survival().state_string() << "\""
+                << "}";
+            return oss.str();
+        }
+
+        if (opcode == "LIVE_TICK_EXEC") {
+            std::string sym;
+            double price = 0.0, bid = 0.0, ask = 0.0, vol = 1.0;
+            iss >> sym >> price >> bid >> ask >> vol;
+
+            survival_engine_.metabolic_tick();
+            if (!survival_engine_.is_alive()) {
+                return "{\"status\":\"BRAIN_DEAD\",\"reason\":\"RUIN_FLOOR_BREACHED\",\"capital\":" +
+                       std::to_string(survival_engine_.current_equity()) + "}";
+            }
+
+            auto* book = get_or_create_book(sym, price);
+            if (bid <= 0.0) bid = price * 0.9998;
+            if (ask <= 0.0) ask = price * 1.0002;
+
+            book->seed_liquidity(price, 10);
+            auto* micro = get_micro_analyzer(sym);
+            micro->on_tick(price, vol, bid, ask, book->total_bid_depth(), book->total_ask_depth());
+
+            double ofi = micro->ofi();
+            double vwap_val = micro->vwap();
+            double vwap_dev = (vwap_val > 0.0) ? (price - vwap_val) / vwap_val : 0.0;
+            double hunger = survival_engine_.hunger_urgency_factor();
+
+            std::string strategy = "NONE";
+            OrderSide side = OrderSide::BUY;
+            double win_p = 0.55;
+            double win_loss = 1.5;
+            bool do_trade = false;
+
+            if (std::abs(ofi) > 0.20) {
+                strategy = "LIVE_OFI_MOMENTUM";
+                side = (ofi > 0.0) ? OrderSide::BUY : OrderSide::SELL;
+                win_p = 0.63;
+                win_loss = 1.8;
+                do_trade = true;
+            } else if (std::abs(vwap_dev) > 0.003) {
+                strategy = "LIVE_VWAP_REVERSION";
+                side = (vwap_dev > 0.0) ? OrderSide::SELL : OrderSide::BUY;
+                win_p = 0.60;
+                win_loss = 1.6;
+                do_trade = true;
+            } else if (hunger > 1.15) {
+                strategy = "LIVE_HUNGER_HARVEST";
+                side = (price >= (bid + ask) * 0.5) ? OrderSide::BUY : OrderSide::SELL;
+                win_p = 0.57;
+                win_loss = 1.5;
+                do_trade = true;
+            }
+
+            if (!do_trade) {
+                std::ostringstream oss;
+                oss << "{"
+                    << "\"status\":\"NO_TRADE\","
+                    << "\"symbol\":\"" << sym << "\","
+                    << "\"price\":" << std::fixed << std::setprecision(2) << price << ","
+                    << "\"ofi\":" << std::setprecision(4) << ofi << ","
+                    << "\"vwap\":" << std::setprecision(2) << vwap_val << ","
+                    << "\"capital\":" << survival_engine_.current_equity() << ","
+                    << "\"life_force_pct\":" << survival_engine_.life_force() << ","
+                    << "\"survival_state\":\"" << survival_engine_.state_string() << "\""
+                    << "}";
+                return oss.str();
+            }
+
+            double safe_alloc = survival_engine_.calculate_safe_position_size(win_p, win_loss, 0.20);
+            if (safe_alloc < 1.0) {
+                std::ostringstream oss;
+                oss << "{"
+                    << "\"status\":\"DEFENSIVE_HOLD\","
+                    << "\"symbol\":\"" << sym << "\","
+                    << "\"reason\":\"CAPITAL_RISK_CONSTRAINED\","
+                    << "\"capital\":" << survival_engine_.current_equity() << ","
+                    << "\"life_force_pct\":" << survival_engine_.life_force()
+                    << "}";
+                return oss.str();
+            }
+
+            double qty = safe_alloc / price;
+            auto rep = book->submit_order(side, OrderType::MARKET, price, qty);
+
+            if (rep.executed_qty <= 0.0) {
+                return "{\"status\":\"UNFILLED\",\"symbol\":\"" + sym + "\"}";
+            }
+
+            // Realize exit spread based on alpha probability
+            std::normal_distribution<double> noise_dist(0.0, 0.002);
+            double alpha_edge = (win_p - 0.50) * 0.008;
+            if (side == OrderSide::SELL) alpha_edge = -alpha_edge;
+            double exit_price = rep.avg_fill_price * (1.0 + alpha_edge + noise_dist(rng_));
+
+            auto tr = survival_engine_.record_trade(sym, (side == OrderSide::BUY ? "BUY" : "SELL"),
+                                                   rep.avg_fill_price, exit_price,
+                                                   rep.executed_qty, rep.fee, strategy);
+
+            std::ostringstream oss;
+            oss << "{"
+                << "\"status\":\"TRADE_EXECUTED\","
+                << "\"trade_id\":" << tr.trade_id << ","
+                << "\"symbol\":\"" << tr.symbol << "\","
+                << "\"side\":\"" << tr.side << "\","
+                << "\"entry_price\":" << std::fixed << std::setprecision(2) << tr.entry_price << ","
+                << "\"exit_price\":" << tr.exit_price << ","
+                << "\"quantity\":" << std::setprecision(4) << tr.quantity << ","
+                << "\"realized_pnl\":" << std::setprecision(2) << tr.realized_pnl << ","
+                << "\"capital_after\":" << tr.capital_after << ","
+                << "\"life_force_pct\":" << tr.life_force_after << ","
+                << "\"strategy\":\"" << tr.strategy_used << "\","
+                << "\"is_winner\":" << (tr.is_winner ? "true" : "false") << ","
+                << "\"survival_state\":\"" << survival_engine_.state_string() << "\""
                 << "}";
             return oss.str();
         }

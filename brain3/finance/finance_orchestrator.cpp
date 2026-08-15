@@ -5,8 +5,8 @@
 using namespace brain3::finance;
 
 int main(int argc, char* argv[]) {
-    // Exact User Parameters: ₹1,000 Starting Cash, -₹1,000 Ruin Floor, ₹100,000 Cap Limit
-    FinanceOrchestrator orch(1000.0, -1000.0, 100000.0, 0.02);
+    // Exact User Parameters: ₹1,000 Starting Cash, -₹100 Ruin Floor, ₹100,000 Cap Limit
+    FinanceOrchestrator orch(1000.0, -100.0, 100000.0, 0.02);
 
     bool json_stream = false;
     for (int i = 1; i < argc; ++i) {
