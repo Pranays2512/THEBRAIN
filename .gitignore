@@ -45,6 +45,7 @@ brain3/crisp/engines/math/smt_counterexample_hunter
 brain3/crisp/engines/math/symbolic_cas_calculator_engine
 brain3/crisp/engines/math/universal_axiomatic_knowledge_vault
 brain3/crisp/engines/math/unsolved_frontier_conjecture_engine
+brain3/crisp/engines/math/unsolved_grand_challenges_evaluator
 brain3/crisp/engines/math/unsolved_problems_investigator
 brain3/core/universal_self_play_bootstrap_engine
 **/*_test
