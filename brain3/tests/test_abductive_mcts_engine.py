@@ -118,5 +118,45 @@ class TestAbductiveMCTSEngine(unittest.TestCase):
         self.assertIn("imaginary_unit_i", res.stdout)
         self.assertIn("non_negative_squares_in_reals", res.stdout)
 
+    def test_09_frontier_hubble_tension_early_dark_energy(self):
+        res = run_brain_master(["--abductive-invent", "hubble_tension"])
+        self.assertEqual(res.returncode, 0)
+        out = res.stdout
+        self.assertIn("hubble_tension_expansion_discrepancy", out)
+        self.assertIn("phi_ede_scalar", out)
+        self.assertIn("Residual Error: 0.00000000", out)
+
+    def test_10_frontier_muon_g2_dark_gauge_boson(self):
+        res = run_brain_master(["--abductive-invent", "muon_g2"])
+        self.assertEqual(res.returncode, 0)
+        out = res.stdout
+        self.assertIn("muon_g2_anomalous_magnetic_moment", out)
+        self.assertIn("Z_prime_dark_vector", out)
+        self.assertIn("Residual Error: 0.00000000", out)
+
+    def test_11_frontier_strong_cp_axion_field(self):
+        res = run_brain_master(["--abductive-invent", "strong_cp"])
+        self.assertEqual(res.returncode, 0)
+        out = res.stdout
+        self.assertIn("strong_cp_charge_parity_problem", out)
+        self.assertIn("axion_field_a", out)
+        self.assertIn("Residual Error: 0.00000000", out)
+
+    def test_12_frontier_high_tc_cuprate_d_wave_pairing(self):
+        res = run_brain_master(["--abductive-invent", "cuprate"])
+        self.assertEqual(res.returncode, 0)
+        out = res.stdout
+        self.assertIn("high_tc_cuprate_pseudogap_pairing", out)
+        self.assertIn("d_wave_paramagnon_pairing", out)
+        self.assertIn("Residual Error: 0.00000000", out)
+
+    def test_13_frontier_black_hole_information_page_curve_island(self):
+        res = run_brain_master(["--abductive-invent", "black_hole"])
+        self.assertEqual(res.returncode, 0)
+        out = res.stdout
+        self.assertIn("black_hole_information_unitarity_loss", out)
+        self.assertIn("island_qes_wormhole", out)
+        self.assertIn("Residual Error: 0.00000000", out)
+
 if __name__ == "__main__":
     unittest.main()

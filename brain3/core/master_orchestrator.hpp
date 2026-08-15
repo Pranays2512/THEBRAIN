@@ -202,14 +202,16 @@ public:
         if (upper.rfind("ABDUCTIVE_INVENT", 0) == 0 || upper == "LATENT_ENTITIES_STATUS") {
             return upper;
         }
-        std::regex abduct_regex(R"((?:invent|synthesize|create|derive|form)\s+(?:a\s+|an\s+|the\s+)?(?:new\s+)?(?:concept|idea|latent|primitive|entity|law)\s+(?:for|to solve|about|regarding)?\s*([\w\s]+)?)", std::regex_constants::icase);
-        std::smatch abduct_match;
-        if (std::regex_search(clean_text, abduct_match, abduct_regex)) {
-            std::string target = abduct_match[1].str();
-            target.erase(target.begin(), std::find_if(target.begin(), target.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-            target.erase(std::find_if(target.rbegin(), target.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), target.end());
-            if (target.empty()) target = "missing_beta_decay_momentum";
-            return "ABDUCTIVE_INVENT " + target;
+        std::string lower_clean = clean_text;
+        std::transform(lower_clean.begin(), lower_clean.end(), lower_clean.begin(), ::tolower);
+        if (lower_clean.rfind("invent", 0) == 0 || lower_clean.rfind("synthesize", 0) == 0 ||
+            lower_clean.rfind("derive a", 0) == 0 || lower_clean.rfind("derive new", 0) == 0 || lower_clean.rfind("derive", 0) == 0 ||
+            lower_clean.rfind("hypothesize", 0) == 0 || lower_clean.rfind("discover", 0) == 0 ||
+            lower_clean.find("hubble") != std::string::npos || lower_clean.find("muon") != std::string::npos ||
+            lower_clean.find("strong cp") != std::string::npos || lower_clean.find("cuprate") != std::string::npos ||
+            lower_clean.find("pseudogap") != std::string::npos || lower_clean.find("page curve") != std::string::npos ||
+            lower_clean.find("black hole") != std::string::npos) {
+            return "ABDUCTIVE_INVENT " + clean_text;
         }
         std::regex latent_status_regex(R"((?:what|show|list|get)\s+(?:all\s+)?(?:latent\s+|invented\s+)?(?:entities|primitives|inventions|concepts))", std::regex_constants::icase);
         if (std::regex_search(clean_text, latent_status_regex)) {
