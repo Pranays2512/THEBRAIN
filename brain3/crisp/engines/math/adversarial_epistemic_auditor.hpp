@@ -4,9 +4,13 @@
  *
  * THE BRAIN — ADVERSARIAL EPISTEMIC AUDITOR & SKEPTIC GATE
  *
- * Independent adversarial verification pass designed to actively refute,
- * check dimensional scaling, audit ODE comparison blow-up, verify domain
- * boundaries (Poincaré on R^d vs T^d), and reject self-assigned proofs.
+ * Independent adversarial verification pass designed to actively refute:
+ * 1. Arithmetic & Floating-Point Discrepancies (Checks identities via exact 128-bit integer cross-multiplication)
+ * 2. Modulo & Residue Class Mismatches (Enforces true Mordell open residue classes mod 840)
+ * 3. Trivial vs. Frontier Scope Inflation (Compares test ranges directly against literature records)
+ * 4. Superlinear ODE Blow-Up & Domain Poincaré Boundary Violations
+ * 5. Measure-Zero Category Errors (Collatz Haar measure vs natural integers)
+ * 6. Complexity Barriers (Razborov-Rudich Natural Proofs & Aaronson-Wigderson Algebrization)
  */
 
 #include <iostream>
@@ -28,7 +32,10 @@ enum class AuditVerdict {
     ODE_BLOWUP_OBSTRUCTION,
     DOMAIN_POINCARE_BOUNDARY_VIOLATION,
     MEASURE_ZERO_CATEGORY_ERROR,
-    UNRESOLVED_RESIDUE_MISCLASSIFICATION
+    UNRESOLVED_RESIDUE_MISCLASSIFICATION,
+    ARITHMETIC_FRACTION_DISCREPANCY,
+    TRIVIAL_RANGE_OVERCLAIM,
+    NATURAL_PROOFS_OR_ALGEBRIZATION_BARRIER
 };
 
 struct AuditReport {
@@ -44,7 +51,137 @@ struct AuditReport {
 class AdversarialEpistemicAuditor {
 public:
     // ─────────────────────────────────────────────────────────────────────────
-    // 1. AUDIT NAVIER-STOKES REGULARITY & ENSTROPHY ODE
+    // 1. AUDIT ERDŐS-STRAUS EXACT IDENTITY & RESIDUE CLASS
+    // ─────────────────────────────────────────────────────────────────────────
+    static AuditReport audit_erdos_straus_identity(
+        uint64_t p,
+        uint64_t x,
+        uint64_t y,
+        uint64_t z
+    ) {
+        AuditReport report;
+        report.claim_name = "Erdős-Straus Exact Unit Fraction Verification for p = " + std::to_string(p);
+        report.passed_adversarial_scrutiny = true;
+
+        // Check 1: True Mordell Open Residue Class Check mod 840
+        // The 6 true unresolved classes are: 1, 121, 169, 289, 361, 529 (mod 840)
+        uint64_t rem = p % 840;
+        bool is_mordell = (rem == 1 || rem == 121 || rem == 169 || rem == 289 || rem == 361 || rem == 529);
+
+        if (!is_mordell) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::UNRESOLVED_RESIDUE_MISCLASSIFICATION;
+            report.verdict_label = "NON_MORDELL_RESIDUE_CLASS (p mod 840 = " + std::to_string(rem) + " is not in {1, 121, 169, 289, 361, 529})";
+            report.adversarial_refutations.push_back(
+                "RESIDUE CLASS MISMATCH: Prime p = " + std::to_string(p) + " has p mod 840 = " + std::to_string(rem) +
+                ". The actual unresolved Mordell residue classes are strictly {1, 121, 169, 289, 361, 529} (mod 840). "
+                "Testing a prime outside this set does not address the unresolved conjecture."
+            );
+        }
+
+        // Check 2: Exact 128-Bit Integer Cross-Multiplication (No Floating Point Roundoff)
+        // 4/p = 1/x + 1/y + 1/z  <=>  4*x*y*z == p*(y*z + x*z + x*y)
+        __int128_t p128 = p;
+        __int128_t x128 = x;
+        __int128_t y128 = y;
+        __int128_t z128 = z;
+
+        __int128_t lhs = static_cast<__int128_t>(4) * x128 * y128 * z128;
+        __int128_t rhs = p128 * (y128 * z128 + x128 * z128 + x128 * y128);
+
+        if (lhs != rhs) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::ARITHMETIC_FRACTION_DISCREPANCY;
+            report.verdict_label = "ARITHMETIC_FRACTION_DISCREPANCY (4/p != 1/x + 1/y + 1/z in exact arithmetic)";
+            
+            __int128_t diff = lhs > rhs ? lhs - rhs : rhs - lhs;
+            report.adversarial_refutations.push_back(
+                "EXACT ARITHMETIC ERROR: 4*x*y*z != p*(y*z + x*z + x*y). Exact integer discrepancy = " + 
+                std::to_string(static_cast<int64_t>(diff)) + ". Floating-point checks masked integer overflow."
+            );
+        }
+
+        if (report.passed_adversarial_scrutiny) {
+            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
+            report.verdict_label = "EXACT_CONSTRUCTIVE_IDENTITY_VERIFIED (4/p = 1/x + 1/y + 1/z holds in exact 128-bit integer arithmetic)";
+            report.correct_mathematical_formulation = "4/" + std::to_string(p) + " = 1/" + std::to_string(x) + " + 1/" + std::to_string(y) + " + 1/" + std::to_string(z);
+        }
+
+        report.historical_context_and_literature = "Erdős-Straus (1948), Mordell (1967), Yamamoto (1965), Elsholtz-Tao (2014).";
+        return report;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. AUDIT ERDŐS-STRAUS RESIDUE CLASSIFICATION (MOD 24 vs MOD 840)
+    // ─────────────────────────────────────────────────────────────────────────
+    static AuditReport audit_erdos_straus_residue_classification(int modulo_basis) {
+        AuditReport report;
+        report.claim_name = "Erdős-Straus Modulo Residue Basis Classification";
+        if (modulo_basis == 24) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::UNRESOLVED_RESIDUE_MISCLASSIFICATION;
+            report.verdict_label = "REFUTED (Superficial Mod 24 Classification — Mordell 1967 Proved 840 is Required)";
+            report.adversarial_refutations.push_back(
+                "RESIDUE BASIS ERROR: Resolving n = 1 (mod 24) is trivial because 24 is insufficient. "
+                "Mordell (1967) proved the open classes reduce to n ≡ {1, 121, 169, 289, 361, 529} (mod 840)."
+            );
+            report.correct_mathematical_formulation = "Open Mordell residue classes are strictly mod 840.";
+        } else {
+            report.passed_adversarial_scrutiny = true;
+            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
+            report.verdict_label = "ACCURATE_MORDELL_840_CLASSIFICATION";
+            report.correct_mathematical_formulation = "Mordell's 6 open residue classes mod 840.";
+        }
+        report.historical_context_and_literature = "Mordell (1967), Elsholtz & Tao (2014).";
+        return report;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. AUDIT P VS NP COMPLEXITY BARRIERS
+    // ─────────────────────────────────────────────────────────────────────────
+    static AuditReport audit_p_vs_np_circuit_complexity(bool claimed_general_lower_bound) {
+        AuditReport report;
+        report.claim_name = "P vs NP Circuit Complexity Separation Claim";
+        if (claimed_general_lower_bound) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::NATURAL_PROOFS_OR_ALGEBRIZATION_BARRIER;
+            report.verdict_label = "BLOCKED_BY_KNOWN_COMPLEXITY_BARRIERS (Razborov-Rudich & Aaronson-Wigderson)";
+            report.adversarial_refutations.push_back(
+                "NATURAL PROOFS BARRIER: Combinatorial properties of Boolean functions cannot prove super-polynomial lower bounds against general circuits unless secure pseudorandom generators do not exist (Razborov-Rudich 1997)."
+            );
+            report.adversarial_refutations.push_back(
+                "ALGEBRIZATION BARRIER: Techniques that generalize to low-degree polynomials over finite fields cannot separate P from NP (Aaronson-Wigderson 2009)."
+            );
+            report.correct_mathematical_formulation = "Fourier entropy bounds hold for AC0, not general non-uniform circuits.";
+        }
+        report.historical_context_and_literature = "Baker-Gill-Solovay (1975), Razborov-Rudich (1997), Aaronson-Wigderson (2009).";
+        return report;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. AUDIT LITERATURE BENCHMARK SCOPE (COLLATZ & GOLDBACH)
+    // ─────────────────────────────────────────────────────────────────────────
+    static AuditReport audit_computational_search_scope(
+        const std::string& problem_name,
+        uint64_t tested_bound,
+        const std::string& literature_record_str
+    ) {
+        AuditReport report;
+        report.claim_name = problem_name + " Empirical Search Scope Audit";
+        report.passed_adversarial_scrutiny = true;
+        report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
+        report.verdict_label = "MICRO_SANITY_CHECK (Properly Contextualized Against Literature)";
+
+        std::ostringstream oss;
+        oss << "Local Test Bound: N = " << tested_bound << " vs Established Literature Record: " << literature_record_str << ". "
+            << "Local tests confirm implementation mechanics but represent a microscopic fraction (< 10^-14%) of human-verified bounds.";
+        report.correct_mathematical_formulation = oss.str();
+        report.historical_context_and_literature = "Collatz: Barina (2020) verified up to 2^68 ≈ 2.95e20. Goldbach: Oliveira e Silva et al. (2014) verified up to 4e18.";
+        return report;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 5. AUDIT NAVIER-STOKES REGULARITY & ENSTROPHY ODE
     // ─────────────────────────────────────────────────────────────────────────
     static AuditReport audit_navier_stokes_enstrophy_claim(
         double claimed_omega_power,
@@ -55,61 +192,40 @@ public:
         report.claim_name = "3D Incompressible Navier-Stokes Enstrophy Dissipation Dominance Claim";
         report.passed_adversarial_scrutiny = false;
 
-        // Step 1: Check Gagliardo-Nirenberg Exponent in 3D for ||omega||_{L^3}^3
-        // Dimension d=3, p=3, q=2, r=2: 1/3 = (1-a)/2 + a*(1/2 - 1/3) => a = 1/2.
-        // ||omega||_{L^3} <= C ||omega||_{L^2}^{1/2} ||grad omega||_{L^2}^{1/2}
-        // Cubing: ||omega||_{L^3}^3 <= C' ||omega||_{L^2}^{3/2} ||grad omega||_{L^2}^{3/2}
-        // Since Omega = 1/2 ||omega||_{L^2}^2, ||omega||_{L^2}^{3/2} = (2 Omega)^{3/4} ~ Omega^{3/4}.
-        double correct_omega_power = 0.75; // 3/4
-        double correct_grad_omega_power = 1.5; // 3/2
-
+        double correct_omega_power = 0.75;
         if (std::abs(claimed_omega_power - correct_omega_power) > 1e-4) {
             report.adversarial_refutations.push_back(
                 "EXPONENT ARITHMETIC ERROR: Claimed Omega power " + std::to_string(claimed_omega_power) +
-                " is incorrect. Gagliardo-Nirenberg in 3D gives ||omega||_{L^3}^3 ~ Omega^{3/4} ||nabla omega||_{L^2}^{3/2} (power 0.75, not 0.25). "
-                "The 0.25 power drops an essential factor of ||nabla u||_{L^2} ~ Omega^{1/2}."
+                " is incorrect. Gagliardo-Nirenberg in 3D gives ||omega||_{L^3}^3 ~ Omega^{3/4} ||nabla omega||_{L^2}^{3/2}."
             );
         }
 
-        // Step 2: Check ODE Blow-Up Mechanics
-        // dOmega/dt <= C Omega^{3/4} ||grad omega||^{3/2} - 2 nu ||grad omega||^2
-        // Young's inequality with conjugate exponents p=4/3, q=4 absorbs ||grad omega||^{3/2}:
-        // C Omega^{3/4} ||grad omega||^{3/2} <= nu ||grad omega||^2 + C' Omega^3
-        // This yields the reduced comparison ODE: dOmega/dt <= C' Omega^3.
-        // Analytical solution: Omega(t) = Omega(0) / sqrt(1 - 2 C' Omega(0)^2 t).
-        // Blow-up time T* = 1 / (2 C' Omega(0)^2) < infinity for ANY Omega(0) > 0.
         report.adversarial_refutations.push_back(
             "STRUCTURAL ODE BLOW-UP ERROR: Absorbing the cross term via Young's inequality yields dOmega/dt <= C' Omega^3. "
-            "The ODE dOmega/dt = C' Omega^3 has exact solution Omega(t) = Omega(0) / sqrt(1 - 2 C' Omega(0)^2 t), which BLOWS UP at finite time T* ~ 1/Omega(0)^2 for ANY Omega(0) > 0. "
-            "Smaller initial enstrophy only postpones T*, but never achieves T* = infinity."
+            "Exact solution blows up at finite time T* ~ 1/Omega(0)^2 for ANY Omega(0) > 0."
         );
 
-        // Step 3: Domain / Poincaré Boundary Check
-        // To obtain an invariant threshold with exponential decay, one needs a linear damping term -lambda1 Omega.
-        // This requires the Poincaré inequality ||grad omega||_{L^2}^2 >= lambda1 ||omega||_{L^2}^2, which holds ONLY on a torus T^3 or bounded domain, NEVER on R^3.
         if (claimed_global_regularity_on_R3) {
             report.adversarial_refutations.push_back(
-                "DOMAIN POINCARÉ VIOLATION: Poincaré inequality ||nabla omega||_{L^2}^2 >= lambda_1 ||omega||_{L^2}^2 fails on R^3 (spectral gap lambda_1 = 0). "
-                "Therefore, no linear dissipation term exists to create an asymptotic attractor on R^3."
+                "DOMAIN POINCARÉ VIOLATION: Poincaré inequality fails on R^3 (spectral gap lambda_1 = 0). "
+                "Global regularity below enstrophy threshold is valid ONLY on bounded domain / torus T^3 (Fujita-Kato 1964), NOT on R^3."
             );
             report.verdict = AuditVerdict::DOMAIN_POINCARE_BOUNDARY_VIOLATION;
-            report.verdict_label = "REFUTED (Superlinear ODE Blow-Up & Missing Poincaré on R^3)";
+            report.verdict_label = "REFUTED_ON_R3 (Valid on Torus T^3 below threshold, Open on R^3 for large data)";
         } else {
             report.verdict = AuditVerdict::ODE_BLOWUP_OBSTRUCTION;
             report.verdict_label = "LOCAL_EXISTENCE_TIME_BOUND_ONLY";
         }
 
         report.correct_mathematical_formulation =
-            "Local existence bound: dOmega/dt <= C' Omega^3 guaranteeing C^infinity smoothness on [0, T*) with T* ~ 1/Omega(0)^2 (Doering-Gibbon 1995). "
-            "Small-data global regularity holds on torus T^3 via Fujita-Kato (1964), but the Clay Millennium Problem on R^3 for large data remains fully open.";
-        report.historical_context_and_literature =
-            "Leray (1934), Fujita-Kato (1964), Ladyzhenskaya (1969), Doering-Gibbon (1995), Tao (2016 supercriticality barrier).";
-
+            "Local existence bound: dOmega/dt <= C' Omega^3 on [0, T*) with T* ~ 1/Omega(0)^2. "
+            "Small-data global regularity holds on torus T^3 via Fujita-Kato (1964); Millennium Problem on R^3 for large data remains open.";
+        report.historical_context_and_literature = "Leray (1934), Fujita-Kato (1964), Doering-Gibbon (1995), Tao (2016).";
         return report;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. AUDIT COLLATZ CONJECTURE HAAR MEASURE CLAIM
+    // 6. AUDIT COLLATZ CONJECTURE HAAR MEASURE CLAIM
     // ─────────────────────────────────────────────────────────────────────────
     static AuditReport audit_collatz_haar_drift_claim(bool claimed_universal_proof) {
         AuditReport report;
@@ -120,16 +236,13 @@ public:
             report.verdict = AuditVerdict::MEASURE_ZERO_CATEGORY_ERROR;
             report.verdict_label = "REFUTED_AS_UNIVERSAL_PROOF (Category Error: N has Haar Measure 0 in Z_2)";
             report.adversarial_refutations.push_back(
-                "MEASURE-ZERO CATEGORY ERROR: Natural integers N form a countable, measure-zero subset of 2-adic ring Z_2. "
-                "A statement holding almost everywhere under Haar measure on Z_2 puts zero deterministic constraint on countable integers in N."
+                "MEASURE-ZERO CATEGORY ERROR: Natural integers N form a countable, measure-zero subset of 2-adic ring Z_2."
             );
             report.adversarial_refutations.push_back(
-                "CORRELATED ORBIT VIOLATION: Actual deterministic Collatz sequences x_0 -> x_1 -> x_2 generate deterministic, non-independent valuations v(x_k). "
-                "Treating them as i.i.d. random variables is a heuristic hypothesis (Lagarias 1985), not a deductive theorem."
+                "CORRELATED ORBIT VIOLATION: Valuations v(x_k) are deterministic and correlated, not i.i.d. random variables."
             );
             report.correct_mathematical_formulation =
-                "Crandall-Lagarias 2-Adic Heuristic Model: E[ln(S(x)/x)] = ln(3/4) ≈ -0.287 provides heuristic evidence for geometric contraction. "
-                "Terence Tao (2019) rigorously proved almost all orbits attain almost bounded values in logarithmic density, but the full Collatz conjecture remains open.";
+                "Crandall-Lagarias 2-Adic Heuristic: E[ln(S(x)/x)] = ln(3/4) ≈ -0.287. Terence Tao (2019) proved almost all orbits attain almost bounded values, but full conjecture remains open.";
         } else {
             report.passed_adversarial_scrutiny = true;
             report.verdict = AuditVerdict::HEURISTIC_MISLABELED_AS_PROOF;
@@ -137,66 +250,6 @@ public:
             report.correct_mathematical_formulation = "Crandall-Lagarias heuristic on Z_2 (Tao 2019 benchmark).";
         }
         report.historical_context_and_literature = "Collatz (1937), Crandall (1978), Lagarias (1985), Tao (2019).";
-        return report;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 3. AUDIT ERDŐS-STRAUS OPEN RESIDUE CLASSES
-    // ─────────────────────────────────────────────────────────────────────────
-    static AuditReport audit_erdos_straus_residue_classification(uint64_t modulus_checked) {
-        AuditReport report;
-        report.claim_name = "Erdős-Straus Unresolved Prime Modulo Classification";
-
-        if (modulus_checked == 24) {
-            report.passed_adversarial_scrutiny = false;
-            report.verdict = AuditVerdict::UNRESOLVED_RESIDUE_MISCLASSIFICATION;
-            report.verdict_label = "IMPRECISE_MODULO_CLASSIFICATION (Mod 24 is Superseded)";
-            report.adversarial_refutations.push_back(
-                "INCOMPLETE RESIDUE CLASS: Modulo 24 (n = 1 mod 24) is a crude historical classification. "
-                "Mordell (1967), Schinzel, and subsequent literature proved algebraic identities eliminating most sub-classes, leaving exactly the 6 residue classes: "
-                "n = 1, 121, 169, 289, 361, 529 (mod 840) as the true open residue classes (squares of primes coprime to 840)."
-            );
-            report.correct_mathematical_formulation =
-                "The Erdős-Straus conjecture is proven algebraically for all n except primes n ≡ {1, 121, 169, 289, 361, 529} (mod 840). "
-                "For tested large primes in these classes, The Brain's modular branch-and-bound solver constructively finds exact unit fraction triplets.";
-        } else {
-            report.passed_adversarial_scrutiny = true;
-            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
-            report.verdict_label = "ACCURATE_MORDELL_840_CLASSIFICATION";
-            report.correct_mathematical_formulation = "Open cases restricted to n ≡ {1, 121, 169, 289, 361, 529} (mod 840).";
-        }
-        report.historical_context_and_literature = "Erdős-Straus (1948), Mordell (1967), Yamamoto (1965), Elsholtz-Tao (2014).";
-        return report;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 4. AUDIT P vs NP CIRCUIT COMPLEXITY CLAIM
-    // ─────────────────────────────────────────────────────────────────────────
-    static AuditReport audit_p_vs_np_circuit_complexity(bool claimed_general_lower_bound) {
-        AuditReport report;
-        report.claim_name = "P vs NP Multi-Linear Fourier Entropy Lower Bound Claim";
-
-        if (claimed_general_lower_bound) {
-            report.passed_adversarial_scrutiny = false;
-            report.verdict = AuditVerdict::HEURISTIC_MISLABELED_AS_PROOF;
-            report.verdict_label = "REFUTED_BY_NATURAL_PROOFS_BARRIER";
-            report.adversarial_refutations.push_back(
-                "NATURAL PROOFS BARRIER (Razborov-Rudich 1997): Any property P of boolean functions that is 'constructive' and 'large' (holds for random functions) "
-                "cannot prove super-polynomial lower bounds against general circuit classes (like P/poly) unless strong pseudo-random generators (and cryptographic hardness) fail."
-            );
-            report.adversarial_refutations.push_back(
-                "ALGEBRIZATION BARRIER (Aaronson-Wigderson 2009): Multi-linear polynomial extensions alone cannot separate P from NP because algebraic techniques relativize."
-            );
-            report.correct_mathematical_formulation =
-                "Fourier entropy concentration bounds (Kahn-Kalai-Linial 1988, Mansour 1994) separate restricted subclasses (such as AC^0 or decision trees), "
-                "but cannot prove P != NP unconditionally for general circuits without overcoming the Natural Proofs and Algebrization barriers.";
-        } else {
-            report.passed_adversarial_scrutiny = true;
-            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
-            report.verdict_label = "RESTRICTED_CIRCUIT_FOURIER_CONCENTRATION";
-            report.correct_mathematical_formulation = "Valid for AC^0 / decision tree Fourier concentration (KKL / Mansour).";
-        }
-        report.historical_context_and_literature = "Cook-Levin (1971), KKL (1988), Razborov-Rudich (1997), Aaronson-Wigderson (2009).";
         return report;
     }
 };

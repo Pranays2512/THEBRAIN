@@ -2,11 +2,8 @@
 """
 brain3/tests/test_adversarial_epistemic_auditor.py
 
-Unit tests for The Brain's Adversarial Epistemic Auditor & Skeptic Pass:
-- Catches Navier-Stokes enstrophy exponent & ODE blow-up errors
-- Catches Collatz Haar measure 0 / i.i.d. leap errors
-- Catches Erdős-Straus modulo 24 vs 840 errors
-- Catches P vs NP Natural Proofs barrier violations
+Unit and integration tests for The Brain's Adversarial Epistemic Auditor & Skeptic Gate.
+Verifies that all overclaimed and mathematically flawed arguments are successfully refuted.
 """
 
 import subprocess
@@ -35,26 +32,27 @@ class TestAdversarialEpistemicAuditor(unittest.TestCase):
         self.assertEqual(res.returncode, 0)
         out = res.stdout
 
-        # Verify Navier-Stokes refutation
+        # 1. Verify Navier-Stokes audit
         self.assertIn("3D Incompressible Navier-Stokes Enstrophy Dissipation Dominance Claim", out)
         self.assertIn("EXPONENT ARITHMETIC ERROR", out)
         self.assertIn("STRUCTURAL ODE BLOW-UP ERROR", out)
         self.assertIn("DOMAIN POINCARÉ VIOLATION", out)
 
-        # Verify Collatz refutation
+        # 2. Verify Collatz audit
         self.assertIn("Collatz 2-Adic Haar Measure Convergence Claim", out)
         self.assertIn("MEASURE-ZERO CATEGORY ERROR", out)
+        self.assertIn("CORRELATED ORBIT VIOLATION", out)
 
-        # Verify Erdős-Straus modulo 840 check
-        self.assertIn("Erdős-Straus Unresolved Prime Modulo Classification", out)
-        self.assertIn("IMPRECISE_MODULO_CLASSIFICATION", out)
-        self.assertIn("840", out)
+        # 3. Verify Erdős-Straus audit
+        self.assertIn("Erdős-Straus Modulo Residue Basis Classification", out)
+        self.assertIn("Mordell (1967) proved the open classes reduce to n ≡ {1, 121, 169, 289, 361, 529} (mod 840)", out)
 
-        # Verify P vs NP Natural Proofs Barrier
-        self.assertIn("P vs NP Multi-Linear Fourier Entropy Lower Bound Claim", out)
+        # 4. Verify P vs NP audit
+        self.assertIn("P vs NP Circuit Complexity Separation Claim", out)
         self.assertIn("NATURAL PROOFS BARRIER", out)
+        self.assertIn("ALGEBRIZATION BARRIER", out)
 
-        # Verify Overall Success
+        # 5. Overall verification
         self.assertIn("ADVERSARIAL AUDIT COMPLETE: ALL EPISTEMIC OVERCLAIMS FORMALLY BLOCKED", out)
 
 if __name__ == "__main__":

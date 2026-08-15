@@ -3,10 +3,10 @@
 brain3/tests/test_frontier_solver_session.py
 
 Unit and integration tests for The Brain's Autonomous Frontier Solver Session:
-1. Collatz Conjecture Investigation
-2. Erdős-Straus Mordell Open Classes (mod 840) Exact Constructive Solving
-3. 3D Navier-Stokes Regularity Analysis
-4. Goldbach Prime Representation Verification
+1. Collatz Conjecture Investigation & Scope Contextualization
+2. Erdős-Straus Mordell Open Classes (mod 840) Exact 128-Bit Constructive Solving
+3. 3D Navier-Stokes Regularity & Torus vs R^3 Boundary Analysis
+4. Goldbach Prime Representation Verification & Scope Contextualization
 """
 
 import subprocess
@@ -38,10 +38,12 @@ class TestFrontierSolverSession(unittest.TestCase):
         # Verify Collatz
         self.assertIn("The Collatz (3x + 1) Conjecture", out)
         self.assertIn("HEURISTIC_CONTRACTION_MODEL", out)
+        self.assertIn("MICRO_SANITY_CHECK", out)
 
         # Verify Erdős-Straus
         self.assertIn("The Erdős-Straus Conjecture on Mordell's Open Residue Classes (mod 840)", out)
-        self.assertIn("100% of tested hard primes in Mordell open classes solved constructively", out)
+        self.assertIn("Exact 128-bit integer solutions constructed for all 6 Mordell open residue classes mod 840", out)
+        self.assertIn("4xyz == p(yz+xz+xy) EXACT", out)
         self.assertIn("CONSTRUCTIVE_EXACT_SOLVER", out)
 
         # Verify Navier-Stokes
@@ -50,7 +52,7 @@ class TestFrontierSolverSession(unittest.TestCase):
 
         # Verify Goldbach
         self.assertIn("The Goldbach Conjecture", out)
-        self.assertIn("Verified: All 24,999 even integers from 4 to 50,000 decompose into two primes", out)
+        self.assertIn("Local Micro-Sanity Check: All 24,999 even integers from 4 to 50,000", out)
 
         # Verify Overall Completion
         self.assertIn("FRONTIER SOLVER SESSION COMPLETE", out)
