@@ -201,6 +201,10 @@ class LiveMultiAssetSurvivalRunner:
         self.feed.start()
         time.sleep(1.5)  # Allow WebSocket and worker threads to populate initial stream cache
 
+        LOGS_DIR = FINANCE_DIR / "logs"
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        self.state_file = LOGS_DIR / "live_session_state.json"
+        
         with Live(console=console, refresh_per_second=4, screen=False) as live:
             tick_count = 0
             while self.running:
@@ -224,11 +228,12 @@ class LiveMultiAssetSurvivalRunner:
                         action_desc = "TERMINAL RUIN REACHED (-₹100 Floor Breached)"
                         self.running = False
 
-                # Periodically update status
+                # Periodically update status and persist state
                 if tick_count % 5 == 0:
                     st = self.send_command("FINANCE_STATUS")
                     if st:
                         self.last_status.update(st)
+                    self.persist_session_state()
 
                 current_eq = self.last_status.get("current_equity", self.initial_capital)
 
@@ -245,10 +250,47 @@ class LiveMultiAssetSurvivalRunner:
 
                 live.update(self.generate_ui_panel(tick, action_desc))
 
-                if tick_count >= max_ticks:
+                if max_ticks > 0 and tick_count >= max_ticks:
                     break
 
+        self.persist_session_state()
         self.close()
+
+    def persist_session_state(self):
+        """Save clean JSON session state for telemetry dashboards."""
+        try:
+            snapshot = self.feed.get_market_snapshot()
+            data = {
+                "timestamp": time.time(),
+                "datetime": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "initial_capital": self.initial_capital,
+                "current_equity": self.last_status.get("current_equity", self.initial_capital),
+                "peak_equity": self.last_status.get("peak_equity", self.initial_capital),
+                "ruin_floor": self.ruin_floor,
+                "cap_limit": self.cap_limit,
+                "life_force_pct": self.last_status.get("life_force_pct", 50.0),
+                "survival_state": self.last_status.get("survival_state", "SURVIVING"),
+                "is_alive": self.last_status.get("is_alive", True),
+                "total_trades": len(self.trades_executed),
+                "active_universe_count": len(snapshot),
+                "recent_trades": self.trades_executed[-10:],
+                "active_market_sample": [
+                    {
+                        "symbol": t.symbol,
+                        "price": t.price,
+                        "change_24h_pct": t.change_24h_pct,
+                        "asset_class": t.asset_class,
+                        "source": t.source
+                    }
+                    for t in list(snapshot.values())[:10]
+                ]
+            }
+            tmp_path = self.state_file.with_suffix(".tmp")
+            with open(tmp_path, "w") as f:
+                json.dump(data, f, indent=2)
+            tmp_path.replace(self.state_file)
+        except Exception:
+            pass
 
 def main():
     parser = argparse.ArgumentParser(description="Multi-Stream Real-Market Survival Trading Runner for The Brain")
