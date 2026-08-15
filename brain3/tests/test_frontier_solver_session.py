@@ -38,11 +38,11 @@ class TestFrontierSolverSession(unittest.TestCase):
         # Verify Collatz
         self.assertIn("The Collatz (3x + 1) Conjecture", out)
         self.assertIn("HEURISTIC_CONTRACTION_MODEL", out)
-        self.assertIn("MICRO_SANITY_CHECK", out)
+        self.assertIn("Exact Fraction: 6.78e-15%", out)
 
         # Verify Erdős-Straus
         self.assertIn("The Erdős-Straus Conjecture on Mordell's Open Residue Classes (mod 840)", out)
-        self.assertIn("Exact 128-bit integer solutions constructed for all 6 Mordell open residue classes mod 840", out)
+        self.assertIn("Exact 128-bit integer solutions constructed for single prime instances", out)
         self.assertIn("4xyz == p(yz+xz+xy) EXACT", out)
         self.assertIn("CONSTRUCTIVE_EXACT_SOLVER", out)
 
@@ -53,6 +53,7 @@ class TestFrontierSolverSession(unittest.TestCase):
         # Verify Goldbach
         self.assertIn("The Goldbach Conjecture", out)
         self.assertIn("Local Micro-Sanity Check: All 24,999 even integers from 4 to 50,000", out)
+        self.assertIn("Exact Fraction: 1.25e-12%", out)
 
         # Verify Overall Completion
         self.assertIn("FRONTIER SOLVER SESSION COMPLETE", out)

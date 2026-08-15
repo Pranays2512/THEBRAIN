@@ -7,10 +7,11 @@
  * Independent adversarial verification pass designed to actively refute:
  * 1. Arithmetic & Floating-Point Discrepancies (Checks identities via exact 128-bit integer cross-multiplication)
  * 2. Modulo & Residue Class Mismatches (Enforces true Mordell open residue classes mod 840)
- * 3. Trivial vs. Frontier Scope Inflation (Compares test ranges directly against literature records)
- * 4. Superlinear ODE Blow-Up & Domain Poincaré Boundary Violations
- * 5. Measure-Zero Category Errors (Collatz Haar measure vs natural integers)
- * 6. Complexity Barriers (Razborov-Rudich Natural Proofs & Aaronson-Wigderson Algebrization)
+ * 3. Instance vs Universal Scope Overclaim (Welds permanent caveat: instances != infinite classes)
+ * 4. Trivial vs. Frontier Scope Inflation (Computes exact dynamic percentages against literature records)
+ * 5. Superlinear ODE Blow-Up & Domain Poincaré Boundary Violations
+ * 6. Measure-Zero Category Errors (Collatz Haar measure vs natural integers)
+ * 7. Complexity Barriers (Razborov-Rudich Natural Proofs & Aaronson-Wigderson Algebrization)
  */
 
 #include <iostream>
@@ -60,11 +61,10 @@ public:
         uint64_t z
     ) {
         AuditReport report;
-        report.claim_name = "Erdős-Straus Exact Unit Fraction Verification for p = " + std::to_string(p);
+        report.claim_name = "Erdős-Straus Single-Prime Constructive Verification for p = " + std::to_string(p);
         report.passed_adversarial_scrutiny = true;
 
         // Check 1: True Mordell Open Residue Class Check mod 840
-        // The 6 true unresolved classes are: 1, 121, 169, 289, 361, 529 (mod 840)
         uint64_t rem = p % 840;
         bool is_mordell = (rem == 1 || rem == 121 || rem == 169 || rem == 289 || rem == 361 || rem == 529);
 
@@ -74,13 +74,11 @@ public:
             report.verdict_label = "NON_MORDELL_RESIDUE_CLASS (p mod 840 = " + std::to_string(rem) + " is not in {1, 121, 169, 289, 361, 529})";
             report.adversarial_refutations.push_back(
                 "RESIDUE CLASS MISMATCH: Prime p = " + std::to_string(p) + " has p mod 840 = " + std::to_string(rem) +
-                ". The actual unresolved Mordell residue classes are strictly {1, 121, 169, 289, 361, 529} (mod 840). "
-                "Testing a prime outside this set does not address the unresolved conjecture."
+                ". The actual unresolved Mordell residue classes are strictly {1, 121, 169, 289, 361, 529} (mod 840)."
             );
         }
 
         // Check 2: Exact 128-Bit Integer Cross-Multiplication (No Floating Point Roundoff)
-        // 4/p = 1/x + 1/y + 1/z  <=>  4*x*y*z == p*(y*z + x*z + x*y)
         __int128_t p128 = p;
         __int128_t x128 = x;
         __int128_t y128 = y;
@@ -97,17 +95,17 @@ public:
             __int128_t diff = lhs > rhs ? lhs - rhs : rhs - lhs;
             report.adversarial_refutations.push_back(
                 "EXACT ARITHMETIC ERROR: 4*x*y*z != p*(y*z + x*z + x*y). Exact integer discrepancy = " + 
-                std::to_string(static_cast<int64_t>(diff)) + ". Floating-point checks masked integer overflow."
+                std::to_string(static_cast<int64_t>(diff)) + "."
             );
         }
 
         if (report.passed_adversarial_scrutiny) {
             report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
-            report.verdict_label = "EXACT_CONSTRUCTIVE_IDENTITY_VERIFIED (4/p = 1/x + 1/y + 1/z holds in exact 128-bit integer arithmetic)";
+            report.verdict_label = "EXACT_CONSTRUCTIVE_INSTANCE_VERIFIED (Verified for single prime instance; does NOT resolve the infinite class)";
             report.correct_mathematical_formulation = "4/" + std::to_string(p) + " = 1/" + std::to_string(x) + " + 1/" + std::to_string(y) + " + 1/" + std::to_string(z);
         }
 
-        report.historical_context_and_literature = "Erdős-Straus (1948), Mordell (1967), Yamamoto (1965), Elsholtz-Tao (2014).";
+        report.historical_context_and_literature = "Erdős-Straus (1948), Mordell (1967), Yamamoto (1965), Elsholtz-Tao (2014). Note: Infinite classes remain open.";
         return report;
     }
 
@@ -159,11 +157,12 @@ public:
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 4. AUDIT LITERATURE BENCHMARK SCOPE (COLLATZ & GOLDBACH)
+    // 4. AUDIT LITERATURE BENCHMARK SCOPE (EXACT DYNAMIC PERCENTAGES)
     // ─────────────────────────────────────────────────────────────────────────
     static AuditReport audit_computational_search_scope(
         const std::string& problem_name,
         uint64_t tested_bound,
+        double literature_record_val,
         const std::string& literature_record_str
     ) {
         AuditReport report;
@@ -172,9 +171,12 @@ public:
         report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
         report.verdict_label = "MICRO_SANITY_CHECK (Properly Contextualized Against Literature)";
 
+        double pct = (static_cast<double>(tested_bound) / literature_record_val) * 100.0;
         std::ostringstream oss;
-        oss << "Local Test Bound: N = " << tested_bound << " vs Established Literature Record: " << literature_record_str << ". "
-            << "Local tests confirm implementation mechanics but represent a microscopic fraction (< 10^-14%) of human-verified bounds.";
+        oss << "Local Test Bound: N = " << tested_bound 
+            << " vs Literature Record: " << literature_record_str 
+            << " (Exact Fraction: " << std::scientific << std::setprecision(2) << pct << "% of established bound).";
+
         report.correct_mathematical_formulation = oss.str();
         report.historical_context_and_literature = "Collatz: Barina (2020) verified up to 2^68 ≈ 2.95e20. Goldbach: Oliveira e Silva et al. (2014) verified up to 4e18.";
         return report;

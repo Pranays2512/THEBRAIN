@@ -13,7 +13,8 @@
  * Enforces:
  * - Exact 128-bit integer cross-multiplication for fractions (zero floating-point tolerance)
  * - Strict verification that tested primes belong to the 6 Mordell open classes {1, 121, 169, 289, 361, 529} (mod 840)
- * - Explicit contextualization of local test ranges against world-record literature bounds
+ * - Explicit dynamic calculation of local test ranges against world-record literature bounds
+ * - Hard-welded instance vs. universal open gap disclosures
  */
 
 #include <iostream>
@@ -85,14 +86,14 @@ public:
 
         auto audit = thebrain::epistemic_auditor::AdversarialEpistemicAuditor::audit_collatz_haar_drift_claim(true);
         auto scope_audit = thebrain::epistemic_auditor::AdversarialEpistemicAuditor::audit_computational_search_scope(
-            "Collatz", 20000, "2^68 ≈ 2.95e20 (Barina 2020)"
+            "Collatz", 20000, 2.95e20, "2^68 ≈ 2.95e20 (Barina 2020)"
         );
 
         rep.formal_prover_result = "Algebraic cycle classification: 1-cycles ruled out except (1, 2, 4); 2-cycles ruled out by Steiner (1977).";
-        rep.adversarial_auditor_verdict = audit.verdict_label + " | " + scope_audit.verdict_label;
+        rep.adversarial_auditor_verdict = audit.verdict_label + " | " + scope_audit.correct_mathematical_formulation;
 
         rep.final_epistemic_status = "HEURISTIC_CONTRACTION_MODEL (Universally Open)";
-        rep.what_was_discovered_or_proven = "Exact 2-adic negative drift (-0.287) on Z_2. Note: N=20,000 is < 10^-14% of the known literature verification bound (2^68).";
+        rep.what_was_discovered_or_proven = "Exact 2-adic negative drift (-0.287) on Z_2. Note: N=20,000 is 6.78e-15% of the known literature verification bound (2^68).";
         rep.what_remains_open = "Measure of N in Z_2 is 0; deterministic orbits have correlated valuations, so universal convergence for all integers remains unproven.";
 
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -131,24 +132,18 @@ public:
             bool found_for_p = false;
 
             for (uint64_t x = x_min; x <= x_min + 500; ++x) {
-                // rem1 = 4/p - 1/x = (4x - p) / (p*x)
                 int64_t num1 = 4 * x - p;
                 if (num1 <= 0) continue;
                 uint64_t den1 = p * x;
 
-                // We need 1/y + 1/z = num1 / den1
                 uint64_t y_min = den1 / num1 + 1;
                 for (uint64_t y = y_min; y <= y_min + 10000; ++y) {
-                    // rem2 = num1/den1 - 1/y = (num1*y - den1) / (den1*y)
                     int64_t num2 = num1 * y - den1;
                     if (num2 <= 0) continue;
                     uint64_t den2 = den1 * y;
 
-                    // If num2 divides den2, then z = den2 / num2 is an exact integer!
                     if (den2 % num2 == 0) {
                         uint64_t z = den2 / num2;
-                        
-                        // Adversarial 128-bit integer cross-multiplication check
                         auto audit = thebrain::epistemic_auditor::AdversarialEpistemicAuditor::audit_erdos_straus_identity(p, x, y, z);
                         if (audit.passed_adversarial_scrutiny) {
                             exact_solutions.push_back({p, x, y, z});
@@ -167,7 +162,7 @@ public:
         }
 
         std::ostringstream smt_oss;
-        smt_oss << "Exact 128-bit integer solutions constructed for all 6 Mordell open residue classes mod 840:\n";
+        smt_oss << "Exact 128-bit integer solutions constructed for single prime instances across all 6 Mordell open residue classes mod 840:\n";
         for (const auto& sol : exact_solutions) {
             uint64_t p, x, y, z;
             std::tie(p, x, y, z) = sol;
@@ -177,11 +172,11 @@ public:
         rep.smt_breaker_result = smt_oss.str();
 
         rep.formal_prover_result = "Constructive integer triplets verified via 128-bit integer cross-multiplication: 4*x*y*z - p*(y*z + x*z + x*y) = 0 exactly (Zero float roundoff).";
-        rep.adversarial_auditor_verdict = "ACCURATE_MORDELL_840_CLASSIFICATION & EXACT_128BIT_INTEGER_IDENTITY_VERIFIED";
+        rep.adversarial_auditor_verdict = "ACCURATE_MORDELL_840_CLASSIFICATION & EXACT_128BIT_INTEGER_IDENTITY_VERIFIED (Single Instances Only)";
 
-        rep.final_epistemic_status = "CONSTRUCTIVE_EXACT_SOLVER (100% Exact for Tested True Mordell Primes)";
+        rep.final_epistemic_status = "CONSTRUCTIVE_EXACT_SOLVER (100% Exact for Tested Prime Instances; Infinite Classes Remain Open)";
         rep.what_was_discovered_or_proven = "Exact constructive integer triplets for prime representatives across all 6 Mordell open residue classes {1, 121, 169, 289, 361, 529} (mod 840), verified with exact integer arithmetic.";
-        rep.what_remains_open = "A closed-form algebraic polynomial identity covering all infinite primes in the 6 Mordell residue classes simultaneously.";
+        rep.what_remains_open = "Exact Remaining Open Gap: A closed-form algebraic polynomial identity covering all infinitely many primes in the 6 Mordell residue classes simultaneously.";
 
         auto t1 = std::chrono::high_resolution_clock::now();
         rep.execution_time_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
@@ -249,7 +244,7 @@ public:
         );
 
         auto scope_audit = thebrain::epistemic_auditor::AdversarialEpistemicAuditor::audit_computational_search_scope(
-            "Goldbach", 50000, "4e18 (Oliveira e Silva et al. 2014)"
+            "Goldbach", 50000, 4.0e18, "4e18 (Oliveira e Silva et al. 2014)"
         );
 
         rep.smt_breaker_result = smt_res.counterexample_found
@@ -257,10 +252,10 @@ public:
             : "Local Micro-Sanity Check: All 24,999 even integers from 4 to 50,000 decompose into two primes in 12.4 ms.";
 
         rep.formal_prover_result = "Vinogradov (1937) / Helfgott (2013) proved the Ternary Goldbach conjecture (odd numbers = 3 primes).";
-        rep.adversarial_auditor_verdict = "EMPIRICALLY_VERIFIED_AS_OPEN_CONJECTURE | " + scope_audit.verdict_label;
+        rep.adversarial_auditor_verdict = "EMPIRICALLY_VERIFIED_AS_OPEN_CONJECTURE | " + scope_audit.correct_mathematical_formulation;
 
         rep.final_epistemic_status = "VERIFIED_COMPUTATIONALLY (Analytically Open for Binary Goldbach)";
-        rep.what_was_discovered_or_proven = "100% prime sum representation verified up to 50,000 without exception. Note: N=50,000 is < 10^-14% of the human literature verification record (4e18).";
+        rep.what_was_discovered_or_proven = "100% prime sum representation verified up to 50,000 without exception. Note: N=50,000 is 1.25e-12% of the human literature verification record (4e18).";
         rep.what_remains_open = "Unconditional asymptotic major-arc bound for the binary Goldbach problem.";
 
         auto t1 = std::chrono::high_resolution_clock::now();
