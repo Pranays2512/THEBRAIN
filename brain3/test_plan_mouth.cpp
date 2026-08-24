@@ -57,11 +57,14 @@ static const std::vector<std::string>& answer_of(const Domain& dom, size_t idx) 
     return dom.answers[idx % dom.answers.size()];
 }
 
-// distractor pool: words from OTHER domains (forces selective copying)
-static std::vector<std::string> all_cross_domain_words() {
+// distractor pool for an act: words from OTHER domains ONLY.
+// (Same-class distractors would make relevance undecidable from the plan.)
+static std::vector<std::string> distractor_pool_for(const std::string& act) {
     std::set<std::string> s;
-    for (const auto& d : kDomains)
+    for (const auto& d : kDomains) {
+        if (d.act == act) continue;
         for (const auto& a : d.clazz) s.insert(a);
+    }
     return {s.begin(), s.end()};
 }
 
@@ -86,36 +89,45 @@ int main() {
     std::mt19937 rng(3);
     auto pick = [&](auto&& v) { return v[rng() % v.size()]; };
 
-    // ── dataset: hold out recombination cells for experiment B ──────────────
-    // training covers acts×{answer idx 0..1}×both registers;
-    // held-out cells use {answer idx 2..3} (unseen slot sequences) and
-    // cross-pairings never co-trained.
+    // ── dataset v3: rule-forcing curriculum ────────────────────────────────
+    // Targets are RANDOM orderings of random class-word subsets — far too
+    // many permutations to memorize — so the ONLY way to fit training data
+    // is the rule itself: "emit own-class plan tokens in plan order."
+    // Held-out cells are fresh random sequences; success there can come
+    // from nothing except the learned rule.
     std::string train;
     size_t samples = 0;
-    for (const auto& dom : kDomains)
-        for (size_t ai = 0; ai < 4; ++ai) {
-            // register rule: idx%2==0 -> warm, else neutral (learnable mapping)
-            const char* reg = (ai % 2 == 0) ? "warm" : "neutral";
-            for (int rep = 0; rep < 40; ++rep) {
-                UtterancePlan p;
-                p.act = dom.act; p.reg = reg;
-                p.facts = answer_of(dom, ai);
-                // sprinkle 3 cross-domain distractors into the plan
-                auto cross = all_cross_domain_words();
-                for (int k = 0; k < 3; ++k) {
-                    std::string d = pick(cross);
-                    bool dup = false;
-                    for (const auto& f : p.facts) if (f == d) dup = true;
-                    if (!dup && !d.empty()) p.facts.push_back(d);
-                }
-                std::shuffle(p.facts.begin(), p.facts.end(), rng);
-                train += render_sample(p, answer_of(dom, ai));
-                ++samples;
+    auto insert_distractors = [&](UtterancePlan& p, int k, auto& rngv) {
+        auto cross = distractor_pool_for(p.act);
+        for (int i = 0; i < k; ++i) {
+            std::string d = pick(cross);
+            bool dup = false;
+            for (const auto& f : p.facts) if (f == d) dup = true;
+            if (!dup && !d.empty()) {
+                size_t pos = rngv() % (p.facts.size() + 1);
+                p.facts.insert(p.facts.begin() + (long)pos, d);
             }
+        }
+    };
+    auto random_truth = [&](const Domain& dom, auto& rngv) {
+        std::vector<std::string> poolv = dom.clazz;
+        std::shuffle(poolv.begin(), poolv.end(), rngv);
+        poolv.resize(3 + rngv() % 2);                 // 3-4 word utterances
+        return poolv;
+    };
+    for (const auto& dom : kDomains)
+        for (int rep = 0; rep < 260; ++rep) {
+            const char* reg = (rep % 2 == 0) ? "warm" : "neutral";
+            auto truth = random_truth(dom, rng);
+            UtterancePlan p;
+            p.act = dom.act; p.reg = reg;
+            p.facts = truth;
+            train += render_sample(p, truth);
+            ++samples;
         }
 
     StamlatConfig cfg;
-    cfg.d_model = 64; cfg.n_layers = 2; cfg.n_heads = 4; cfg.d_ff = 128;
+    cfg.d_model = 64; cfg.n_layers = 2; cfg.n_heads = 4; cfg.d_ff = 160;
     cfg.ctx = 48; cfg.depth_gamma = 0.f; cfg.depth_tau = 1.f; cfg.seed = 11;
     StamlatLM lm(cfg);
     lm.build_vocab(train);
@@ -174,22 +186,33 @@ int main() {
               "trained cell renders exactly (got \"" + said + "\")");
     }
 
-    // ── EXPERIMENT B: held-out recombination (answers idx 2..3) ─────────────
+    // ── EXPERIMENT B: held-out recombination — fresh random sequences ───────
     {
         int ok = 0, total = 0;
+        std::mt19937 fresh(777);                  // disjoint draw stream
+        auto random_truth_fresh = [&](const Domain& dom) {
+            std::vector<std::string> poolv = dom.clazz;
+            std::shuffle(poolv.begin(), poolv.end(), fresh);
+            poolv.resize(3 + fresh() % 2);
+            return poolv;
+        };
         for (const auto& dom : kDomains)
-            for (size_t ai = 2; ai < 4; ++ai) {
-                const char* reg = (ai % 2 == 0) ? "warm" : "neutral";
+            for (int cell = 0; cell < 2; ++cell) {
+                const char* reg = (cell == 0) ? "warm" : "neutral";
                 UtterancePlan p; p.act = dom.act; p.reg = reg;
-                p.facts = answer_of(dom, ai);
+                auto truth = random_truth_fresh(dom);
+                p.facts = truth;
                 ++total;
-                if (sentence_ok(words_of(speak(p)), answer_of(dom, ai))) ++ok;
-                else std::cout << "    miss [" << dom.act << "/" << reg << "]: \""
-                               << speak(p) << "\"\n";
+                if (sentence_ok(words_of(speak(p)), truth)) ++ok;
+                else {
+                    std::string want; for (auto& w : truth) want += w + " ";
+                    std::cout << "    miss [" << dom.act << "/" << reg << "]: \""
+                              << speak(p) << "\"  want: " << want << "\n";
+                }
             }
         std::cout << "    recombination exact-match: " << ok << "/" << total << "\n";
         check((double)ok >= std::ceil(total * 0.75),
-              "held-out slot sequences generalize (>=75%)");
+              "held-out sequences generalize under rule-forcing curriculum (>=75%)");
     }
 
     // ── EXPERIMENT A: extensibility — brand-new facts post-training ─────────

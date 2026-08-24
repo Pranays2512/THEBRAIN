@@ -610,10 +610,11 @@ public:
 
         // ── Native Mouth fast-path ──────────────────────────────────────────
         // Anything that reaches this point is unstructured (chat-like) text.
-        // When the native voice is loaded and confident it answers in
-        // microseconds; otherwise control falls through unchanged and the
-        // symbolic pipeline / upstream LLM mouth escalates exactly as before.
-        if (native_mouth_.available() && _looks_like_chat(input_text)) {
+        // The mouth may only take INSTINCT-family turns that ALSO pass the
+        // chat heuristic (alphabetic, operator-free) — knowledge questions
+        // (LOOKUP family) and calculator input must never be intercepted.
+        if (native_mouth_.available() && _looks_like_chat(input_text) &&
+            bql.rfind("INSTINCT", 0) == 0) {
             auto mr = native_mouth_.respond(input_text,
                                             brain_->emotion.state(),
                                             &voice_mapper_);
@@ -692,14 +693,24 @@ public:
 
 private:
     // Conversational-turn heuristic: short free text with no BQL verbs,
-    // no JSON, no command syntax. Everything else belongs to the
-    // structured pipeline regardless of mouth confidence.
+    // no JSON, no command syntax, no calculator-style characters.
+    // Everything else belongs to the structured pipeline regardless of
+    // mouth confidence. (Eval harness catch: "12*(3+4)" and knowledge
+    // questions were being hijacked by the mouth before this gate existed.)
     static bool _looks_like_chat(const std::string& text) {
         if (text.empty() || text.size() > 160) return false;
         if (text.front() == '{' || text.find("::") != std::string::npos) return false;
         std::string lower;
         lower.reserve(text.size());
-        for (char c : text) lower += (char)std::tolower((unsigned char)c);
+        int alpha = 0;
+        for (char c : text) {
+            lower += (char)std::tolower((unsigned char)c);
+            if (std::isalpha((unsigned char)c)) ++alpha;
+        }
+        if (alpha < 3) return false;                       // needs real words
+        static const std::string kMathChars = "+-*/^=";
+        for (char c : lower)
+            if (kMathChars.find(c) != std::string::npos) return false;
         static const char* kVerbs[] = {
             "lookup", "explain", "derive", "teach", "solve", "compute",
             "what if", "counterfactual", "intervene", "analogy", "learn",

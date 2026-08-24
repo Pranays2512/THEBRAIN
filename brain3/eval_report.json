@@ -1,0 +1,34 @@
+{
+  "gates_pass": true,
+  "wall_seconds": 621.5,
+  "suites": {
+    "intent": {
+      "score": 1.0000,
+      "gate_pass": true,
+      "detail": {
+        "paraphrase_miss": "i wonder what happens if rain causes flooding -> instinct", "literal_accuracy": "16/16", "paraphrase_accuracy": "5/6 (baseline)"
+      }
+    },
+    "retention": {
+      "score": 1.0000,
+      "gate_pass": true,
+      "detail": {
+        "einstein": "retained", "bohr": "retained", "curie": "retained", "turing": "retained"
+      }
+    },
+    "mouth_contract": {
+      "score": 1.0000,
+      "gate_pass": true,
+      "detail": {
+        "greedy_preservation": "8/8", "preservation@excited_positive": "6/6", "preservation@alert_negative": "6/6"
+      }
+    },
+    "plan_grid": {
+      "score": 1.0000,
+      "gate_pass": true,
+      "detail": {
+        "trained_sample_control": "16/16"
+      }
+    }
+  }
+}

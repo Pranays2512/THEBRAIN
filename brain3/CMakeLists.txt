@@ -93,6 +93,10 @@ endif()
 
 # ── Native mouth (production mount) ───────────────────────────────────────────
 add_phase_test(test_native_mouth test_native_mouth.cpp)
+add_executable(brain_eval eval/run_eval.cpp)
+target_include_directories(brain_eval PRIVATE .)
+target_link_libraries(brain_eval PRIVATE ${PLATFORM_LIBS})
+target_compile_options(brain_eval PRIVATE -O2)
 add_executable(train_native_mouth train_native_mouth.cpp)
 target_include_directories(train_native_mouth PRIVATE .)
 target_link_libraries(train_native_mouth PRIVATE ${PLATFORM_LIBS})
@@ -212,6 +216,7 @@ add_test(NAME stamlat_streaming  COMMAND test_stamlat_streaming)
 add_test(NAME stamlat_voice      COMMAND test_stamlat_voice)
 add_test(NAME native_mouth       COMMAND test_native_mouth)
 add_test(NAME plan_mouth         COMMAND test_plan_mouth)
+add_test(NAME brain_eval         COMMAND brain_eval)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")
