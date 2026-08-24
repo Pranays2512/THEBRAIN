@@ -160,15 +160,9 @@ int main() {
         mrr /= tested;
         std::cout << "    link prediction: MRR=" << mrr
                   << " hits@5=" << hits5 << "/" << tested << "\n";
-        // BASELINE GATES (raise as organ matures): chance MRR on 23 entities
-        // is ~0.048; we currently sit well above chance but below production
-        // KGE systems — known limitation: hub-node competition on a tiny
-        // graph with a single shared relation. Traversal/composition
-        // machinery itself is what Sprint 4b proves.
-        // typical true-tail ranks land ~7-9 at this scale (hence Hits@5=0);
-        // MRR well above the ~0.048 chance level is the honest baseline signal
-        check(mrr >= 0.08,
-              "link prediction ranks true tails above chance (baseline gate)");
+        // ComplEx-era gates (raised from DistMult baselines MRR 0.11/H5 0):
+        check(mrr >= 0.45 && (double)hits5 / tested >= 0.8,
+              "link prediction MRR>=0.45 and Hits@5>=80% (ComplEx)");
     }
 
     // ── B. compositional scoring: unseen-in-walk relation pairs still rank
@@ -191,11 +185,10 @@ int main() {
         mrr /= tot;
         std::cout << "    compositional: Hits@3=" << hits3 << "/" << tot
                   << " MRR=" << mrr << "\n";
-        // BASELINE GATE: compositional product machinery demonstrably ranks
-        // unseen relation-pair destinations above chance (Hits@3 ~30% vs
-        // chance ~13%). Raise target after ComplEx/type-constraint upgrade.
-        check((double)hits3 / tot >= 0.25,
-              "composed pairs rank true destinations top-3 above chance");
+        // ComplEx-era gate: composed unseen pairs land top-3 half the time
+        // (DistMult managed 10-30%); raise with data volume.
+        check((double)hits3 / tot >= 0.5,
+              "composed pairs rank true destinations top-3 (>=50%, ComplEx)");
     }
 
     std::cout << "=== passed " << g_pass << ", failed " << g_fail << " ===\n";
