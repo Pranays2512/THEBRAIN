@@ -248,6 +248,23 @@ inline double eval_at(const std::string& e, double x) {
 
 // ── blind graders ────────────────────────────────────────────────────────────
 static bool grab_number(const std::string& s, double& out) {
+    // exact-fraction form "a/b" (optionally signed) evaluates precisely
+    {
+        std::string t;
+        for (char ch : s) if (!std::isspace((unsigned char)ch)) t += ch;
+        size_t slash = t.find('/');
+        if (slash != std::string::npos && slash > 0 && slash + 1 < t.size()) {
+            bool clean = true;
+            for (size_t i = 0; i < t.size(); ++i)
+                if (i != slash && !(std::isdigit((unsigned char)t[i]) ||
+                    (i == 0 && (t[i]=='-'||t[i]=='+')))) { clean = false; break; }
+            if (clean) {
+                double num = std::strtod(t.substr(0, slash).c_str(), nullptr);
+                double den = std::strtod(t.substr(slash + 1).c_str(), nullptr);
+                if (den != 0) { out = num / den; return true; }
+            }
+        }
+    }
     // forward scan; keep the LAST complete numeric token
     bool have = false;
     for (size_t i = 0; i < s.size(); ) {
@@ -446,17 +463,27 @@ public:
         std::string cmd = "curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1";
         return std::system(cmd.c_str()) == 0;
     }
+    bool broken_ = false;
     Answer respond(const Problem& p) override {
         Answer a;
+        if (broken_) { a.error = true; return a; }
         std::string body = "{\"model\":\"" + model_ +
             "\",\"prompt\":" + json_quote(p.question) +
-            ",\"stream\":false,\"options\":{\"temperature\":0,\"num_predict\":700}}";
+            ",\"stream\":false,\"think\":false," +
+            "\"options\":{\"temperature\":0,\"num_predict\":700}}";
         auto t0 = std::chrono::steady_clock::now();
         std::string resp = http_post_capture(
             "http://localhost:11434/api/generate", body,
             {"Content-Type: application/json"}, 120);
         auto t1 = std::chrono::steady_clock::now();
         a.seconds = std::chrono::duration<double>(t1 - t0).count();
+        std::string errtext = json_str_field(resp, "error");
+        if (!errtext.empty()) {
+            if (!broken_) { std::cout << "[skip] " << model_ << ": "
+                                      << errtext << "\n"; broken_ = true; }
+            a.error = true;
+            return a;
+        }
         std::string text = json_str_field(resp, "response");
         if (text.empty()) text = json_str_field(resp, "thinking");
         a.raw = strip_think(text);
@@ -526,10 +553,24 @@ int main(int argc, char** argv) {
     // Pure-native scoreboard by default; set EXACTNESS_ENABLE_LLM=1 to add
     // the baseline column.
     if (std::getenv("EXACTNESS_ENABLE_LLM")) {
-        const char* m = std::getenv("EXACTNESS_OLLAMA_MODEL");
-        auto oc = std::make_unique<OllamaContestant>(m ? m : "qwen3:1.7B");
-        if (oc->available()) contestants.push_back(std::move(oc));
-        else std::cout << "[skip] ollama not reachable\n";
+        const char* list = std::getenv("EXACTNESS_OLLAMA_MODELS");
+        const char* one = std::getenv("EXACTNESS_OLLAMA_MODEL");
+        std::vector<std::string> models;
+        if (list && *list) {
+            std::string s = list;
+            for (size_t p = 0; p < s.size(); ++p)
+                if (s[p] == ',') s[p] = ' ';
+            std::istringstream iss(s);
+            std::string m; while (iss >> m) models.push_back(m);
+        } else if (one && *one) models.push_back(one);
+        else models.push_back("qwen3:1.7B");
+        bool any_up = false;
+        for (auto& m : models) {
+            auto oc = std::make_unique<OllamaContestant>(m);
+            if (oc->available()) { contestants.push_back(std::move(oc)); any_up = true; }
+            else std::cout << "[skip] " << m << " not reachable\n";
+        }
+        if (!any_up) std::cout << "[skip] no ollama models reachable\n";
     } else {
         std::cout << "[pure] LLM baselines disabled (EXACTNESS_ENABLE_LLM=1 to compare)\n";
     }
