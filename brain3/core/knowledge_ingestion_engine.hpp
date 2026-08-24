@@ -2,6 +2,7 @@
 
 #include "../crisp/engines/knowledge/fact_extractor.hpp"
 #include "../crisp/engines/knowledge/knowledge_base.hpp"
+#include "fuzzy_ingestion.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -53,7 +54,31 @@ private:
     brain2::Brain* brain_;
     brain2::knowledge::FactExtractor fact_extractor_;
     brain2::knowledge::KnowledgeBase kb_;
+    std::unique_ptr<FuzzyIngestionPipeline> fuzzy_;
+    double last_novelty_ = 0.0;
+    long long stats_novel_flagged_ = 0;
+    long long stats_predictable_ = 0;
     std::unordered_map<std::string, std::vector<brain2::reasoning::DomainTriple>> pending_domain_triples_;
+
+public:
+    FuzzyIngestionPipeline* fuzzy() { return fuzzy_.get(); }
+    double last_novelty() const { return last_novelty_; }
+    long long novel_flagged() const { return stats_novel_flagged_; }
+    long long predictable_count() const { return stats_predictable_; }
+
+private:
+    // fuzzy stage: SOM placement + novelty scoring + episodic batch commit
+    void fuzzy_observe(const std::string& s, const std::string& r,
+                       const std::string& o) {
+        if (!fuzzy_) fuzzy_ = std::make_unique<FuzzyIngestionPipeline>();
+        double nov = fuzzy_->observe_triple(s, r, o);
+        fuzzy_->observe_entity(s);
+        fuzzy_->observe_entity(o);
+        last_novelty_ = nov;
+        if (nov > 0.45) ++stats_novel_flagged_;
+        else            ++stats_predictable_;
+        if (brain_) brain_->commit_episode((float)nov, {});
+    }
 
     static std::string trim(const std::string& str) {
         size_t start = str.find_first_not_of(" \t\r\n");
@@ -236,6 +261,7 @@ public:
 
 private:
     void learn_triple(const std::string& s, const std::string& r, const std::string& o, const std::string& domain, IngestionStats& stats) {
+        fuzzy_observe(s, r, o);
         // Learn in crisp BrainQL knowledge engine
         brain_->brainql_engine.learn(s, r, o);
         stats.facts_ingested++;

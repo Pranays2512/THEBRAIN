@@ -121,6 +121,12 @@ target_compile_options(exactness_scoreboard PRIVATE -O2)
 add_phase_test(test_intent_router test_intent_router.cpp)
 target_compile_options(test_intent_router PRIVATE -O2)
 
+# ── Fuzzy ingestion pipeline (Sprint 5) ───────────────────────────────────────
+add_phase_test(test_fuzzy_ingestion test_fuzzy_ingestion.cpp)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_fuzzy_ingestion PRIVATE -O2)
+endif()
+
 # ── Sleep kernel (Sprint 4c) ──────────────────────────────────────────────────
 add_phase_test(test_sleep_kernel test_sleep_kernel.cpp)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -240,6 +246,7 @@ add_test(NAME native_mouth       COMMAND test_native_mouth)
 add_test(NAME plan_mouth         COMMAND test_plan_mouth)
 add_test(NAME brain_eval         COMMAND brain_eval)
 add_test(NAME intent_router      COMMAND test_intent_router)
+add_test(NAME fuzzy_ingestion    COMMAND test_fuzzy_ingestion)
 add_test(NAME graph_reasoner     COMMAND test_graph_reasoner)
 add_test(NAME sleep_kernel       COMMAND test_sleep_kernel)
 

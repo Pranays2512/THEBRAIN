@@ -25,16 +25,18 @@ struct FactExtractor {
     
     FactExtractor() {
         patterns = {
-            {std::regex(R"(^(\w+) is (?:the |a |an )?(\w+) of (\w+)$)"), "%MID%"},
+            {std::regex(R"(^([\w\s]+?) is (?:the |a |an )?(\w+) of (\w+)$)"), "%MID%"},
+            {std::regex(R"(^([\w\s]+?) is an? ([\w\s]+)$)"), "isa"},      // multiword subj+obj
+            {std::regex(R"(^([\w\s]+?) are an? ([\w\s]+)$)"), "isa"},
             {std::regex(R"(^(\w+) is an? (\w+)$)"), "isa"},
             {std::regex(R"(^(\w+) are an? (\w+)$)"), "isa"},
             {std::regex(R"(^(\w+) (?:is|are) (\w+)$)"), "is"},
             {std::regex(R"(^(\w+) (?:has|have) an? (\w+)$)"), "has"},
             {std::regex(R"(^(\w+) (?:has|have) (\w+)$)"), "has"},
-            {std::regex(R"(^(\w+) (?:grows?|grow) on an? (\w+)$)"), "grows_on"},
-            {std::regex(R"(^(\w+) (?:lives?|live) in an? (\w+)$)"), "lives_in"},
-            {std::regex(R"(^(\w+) (?:gives?|give) (\w+)$)"), "gives"},
-            {std::regex(R"(^(\w+) (?:eats?|eat) an? (\w+)$)"), "eats"},
+            {std::regex(R"(^(\w+) (?:grows?|grow) on (?:an? )?(\w+)$)"), "grows_on"},
+            {std::regex(R"(^(\w+) (?:lives?|live) in (?:an? )?(\w+)$)"), "lives_in"},
+            {std::regex(R"(^(\w+) (?:gives?|give) (?:an? )?(\w+)$)"), "gives"},
+            {std::regex(R"(^(\w+) (?:eats?|eat) (?:an? )?(\w+)$)"), "eats"},
             {std::regex(R"(^(\w+) (\w+) an? (\w+)$)"), ""}, // generic
             {std::regex(R"(^(\w+) (\w+) (\w+)$)"), ""} // generic
         };
