@@ -25,6 +25,7 @@
 #include <unordered_set>
 #include <vector>
 #include <algorithm>
+#include "reasoning_engine.hpp"
 
 namespace brain3 {
 namespace engines {
@@ -65,6 +66,12 @@ public:
         const std::set<std::tuple<std::string, std::string, std::string>>& facts) {
         for (const auto& [s, r, o] : facts)
             add_edge(add_entity(s), add_relation(r), add_entity(o));
+    }
+    // BrainQL ReasoningEngine stores set<brain2::reasoning::Fact>
+    void load_from_facts(const std::set<brain2::reasoning::Fact>& facts) {
+        for (const auto& f : facts)
+            add_edge(add_entity(f.subj), add_relation(f.rel),
+                     add_entity(f.obj));
     }
 
     // ── training ───────────────────────────────────────────────────────────
@@ -233,6 +240,43 @@ public:
         auto it = rid_.find(n); return it == rid_.end() ? -1 : it->second;
     }
     const std::string& entity_name(int id) const { return entities_[id]; }
+
+    // sleep-kernel checkpointing: roll back a consolidation that regressed
+    std::vector<std::vector<double>> snapshot_params() const {
+        return {E_, R_};
+    }
+    void restore_params(const std::vector<std::vector<double>>& s) {
+        if (s.size() == 2) { E_ = s[0]; R_ = s[1]; }
+    }
+    bool trained() const { return !E_.empty(); }
+
+    // self-check: mean reciprocal rank of true tails among random negatives
+    // (chance ≈ 0.05 with 20 candidates); consolidation regression gate
+    double self_check_mrr(int samples = 30, int candidates = 20) const {
+        if (edges_.empty()) return 0.0;
+        const int d = dim_;
+        std::mt19937 g(2024);
+        double mrr = 0.; int n = 0;
+        for (int k = 0; k < samples; ++k) {
+            const Edge& e = edges_[g() % edges_.size()];
+            std::vector<int> cands{e.tail};
+            while ((int)cands.size() < candidates)
+                cands.push_back((int)(g() % entities_.size()));
+            std::shuffle(cands.begin(), cands.end(), g);
+            auto score = [&](int t) {
+                double s = 0.;
+                for (int j = 0; j < d; ++j)
+                    s += E_[(size_t)e.head * d + j] * R_[(size_t)e.rel * d + j]
+                       * E_[(size_t)t * d + j];
+                return s;
+            };
+            int rank = 1;
+            for (int cand : cands)
+                if (cand != e.tail && score(cand) > score(e.tail)) ++rank;
+            mrr += 1.0 / rank; ++n;
+        }
+        return n ? mrr / n : 0.0;
+    }
 
 private:
     static constexpr int dim_ = 128;

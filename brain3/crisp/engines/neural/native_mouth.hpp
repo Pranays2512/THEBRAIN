@@ -60,6 +60,7 @@ public:
     bool available() const { return available_; }
 
     const StamlatLM& model() const { return lm_; }
+    StamlatLM& model() { return lm_; }          // sleep-kernel training access
     Config& config() { return cfg_; }
 
     Result respond(const std::string& user_text,

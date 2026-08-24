@@ -41,6 +41,7 @@
 #include "../crisp/engines/neural/native_mouth.hpp"
 #include "intent_router.hpp"
 #include "intent_route_extract.hpp"
+#include "sleep_kernel.hpp"
 
 namespace brain3 {
 namespace core {
@@ -692,15 +693,48 @@ public:
         }
     }
 
+    // REAL sleep consolidation (Sprint 4c): style-loop replay of the mouth,
+    // graph re-embedding over today's facts, verification gates with
+    // rollback, structured report. Degrades gracefully per-phase.
     std::string sleep_consolidate() {
+        SleepKernel kernel(native_mouth_, brain_->brainql_engine, voice_mapper_);
+        kernel.set_probes(default_sleep_probes(), default_floor_probes());
+        const auto rep = kernel.run_cycle();
+
         std::ostringstream oss;
-        oss << "🌙 [Brain3 Sleep Kernel] Starting 4-Phase Sleep Consolidation...\n";
-        oss << "  ├─ Phase 1: Replaying working memory buffers into Episodic Store.\n";
-        oss << "  ├─ Phase 2: Inductive rule mining across relational graphs.\n";
-        oss << "  ├─ Phase 3: Metacognitive invariant verification on newly synthesized rules.\n";
-        oss << "  └─ Phase 4: Crystallizing neural weights & zero-disk residual flush complete.\n";
+        oss << "🌙 [Brain3 Sleep Kernel] Consolidation cycle complete\n";
+        static const char* icon[] = {"✅", "↩️ ", "⚪"};
+        for (const auto& p : rep.phases) {
+            const char* mark = p.status == "ok" ? icon[0]
+                             : p.status == "rolled_back" ? icon[1] : icon[2];
+            oss << "  ├─ " << mark << " " << p.name
+                << " [" << p.status << "]";
+            for (size_t i = 0; i < p.metrics.size(); ++i)
+                oss << (i ? "," : " ") << " " << p.metrics[i].first << "="
+                    << p.metrics[i].second;
+            oss << "\n";
+        }
+        oss << "  └─ " << (rep.all_ok ? "🧠 All consolidation gates passed."
+                                   : "⚠️ One or more phases degraded; "
+                                     "parameters rolled back safely.") << "\n";
         return oss.str();
     }
+
+private:
+    static std::vector<SleepKernel::Probe> default_sleep_probes() {
+        return {
+            {"user: hello\nbrain: ",       {{"intent"}, {"greeting","welcome","happy"}}, "greeting"},
+            {"user: who are you\nbrain: ", {{"identity","name"}, {"system","brain","ai","cognitive"}}, "identity"},
+        };
+    }
+    static std::vector<SleepKernel::Probe> default_floor_probes() {
+        return {
+            {"user: hi\nbrain: ",          {{"intent"}, {"greeting","welcome","salutation","happy"}}},
+            {"user: what is your name\nbrain: ", {{"identity","name"}, {"system","brain","ai"}}},
+        };
+    }
+
+public:
 
     brain2::Brain* get_brain() { return brain_.get(); }
     brain2::reasoning::BrainQLExecutor* get_executor() { return executor_.get(); }
