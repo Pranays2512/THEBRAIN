@@ -164,41 +164,63 @@ public:
     }
 
 private:
+private:
     /**
-     * Anti-unifies domain formulas into generalized mathematical invariants
+     * Real AST & Relational Anti-Unification:
+     * Constructs abstract universal invariants by replacing matched domain-specific entities
+     * with generalized symbolic variables (X_1, X_2, ...), synthesizing the abstract invariant formula.
      */
     std::pair<std::string, std::string> synthesize_cross_domain_invariant(
         const std::string& d1,
         const std::string& d2,
         const brain2::reasoning::AnalogyResult& match
     ) {
-        // Universal Invariant Archetypes:
-        // 1. Flow / Potential gradient balance (Ohm's Law, Fourier Conduction, Fick Diffusion, Poiseuille Flow, Arbitrage Flow)
-        if ((d1.find("thermo") != std::string::npos || d1.find("hydraulic") != std::string::npos || d1.find("electric") != std::string::npos || d1.find("water") != std::string::npos || d1.find("market") != std::string::npos || d1.find("network") != std::string::npos) &&
-            (d2.find("thermo") != std::string::npos || d2.find("hydraulic") != std::string::npos || d2.find("electric") != std::string::npos || d2.find("water") != std::string::npos || d2.find("market") != std::string::npos || d2.find("network") != std::string::npos)) {
-            return {"Universal Gradient Flow Invariant", "J = -k * grad(Phi) [Flow Flux = -Conductance * Potential Gradient]"};
+        // Map matched concrete entities to abstract variable slots (X_1, X_2, ...)
+        std::unordered_map<std::string, std::string> src_to_abstract;
+        std::unordered_map<std::string, std::string> tgt_to_abstract;
+        std::ostringstream formula_builder;
+        std::ostringstream law_name_builder;
+
+        int slot_idx = 1;
+        for (const auto& kv : match.entity_map) {
+            std::string slot = "X_" + std::to_string(slot_idx++);
+            src_to_abstract[kv.first] = slot;
+            tgt_to_abstract[kv.second] = slot;
         }
 
-        // 2. Quadratic State Energy / Accumulation (Kinetic 1/2 m v^2, Spring 1/2 k x^2, Capacitor 1/2 C V^2, Inductor 1/2 L I^2)
-        if ((d1.find("mechanic") != std::string::npos || d1.find("electric") != std::string::npos || d1.find("solar") != std::string::npos || d1.find("atom") != std::string::npos || d1.find("calculus") != std::string::npos) &&
-            (d2.find("mechanic") != std::string::npos || d2.find("electric") != std::string::npos || d2.find("solar") != std::string::npos || d2.find("atom") != std::string::npos || d2.find("calculus") != std::string::npos)) {
-            return {"Universal Central Potential Invariant", "V(r) = -G * (M * m) / r [Inverse-Square Central Field Law]"};
+        // Anti-unify matched relation triples into abstract invariant predicates
+        std::vector<std::string> abstract_predicates;
+        for (const auto& p : match.matched_triples) {
+            std::string s_triple = p.first;  // e.g. "heat flows_to cold" or "water flows_to lower_tank"
+            std::istringstream iss(s_triple);
+            std::string subj, rel, obj;
+            if (iss >> subj >> rel >> obj) {
+                std::string a_subj = src_to_abstract.count(subj) ? src_to_abstract[subj] : ("'" + subj + "'");
+                std::string a_obj  = src_to_abstract.count(obj)  ? src_to_abstract[obj]  : ("'" + obj + "'");
+                std::string pred = rel + "(" + a_subj + ", " + a_obj + ")";
+                if (std::find(abstract_predicates.begin(), abstract_predicates.end(), pred) == abstract_predicates.end()) {
+                    abstract_predicates.push_back(pred);
+                }
+            }
         }
 
-        // 3. Information Entropy / Thermodynamic Entropy Equivalence
-        if ((d1.find("network") != std::string::npos || d1.find("telecom") != std::string::npos || d1.find("thermo") != std::string::npos || d1.find("packet") != std::string::npos || d1.find("cardio") != std::string::npos) &&
-            (d2.find("network") != std::string::npos || d2.find("telecom") != std::string::npos || d2.find("thermo") != std::string::npos || d2.find("packet") != std::string::npos || d2.find("cardio") != std::string::npos)) {
-            return {"Universal Information-Transport Dynamics Invariant", "Throughput(Q) = Capacity * (1 - Congestion) [Generalized Shannon-Flow Transport]"};
+        law_name_builder << "Generalized [" << d1 << " <-> " << d2 << "] Morphism Invariant";
+
+        if (!abstract_predicates.empty()) {
+            formula_builder << "forall (";
+            for (int i = 1; i < slot_idx; ++i) {
+                formula_builder << "X_" << i << (i + 1 < slot_idx ? ", " : "");
+            }
+            formula_builder << ") : ";
+            for (size_t i = 0; i < abstract_predicates.size(); ++i) {
+                formula_builder << abstract_predicates[i] << (i + 1 < abstract_predicates.size() ? " ^ " : "");
+            }
+            formula_builder << " [Anti-Unified Systematicity: " << std::fixed << std::setprecision(2) << match.score << "]";
+        } else {
+            formula_builder << "Functor(" << d1 << ") =~= Functor(" << d2 << ") [Isomorphic Structure Preservation]";
         }
 
-        // 4. Cellular / Factory / Pipeline Organizational Isomorphism
-        if ((d1.find("cell") != std::string::npos || d1.find("factory") != std::string::npos || d1.find("compiler") != std::string::npos || d1.find("chem") != std::string::npos) &&
-            (d2.find("cell") != std::string::npos || d2.find("factory") != std::string::npos || d2.find("compiler") != std::string::npos || d2.find("chem") != std::string::npos)) {
-            return {"Universal Transformation Pipeline Invariant", "Output = Pipeline(Inputs | Catalyst, Blueprint, Energy) [Generalized Functional Transformation]"};
-        }
-
-        // 5. Conservation & Continuity Invariant
-        return {"Universal Conservation Continuity Law", "div(J) + d(rho)/dt = S_source [Generalized Continuity Invariant]"};
+        return {law_name_builder.str(), formula_builder.str()};
     }
 };
 

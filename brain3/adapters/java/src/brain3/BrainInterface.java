@@ -6,6 +6,10 @@ import java.util.List;
 
 public class BrainInterface {
 
+    // The brain core is single-thread-accessed by contract; all shared-brain
+    // native invocations must be serialized through this lock.
+    public static final Object BRAIN_LOCK = new Object();
+
     private final LLMAdapter.LLMClient client;
     private final LLMAdapter.BrainQLEyes eyes;
     private final LLMAdapter.BrainQLMouth mouth;
@@ -102,16 +106,26 @@ public class BrainInterface {
 
     private Object[] executeBqlAndParse(String query) {
         if (brain != null) {
-            String jsonResult = brain.executeBrainQL(brain.getHandle(), query);
+            String jsonResult;
+            // The brain core is single-thread-accessed by contract; serialize
+            // shared-brain native invocations across concurrent callers.
+            synchronized (BRAIN_LOCK) {
+                jsonResult = brain.executeBrainQL(brain.getHandle(), query);
+            }
             
-            boolean verified = true;
+            // Default to unverified: corrupted/unparseable kernel output must
+            // never be reported as verified truth.
+            boolean verified = false;
             try {
                 org.json.JSONObject obj = new org.json.JSONObject(jsonResult);
                 if (obj.has("verified")) {
                     verified = obj.getBoolean("verified");
                 }
             } catch (Exception e) {
-                // Ignore parse errors, fallback to true
+                // Parse failure: stay unverified, log, and surface the raw text
+                // to callers via the returned rawJson payload.
+                System.err.println("[BrainInterface] Kernel JSON parse failed (" + e.getMessage()
+                        + "); reporting unverified. Raw: " + jsonResult);
             }
             
             String reply = mouth.renderResult(jsonResult);

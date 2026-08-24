@@ -222,6 +222,26 @@ public:
         net.add_triple("buffer_congestion", "increases", "network_latency");
         domains["packet_network"] = net;
         domains["network"] = net;
+
+        // 13. Deep Transformer Architecture Domain
+        DomainModel tf;
+        tf.name = "transformer_architecture";
+        tf.add_triple("attention_layer", "computes", "quadratic_matrix_products");
+        tf.add_triple("kv_cache", "causes", "memory_bandwidth_wall");
+        tf.add_triple("gpu_cluster", "consumes", "megawatt_power");
+        domains["transformer_architecture"] = tf;
+        domains["transformer"] = tf;
+        domains["llm"] = tf;
+
+        // 14. Neuromorphic Holographic Cortical Language Domain
+        DomainModel neuro;
+        neuro.name = "neuromorphic_holographic_cortex";
+        neuro.add_triple("cortical_column", "computes", "holographic_vector_resonance");
+        neuro.add_triple("associative_state", "enables", "constant_o_1_inference");
+        neuro.add_triple("biological_brain", "consumes", "twenty_watt_power");
+        domains["neuromorphic_holographic_cortex"] = neuro;
+        domains["neuromorphic_cortex"] = neuro;
+        domains["holographic_cortex"] = neuro;
     }
 
     const std::unordered_map<std::string, DomainModel>& get_domains() const {

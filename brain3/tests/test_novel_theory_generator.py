@@ -45,8 +45,13 @@ class TestNovelTheoryGenerator(unittest.TestCase):
         self.assertIn("The 5-sigma Hubble Tension", out)
         self.assertIn("Cosmological Quantum Extremal Island Horizon Transition", out)
 
+        # Theory 4: Holographic Linear Recurrent Accumulator (H2RL)
+        self.assertIn("Holographic Linear Recurrent Accumulator (H2RL)", out)
+        self.assertIn("The KV-Cache Memory Bandwidth Wall", out)
+        self.assertIn("Circular-Convolution Binding in Decayed State-Space Sequence Modeling", out)
+
         # Completion Banner
-        self.assertIn("AUTONOMOUS THEORY SYNTHESIS COMPLETE: 3 NOVEL THEORIES GENERATED & AUDITED", out)
+        self.assertIn("AUTONOMOUS THEORY SYNTHESIS COMPLETE: 4 NOVEL THEORIES GENERATED & AUDITED", out)
 
 if __name__ == "__main__":
     unittest.main()

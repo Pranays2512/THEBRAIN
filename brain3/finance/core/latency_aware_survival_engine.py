@@ -41,6 +41,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from brain3.finance.adapters.multi_stream_market_feed import MultiStreamMarketFeed, MultiAssetTick
+from brain3.finance.core.alpha_conviction import canonical_win_probability
 
 COMPANY_NAME_MAP = {
     "NIFTY50/INR": ("NIFTY 50 Benchmark Index", "INDEX"),
@@ -186,7 +187,8 @@ class LatencyAwareSurvivalEngine:
         
         # Half-Kelly Position Sizing relative to survival buffer (Capital - Ruin Floor)
         survival_buffer = max(0.0001, self.current_equity - self.ruin_floor)
-        win_prob = 0.55 + 0.20 * alpha_score
+        # alpha_score is already normalized to [0, 1] — canonical mapping (M5 fix)
+        win_prob = canonical_win_probability(alpha_score)
         win_loss_ratio = 1.40 + 0.50 * alpha_score
         kelly_fraction = max(0.01, min(0.20, (win_prob * (win_loss_ratio + 1.0) - 1.0) / win_loss_ratio))
         half_kelly = kelly_fraction * 0.5

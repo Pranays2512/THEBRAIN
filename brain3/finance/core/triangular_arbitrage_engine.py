@@ -43,6 +43,12 @@ class ArbitrageOpportunity:
     estimated_net_profit_usd: float  # Absolute net profit in USD
     estimated_net_profit_inr: float  # Absolute net profit in INR (at 87.25 USD/INR)
     status: str                      # "DETECTED", "SIMULATED_FILLED", "FILTERED_NEGATIVE"
+    exchange_path: List[str] = None  # NEW: Which exchange each leg routes through
+
+    def __post_init__(self):
+        if self.exchange_path is None:
+            self.exchange_path = []
+
 
 class TriangularArbitrageEngine:
     def __init__(self, fee_rate: float = 0.00075, usd_inr_rate: float = 87.25):
@@ -67,75 +73,206 @@ class TriangularArbitrageEngine:
             print(f"⚠️ Error fetching Binance book tickers: {e}")
             return []
 
+    def fetch_coinbase_book_tickers(self) -> List[Dict[str, Any]]:
+        """Fetches top-of-book for key BTC, ETH, SOL pairs from Coinbase Exchange API."""
+        pairs = ["BTC-USD", "ETH-USD", "SOL-USD", "ETH-BTC"]
+        results = []
+        for pair in pairs:
+            url = f"https://api.exchange.coinbase.com/products/{pair}/ticker"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "THEBRAIN/3.0"})
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    d = json.loads(resp.read().decode())
+                bid = float(d.get("bid", 0))
+                ask = float(d.get("ask", 0))
+                if bid > 0 and ask > 0:
+                    # Normalise pair e.g. "BTC-USD" -> symbol="BTCUSD", base="BTC", quote="USD"
+                    base, quote = pair.split("-")
+                    results.append({
+                        "symbol": pair, "base": base, "quote": quote,
+                        "bidPrice": str(bid), "askPrice": str(ask),
+                        "bidQty": d.get("volume", "1"), "askQty": d.get("volume", "1"),
+                        "_exchange": "Coinbase"
+                    })
+            except Exception:
+                pass
+        return results
+
+    def fetch_kraken_book_tickers(self) -> List[Dict[str, Any]]:
+        """Fetches top-of-book for key pairs from Kraken REST API."""
+        # Kraken uses non-standard pair names; map to canonical
+        kraken_pairs = {
+            "XBTUSD": ("BTC", "USD"),
+            "ETHUSD": ("ETH", "USD"),
+            "XBTETH": ("BTC", "ETH"),
+            "SOLUSD": ("SOL", "USD"),
+        }
+        url = ("https://api.kraken.com/0/public/Ticker?pair=" +
+               ",".join(kraken_pairs.keys()))
+        results = []
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "THEBRAIN/3.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            for kpair, (base, quote) in kraken_pairs.items():
+                result_key = next((k for k in data.get("result", {}) if kpair in k), None)
+                if not result_key:
+                    continue
+                t = data["result"][result_key]
+                bid = float(t["b"][0])
+                ask = float(t["a"][0])
+                vol = float(t["v"][0])
+                if bid > 0 and ask > 0:
+                    results.append({
+                        "symbol": kpair, "base": base, "quote": quote,
+                        "bidPrice": str(bid), "askPrice": str(ask),
+                        "bidQty": str(vol), "askQty": str(vol),
+                        "_exchange": "Kraken"
+                    })
+        except Exception as e:
+            print(f"⚠️ Kraken fetch error: {e}")
+        return results
+
+    def fetch_okx_book_tickers(self) -> List[Dict[str, Any]]:
+        """Fetches top-of-book for key pairs from OKX REST API."""
+        instIds = ["BTC-USDT", "ETH-USDT", "SOL-USDT", "ETH-BTC"]
+        results = []
+        for inst in instIds:
+            url = f"https://www.okx.com/api/v5/market/ticker?instId={inst}"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "THEBRAIN/3.0"})
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    d = json.loads(resp.read().decode())
+                item = d.get("data", [{}])[0]
+                bid = float(item.get("bidPx", 0))
+                ask = float(item.get("askPx", 0))
+                vol = float(item.get("vol24h", 1))
+                if bid > 0 and ask > 0:
+                    base, quote = inst.split("-")
+                    results.append({
+                        "symbol": inst, "base": base, "quote": quote,
+                        "bidPrice": str(bid), "askPrice": str(ask),
+                        "bidQty": str(vol), "askQty": str(vol),
+                        "_exchange": "OKX"
+                    })
+            except Exception:
+                pass
+        return results
+
+
     def build_exchange_graph(self, book_tickers: List[Dict[str, Any]]):
         """
-        Builds directed currency graph G = (V, E)
-        For pair BASE/QUOTE (e.g. ETH/BTC):
-        - BUY BASE with QUOTE (QUOTE -> BASE): Rate = 1.0 / Ask Price
-        - SELL BASE for QUOTE (BASE -> QUOTE): Rate = Bid Price
-        Edge weight = -ln(Rate * (1 - Fee))
+        Builds directed currency graph G = (V, E) from a list of book ticker dicts.
+        Compatible with both Binance format (symbol='BTCUSDT') and
+        pre-parsed cross-exchange format (symbol='BTC-USD', base='BTC', quote='USD').
+        Each edge carries _exchange metadata for cross-exchange path tracing.
         """
         self.graph.clear()
-        
-        # Priority assets to include in triangular paths
-        target_assets = {"USDT", "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "FDUSD", "USDC"}
-        
-        # Fast lookup
+        self._build_edges_from_tickers(book_tickers)
+
+    def build_cross_exchange_graph(self) -> int:
+        """
+        Fetches top-of-book data from ALL 4 exchanges in parallel and builds a
+        single unified directed graph. Returns the total number of graph edges added.
+
+        This enables cross-exchange arbitrage detection:
+          e.g. USDT → (Binance) BTC → (Kraken) ETH → (OKX) USDT
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        fetchers = [
+            ("Binance", self.fetch_live_book_tickers),
+            ("Coinbase", self.fetch_coinbase_book_tickers),
+            ("Kraken",   self.fetch_kraken_book_tickers),
+            ("OKX",      self.fetch_okx_book_tickers),
+        ]
+        all_tickers: List[Dict[str, Any]] = []
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {pool.submit(fn): name for name, fn in fetchers}
+            for future in as_completed(futures, timeout=8.0):
+                exch = futures[future]
+                try:
+                    tickers = future.result()
+                    # Tag Binance tickers with exchange name (others are already tagged)
+                    for t in tickers:
+                        if "_exchange" not in t:
+                            t["_exchange"] = exch
+                    all_tickers.extend(tickers)
+                except Exception as e:
+                    print(f"⚠️ {exch} feed failed during graph build: {e}")
+        self.graph.clear()
+        self._build_edges_from_tickers(all_tickers)
+        return sum(len(edges) for edges in self.graph.values())
+
+    def _build_edges_from_tickers(self, book_tickers: List[Dict[str, Any]]):
+        """Internal: populates self.graph edges from normalised ticker dicts."""
+        target_assets = {"USDT", "USD", "BTC", "ETH", "BNB", "SOL",
+                         "XRP", "ADA", "DOGE", "FDUSD", "USDC"}
         for item in book_tickers:
-            sym = item.get("symbol", "")
+            # Support both formats: pre-split (base/quote) and Binance-style symbol
+            if "base" in item and "quote" in item:
+                base = item["base"].upper()
+                quote = item["quote"].upper()
+            else:
+                sym = item.get("symbol", "")
+                base, quote = self._split_symbol(sym)
+
+            if not base or not quote:
+                continue
+            if base not in target_assets or quote not in target_assets:
+                continue
+
             try:
                 bid_p = float(item.get("bidPrice", 0))
                 ask_p = float(item.get("askPrice", 0))
                 bid_q = float(item.get("bidQty", 0))
                 ask_q = float(item.get("askQty", 0))
-            except ValueError:
+            except (ValueError, TypeError):
                 continue
-                
+
             if bid_p <= 0 or ask_p <= 0:
                 continue
 
-            # Identify base and quote asset
-            base, quote = self._split_symbol(sym)
-            if not base or not quote:
-                continue
-                
-            if base not in target_assets or quote not in target_assets:
-                continue
+            exchange_tag = item.get("_exchange", "Binance")
+            sym_label = item.get("symbol", f"{base}{quote}")
 
             if base not in self.graph:
                 self.graph[base] = {}
             if quote not in self.graph:
                 self.graph[quote] = {}
 
-            # Leg 1: Sell BASE -> receive QUOTE
-            # Multiplier: bid_p * (1 - fee)
+            # SELL BASE → receive QUOTE
             eff_rate_sell = bid_p * (1.0 - self.fee_rate)
             if eff_rate_sell > 0:
-                weight_sell = -math.log(eff_rate_sell)
                 self.graph[base][quote] = {
-                    "pair": sym,
-                    "action": "SELL",
-                    "raw_rate": bid_p,
-                    "effective_rate": eff_rate_sell,
-                    "weight": weight_sell,
-                    "depth_qty": bid_q,
-                    "depth_usd": bid_q * bid_p
+                    "pair": sym_label, "action": "SELL",
+                    "raw_rate": bid_p, "effective_rate": eff_rate_sell,
+                    "weight": -math.log(eff_rate_sell),
+                    "depth_qty": bid_q, "depth_usd": bid_q * bid_p,
+                    "exchange": exchange_tag
                 }
 
-            # Leg 2: Buy BASE <- pay QUOTE
-            # Multiplier: (1.0 / ask_p) * (1 - fee)
+            # BUY BASE ← pay QUOTE
             eff_rate_buy = (1.0 / ask_p) * (1.0 - self.fee_rate)
             if eff_rate_buy > 0:
-                weight_buy = -math.log(eff_rate_buy)
                 self.graph[quote][base] = {
-                    "pair": sym,
-                    "action": "BUY",
-                    "raw_rate": 1.0 / ask_p,
-                    "effective_rate": eff_rate_buy,
-                    "weight": weight_buy,
-                    "depth_qty": ask_q,
-                    "depth_usd": ask_q * ask_p
+                    "pair": sym_label, "action": "BUY",
+                    "raw_rate": 1.0 / ask_p, "effective_rate": eff_rate_buy,
+                    "weight": -math.log(eff_rate_buy),
+                    "depth_qty": ask_q, "depth_usd": ask_q * ask_p,
+                    "exchange": exchange_tag
                 }
+
+    def scan_cross_exchange(self, base_asset: str = "USDT") -> List[ArbitrageOpportunity]:
+        """
+        Full cross-exchange arbitrage scan:
+          1. Fetches live feeds from Binance, Coinbase, Kraken, OKX in parallel.
+          2. Builds unified 4-exchange directed graph.
+          3. Runs Bellman-Ford negative-cycle detection for 3-hop paths.
+          4. Returns detected cross-exchange opportunities (including exchange path).
+        """
+        edge_count = self.build_cross_exchange_graph()
+        print(f"🌐 Cross-Exchange Graph Built: {edge_count} directed edges across 4 exchanges")
+        return self.find_triangular_arbitrage_opportunities(base_asset)
 
     def _split_symbol(self, sym: str) -> Tuple[Optional[str], Optional[str]]:
         """Splits pairs like BTCUSDT, ETHBTC, SOLBNB into (base, quote)."""

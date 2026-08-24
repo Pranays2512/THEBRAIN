@@ -11,6 +11,7 @@ Streams real-time live prices, bid/ask spreads, and volumes for real financial a
 """
 
 import json
+import os
 import time
 import urllib.request
 import urllib.parse
@@ -34,8 +35,11 @@ class RealMarketFeedAdapter:
         self.usd_inr = usd_inr_rate
         self.last_update_time = 0.0
         self.ssl_ctx = ssl.create_default_context()
-        self.ssl_ctx.check_hostname = False
-        self.ssl_ctx.verify_mode = ssl.CERT_NONE
+        # Verified TLS by default; insecure mode only via explicit opt-in
+        # (BRAIN_INSECURE_FEEDS=1) — never silently.
+        if os.environ.get("BRAIN_INSECURE_FEEDS") == "1":
+            self.ssl_ctx.check_hostname = False
+            self.ssl_ctx.verify_mode = ssl.CERT_NONE
         self._cached_prices: Dict[str, float] = {}
 
     def fetch_live_usdinr_rate(self) -> float:

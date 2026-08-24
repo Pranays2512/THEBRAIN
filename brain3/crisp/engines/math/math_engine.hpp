@@ -141,17 +141,23 @@ public:
         // Ideal Gas Law: P = n * R * T / V
         physics.add_law("ideal_gas", "P", ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_var("n"), ExprNode::make_op("*", {ExprNode::make_var("R"), ExprNode::make_var("T")})}), ExprNode::make_var("V")}));
 
-        // Universal Gravitation: F = G * m1 * m2 / r^2
-        physics.add_law("gravitation", "F", ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_var("m1"), ExprNode::make_var("m2")}), ExprNode::make_op("^", {ExprNode::make_var("r"), ExprNode::make_num(2.0)})}));
+        // Universal Gravitation: F = G * m1 * m2 / r^2, G = 6.674e-11 m^3/(kg*s^2)
+        // (constant folded in as a literal multiplier node so eval/isolate stay exact)
+        physics.add_law("gravitation", "F", ExprNode::make_op("*", {
+            ExprNode::make_num(6.674e-11),
+            ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_var("m1"), ExprNode::make_var("m2")}), ExprNode::make_op("^", {ExprNode::make_var("r"), ExprNode::make_num(2.0)})})}));
 
-        // Coulomb's Law: F = q1 * q2 / r^2
-        physics.add_law("coulomb", "F", ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_var("q1"), ExprNode::make_var("q2")}), ExprNode::make_op("^", {ExprNode::make_var("r"), ExprNode::make_num(2.0)})}));
+        // Coulomb's Law: F = k_e * q1 * q2 / r^2, k_e = 8.9875517923e9 N*m^2/C^2
+        physics.add_law("coulomb", "F", ExprNode::make_op("*", {
+            ExprNode::make_num(8.9875517923e9),
+            ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_var("q1"), ExprNode::make_var("q2")}), ExprNode::make_op("^", {ExprNode::make_var("r"), ExprNode::make_num(2.0)})})}));
 
         // De Broglie Wavelength: lambda = h / p
         physics.add_law("de_broglie", "lambda", ExprNode::make_op("/", {ExprNode::make_var("h"), ExprNode::make_var("p")}));
 
-        // Henderson-Hasselbalch Buffer pH: pH = pKa + log(base / acid)
-        physics.add_law("buffer_ph", "pH", ExprNode::make_op("+", {ExprNode::make_var("pKa"), ExprNode::make_op("ln", {ExprNode::make_op("/", {ExprNode::make_var("base"), ExprNode::make_var("acid")})})}));
+        // Henderson-Hasselbalch Buffer pH: pH = pKa + log10(base / acid)
+        // Stored as log10(x) = ln(x) / ln(10) since the evaluator only has ln.
+        physics.add_law("buffer_ph", "pH", ExprNode::make_op("+", {ExprNode::make_var("pKa"), ExprNode::make_op("/", {ExprNode::make_op("ln", {ExprNode::make_op("/", {ExprNode::make_var("base"), ExprNode::make_var("acid")})}), ExprNode::make_num(2.302585092994046)})}));
 
         // Poiseuille Fluid Resistance: R = 8 * eta * L / r^4
         physics.add_law("poiseuille", "R", ExprNode::make_op("/", {ExprNode::make_op("*", {ExprNode::make_num(8.0), ExprNode::make_op("*", {ExprNode::make_var("eta"), ExprNode::make_var("L")})}), ExprNode::make_op("^", {ExprNode::make_var("r"), ExprNode::make_num(4.0)})}));
@@ -328,7 +334,8 @@ public:
         // Pattern B: "number units" or "word is number"
         std::regex phrase_regex(R"(([a-zA-Z_0-9]+)\s+(?:is|of|=|measures|equals)?\s*([0-9]+(?:\.[0-9]+)?))");
         auto phrase_begin = std::sregex_iterator(lower.begin(), lower.end(), phrase_regex);
-        for (std::sregex_iterator i = phrase_begin; i != words_end; ++i) {
+        auto phrase_end = std::sregex_iterator();
+        for (std::sregex_iterator i = phrase_begin; i != phrase_end; ++i) {
             std::smatch match = *i;
             std::string k = match[1].str();
             double v = std::stod(match[2].str());

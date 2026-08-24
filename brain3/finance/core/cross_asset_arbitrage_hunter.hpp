@@ -38,6 +38,8 @@ struct TriangularArbOpportunity {
     double price_ac{0.0};
     double implied_ac{0.0};
     double discrepancy_bps{0.0};
+    double total_fee_bps{0.0}; // Round-trip cost: one taker fee per leg (3 legs)
+    double net_edge_bps{0.0};  // Signed edge AFTER fees; gross edge = discrepancy_bps
     bool is_executable{false};
 };
 
@@ -172,13 +174,26 @@ public:
         opp.price_bc = price_bc;
         opp.price_ac = price_ac;
 
-        if (price_ac <= 1e-9) return opp;
+        // A triangular cycle fills three legs (AB, BC, AC) and pays one taker fee
+        // per leg, so total round-trip cost is 3 * fee_bps — not a single fee.
+        const double total_fee_bps = 3.0 * fee_bps;
+        opp.total_fee_bps = total_fee_bps;
+
+        // Guard ALL THREE legs against zero/garbage prints before forming the
+        // implied product; otherwise a zero price fabricates a fake -10000 bps edge.
+        if (price_ab <= 1e-9 || price_bc <= 1e-9 || price_ac <= 1e-9) return opp;
 
         opp.implied_ac = price_ab * price_bc;
         opp.discrepancy_bps = ((opp.implied_ac - price_ac) / price_ac) * 10000.0;
 
-        // Opportunity is executable if discrepancy exceeds round-trip transaction costs
-        opp.is_executable = (std::abs(opp.discrepancy_bps) > fee_bps);
+        // Net edge keeps the sign of the gross discrepancy but subtracts full
+        // costs. NOTE: only meaningful when is_executable — below-cost cycles
+        // flip this sign; always gate on is_executable, not on net > 0.
+        const double direction = (opp.discrepancy_bps >= 0.0) ? 1.0 : -1.0;
+        opp.net_edge_bps = direction * (std::abs(opp.discrepancy_bps) - total_fee_bps);
+
+        // Executable only if the gross discrepancy exceeds ALL three taker fees.
+        opp.is_executable = ((std::abs(opp.discrepancy_bps) - total_fee_bps) > 0.0);
         return opp;
     }
 };

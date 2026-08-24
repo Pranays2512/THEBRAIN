@@ -37,6 +37,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from brain3.finance.adapters.real_exchange_feed import RealExchangeFeed, RealMarketTick
+from brain3.finance.core.alpha_conviction import canonical_win_probability
 
 @dataclass
 class AgentCopyResult:
@@ -101,7 +102,8 @@ class MultiAgentDistributionSimulator:
                 buffer = max(0.0001, equity - self.ruin_floor)
                 alpha_score = round(random.uniform(0.42, 0.88), 3)
                 
-                win_prob = 0.54 + 0.22 * (alpha_score - 0.50)
+                # alpha_score is already normalized to [0, 1] — canonical mapping (M5 fix)
+                win_prob = canonical_win_probability(alpha_score)
                 win_loss_ratio = 1.38 + 0.40 * alpha_score
                 kelly = max(0.02, min(0.25, (win_prob * (win_loss_ratio + 1.0) - 1.0) / win_loss_ratio))
                 half_kelly = kelly * 0.5

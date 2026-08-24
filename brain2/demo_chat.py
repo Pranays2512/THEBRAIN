@@ -13,7 +13,7 @@ def main():
     
     print("[1] Initializing pipeline...")
     # SafeClient falls back to a deterministic path if the local Ollama server is offline
-    client = SafeClient(OllamaClient("qwen2.5"))
+    client = SafeClient(OllamaClient("qwen3:1.7B"))
     brain = BrainInterface(client=client)
     
     print("\n[2] Teaching the Brain some basic facts directly...")

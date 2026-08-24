@@ -7,10 +7,15 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
 public class Server {
+
+    // The brain core is single-thread-accessed by contract; concurrent HTTP
+    // clients must be serialized around the shared-brain invocation.
+    private static final Object BRAIN_LOCK = new Object();
 
     private final BrainInterface brainInterface;
     private final int port;
@@ -49,25 +54,49 @@ public class Server {
                 byte[] requestBody = exchange.getRequestBody().readAllBytes();
                 String query = new String(requestBody);
                 
-                // Route through BrainInterface
-                Map<String, Object> result = bi.respond(query);
+                // Route through BrainInterface (serialized: brain core is
+                // single-thread-accessed by contract)
+                Map<String, Object> result;
+                synchronized (BRAIN_LOCK) {
+                    result = bi.respond(query);
+                }
                 
-                // Format JSON response manually
+                // Format JSON response manually with full escaping
                 String reply = (String) result.get("reply");
                 String kind = (String) result.get("kind");
                 boolean verified = (Boolean) result.get("verified");
                 
                 String jsonResponse = String.format("{\"reply\": \"%s\", \"kind\": \"%s\", \"verified\": %b}",
-                        reply.replace("\"", "\\\""), kind, verified);
+                        jsonEscape(reply), jsonEscape(kind), verified);
 
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, jsonResponse.length());
+                byte[] body = jsonResponse.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, body.length);
                 OutputStream os = exchange.getResponseBody();
-                os.write(jsonResponse.getBytes());
+                os.write(body);
                 os.close();
             } else {
                 exchange.sendResponseHeaders(405, -1); // Method Not Allowed
             }
+        }
+
+        // Escape backslash first, then quote, then control characters, so the
+        // response stays valid JSON even when replies contain newlines.
+        private static String jsonEscape(String s) {
+            if (s == null) return "";
+            StringBuilder sb = new StringBuilder(s.length() + 16);
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                switch (c) {
+                    case '\\': sb.append("\\\\"); break;
+                    case '"':  sb.append("\\\""); break;
+                    case '\n': sb.append("\\n"); break;
+                    case '\r': sb.append("\\r"); break;
+                    case '\t': sb.append("\\t"); break;
+                    default:   sb.append(c); break;
+                }
+            }
+            return sb.toString();
         }
     }
 }

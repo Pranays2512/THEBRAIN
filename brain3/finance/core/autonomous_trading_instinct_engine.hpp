@@ -14,6 +14,7 @@
 #include "market_microstructure.hpp"
 #include "survival_instinct_engine.hpp"
 #include "cross_asset_arbitrage_hunter.hpp"
+#include "alpha_conviction.hpp"
 
 namespace brain3 {
 namespace finance {
@@ -101,6 +102,8 @@ public:
 
         double price_change = ret_dist(rng_);
         double new_mid = book->mid_price() * (1.0 + price_change);
+        // NOTE: seed_liquidity now MERGES — resting limit orders survive across
+        // ticks instead of being wiped on every incoming tick.
         book->seed_liquidity(new_mid, 10);
 
         micro->on_tick(new_mid, qty_dist(rng_), book->best_bid(), book->best_ask(),
@@ -112,17 +115,23 @@ public:
         double hunger = survival_.hunger_urgency_factor();
 
         // 3. Multi-Strategy Alpha Synthesis
+        // All win probabilities flow through the canonical conviction mapping in
+        // alpha_conviction.hpp: raw signals are normalized to an alpha in [0,1],
+        // then canonical_win_probability(alpha) = clamp(0.55 + 0.20*alpha, 0.5, 0.85).
         std::string chosen_strategy = "PASSIVE_MARKET_MAKING";
         OrderSide side = OrderSide::BUY;
-        double win_prob = 0.55;
+        double win_prob = canonical_win_probability(0.0); // == 0.55
         double win_loss_ratio = 1.5;
         bool should_trade = false;
 
-        // Alpha A: Order Flow Imbalance (OFI) Trend Scalper
+        // Alpha A: Order Flow Imbalance (OFI) Trend Scalper.
+        // Raw |ofi| is mapped to [0,1] with saturation at |ofi| = 0.75 (the point
+        // where the legacy gain min(0.15, |ofi|*0.2) capped out).
         if (std::abs(ofi) > 0.25) {
             chosen_strategy = "OFI_MOMENTUM_SCALP";
             side = (ofi > 0.0) ? OrderSide::BUY : OrderSide::SELL;
-            win_prob = 0.62 + std::min(0.15, std::abs(ofi) * 0.2);
+            const double ofi_alpha = std::min(std::abs(ofi) / 0.75, 1.0);
+            win_prob = canonical_win_probability(ofi_alpha);
             win_loss_ratio = 1.75;
             should_trade = true;
         }
@@ -130,7 +139,7 @@ public:
         else if (std::abs(vwap_dev) > 0.005) {
             chosen_strategy = "VWAP_MEAN_REVERSION";
             side = (vwap_dev > 0.0) ? OrderSide::SELL : OrderSide::BUY; // Fade the extreme
-            win_prob = 0.60;
+            win_prob = canonical_win_probability(0.25); // == legacy 0.60
             win_loss_ratio = 1.60;
             should_trade = true;
         }
@@ -138,7 +147,7 @@ public:
         else if (hunger > 1.2) {
             chosen_strategy = "SURVIVAL_SPREAD_HARVEST";
             side = (price_change >= 0.0) ? OrderSide::BUY : OrderSide::SELL;
-            win_prob = 0.58;
+            win_prob = canonical_win_probability(0.15); // == legacy 0.58
             win_loss_ratio = 1.45;
             should_trade = true;
         }

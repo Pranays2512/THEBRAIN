@@ -34,6 +34,11 @@ FINANCE_DIR = REPO_ROOT / "brain3" / "finance"
 LOGS_DIR = FINANCE_DIR / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from brain3.finance.core.alpha_conviction import canonical_win_probability
+
 @dataclass
 class OOSHistoricalCandle:
     open_time_ms: int
@@ -136,7 +141,8 @@ class OutOfSampleValidator:
                 
                 # Dynamic Sizing (Half-Kelly)
                 buffer = max(0.0001, self.current_equity - self.ruin_floor)
-                win_prob = 0.53 + 0.20 * (alpha_score - 0.50)
+                # alpha_score naturally lands in [0.16, 0.84] ⊂ [0, 1] — canonical mapping (M5 fix)
+                win_prob = canonical_win_probability(alpha_score)
                 win_loss_ratio = 1.35 + 0.35 * alpha_score
                 kelly = max(0.02, min(0.25, (win_prob * (win_loss_ratio + 1.0) - 1.0) / win_loss_ratio))
                 half_kelly = kelly * 0.5

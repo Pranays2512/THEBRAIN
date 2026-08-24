@@ -59,29 +59,74 @@ class AdverseSelectionAnalyzer:
         """
         Compute markouts at T+500ms, T+2s, and T+10s post-fill.
         price_series_post_fill contains dicts with {'timestamp_ms': ..., 'mid_price_inr': ...}
+        
+        Guards:
+        - fill_p == 0 or None → markouts are set to 0.0 (no data, not garbage)
+        - Price series too short → uses fill_p as fallback (neutral 0 bps markout)
+        - Clamped to ±10,000 bps (physically valid crypto range)
+        - At least 1 valid post-fill price required or record is flagged NO_PRICE_DATA
         """
         fill_t = trade.filled_time_ms
         fill_p = trade.filled_price_inr
         side_mult = 1.0 if trade.side == "BUY" else -1.0
-        
-        # Find closest prices at T+500ms, T+2000ms, T+10000ms
+
+        # Guard: fill price must be positive and finite
+        if not fill_p or not math.isfinite(fill_p) or fill_p <= 0.0:
+            record = MarkoutAuditRecord(
+                trade_id=trade.trade_id, order_id=trade.order_id,
+                symbol=trade.symbol, side=trade.side,
+                fill_time_ms=fill_t, filled_price_inr=fill_p,
+                mid_t500ms_inr=0.0, markout_t500ms_bps=0.0,
+                mid_t2s_inr=0.0, markout_t2s_bps=0.0,
+                mid_t10s_inr=0.0, markout_t10s_bps=0.0,
+                spread_captured_bps=trade.spread_captured_bps,
+                net_realized_pnl_inr=trade.net_pnl_inr,
+                is_toxic_fill=False,
+                fill_classification="NO_PRICE_DATA"
+            )
+            self.markout_records.append(record)
+            return record
+
+        # Filter to only post-fill ticks with valid prices
+        valid_series = [
+            item for item in price_series_post_fill
+            if isinstance(item.get('mid_price_inr'), (int, float))
+            and math.isfinite(item['mid_price_inr'])
+            and item['mid_price_inr'] > 0.0
+            and item['timestamp_ms'] >= fill_t
+        ]
+
+        # Find closest valid prices at each horizon; fall back to fill_p (0 bps)
         p_500 = fill_p
         p_2s = fill_p
         p_10s = fill_p
-        
-        for item in price_series_post_fill:
+        found_500, found_2s, found_10s = False, False, False
+
+        for item in valid_series:
             dt = item['timestamp_ms'] - fill_t
+            p = item['mid_price_inr']
             if dt <= 600:
-                p_500 = item['mid_price_inr']
+                p_500 = p
+                found_500 = True
             if dt <= 2200:
-                p_2s = item['mid_price_inr']
+                p_2s = p
+                found_2s = True
             if dt <= 10500:
-                p_10s = item['mid_price_inr']
-                
-        # Calculate markouts in basis points
-        m_500_bps = round(side_mult * ((p_500 - fill_p) / fill_p) * 10000.0, 2)
-        m_2s_bps = round(side_mult * ((p_2s - fill_p) / fill_p) * 10000.0, 2)
-        m_10s_bps = round(side_mult * ((p_10s - fill_p) / fill_p) * 10000.0, 2)
+                p_10s = p
+                found_10s = True
+
+        # Compute markouts only when a valid price was found; clamp to ±10k bps
+        MAX_BPS = 10000.0
+
+        def safe_markout(p_future: float, found: bool) -> float:
+            if not found:
+                return 0.0
+            raw = side_mult * ((p_future - fill_p) / fill_p) * 10000.0
+            return round(max(-MAX_BPS, min(MAX_BPS, raw)), 2)
+
+        m_500_bps = safe_markout(p_500, found_500)
+        m_2s_bps  = safe_markout(p_2s,  found_2s)
+        m_10s_bps = safe_markout(p_10s, found_10s)
         
         # Toxic fill criteria: price moved adversely at 2-second horizon
         is_toxic = m_2s_bps < -0.5

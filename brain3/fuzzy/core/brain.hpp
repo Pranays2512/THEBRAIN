@@ -574,27 +574,56 @@ public:
         while (ff >> fe >> fr >> fv) crisp_facts[{fe, fr}] = fv;
     }
 
-    void save_components(const std::string& directory) const {
-        predictor.save(directory + "/predictor.bin");
-        language.save(directory + "/language.bin");
-        som.save(directory + "/som.bin");
-        episodic.save(directory + "/episodic.bin");
-        emotion.save(directory + "/emotion.bin");
-        self_model.save(directory + "/self.bin");
-        symbolic.save(directory + "/symbolic.bin");
-        
-        // V3 Optional Components (save if active)
-        binding.save(directory + "/binding.bin");
-        bg_controller.save(directory + "/bg.bin");
-        procedures.save(directory + "/procedures.bin");
-        h_predictor.save(directory + "/hpred.bin");
-        decoder.save(directory + "/decoder.bin");
+    // Saves every organ; returns false if ANY write failed or threw. Silent
+    // partial persistence (the old behavior) loses organs while callers
+    // believe a checkpoint happened.
+    bool save_components(const std::string& directory) const {
+        bool ok = true;
+        auto run = [&](const char* fname, auto&& fn) {
+            try {
+                fn();
+                std::ifstream probe(directory + "/" + fname, std::ios::binary);
+                if (!probe.good()) {
+                    std::cerr << "[Brain::save_components] MISSING output: "
+                              << fname << "\n";
+                    ok = false;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[Brain::save_components] FAILED " << fname
+                          << ": " << e.what() << "\n";
+                ok = false;
+            }
+        };
+        run("predictor.bin",  [&]{ predictor.save(directory + "/predictor.bin"); });
+        run("language.bin",   [&]{ language.save(directory + "/language.bin"); });
+        run("som.bin",        [&]{ som.save(directory + "/som.bin"); });
+        run("episodic.bin",   [&]{ episodic.save(directory + "/episodic.bin"); });
+        run("emotion.bin",    [&]{ emotion.save(directory + "/emotion.bin"); });
+        run("self.bin",       [&]{ self_model.save(directory + "/self.bin"); });
+        run("symbolic.bin",   [&]{ symbolic.save(directory + "/symbolic.bin"); });
+        // V3 Optional Components
+        run("binding.bin",    [&]{ binding.save(directory + "/binding.bin"); });
+        run("bg.bin",         [&]{ bg_controller.save(directory + "/bg.bin"); });
+        run("procedures.bin", [&]{ procedures.save(directory + "/procedures.bin"); });
+        run("hpred.bin",      [&]{ h_predictor.save(directory + "/hpred.bin"); });
+        run("decoder.bin",    [&]{ decoder.save(directory + "/decoder.bin"); });
 
         // crisp reasoner: stored policies + crisp facts
-        policy_mem.save(directory + "/policies.txt");
-        std::ofstream ff(directory + "/facts.txt");
-        for (auto& kv : crisp_facts)
-            ff << kv.first.first << '\t' << kv.first.second << '\t' << kv.second << '\n';
+        try {
+            policy_mem.save(directory + "/policies.txt");
+            std::ifstream probe(directory + "/policies.txt", std::ios::binary);
+            if (!probe.good()) { std::cerr << "[Brain::save_components] FAILED: policies\n"; ok = false; }
+        } catch (const std::exception& e) {
+            std::cerr << "[Brain::save_components] FAILED policies: " << e.what() << "\n";
+            ok = false;
+        }
+        {
+            std::ofstream ff(directory + "/facts.txt");
+            for (auto& kv : crisp_facts)
+                ff << kv.first.first << '\t' << kv.first.second << '\t' << kv.second << '\n';
+            if (!ff) { std::cerr << "[Brain::save_components] FAILED: facts\n"; ok = false; }
+        }
+        return ok;
     }
 
     bool commit_episode(float err, const std::vector<float>& payload = {}) {
@@ -1770,9 +1799,13 @@ public:
 
     void expand_dims(int new_dims) {
         if (new_dims <= n_dims) return;
-        
+
+        // Transactional: the predictor cannot resize in place (it throws),
+        // so validate EVERYTHING up front. Mutating half the organs and
+        // then throwing would leave the brain with inconsistent dimensions.
+        predictor.assert_cannot_expand(new_dims);   // throws before any mutation
+
         som.expand_dims(new_dims);
-        predictor.expand_dims(new_dims);
         episodic.expand_dims(new_dims);
         working_mem.expand_dims(new_dims);
         language.expand_dims(new_dims);

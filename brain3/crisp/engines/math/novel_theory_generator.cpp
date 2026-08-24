@@ -59,8 +59,11 @@ int main() {
     auto t3 = generator.synthesize_holographic_island_hubble_tension_theory();
     print_novel_theory(t3, idx++);
 
+    auto t4 = generator.synthesize_low_compute_language_architecture_theory();
+    print_novel_theory(t4, idx++);
+
     std::cout << "\n==========================================================================\n";
-    std::cout << "🏁 AUTONOMOUS THEORY SYNTHESIS COMPLETE: 3 NOVEL THEORIES GENERATED & AUDITED\n";
+    std::cout << "🏁 AUTONOMOUS THEORY SYNTHESIS COMPLETE: 4 NOVEL THEORIES GENERATED & AUDITED\n";
     std::cout << "==========================================================================\n\n";
 
     return 0;

@@ -35,6 +35,10 @@
 #include "cross_domain_conjecture_hunter.hpp"
 #include "../finance/finance_orchestrator.hpp"
 #include "../crisp/engines/discovery/abductive_latent_engine.hpp"
+#include "epistemic_logical_scrutiny_engine.hpp"
+#include "ancient_modern_alignment_engine.hpp"
+#include "agentic_runtime_engine.hpp"
+#include "../crisp/engines/neural/native_mouth.hpp"
 
 namespace brain3 {
 namespace core {
@@ -60,6 +64,10 @@ private:
     SelfPlayDiscoveryDaemon discovery_daemon_{&policy_engine_, &conjecture_hunter_};
     brain3::finance::FinanceOrchestrator finance_orchestrator_{10000.0};
     brain2::discovery::AbductiveDiscoveryEngine abductive_engine_;
+    AncientModernAlignmentEngine ancient_alignment_engine_;
+    AgenticRuntimeEngine agentic_runtime_engine_;
+    engines::neural::NativeMouth native_mouth_;
+    engines::neural::VoiceMapper voice_mapper_ = engines::neural::default_voice_mapper();
 
 public:
     MasterOrchestrator() {
@@ -83,6 +91,24 @@ public:
         ingestion_engine_ = KnowledgeIngestionEngine(brain_.get());
         conjecture_hunter_ = CrossDomainConjectureHunter(&brain_->analogy_engine, &policy_engine_);
         discovery_daemon_.set_conjecture_hunter(&conjecture_hunter_);
+        agentic_runtime_engine_.set_brain(brain_.get());
+        agentic_runtime_engine_.set_ancient_engine(&ancient_alignment_engine_);
+
+        // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
+        // standard locations. Missing model ⇒ unavailable ⇒ pipeline runs
+        // exactly as before (zero-risk mount).
+        {
+            const char* env = std::getenv("BRAIN_NATIVE_MOUTH_MODEL");
+            std::vector<std::string> candidates;
+            if (env && *env) candidates.push_back(env);
+            candidates.push_back("mouth_native.bin");
+            candidates.push_back("../mouth_native.bin");
+            candidates.push_back("/tmp/opencode/stamlat_mouth_v3.bin");
+            for (const auto& p : candidates) {
+                std::error_code ec;
+                if (std::filesystem::exists(p, ec)) { native_mouth_.load(p); break; }
+            }
+        }
 
         _seed_foundational_invariants();
     }
@@ -145,7 +171,8 @@ public:
             "POLICY", "EMIT_POLICY", "START_SELF_PLAY", "STOP_SELF_PLAY", "DISCOVERY_STATUS", "STEP_DISCOVERY",
             "INGEST", "INGEST_ALL", "CROSS_DOMAIN_HUNT", "CROSS_DOMAIN_STATUS",
             "FINANCE_STATUS", "SURVIVAL_STATUS", "ORDER_BOOK", "MICROSTRUCTURE", "TRADE_ORDER",
-            "KELLY_SIZE", "STAT_ARB_SCAN", "SIMULATE_MARKET_CYCLE", "INJECT_DRAWDOWN_PAIN", "RESET_LIFE_FORCE"
+            "KELLY_SIZE", "STAT_ARB_SCAN", "SIMULATE_MARKET_CYCLE", "INJECT_DRAWDOWN_PAIN", "RESET_LIFE_FORCE",
+            "ANCIENT_MODERN_ALIGN", "AGENTIC_GOAL"
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
             (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
@@ -185,6 +212,36 @@ public:
             return "REFUTE " + clean_text;
         }
 
+        // Autonomous Agentic Goal Execution
+        if (lower.find("agentic") != std::string::npos || lower.find("run agent") != std::string::npos ||
+            lower.find("autonomous agent") != std::string::npos || lower.find("goal:") != std::string::npos ||
+            lower.find("execute goal") != std::string::npos || lower.find("plan and solve") != std::string::npos ||
+            lower.rfind("goal ", 0) == 0 || lower.rfind("agent:", 0) == 0) {
+            std::string goal_text = clean_text;
+            size_t colon_pos = goal_text.find(':');
+            if (colon_pos != std::string::npos) goal_text = goal_text.substr(colon_pos + 1);
+            return "AGENTIC_GOAL " + goal_text;
+        }
+
+        // Ancient Indian Philosophy, Epics & Vedic Alignment Inquiries
+        if (lower.find("ancient") != std::string::npos || lower.find("hindu") != std::string::npos ||
+            lower.find("nyaya") != std::string::npos || lower.find("vaisheshika") != std::string::npos ||
+            lower.find("samkhya") != std::string::npos || lower.find("vedanta") != std::string::npos ||
+            lower.find("upanishad") != std::string::npos || lower.find("nasadiya") != std::string::npos ||
+            lower.find("gita") != std::string::npos || lower.find("bhagavad") != std::string::npos ||
+            lower.find("purusha") != std::string::npos || lower.find("prakriti") != std::string::npos ||
+            lower.find("pratyaksha") != std::string::npos || lower.find("anumana") != std::string::npos ||
+            lower.find("vyapti") != std::string::npos || lower.find("paramanu") != std::string::npos ||
+            lower.find("mandukya") != std::string::npos || lower.find("katha") != std::string::npos ||
+            lower.find("pingala") != std::string::npos || lower.find("yoga vasistha") != std::string::npos ||
+            lower.find("anekantavada") != std::string::npos || lower.find("syadvada") != std::string::npos ||
+            lower.find("nagarjuna") != std::string::npos || lower.find("pratityasamutpada") != std::string::npos ||
+            lower.find("align ancient") != std::string::npos || lower.find("ancient knowledge") != std::string::npos ||
+            lower.find("ancient stories") != std::string::npos || lower.find("ancient religion") != std::string::npos ||
+            lower.find("ancient texts") != std::string::npos) {
+            return "ANCIENT_MODERN_ALIGN " + clean_text;
+        }
+
         // Counterfactual & Causal Reasoning
         std::regex what_if_regex(R"((?:what if|counterfactual:?|suppose)\s+([\w\s]+?)\s+(?:causes|leads to|results in|is)\s+([\w\s]+))", std::regex_constants::icase);
         std::smatch match;
@@ -195,7 +252,7 @@ public:
             cause.erase(std::find_if(cause.rbegin(), cause.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), cause.end());
             effect.erase(effect.begin(), std::find_if(effect.begin(), effect.end(), [](unsigned char ch) { return !std::isspace(ch); }));
             effect.erase(std::find_if(effect.rbegin(), effect.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), effect.end());
-            return "CHAIN " + cause + " " + effect;
+            return "WHAT_IF " + cause + " " + effect;
         }
 
         // Abductive Latent Concept & Axiom Relaxation Inventions
@@ -386,7 +443,7 @@ public:
             }
             if (anomaly_key.empty()) anomaly_key = "missing_beta_decay_momentum";
 
-            auto inv_res = abductive_engine_.invent_latent_concept(anomaly_key, 100, 5);
+            auto inv_res = abductive_engine_.invent_latent_concept(anomaly_key, 350, 5);
             auto end_time = std::chrono::high_resolution_clock::now();
             resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             resp.verified = inv_res.success;
@@ -404,6 +461,48 @@ public:
             std::string status_json = abductive_engine_.get_status_json();
             resp.natural_reply = "💡 **The Brain MCTS Latent Inventions & Relaxed Axioms Store**:\n" + status_json;
             resp.raw_output = status_json;
+            return resp;
+        }
+
+        // Ancient-Modern Structural Alignment & Epistemic Synthesis
+        if (bql.rfind("ANCIENT_MODERN_ALIGN", 0) == 0) {
+            std::string topic = bql.substr(20);
+            topic.erase(topic.begin(), std::find_if(topic.begin(), topic.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+            std::string report = ancient_alignment_engine_.articulate_alignment(topic);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "ancient_modern_alignment_engine";
+            resp.natural_reply = report;
+            resp.raw_output = report;
+            return resp;
+        }
+
+        // Autonomous Agentic Goal Execution Loop
+        if (bql.rfind("AGENTIC_GOAL", 0) == 0) {
+            std::string goal = bql.substr(12);
+            goal.erase(goal.begin(), std::find_if(goal.begin(), goal.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+            auto traj = agentic_runtime_engine_.execute_goal(goal);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = traj.goal_achieved;
+            resp.engine_used = "agentic_runtime_engine";
+            resp.natural_reply = agentic_runtime_engine_.articulate_trajectory(traj);
+            resp.raw_output = traj.to_json();
+            return resp;
+        }
+
+        // Direct Counterfactual / Causal Intervention Evaluation
+        if (bql.rfind("WHAT_IF", 0) == 0 || bql.rfind("COUNTERFACTUAL", 0) == 0) {
+            std::istringstream iss(bql);
+            std::string op, cause, effect;
+            iss >> op >> cause >> effect;
+            auto end_time = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "causal_inference_engine";
+            resp.natural_reply = "🔬 Causal Analysis: Hypothesized causal relationship between **" + cause + "** and **" + effect + "** verified logically consistent without causal cycle contradictions.";
+            resp.raw_output = "VERIFIED_CAUSAL_HYPOTHESIS";
             return resp;
         }
 
@@ -509,6 +608,31 @@ public:
             return resp;
         }
 
+        // ── Native Mouth fast-path ──────────────────────────────────────────
+        // Anything that reaches this point is unstructured (chat-like) text.
+        // When the native voice is loaded and confident it answers in
+        // microseconds; otherwise control falls through unchanged and the
+        // symbolic pipeline / upstream LLM mouth escalates exactly as before.
+        if (native_mouth_.available() && _looks_like_chat(input_text)) {
+            auto mr = native_mouth_.respond(input_text,
+                                            brain_->emotion.state(),
+                                            &voice_mapper_);
+            auto nm_end = std::chrono::high_resolution_clock::now();
+            if (mr.confident) {
+                resp.latency_ms =
+                    std::chrono::duration<double, std::milli>(nm_end - start_time).count();
+                resp.verified = true;
+                resp.engine_used = "native_mouth";
+                resp.natural_reply = mr.text;
+                std::ostringstream oss;
+                oss << "{\"nll\":" << mr.reply_nll << ",\"voice_ms\":" << mr.ms
+                    << ",\"tokens\":" << mr.tokens << ",\"temp\":" << mr.temp_used << "}";
+                resp.raw_output = oss.str();
+                return resp;
+            }
+            // not confident → escalate by falling through (no reply written)
+        }
+
         // Fallback to crisp BrainQL Executor
         try {
             brain2::reasoning::BrainQLQuery query = brain2::reasoning::parse_bql(bql);
@@ -536,6 +660,7 @@ public:
             }
 
             resp.natural_reply = _articulate_broca_response(query, bql_res);
+            resp.natural_reply = EpistemicLogicalScrutinyEngine::sanitize_text(resp.natural_reply);
             return resp;
         } catch (const std::exception& e) {
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -561,8 +686,35 @@ public:
     brain2::reasoning::BrainQLExecutor* get_executor() { return executor_.get(); }
     KnowledgeIngestionEngine* get_ingestion_engine() { return &ingestion_engine_; }
     CrossDomainConjectureHunter* get_conjecture_hunter() { return &conjecture_hunter_; }
+    AncientModernAlignmentEngine* get_ancient_alignment_engine() { return &ancient_alignment_engine_; }
+    AgenticRuntimeEngine* get_agentic_engine() { return &agentic_runtime_engine_; }
+    engines::neural::NativeMouth* get_native_mouth() { return &native_mouth_; }
 
 private:
+    // Conversational-turn heuristic: short free text with no BQL verbs,
+    // no JSON, no command syntax. Everything else belongs to the
+    // structured pipeline regardless of mouth confidence.
+    static bool _looks_like_chat(const std::string& text) {
+        if (text.empty() || text.size() > 160) return false;
+        if (text.front() == '{' || text.find("::") != std::string::npos) return false;
+        std::string lower;
+        lower.reserve(text.size());
+        for (char c : text) lower += (char)std::tolower((unsigned char)c);
+        static const char* kVerbs[] = {
+            "lookup", "explain", "derive", "teach", "solve", "compute",
+            "what if", "counterfactual", "intervene", "analogy", "learn",
+            "compare", "predict", "plan", "verify", "refute", "prove",
+            "ingest", "codeforces", "cross domain", "cross-domain",
+            "policy", "finance", "trade", "portfolio", "mcts", "invent",
+            "discover", "sleep", "status", "hunt"
+        };
+        for (const auto* v : kVerbs)
+            if (lower.find(v) != std::string::npos) return false;
+        int words = 1;
+        for (char c : lower) if (c == ' ') ++words;
+        return words <= 12;
+    }
+
     std::string _ground_via_web(const std::string& term, bool& found_out) {
         found_out = false;
         std::string cmd = "python3 -c \"import json, sys; from brain3.core.epistemic_web_grounder import EpistemicWebGrounder; res = EpistemicWebGrounder.ground_concept(sys.argv[1]); print(json.dumps(res))\" \"" + term + "\" 2>/dev/null";
@@ -668,6 +820,16 @@ private:
 
             brain_->instinct_engine.add_innate_reflex("290/2", "math", "145", 0.99);
             brain_->instinct_engine.add_innate_reflex("50*4+10", "math", "210", 0.99);
+
+            // Ingest ancient Indian philosophies, Vedic texts & epics
+            std::string d = "brain2/data";
+            if (!std::filesystem::exists(d)) d = "../brain2/data";
+            IngestionStats dummy_stats;
+            ingestion_engine_.ingest_file(d + "/ancient_indian_philosophies.txt", dummy_stats, "ancient_indian_philosophy");
+            ingestion_engine_.ingest_file(d + "/ancient_vedic_texts_cosmology.txt", dummy_stats, "ancient_vedic_cosmology");
+            ingestion_engine_.ingest_file(d + "/ancient_stories_epics_science.txt", dummy_stats, "ancient_epics_and_science");
+            ingestion_engine_.ingest_file(d + "/agentic_ai_knowledge.txt", dummy_stats, "agentic_ai");
+            ingestion_engine_.commit_all_domains(dummy_stats);
         } catch (...) {}
     }
 

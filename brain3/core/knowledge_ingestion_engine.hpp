@@ -315,7 +315,10 @@ private:
         if (l.find("database") != std::string::npos) return "database";
         if (l.find("math") != std::string::npos) return "mathematics";
         if (l.find("science") != std::string::npos) return "science";
-        if (l.find("finance") != std::string::npos || l.find("market") != std::string::npos || l.find("econ") != std::string::npos) return "economics";
+        if (l.find("ancient_indian") != std::string::npos || l.find("philosophy") != std::string::npos || l.find("nyaya") != std::string::npos || l.find("samkhya") != std::string::npos || l.find("vedanta") != std::string::npos) return "ancient_indian_philosophy";
+        if (l.find("ancient_vedic") != std::string::npos || l.find("upanishad") != std::string::npos || l.find("veda") != std::string::npos) return "ancient_vedic_cosmology";
+        if (l.find("ancient_stories") != std::string::npos || l.find("epic") != std::string::npos || l.find("gita") != std::string::npos) return "ancient_epics_and_science";
+        if (l.find("agentic") != std::string::npos || l.find("agent") != std::string::npos) return "agentic_ai";
         if (l.find("taxonomy") != std::string::npos) return "taxonomy";
         if (l.find("kimi") != std::string::npos) return "physics_experiments";
         return "general_knowledge";

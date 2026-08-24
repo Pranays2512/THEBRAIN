@@ -52,16 +52,22 @@ public class LLMAdapter {
 
         @Override
         public String complete(String prompt, String system) {
-            // Escape quotes and newlines for JSON
-            String p = prompt.replace("\"", "\\\"").replace("\n", "\\n");
-            String s = system.replace("\"", "\\\"").replace("\n", "\\n");
+            // Escape for JSON in the correct order: backslash first (so we do
+            // not double-escape the escapes we are about to add), then quote,
+            // then newlines/carriage returns/tabs.
+            String p = prompt.replace("\\", "\\\\").replace("\"", "\\\"")
+                             .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+            String s = system.replace("\\", "\\\\").replace("\"", "\\\"")
+                             .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
             
             String body = "{\"model\": \"" + model + "\", \"prompt\": \"" + p + "\", \"system\": \"" + s + "\", \"stream\": false, \"options\": {\"temperature\": 0.0}}";
 
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(host + "/api/generate"))
                 .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(180))
+                // Reduced from 180s to 30s: long LLM stalls were blocking
+                // request threads and callers already degrade gracefully.
+                .timeout(Duration.ofSeconds(30))
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 

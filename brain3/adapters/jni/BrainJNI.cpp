@@ -4,12 +4,17 @@
 #include <vector>
 #include <stdexcept>
 #include <sstream>
+#include <cstdio>
+#include <algorithm>
 #include "crisp/engines/reasoning/brainql.hpp"
 
 // Helper to get Brain instance
 inline brain2::Brain* get_brain(jlong handle) {
     return reinterpret_cast<brain2::Brain*>(handle);
 }
+
+// Forward declaration: defined below, needed by early entry points (sleep)
+static std::string json_escape(const std::string& s);
 
 // Helper to convert jstring to std::string
 std::string jstring2string(JNIEnv *env, jstring jstr) {
@@ -50,8 +55,16 @@ jfloatArray vector2jfloatArray(JNIEnv *env, const std::vector<float>& vec) {
  */
 JNIEXPORT jlong JNICALL Java_brain3_BrainNative_init
   (JNIEnv *env, jobject obj, jint somRows, jint somCols, jint nDims) {
-    auto* b = new brain2::Brain(somRows, somCols, nDims);
-    return reinterpret_cast<jlong>(b);
+    try {
+        auto* b = new brain2::Brain(somRows, somCols, nDims);
+        return reinterpret_cast<jlong>(b);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[BrainJNI] init failed: %s\n", e.what());
+        return 0;
+    } catch (...) {
+        std::fprintf(stderr, "[BrainJNI] init failed: unknown exception\n");
+        return 0;
+    }
 }
 
 /*
@@ -75,35 +88,41 @@ JNIEXPORT void JNICALL Java_brain3_BrainNative_loadComponents
   (JNIEnv *env, jobject obj, jlong handle, jstring predictorPath, jstring languagePath, jstring somPath, jstring episodicPath, jstring emotionPath, jstring selfPath, jstring symbolicPath, jstring bindingPath, jstring bgPath, jstring proceduresPath, jstring hpredPath) {
     auto* b = get_brain(handle);
     if (!b) return;
-    
-    b->load_components(
-        jstring2string(env, predictorPath),
-        jstring2string(env, languagePath),
-        jstring2string(env, somPath),
-        jstring2string(env, episodicPath),
-        jstring2string(env, emotionPath),
-        jstring2string(env, selfPath),
-        jstring2string(env, symbolicPath),
-        jstring2string(env, bindingPath),
-        jstring2string(env, bgPath),
-        jstring2string(env, proceduresPath),
-        jstring2string(env, hpredPath)
-    );
-    
-    b->language.freeze_vocabulary(true);
-    std::vector<int> active_indices;
-    std::string dirPath = jstring2string(env, predictorPath);
-    dirPath = dirPath.substr(0, dirPath.find_last_of('/'));
-    std::ifstream av_file(dirPath + "/active_vocab.txt");
-    if (av_file.is_open()) {
-        int idx;
-        while (av_file >> idx) active_indices.push_back(idx);
-        av_file.close();
-    } else {
-        active_indices.resize(b->language.vocab_size());
-        for (int i = 0; i < b->language.vocab_size(); i++) active_indices[i] = i;
+
+    try {
+        b->load_components(
+            jstring2string(env, predictorPath),
+            jstring2string(env, languagePath),
+            jstring2string(env, somPath),
+            jstring2string(env, episodicPath),
+            jstring2string(env, emotionPath),
+            jstring2string(env, selfPath),
+            jstring2string(env, symbolicPath),
+            jstring2string(env, bindingPath),
+            jstring2string(env, bgPath),
+            jstring2string(env, proceduresPath),
+            jstring2string(env, hpredPath)
+        );
+
+        b->language.freeze_vocabulary(true);
+        std::vector<int> active_indices;
+        std::string dirPath = jstring2string(env, predictorPath);
+        dirPath = dirPath.substr(0, dirPath.find_last_of('/'));
+        std::ifstream av_file(dirPath + "/active_vocab.txt");
+        if (av_file.is_open()) {
+            int idx;
+            while (av_file >> idx) active_indices.push_back(idx);
+            av_file.close();
+        } else {
+            active_indices.resize(b->language.vocab_size());
+            for (int i = 0; i < b->language.vocab_size(); i++) active_indices[i] = i;
+        }
+        b->set_active_vocab(active_indices);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[BrainJNI] loadComponents failed: %s\n", e.what());
+    } catch (...) {
+        std::fprintf(stderr, "[BrainJNI] loadComponents failed: unknown exception\n");
     }
-    b->set_active_vocab(active_indices);
 }
 
 /*
@@ -228,6 +247,7 @@ JNIEXPORT jfloat JNICALL Java_brain3_BrainNative_getSelfMeanRecentError
 JNIEXPORT jfloatArray JNICALL Java_brain3_BrainNative_getLastEpisode
   (JNIEnv *env, jobject obj, jlong handle) {
     auto* b = get_brain(handle);
+    if (!b) return env->NewFloatArray(0);
     return vector2jfloatArray(env, b->episodic.get_last_episode());
 }
 
@@ -422,7 +442,7 @@ JNIEXPORT void JNICALL Java_brain3_BrainNative_daydream
 JNIEXPORT jstring JNICALL Java_brain3_BrainNative_sleep
   (JNIEnv *env, jobject obj, jlong handle, jstring gateLogPath, jstring checkpointDir) {
     auto* b = get_brain(handle);
-    if (!b) return env->NewStringUTF("{\"error\": \"Brain instance is null\"}");
+    if (!b) return env->NewStringUTF("{\"status\": \"error\", \"error\": \"Brain instance is null\"}");
 
     const char* glp = env->GetStringUTFChars(gateLogPath, 0);
     const char* cpd = env->GetStringUTFChars(checkpointDir, 0);
@@ -433,21 +453,30 @@ JNIEXPORT jstring JNICALL Java_brain3_BrainNative_sleep
     if (glp) env->ReleaseStringUTFChars(gateLogPath, glp);
     if (cpd) env->ReleaseStringUTFChars(checkpointDir, cpd);
 
-    auto report = b->sleep(gl_str, cp_str);
+    try {
+        auto report = b->sleep(gl_str, cp_str);
 
-    std::string json = "{";
-    json += "\"phase1_rules\": " + std::to_string(report.phase1_rules_created) + ", ";
-    json += "\"phase1_facts_pruned\": " + std::to_string(report.phase1_facts_pruned) + ", ";
-    json += "\"phase1_exceptions\": " + std::to_string(report.phase1_exceptions_added) + ", ";
-    json += "\"phase2_records\": " + std::to_string(report.phase2_telemetry_records) + ", ";
-    json += "\"phase2_triples_trained\": " + std::to_string(report.phase2_triples_trained) + ", ";
-    json += "\"phase2_loss_before\": " + std::to_string(report.phase2_avg_loss_before) + ", ";
-    json += "\"phase2_loss_after\": " + std::to_string(report.phase2_avg_loss_after) + ", ";
-    json += "\"phase3_som_decayed\": " + std::to_string(report.phase3_som_nodes_decayed) + ", ";
-    json += "\"phase4_checkpoint\": " + std::string(report.phase4_checkpoint_success ? "true" : "false");
-    json += "}";
+        std::string json = "{";
+        json += "\"phase1_rules\": " + std::to_string(report.phase1_rules_created) + ", ";
+        json += "\"phase1_facts_pruned\": " + std::to_string(report.phase1_facts_pruned) + ", ";
+        json += "\"phase1_exceptions\": " + std::to_string(report.phase1_exceptions_added) + ", ";
+        json += "\"phase2_records\": " + std::to_string(report.phase2_telemetry_records) + ", ";
+        json += "\"phase2_triples_trained\": " + std::to_string(report.phase2_triples_trained) + ", ";
+        json += "\"phase2_loss_before\": " + std::to_string(report.phase2_avg_loss_before) + ", ";
+        json += "\"phase2_loss_after\": " + std::to_string(report.phase2_avg_loss_after) + ", ";
+        json += "\"phase3_som_decayed\": " + std::to_string(report.phase3_som_nodes_decayed) + ", ";
+        json += "\"phase4_checkpoint\": " + std::string(report.phase4_checkpoint_success ? "true" : "false");
+        json += "}";
 
-    return env->NewStringUTF(json.c_str());
+        return env->NewStringUTF(json.c_str());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[BrainJNI] sleep failed: %s\n", e.what());
+        std::string err = "{\"status\": \"error\", \"error\": \"" + json_escape(std::string(e.what())) + "\"}";
+        return env->NewStringUTF(err.c_str());
+    } catch (...) {
+        std::fprintf(stderr, "[BrainJNI] sleep failed: unknown exception\n");
+        return env->NewStringUTF("{\"status\": \"error\", \"error\": \"sleep failed: unknown exception\"}");
+    }
 }
 
 /*
@@ -470,7 +499,15 @@ JNIEXPORT jfloatArray JNICALL Java_brain3_BrainNative_perceive
 JNIEXPORT jfloat JNICALL Java_brain3_BrainNative_getLastConfidence
   (JNIEnv *env, jobject obj, jlong handle) {
     auto* b = get_brain(handle);
-    return 0.0f;
+    if (!b) return 0.0f;
+    // The Brain stores no literal "last confidence" field. Wire the most honest
+    // available signal: derive it from the self-model's mean recent prediction
+    // error using the same convention as ExternalRouter::pack() in
+    // fuzzy/core/externalrouter.hpp (confidence = 1 - min(error, 1), clamped to [0,1]).
+    float conf = 1.0f - b->self_model.mean_recent_error();
+    if (conf < 0.0f) conf = 0.0f;
+    if (conf > 1.0f) conf = 1.0f;
+    return conf;
 }
 
 /*
@@ -524,153 +561,155 @@ static void log_gate_decision(const std::string& subj, const std::string& rel, c
 JNIEXPORT jstring JNICALL Java_brain3_BrainNative_executeBrainQL(
     JNIEnv* env, jobject obj, jlong handle, jstring query) {
     auto* b = get_brain(handle);
-    if (!b) return env->NewStringUTF("{\"error\": \"Brain instance is null\"}");
+    if (!b) return env->NewStringUTF("{\"status\": \"error\", \"error\": \"Brain instance is null\"}");
     
     std::string qstr = jstring2string(env, query);
     
-    if (qstr.find("CHAT ") == 0) {
-        std::string chat_text = qstr.substr(5);
-        std::string lower_chat = chat_text;
-        std::transform(lower_chat.begin(), lower_chat.end(), lower_chat.begin(), ::tolower);
-        
-        std::string subj = "unknown";
-        std::string rel = "unknown";
-        std::string obj = "unknown";
-        std::string objType = "atomic";
-        std::string source = "unknown";
-        bool verified = false;
-        bool known = false;
-        
-        if (lower_chat.find("hello") != std::string::npos || 
-            lower_chat.find("hi") != std::string::npos ||
-            lower_chat.find("greeting") != std::string::npos) {
-            subj = "user";
-            rel = "intent";
-            obj = "greeting";
-            objType = "atomic";
-            source = "greeting";
-            verified = true;
-            known = true;
-        } else if (lower_chat.find("how are you") != std::string::npos ||
-                   lower_chat.find("status") != std::string::npos) {
-            subj = "self";
-            rel = "emotion";
-            float val = b->emotion.valence;
-            if (val > 0.6f) obj = "happy";
-            else if (val < 0.4f) obj = "sad";
-            else obj = "neutral";
-            objType = "atomic";
-            source = "emotion";
-            verified = true;
-            known = true;
-        } else {
-            // Open chit-chat: use neural predictor for associative musing
-            b->reset_sequence();
-            std::stringstream ss(chat_text);
-            std::string word;
-            std::vector<float> last_vec;
-            while (ss >> word) {
-                std::string clean_word;
-                for (char c : word) {
-                    if (std::isalpha(c)) clean_word += std::tolower(c);
-                }
-                if (!clean_word.empty()) {
-                    auto vec = b->language.encode(clean_word);
-                    b->perceive(vec);
-                    last_vec = vec;
-                }
-            }
-            
-            auto tr = b->think(4);
-            
-            if (tr.words.empty() && !last_vec.empty()) {
-                auto nearest = b->language.decode(last_vec, 5);
-                for (const auto& res : nearest) {
-                    if (chat_text.find(res.first) == std::string::npos) {
-                        tr.words.push_back(res.first);
-                    }
-                }
-            }
-            
-            // TEST BACKDOORS for deterministic gate testing
-            if (chat_text == "TEST_GATE_1") tr.words = {"Paris", "capital", "France"};
-            else if (chat_text == "TEST_GATE_2") tr.words = {"paris", "capital", "france"};
-            else if (chat_text == "TEST_GATE_3") tr.words = {"paris", "capital", "london"};
-            else if (chat_text == "TEST_GATE_4") tr.words = {"dog", "drives", "car"};
-
-            std::string raw_thoughts = "";
-            for (const auto& w : tr.words) {
-                if (!raw_thoughts.empty()) raw_thoughts += " ";
-                raw_thoughts += w;
-            }
-            if (raw_thoughts.empty()) raw_thoughts = "silence";
-            
-            // Associative Triple Pre-Verification Gate
-            bool gate_passed = false;
-            if (tr.words.size() == 3) {
-                std::string p_subj = tr.words[0];
-                std::string p_rel = tr.words[1];
-                std::string p_obj = tr.words[2];
-                
-                std::string p_subj_lower = to_lower(p_subj);
-                std::string p_rel_lower = to_lower(p_rel);
-                std::string p_obj_lower = to_lower(p_obj);
-                
-                // Case-insensitive lookup against the crisp store facts
-                std::string store_truth = "";
-                for (const auto& f : b->brainql_engine.facts) {
-                    if (to_lower(f.subj) == p_subj_lower && to_lower(f.rel) == p_rel_lower) {
-                        store_truth = to_lower(f.obj);
-                        break;
-                    }
-                }
-                
-                if (store_truth.empty()) {
-                    log_gate_decision(p_subj, p_rel, p_obj, "", "not_found");
-                } else if (store_truth == p_obj_lower) {
-                    log_gate_decision(p_subj, p_rel, p_obj, store_truth, "verified_atomic");
-                    subj = p_subj;
-                    rel = p_rel;
-                    obj = p_obj;
-                    objType = "atomic";
-                    source = "gate_verified_associative";
-                    verified = true;
-                    known = true;
-                    gate_passed = true;
-                } else {
-                    log_gate_decision(p_subj, p_rel, p_obj, store_truth, "rejected_mismatch");
-                }
-            }
-            
-            if (!gate_passed) {
-                subj = "internal";
-                rel = "association";
-                obj = raw_thoughts;
-                objType = "freetext";
-                source = "associative_musing";
-                verified = false;
-                known = false;
-            }
-        }
-        
-        std::string escaped_obj = json_escape(obj);
-        std::string escaped_res = json_escape(subj + " " + rel + " " + obj);
-
-        std::string json = "{";
-        json += "\"op\": \"CHAT\",";
-        json += "\"subj\": \"" + subj + "\",";
-        json += "\"rel\": \"" + rel + "\",";
-        json += "\"obj\": \"" + escaped_obj + "\",";
-        json += "\"objType\": \"" + objType + "\",";
-        json += "\"result\": \"" + escaped_res + "\",";
-        json += "\"verified\": " + std::string(verified ? "true" : "false") + ",";
-        json += "\"known\": " + std::string(known ? "true" : "false") + ",";
-        json += "\"source\": \"" + source + "\"";
-        json += "}";
-        return env->NewStringUTF(json.c_str());
-    }
-
+    // All C++ work must stay inside this try block: a native exception that
+    // crosses the JNI boundary terminates the process via std::terminate.
     try {
+        if (qstr.find("CHAT ") == 0) {
+            std::string chat_text = qstr.substr(5);
+            std::string lower_chat = chat_text;
+            std::transform(lower_chat.begin(), lower_chat.end(), lower_chat.begin(), ::tolower);
+            
+            std::string subj = "unknown";
+            std::string rel = "unknown";
+            std::string obj = "unknown";
+            std::string objType = "atomic";
+            std::string source = "unknown";
+            bool verified = false;
+            bool known = false;
+            
+            if (lower_chat.find("hello") != std::string::npos || 
+                lower_chat.find("hi") != std::string::npos ||
+                lower_chat.find("greeting") != std::string::npos) {
+                subj = "user";
+                rel = "intent";
+                obj = "greeting";
+                objType = "atomic";
+                source = "greeting";
+                verified = true;
+                known = true;
+            } else if (lower_chat.find("how are you") != std::string::npos ||
+                       lower_chat.find("status") != std::string::npos) {
+                subj = "self";
+                rel = "emotion";
+                float val = b->emotion.valence;
+                if (val > 0.6f) obj = "happy";
+                else if (val < 0.4f) obj = "sad";
+                else obj = "neutral";
+                objType = "atomic";
+                source = "emotion";
+                verified = true;
+                known = true;
+            } else {
+                // Open chit-chat: use neural predictor for associative musing
+                b->reset_sequence();
+                std::stringstream ss(chat_text);
+                std::string word;
+                std::vector<float> last_vec;
+                while (ss >> word) {
+                    std::string clean_word;
+                    for (char c : word) {
+                        if (std::isalpha(c)) clean_word += std::tolower(c);
+                    }
+                    if (!clean_word.empty()) {
+                        auto vec = b->language.encode(clean_word);
+                        b->perceive(vec);
+                        last_vec = vec;
+                    }
+                }
+                
+                auto tr = b->think(4);
+                
+                if (tr.words.empty() && !last_vec.empty()) {
+                    auto nearest = b->language.decode(last_vec, 5);
+                    for (const auto& res : nearest) {
+                        if (chat_text.find(res.first) == std::string::npos) {
+                            tr.words.push_back(res.first);
+                        }
+                    }
+                }
+                
+                // TEST BACKDOORS for deterministic gate testing
+                if (chat_text == "TEST_GATE_1") tr.words = {"Paris", "capital", "France"};
+                else if (chat_text == "TEST_GATE_2") tr.words = {"paris", "capital", "france"};
+                else if (chat_text == "TEST_GATE_3") tr.words = {"paris", "capital", "london"};
+                else if (chat_text == "TEST_GATE_4") tr.words = {"dog", "drives", "car"};
+
+                std::string raw_thoughts = "";
+                for (const auto& w : tr.words) {
+                    if (!raw_thoughts.empty()) raw_thoughts += " ";
+                    raw_thoughts += w;
+                }
+                if (raw_thoughts.empty()) raw_thoughts = "silence";
+                
+                // Associative Triple Pre-Verification Gate
+                bool gate_passed = false;
+                if (tr.words.size() == 3) {
+                    std::string p_subj = tr.words[0];
+                    std::string p_rel = tr.words[1];
+                    std::string p_obj = tr.words[2];
+                    
+                    std::string p_subj_lower = to_lower(p_subj);
+                    std::string p_rel_lower = to_lower(p_rel);
+                    std::string p_obj_lower = to_lower(p_obj);
+                    
+                    // Case-insensitive lookup against the crisp store facts
+                    std::string store_truth = "";
+                    for (const auto& f : b->brainql_engine.facts) {
+                        if (to_lower(f.subj) == p_subj_lower && to_lower(f.rel) == p_rel_lower) {
+                            store_truth = to_lower(f.obj);
+                            break;
+                        }
+                    }
+                    
+                    if (store_truth.empty()) {
+                        log_gate_decision(p_subj, p_rel, p_obj, "", "not_found");
+                    } else if (store_truth == p_obj_lower) {
+                        log_gate_decision(p_subj, p_rel, p_obj, store_truth, "verified_atomic");
+                        subj = p_subj;
+                        rel = p_rel;
+                        obj = p_obj;
+                        objType = "atomic";
+                        source = "gate_verified_associative";
+                        verified = true;
+                        known = true;
+                        gate_passed = true;
+                    } else {
+                        log_gate_decision(p_subj, p_rel, p_obj, store_truth, "rejected_mismatch");
+                    }
+                }
+                
+                if (!gate_passed) {
+                    subj = "internal";
+                    rel = "association";
+                    obj = raw_thoughts;
+                    objType = "freetext";
+                    source = "associative_musing";
+                    verified = false;
+                    known = false;
+                }
+            }
+            
+            std::string escaped_obj = json_escape(obj);
+            std::string escaped_res = json_escape(subj + " " + rel + " " + obj);
+
+            std::string json = "{";
+            json += "\"op\": \"CHAT\",";
+            json += "\"subj\": \"" + json_escape(subj) + "\",";
+            json += "\"rel\": \"" + json_escape(rel) + "\",";
+            json += "\"obj\": \"" + escaped_obj + "\",";
+            json += "\"objType\": \"" + objType + "\",";
+            json += "\"result\": \"" + escaped_res + "\",";
+            json += "\"verified\": " + std::string(verified ? "true" : "false") + ",";
+            json += "\"known\": " + std::string(known ? "true" : "false") + ",";
+            json += "\"source\": \"" + json_escape(source) + "\"";
+            json += "}";
+            return env->NewStringUTF(json.c_str());
+        }
+
         brain2::reasoning::BrainQLQuery bq = brain2::reasoning::parse_bql(qstr);
         brain2::reasoning::BrainQLExecutor exec(&b->brainql_engine, nullptr, &b->math_engine, &b->code_engine, &b->policy_memory, &b->vision_engine, &b->causal_engine, &b->analogy_engine, &b->metacognitive_engine, &b->discovery_engine, &b->curiosity_engine, &b->instinct_engine);
         brain2::reasoning::BrainQLResult res = exec.run(bq);
@@ -685,14 +724,17 @@ JNIEXPORT jstring JNICALL Java_brain3_BrainNative_executeBrainQL(
                           (res.op == "DISCOVER" || res.op == "INFER_EQUATION") ? "discovery_engine" : 
                           (res.op == "CURIOSITY_GAPS" || res.op == "CURIOSITY_TICK" || res.op == "AUTONOMOUS_CYCLE" || res.op == "CURIOSITY_OBSERVE") ? "curiosity_engine" : 
                           (res.op == "INSTINCT" || res.op == "INSTINCT_FIRE" || res.op == "INSTINCT_TRAIN" || res.op == "INSTINCT_STATUS" || res.op == "INSTINCT_PENALIZE") ? "instinct_engine" : "lookup";
+        std::string escaped_op = json_escape(res.op);
+        std::string escaped_subj = json_escape(res.subj);
+        std::string escaped_rel = json_escape(res.rel);
         std::string escaped_obj = json_escape(res.obj);
         std::string escaped_val = json_escape(res.value);
 
         // Simple JSON serialization
         std::string json = "{";
-        json += "\"op\": \"" + res.op + "\",";
-        json += "\"subj\": \"" + res.subj + "\",";
-        json += "\"rel\": \"" + res.rel + "\",";
+        json += "\"op\": \"" + escaped_op + "\",";
+        json += "\"subj\": \"" + escaped_subj + "\",";
+        json += "\"rel\": \"" + escaped_rel + "\",";
         json += "\"obj\": \"" + escaped_obj + "\",";
         json += "\"objType\": \"atomic\",";
         json += "\"result\": \"" + escaped_val + "\",";
@@ -709,7 +751,11 @@ JNIEXPORT jstring JNICALL Java_brain3_BrainNative_executeBrainQL(
         json += "}";
         return env->NewStringUTF(json.c_str());
     } catch (const std::exception& e) {
-        std::string err = "{\"error\": \"" + json_escape(std::string(e.what())) + "\"}";
+        std::fprintf(stderr, "[BrainJNI] executeBrainQL failed: %s\n", e.what());
+        std::string err = "{\"status\": \"error\", \"error\": \"" + json_escape(std::string(e.what())) + "\"}";
         return env->NewStringUTF(err.c_str());
+    } catch (...) {
+        std::fprintf(stderr, "[BrainJNI] executeBrainQL failed: unknown exception\n");
+        return env->NewStringUTF("{\"status\": \"error\", \"error\": \"executeBrainQL failed: unknown exception\"}");
     }
 }

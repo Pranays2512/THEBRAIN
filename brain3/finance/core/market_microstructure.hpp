@@ -54,34 +54,44 @@ public:
         tick.bid_vol = bid_vol;
         tick.ask_vol = ask_vol;
 
-        // Lee-Ready Trade Direction Classification
-        double mid = (best_bid + best_ask) * 0.5;
-        if (price > mid + 1e-9) {
-            tick.trade_sign = 1; // Buyer initiated
-        } else if (price < mid - 1e-9) {
-            tick.trade_sign = -1; // Seller initiated
+        // Lee-Ready Trade Direction Classification.
+        // Guard the mid: with crossed/zero/garbage quotes the mid is meaningless
+        // (a 0 mid would classify every trade as buyer-initiated), so mark the
+        // tick unknown instead of classifying it.
+        const bool quotes_valid = (best_bid > 1e-9 && best_ask > 1e-9 && best_ask >= best_bid);
+        if (!quotes_valid) {
+            tick.trade_sign = 0; // Unknown — skip classification for this tick
         } else {
-            // Tick rule fallback
-            if (!tick_history_.empty()) {
-                double last_p = tick_history_.back().price;
-                if (price > last_p) tick.trade_sign = 1;
-                else if (price < last_p) tick.trade_sign = -1;
-                else tick.trade_sign = tick_history_.back().trade_sign;
+            double mid = (best_bid + best_ask) * 0.5;
+            if (price > mid + 1e-9) {
+                tick.trade_sign = 1; // Buyer initiated
+            } else if (price < mid - 1e-9) {
+                tick.trade_sign = -1; // Seller initiated
             } else {
-                tick.trade_sign = 0;
+                // Tick rule fallback
+                if (!tick_history_.empty()) {
+                    double last_p = tick_history_.back().price;
+                    if (price > last_p) tick.trade_sign = 1;
+                    else if (price < last_p) tick.trade_sign = -1;
+                    else tick.trade_sign = tick_history_.back().trade_sign;
+                } else {
+                    tick.trade_sign = 0;
+                }
             }
         }
 
         // Order Flow Imbalance (OFI) Calculation:
         // Delta V_bid: if bid > prev_bid: bid_vol; if bid == prev_bid: bid_vol - prev_bid_vol; else: 0
         // Delta V_ask: if ask < prev_ask: ask_vol; if ask == prev_ask: ask_vol - prev_ask_vol; else: 0
+        // Both sides require a valid previous quote so the FIRST tick does not
+        // inject a phantom flow spike (e.g. delta_bid = full bid_vol vs prev=0).
         double delta_bid = 0.0;
-        if (best_bid > prev_bid_) delta_bid = bid_vol;
-        else if (std::abs(best_bid - prev_bid_) < 1e-9) delta_bid = bid_vol - prev_bid_vol_;
+        if (prev_bid_ > 0.0 && best_bid > prev_bid_) delta_bid = bid_vol;
+        else if (prev_bid_ > 0.0 && std::abs(best_bid - prev_bid_) < 1e-9) delta_bid = bid_vol - prev_bid_vol_;
 
         double delta_ask = 0.0;
-        if (best_ask < prev_ask_ && prev_ask_ > 0.0) delta_ask = ask_vol;
-        else if (std::abs(best_ask - prev_ask_) < 1e-9) delta_ask = ask_vol - prev_ask_vol_;
+        if (prev_ask_ > 0.0 && best_ask < prev_ask_) delta_ask = ask_vol;
+        else if (prev_ask_ > 0.0 && std::abs(best_ask - prev_ask_) < 1e-9) delta_ask = ask_vol - prev_ask_vol_;
 
         double tick_ofi = delta_bid - delta_ask;
         rolling_ofi_ = 0.9 * rolling_ofi_ + 0.1 * tick_ofi;

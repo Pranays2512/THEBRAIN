@@ -828,6 +828,12 @@ public:
   }
 
   void expand_dims(int new_dims) {
+      assert_cannot_expand(new_dims);   // always throws: resize unsupported
+  }
+
+  // Explicit pre-check so callers (e.g. Brain::expand_dims) can validate the
+  // whole operation BEFORE mutating any organ. Always throws.
+  void assert_cannot_expand(int new_dims) const {
       std::lock_guard<std::mutex> lock(*mtx_);
       if (new_dims <= input_dim) return;
       // Resizing the LSTM weight matrices and LM head in place is not implemented.

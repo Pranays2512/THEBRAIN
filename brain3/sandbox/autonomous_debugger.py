@@ -97,9 +97,17 @@ class AutonomousDebugger:
             repaired = code.replace("/ 2", "// 2")
             return True, repaired
 
-        # 4. ZeroDivisionError
+        # 4. ZeroDivisionError — guard ONLY bare division expressions, not strings/comments/floor-div
         if "ZeroDivisionError" in error_trace:
-            repaired = re.sub(r"([a-zA-Z0-9_]+)\s*/\s*([a-zA-Z0-9_]+)", r"(\1 / \2 if \2 != 0 else 0)", code)
-            return True, repaired
+            # Match `a / b` where b is a simple identifier or numeric literal and
+            # the slash is NOT part of floor-division (//) or a comment (#).
+            # Replacement wraps only the denominator: (a / (b if b != 0 else 1))
+            repaired = re.sub(
+                r'(?<![/#])(?<!/)\b([A-Za-z_]\w*)\s*/\s*(?!/)([A-Za-z_]\w*)\b',
+                r'(\1 / (\2 if \2 != 0 else 1))',
+                code
+            )
+            if repaired != code:
+                return True, repaired
 
         return False, code

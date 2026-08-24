@@ -11,6 +11,7 @@ Streams hundreds of live instruments concurrently across:
 """
 
 import sys
+import os
 import json
 import time
 import ssl
@@ -83,9 +84,16 @@ class MultiStreamMarketFeed:
         self.running = True
         self.latest_prices: Dict[str, MultiAssetTick] = {}
 
+        # TLS: certificate verification is ON by default (CERT_REQUIRED via the
+        # default SSL context). Insecure mode is a deliberate escape hatch for
+        # environments where a feed genuinely breaks under verified TLS — it must
+        # be opted into EXPLICITLY via BRAIN_INSECURE_FEEDS=1 and is never silent:
+        # enabling it DISABLES ALL CERTIFICATE VERIFICATION (MITM risk).
         self.ssl_ctx = ssl.create_default_context()
-        self.ssl_ctx.check_hostname = False
-        self.ssl_ctx.verify_mode = ssl.CERT_NONE
+        if os.environ.get("BRAIN_INSECURE_FEEDS") == "1":
+            # WARNING: insecure — do not enable in production.
+            self.ssl_ctx.check_hostname = False
+            self.ssl_ctx.verify_mode = ssl.CERT_NONE
 
         # Threads
         self.ws_thread: Optional[threading.Thread] = None
@@ -109,7 +117,7 @@ class MultiStreamMarketFeed:
             uri = "wss://stream.binance.com:9443/ws/!miniTicker@arr"
             while self.running:
                 try:
-                    async with websockets.connect(uri, ping_interval=20, ping_timeout=10) as ws:
+                    async with websockets.connect(uri, ping_interval=20, ping_timeout=10, ssl=self.ssl_ctx) as ws:
                         while self.running:
                             msg = await ws.recv()
                             data = json.loads(msg)

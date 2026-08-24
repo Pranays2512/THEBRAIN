@@ -37,6 +37,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from brain3.finance.adapters.real_exchange_feed import RealExchangeFeed, RealMarketTick
+from brain3.finance.core.alpha_conviction import canonical_win_probability
 
 @dataclass
 class RealVerifiedTradeRecord:
@@ -147,7 +148,8 @@ class RealMarketVerificationEngine:
         # 3. Dynamic Half-Kelly Position Sizing (Scales continuously with Equity)
         # Sizing = max(0.001, (Equity - Ruin Floor) * Half_Kelly)
         survival_buffer = max(0.0001, self.current_equity - self.ruin_floor)
-        win_prob = 0.53 + 0.25 * (alpha_score - 0.50)
+        # alpha_score is clamped to [0.10, 0.95] ⊂ [0, 1] above — canonical mapping (M5 fix)
+        win_prob = canonical_win_probability(alpha_score)
         win_loss_ratio = 1.35 + 0.40 * alpha_score
         kelly_fraction = max(0.02, min(0.25, (win_prob * (win_loss_ratio + 1.0) - 1.0) / win_loss_ratio))
         half_kelly = kelly_fraction * 0.5

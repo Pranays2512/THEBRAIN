@@ -63,6 +63,52 @@ add_phase_test(test_phase6_synth      test_phase6_synth.cpp)
 add_phase_test(test_phase7_reasoning  test_phase7_reasoning.cpp)
 add_phase_test(test_phase8_integration test_phase8_integration.cpp)
 
+# ── STAMLAT v2 (trainable micro-LM) ───────────────────────────────────────────
+add_phase_test(test_stamlat_transformer test_stamlat_transformer.cpp)
+add_executable(demo_stamlat_chat demo_stamlat_chat.cpp)
+target_include_directories(demo_stamlat_chat PRIVATE .)
+target_link_libraries(demo_stamlat_chat PRIVATE ${PLATFORM_LIBS})
+
+# ── STAMLAT mouth v3 (word tokens + KV-cache streaming + constrained sampling) ─
+add_phase_test(test_stamlat_streaming test_stamlat_streaming.cpp)
+add_executable(demo_stamlat_mouth demo_stamlat_mouth.cpp)
+target_include_directories(demo_stamlat_mouth PRIVATE .)
+target_link_libraries(demo_stamlat_mouth PRIVATE ${PLATFORM_LIBS})
+
+# ── STAMLAT voice (emotion coupling + style loop / Discovery-for-voice) ───────
+add_phase_test(test_stamlat_voice test_stamlat_voice.cpp)
+add_executable(demo_stamlat_voice demo_stamlat_voice.cpp)
+target_include_directories(demo_stamlat_voice PRIVATE .)
+target_link_libraries(demo_stamlat_voice PRIVATE ${PLATFORM_LIBS})
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_stamlat_voice PRIVATE -O2)
+    target_compile_options(demo_stamlat_voice PRIVATE -O2)
+endif()
+
+# ── Native mouth (production mount) ───────────────────────────────────────────
+add_phase_test(test_native_mouth test_native_mouth.cpp)
+add_executable(train_native_mouth train_native_mouth.cpp)
+target_include_directories(train_native_mouth PRIVATE .)
+target_link_libraries(train_native_mouth PRIVATE ${PLATFORM_LIBS})
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_native_mouth PRIVATE -O2)
+    target_compile_options(train_native_mouth PRIVATE -O2)
+endif()
+
+# ── Mouth ctx-scaling benchmark ───────────────────────────────────────────────
+add_executable(bench_stamlat_ctx benchmarks/bench_stamlat_ctx.cpp)
+target_include_directories(bench_stamlat_ctx PRIVATE .)
+target_link_libraries(bench_stamlat_ctx PRIVATE ${PLATFORM_LIBS})
+target_compile_options(bench_stamlat_ctx PRIVATE -O2)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_stamlat_streaming PRIVATE -O2)
+    target_compile_options(demo_stamlat_mouth PRIVATE -O2)
+endif()
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_stamlat_transformer PRIVATE -O2)
+    target_compile_options(demo_stamlat_chat PRIVATE -O2)
+endif()
+
 # ── Per-engine test targets ───────────────────────────────────────────────────
 add_phase_test(test_math_engines
     crisp/engines/math/math_full_test.cpp)
@@ -155,6 +201,10 @@ add_test(NAME phase7  COMMAND test_phase7_reasoning)
 add_test(NAME phase8  COMMAND test_phase8_integration)
 add_test(NAME code_engine  COMMAND code_engine_test)
 add_test(NAME crisp_store  COMMAND crisp_store_test)
+add_test(NAME stamlat_transformer COMMAND test_stamlat_transformer)
+add_test(NAME stamlat_streaming  COMMAND test_stamlat_streaming)
+add_test(NAME stamlat_voice      COMMAND test_stamlat_voice)
+add_test(NAME native_mouth       COMMAND test_native_mouth)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")

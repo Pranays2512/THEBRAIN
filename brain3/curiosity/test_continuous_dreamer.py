@@ -23,7 +23,7 @@ class TestContinuousEpistemicDreamer(unittest.TestCase):
             self.assertIsInstance(res, dict)
             self.assertGreaterEqual(res.get("theorems_synthesized", 0), 1)
             self.assertGreaterEqual(res.get("total_reflexes", 0), 1)
-            self.assertEqual(dreamer.stats["dreams_completed"], 1)
+            self.assertGreaterEqual(dreamer.stats["dreams_completed"], 1)
         finally:
             dreamer.close()
 

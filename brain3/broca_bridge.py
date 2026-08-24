@@ -19,12 +19,13 @@ Endpoints:
 """
 
 import asyncio
+import hmac
 import json
 import os
 import sys
 import time
 from typing import Optional
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -35,13 +36,48 @@ app = FastAPI(
     version="3.0.0"
 )
 
+# ── Network exposure hardening (M7) ──────────────────────────────────────────
+# Default bind is loopback only; override with BRAIN_BRIDGE_HOST if the bridge
+# must be reachable from other machines (then set BRAIN_BRIDGE_TOKEN as well).
+BRIDGE_BIND_HOST = os.environ.get("BRAIN_BRIDGE_HOST", "127.0.0.1")
+
+# CORS: no wildcard origins with credentials. Defaults cover local development
+# frontends; override with BRAIN_BRIDGE_ORIGINS (comma-separated absolute origins).
+_DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+_allowed_origins_env = os.environ.get("BRAIN_BRIDGE_ORIGINS", "")
+ALLOWED_ORIGINS = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()] or _DEFAULT_ALLOWED_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    # NOTE: allow_credentials intentionally NOT set (incompatible with wildcard
+    # origin lists anyway); bearer-token auth below protects stateful routes.
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional bearer-token guard for /finance/* routes: when BRAIN_BRIDGE_TOKEN is
+# set, requests must carry "Authorization: Bearer <token>" or they are rejected.
+BRAIN_BRIDGE_TOKEN = os.environ.get("BRAIN_BRIDGE_TOKEN", "").strip()
+
+@app.middleware("http")
+async def bearer_token_guard(request: Request, call_next):
+    if BRAIN_BRIDGE_TOKEN and request.url.path.startswith("/finance"):
+        provided = request.headers.get("authorization", "")
+        expected = f"Bearer {BRAIN_BRIDGE_TOKEN}"
+        if not hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8")):
+            return JSONResponse(status_code=401, content={"detail": "Missing or invalid bearer token"})
+    return await call_next(request)
+
+# Max seconds to wait for a single C++ Mind Core response before failing fast (H6).
+BRAIN_CORE_TIMEOUT = float(os.environ.get("BRAIN_CORE_TIMEOUT", "30"))
 
 BRAIN_MASTER_BIN = os.path.join(os.path.dirname(__file__), "brain_master")
 if not os.path.exists(BRAIN_MASTER_BIN):
@@ -59,9 +95,22 @@ class BrainProcessManager:
                 self.binary_path, "--json-stream",
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                # stderr content is never consumed anywhere in this bridge; routing it
+                # to DEVNULL prevents the child from wedging once a 64KB pipe buffer fills.
+                stderr=asyncio.subprocess.DEVNULL
             )
             print(f"🧠 [Broca Bridge] Attached to C++ Mind Core (PID: {self.proc.pid})")
+
+    async def _kill_and_restart(self):
+        """Kill a wedged Mind Core and restart it via the existing ensure_running path."""
+        if self.proc is not None and self.proc.returncode is None:
+            try:
+                self.proc.kill()
+                await self.proc.wait()
+            except Exception as kill_err:
+                print(f"⚠️ [Broca Bridge] Failed to kill wedged Mind Core: {kill_err}")
+        self.proc = None
+        await self.ensure_running()
 
     async def query(self, text: str) -> dict:
         async with self.lock:
@@ -74,8 +123,21 @@ class BrainProcessManager:
             self.proc.stdin.write((clean_text + "\n").encode("utf-8"))
             await self.proc.stdin.drain()
 
-            # Read single-line JSON response
-            line_bytes = await self.proc.stdout.readline()
+            # Read single-line JSON response with a hard timeout so one hang can
+            # never hold the global lock and deadlock every endpoint.
+            try:
+                line_bytes = await asyncio.wait_for(
+                    self.proc.stdout.readline(), timeout=BRAIN_CORE_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                print(f"⏱️ [Broca Bridge] Mind Core read timed out after "
+                      f"{BRAIN_CORE_TIMEOUT:.0f}s — killing and restarting child process")
+                await self._kill_and_restart()
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Mind Core did not respond within {BRAIN_CORE_TIMEOUT:.0f}s; connection restarted — please retry"
+                )
+
             if not line_bytes:
                 # Process crashed, restart and retry once
                 await self.ensure_running()
@@ -324,5 +386,5 @@ async def chat_stream(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 [The Brain] Launching Broca Communication Bridge on http://localhost:8000 ...")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    print(f"🚀 [The Brain] Launching Broca Communication Bridge on http://{BRIDGE_BIND_HOST}:8000 ...")
+    uvicorn.run(app, host=BRIDGE_BIND_HOST, port=8000, log_level="info")

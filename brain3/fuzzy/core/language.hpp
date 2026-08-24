@@ -255,6 +255,13 @@ public:
                     e.vec[i] += delta;
                     flat_embeddings_[offset + i] += delta;
                 }
+                // Float-keyed reverse map: drift invalidates the old key.
+                // Re-point this word to its drifted vector so best_word()'s
+                // exact-match fast path stays correct and no ghost entries
+                // accumulate.
+                for (auto rit = reverse_map_.begin(); rit != reverse_map_.end(); ++rit)
+                    if (rit->second == word) { reverse_map_.erase(rit); break; }
+                reverse_map_[e.vec] = word;
             }
         }
     }
@@ -408,10 +415,24 @@ public:
     void expand_dims(int new_dims) {
         std::lock_guard<std::mutex> lock(*mtx_);
         if (new_dims <= n_dims) return;
-        for (auto& [w, e] : words_) {
-            e.vec.resize(new_dims, 0.f);
-        }
+        // Rebuild ALL derived structures: word vectors, the flat embedding
+        // matrix (indexed as n_dims-strided rows — leaving it stale would be
+        // OOB), and the float-keyed reverse map (keys must match new layout).
+        const auto old_words = words_;               // snapshot pre-resize
         n_dims = new_dims;
+        words_.clear();
+        reverse_map_.clear();
+        flat_embeddings_.clear();
+        for (const auto& w : vocab_) {
+            auto it = old_words.find(w);
+            if (it == old_words.end()) continue;
+            WordEntry e = it->second;
+            e.vec.resize(new_dims, 0.f);
+            words_[w] = std::move(e);
+            const auto& v = words_[w].vec;
+            flat_embeddings_.insert(flat_embeddings_.end(), v.begin(), v.end());
+            reverse_map_[v] = w;
+        }
     }
 };
 

@@ -3,6 +3,7 @@
 #include "survival_instinct_engine.hpp"
 #include "order_book.hpp"
 #include "market_microstructure.hpp"
+#include "alpha_conviction.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -10,6 +11,7 @@
 #include <cmath>
 #include <chrono>
 #include <memory>
+#include <random>
 
 namespace brain3 {
 namespace finance {
@@ -73,7 +75,9 @@ public:
         last_prices_[symbol] = price;
         price_24h_changes_[symbol] = change_24h_pct;
 
-        // Update book mid price and order flow telemetry
+        // Update book mid price and order flow telemetry.
+        // NOTE: seed_liquidity now MERGES — resting limit orders survive across
+        // ticks instead of being wiped on every incoming tick.
         book->seed_liquidity(price, 6);
         double depth_est = std::max(volume * 0.5, 100.0);
         micro->on_tick(price, volume, best_bid, best_ask, depth_est, depth_est);
@@ -107,24 +111,24 @@ public:
         if (ofi_val > 10.0 || (vwap_dev < -0.005 && ofi_val > -5.0) || (change_24h_pct > 3.0 && ofi_val >= 0.0)) {
             opp.side = "BUY";
             opp.strategy = (std::abs(vwap_dev) > 0.008) ? "MULTI_VWAP_REVERSION" : "MULTI_OFI_MOMENTUM";
-            opp.win_probability = 0.58 + 0.15 * composite_alpha;
+            opp.win_probability = canonical_win_probability(composite_alpha);
             opp.win_loss_ratio = 1.50 + 0.50 * composite_alpha;
         } else if (ofi_val < -10.0 || (vwap_dev > 0.005 && ofi_val < 5.0) || (change_24h_pct < -3.0 && ofi_val <= 0.0)) {
             opp.side = "SELL";
             opp.strategy = (std::abs(vwap_dev) > 0.008) ? "MULTI_VWAP_REVERSION" : "MULTI_OFI_MOMENTUM";
-            opp.win_probability = 0.58 + 0.15 * composite_alpha;
+            opp.win_probability = canonical_win_probability(composite_alpha);
             opp.win_loss_ratio = 1.50 + 0.50 * composite_alpha;
         } else {
             opp.side = "NEUTRAL";
             opp.strategy = "MONITORING";
-            opp.win_probability = 0.50;
+            opp.win_probability = canonical_win_probability(0.0); // == 0.50
             opp.win_loss_ratio = 1.0;
             opp.recommended_size_inr = 0.0;
             return opp;
         }
 
-        // Clamp probabilities
-        opp.win_probability = std::min(opp.win_probability, 0.82);
+        // NOTE: win_probability clamping is handled inside the canonical mapping
+        // ([0.50, 0.85]); do not apply engine-local clamps here.
         opp.win_loss_ratio = std::min(opp.win_loss_ratio, 2.50);
 
         // Safe Kelly Allocation with -100 Ruin Floor Protection

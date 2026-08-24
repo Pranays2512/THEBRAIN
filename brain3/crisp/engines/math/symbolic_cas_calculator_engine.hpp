@@ -25,6 +25,7 @@
 #include <cmath>
 #include <numeric>
 #include <cstdint>
+#include <cctype>
 #include <cassert>
 #include <algorithm>
 
@@ -48,6 +49,24 @@ inline __int128_t gcd128(__int128_t a, __int128_t b) {
         a = t;
     }
     return a;
+}
+
+// Exact decimal rendering of a signed 128-bit integer (repeated division by 10).
+// Works on the unsigned magnitude so the most negative value is handled safely.
+inline std::string to_string128(__int128_t v) {
+    if (v == 0) return "0";
+    bool negative = v < 0;
+    unsigned __int128 mag = negative
+        ? static_cast<unsigned __int128>(-(v + 1)) + 1u
+        : static_cast<unsigned __int128>(v);
+    std::string digits;
+    while (mag > 0) {
+        digits += static_cast<char>('0' + static_cast<int>(mag % 10));
+        mag /= 10;
+    }
+    if (negative) digits += '-';
+    std::reverse(digits.begin(), digits.end());
+    return digits;
 }
 
 struct Rational {
@@ -110,15 +129,107 @@ struct Rational {
     }
 
     std::string to_string() const {
-        std::ostringstream oss;
         if (den == 1) {
-            oss << static_cast<int64_t>(num);
-        } else {
-            oss << static_cast<int64_t>(num) << "/" << static_cast<int64_t>(den);
+            return to_string128(num);
         }
-        return oss.str();
+        return to_string128(num) + "/" + to_string128(den);
     }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1b. EXACT DECIMAL-LITERAL PARSING (string -> Rational, no float truncation)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Convert a plain decimal literal ("[-+]dd[.ddd][e[-+]dd]") into an exact
+ * rational by parsing the digit string directly: integer part + fractional
+ * digits build numerator/denominator ("0.5" -> 5/10), reduced via gcd by the
+ * Rational constructor. Exponents are applied exactly as powers of ten.
+ *
+ * Returns false when `s` is not a pure decimal literal (the caller may then
+ * treat it as a symbol). Throws std::runtime_error for syntactically valid
+ * literals that exceed exact 128-bit range — never falls back to lossy
+ * floating-point conversion.
+ */
+inline bool try_parse_decimal_rational(const std::string& s, Rational& out) {
+    size_t i = 0;
+    bool negative = false;
+    if (i < s.size() && (s[i] == '+' || s[i] == '-')) {
+        negative = (s[i] == '-');
+        ++i;
+    }
+
+    std::string digits;
+    int frac_digits = 0;
+    bool any_digit = false;
+
+    while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) {
+        digits += s[i];
+        any_digit = true;
+        ++i;
+    }
+    if (i < s.size() && s[i] == '.') {
+        ++i;
+        while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) {
+            digits += s[i];
+            ++frac_digits;
+            any_digit = true;
+            ++i;
+        }
+    }
+    if (!any_digit) return false;
+
+    long exp_scale = 0; // net power of ten applied to the value
+    if (i < s.size() && (s[i] == 'e' || s[i] == 'E')) {
+        ++i;
+        bool exp_negative = false;
+        if (i < s.size() && (s[i] == '+' || s[i] == '-')) {
+            exp_negative = (s[i] == '-');
+            ++i;
+        }
+        if (i >= s.size() || !std::isdigit(static_cast<unsigned char>(s[i]))) return false;
+        long ev = 0;
+        while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) {
+            ev = ev * 10 + (s[i] - '0');
+            if (ev > 4096) {
+                throw std::runtime_error("CAS parse: decimal exponent out of exact range in '" + s + "'");
+            }
+            ++i;
+        }
+        exp_scale = exp_negative ? -ev : ev;
+    }
+    if (i != s.size()) return false; // trailing garbage -> not a pure number token
+
+    // Trim insignificant zeros so range checks reflect true precision.
+    size_t first_sig = digits.find_first_not_of('0');
+    if (first_sig == std::string::npos) {
+        out = Rational(0, 1);
+        return true;
+    }
+    while (frac_digits > 0 && digits.back() == '0') {
+        digits.pop_back();
+        --frac_digits;
+    }
+
+    long num_scale = exp_scale > 0 ? exp_scale : 0;
+    long den_scale = exp_scale < 0 ? -exp_scale : 0;
+    long num_digits = static_cast<long>(digits.size()) + num_scale;
+    long den_digits = static_cast<long>(frac_digits) + den_scale;
+    // __int128 holds ~38 decimal digits; refuse rather than silently truncating.
+    if (num_digits > 30 || den_digits > 30) {
+        throw std::runtime_error("CAS parse: decimal literal '" + s + "' exceeds 128-bit exact range");
+    }
+
+    __int128_t num = 0;
+    for (char c : digits) num = num * 10 + (c - '0');
+    __int128_t den = 1;
+    for (long k = 0; k < frac_digits + den_scale; ++k) den *= 10;
+    for (long k = 0; k < num_scale; ++k) num *= 10;
+    if (negative) num = -num;
+
+    out = Rational(num, den);
+    return true;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. SYMBOLIC EXPRESSION AST
@@ -229,6 +340,52 @@ struct CasNode {
 
 class SymbolicCasCalculatorEngine {
 public:
+    /**
+     * Parse common mathematical expressions into AST CasExpr nodes.
+     */
+    static CasExpr parse_expression(const std::string& input_str) {
+        std::string s = input_str;
+        s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+        if (s.empty()) return CasNode::make_num(0);
+
+        // Power pattern: var^number (e.g. x^2, x^3)
+        size_t caret = s.find('^');
+        if (caret != std::string::npos && caret > 0 && caret + 1 < s.size()) {
+            std::string base_s = s.substr(0, caret);
+            std::string exp_s = s.substr(caret + 1);
+            CasExpr base = parse_expression(base_s);
+            CasExpr exp = parse_expression(exp_s);
+            return CasNode::make_pow(base, exp);
+        }
+
+        // Functions: sin, cos, exp, ln, sqrt
+        if (s.rfind("sin(", 0) == 0 && s.back() == ')') {
+            return CasNode::make_sin(parse_expression(s.substr(4, s.size() - 5)));
+        }
+        if (s.rfind("cos(", 0) == 0 && s.back() == ')') {
+            return CasNode::make_cos(parse_expression(s.substr(4, s.size() - 5)));
+        }
+        if (s.rfind("exp(", 0) == 0 && s.back() == ')') {
+            return CasNode::make_exp(parse_expression(s.substr(4, s.size() - 5)));
+        }
+        if (s.rfind("ln(", 0) == 0 && s.back() == ')') {
+            return CasNode::make_ln(parse_expression(s.substr(3, s.size() - 4)));
+        }
+        if (s.rfind("sqrt(", 0) == 0 && s.back() == ')') {
+            return CasNode::make_pow(parse_expression(s.substr(5, s.size() - 6)), CasNode::make_rat(Rational(1, 2)));
+        }
+
+        // Numbers: convert the decimal string exactly to a Rational
+        // (never through double — "0.5" must not truncate to 0)
+        Rational r;
+        if (try_parse_decimal_rational(s, r)) {
+            return CasNode::make_rat(r);
+        }
+
+        // Variable
+        return CasNode::make_var(s);
+    }
+
     static std::string render(const CasExpr& e) {
         if (!e) return "0";
         switch (e->kind) {

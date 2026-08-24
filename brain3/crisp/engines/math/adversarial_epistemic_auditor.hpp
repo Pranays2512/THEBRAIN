@@ -254,6 +254,54 @@ public:
         report.historical_context_and_literature = "Collatz (1937), Crandall (1978), Lagarias (1985), Tao (2019).";
         return report;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 7. AUDIT SEQUENCE ARCHITECTURE & CAPACITY CLAIMS (GSSMs / HRRs / LINEAR RNNS)
+    // ─────────────────────────────────────────────────────────────────────────
+    static AuditReport audit_sequence_architecture_claim(
+        const std::string& model_class,
+        bool claims_exact_lossless_recall,
+        bool claims_zero_length_generalization_failure,
+        bool claims_infinite_compression_ratio,
+        int state_dim,
+        int sequence_length
+    ) {
+        AuditReport report;
+        report.claim_name = "Sequence Architecture Expressivity & Capacity Audit: " + model_class;
+        report.passed_adversarial_scrutiny = true;
+
+        if (claims_exact_lossless_recall || claims_infinite_compression_ratio) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::DIMENSIONAL_OR_EXPONENT_ERROR;
+            report.verdict_label = "REFUTED_BY_INFORMATION_THEORETIC_CAPACITY_BOUND";
+            report.adversarial_refutations.push_back(
+                "PIGEONHOLE & CAPACITY BOUND VIOLATION: Storing N items into a fixed D-dimensional accumulator vector "
+                "yields crosstalk noise. In Holographic Reduced Representations (HRR/VSA), SNR scales as O(sqrt(D / N)). "
+                "Lossless compression of arbitrary N * D bits into a fixed D vector is information-theoretically impossible."
+            );
+        }
+
+        if (claims_zero_length_generalization_failure) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::NATURAL_PROOFS_OR_ALGEBRIZATION_BARRIER;
+            report.verdict_label = "REFUTED_BY_EXPRESSIVITY_SEPARATION (GSSM vs Transformer)";
+            report.adversarial_refutations.push_back(
+                "EXPRESSIVITY SEPARATION: Fixed-state recurrent models (GSSMs, RetNet, RWKV, Mamba) have bounded state capacity "
+                "and are fundamentally separated from Transformers on multi-query associative recall and copying tasks (Jelassi et al., 2024)."
+            );
+        }
+
+        if (!report.passed_adversarial_scrutiny) {
+            report.correct_mathematical_formulation =
+                "GSSM / HRR Tradeoff Bound: Inference is strictly O(1) memory, but retrieval SNR decays as O(sqrt(D / N)). "
+                "Fixed-size state models trade unbounded associative capacity for linear-time and constant-memory efficiency.";
+        } else {
+            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
+            report.verdict_label = "SOUND_LINEAR_RECURRENT_ARCHITECTURE (Tradeoffs Explicitly Calibrated)";
+        }
+        report.historical_context_and_literature = "Plate (1995), Sun et al. (RetNet 2023), Gu & Dao (Mamba 2023), Jelassi et al. (2024).";
+        return report;
+    }
 };
 
 } // namespace epistemic_auditor

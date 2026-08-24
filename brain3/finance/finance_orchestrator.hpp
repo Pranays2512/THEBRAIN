@@ -463,6 +463,9 @@ public:
         if (opcode == "INJECT_DRAWDOWN_PAIN") {
             double loss_amount = 500.0;
             iss >> loss_amount;
+            if (loss_amount > 0.0 && loss_amount <= 1.0) {
+                loss_amount = survival_engine_.current_equity() * loss_amount;
+            }
             survival_engine_.record_trade("TEST/INR", "BUY", 100.0, 100.0 - (loss_amount / 10.0), 10.0, 0.0, "DRAWDOWN_TEST");
             return survival_engine_.to_json_summary();
         }
