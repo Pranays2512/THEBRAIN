@@ -110,6 +110,12 @@ add_executable(bench_stamlat_ctx benchmarks/bench_stamlat_ctx.cpp)
 target_include_directories(bench_stamlat_ctx PRIVATE .)
 target_link_libraries(bench_stamlat_ctx PRIVATE ${PLATFORM_LIBS})
 target_compile_options(bench_stamlat_ctx PRIVATE -O2)
+
+# ── Exactness scoreboard (Sprint 3) ───────────────────────────────────────────
+add_executable(exactness_scoreboard eval/exactness_scoreboard.cpp)
+target_include_directories(exactness_scoreboard PRIVATE .)
+target_link_libraries(exactness_scoreboard PRIVATE ${PLATFORM_LIBS})
+target_compile_options(exactness_scoreboard PRIVATE -O2)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test_stamlat_streaming PRIVATE -O2)
     target_compile_options(demo_stamlat_mouth PRIVATE -O2)
