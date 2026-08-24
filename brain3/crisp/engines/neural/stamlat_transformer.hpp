@@ -352,6 +352,49 @@ public:
 
     bool is_word_token(int id) const { return id >= (int)vocab_.size(); }
 
+    // Runtime vocabulary growth WITHOUT retraining: appends word tokens and
+    // embedding rows, preserving every trained row exactly. Adam state for
+    // existing rows is preserved (new rows get fresh moments); because m=0
+    // yields zero updates, stale parameters are untouched until new
+    // gradients arrive. This is what makes newly learned facts instantly
+    // speakable by the plan-conditioned mouth.
+    void extend_vocab_words(const std::vector<std::string>& new_words) {
+        if (new_words.empty()) return;
+        const int d = cfg_.d_model;
+        ensure_grads();
+        for (const auto& w : new_words) {
+            if (w.empty() || widx_.count(w)) continue;
+            widx_.emplace(w, total_vocab_size());
+            words_.push_back(w);
+            // Grounded init: compose the new row from its CHARACTERS' trained
+            // embeddings (mean) so attention has an immediate matching signal
+            // for copy-through — far better than random for unseen words.
+            std::vector<float> row((size_t)d, 0.f);
+            int seen = 0;
+            for (char ch : w) {
+                const int cid = char_id(ch);
+                if (cid < 0) continue;
+                ++seen;
+                for (int j = 0; j < d; ++j)
+                    row[j] += emb_->at(cid, j) / (float)std::max(1, (int)w.size());
+            }
+            if (seen == 0) {
+                std::normal_distribution<float> nd(0.f, 0.02f);
+                for (int j = 0; j < d; ++j) row[j] = nd(rng_);
+            }
+            emb_->a.insert(emb_->a.end(), row.begin(), row.end());
+            emb_->r += 1;
+            // extend tied-embedding Adam moments + grads consistently
+            adam_m_[0].a.insert(adam_m_[0].a.end(), d, 0.f);
+            adam_v_[0].a.insert(adam_v_[0].a.end(), d, 0.f);
+            adam_m_[0].r = emb_->r; adam_v_[0].r = emb_->r;
+            if (!owned_grads_.empty()) {
+                owned_grads_[0].a.insert(owned_grads_[0].a.end(), d, 0.f);
+                owned_grads_[0].r = emb_->r;
+            }
+        }
+    }
+
     // Training samples windows from the TOKENIZED stream (words + chars), so
     // word-token embeddings are trained as inputs and the head learns to
     // emit whole words — char fallback still covers everything else.

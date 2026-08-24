@@ -85,6 +85,12 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(demo_stamlat_voice PRIVATE -O2)
 endif()
 
+# ── Plan-conditioned mouth (Sprint 1 falsifiers) ──────────────────────────────
+add_phase_test(test_plan_mouth test_plan_mouth.cpp)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_plan_mouth PRIVATE -O2)
+endif()
+
 # ── Native mouth (production mount) ───────────────────────────────────────────
 add_phase_test(test_native_mouth test_native_mouth.cpp)
 add_executable(train_native_mouth train_native_mouth.cpp)
@@ -205,6 +211,7 @@ add_test(NAME stamlat_transformer COMMAND test_stamlat_transformer)
 add_test(NAME stamlat_streaming  COMMAND test_stamlat_streaming)
 add_test(NAME stamlat_voice      COMMAND test_stamlat_voice)
 add_test(NAME native_mouth       COMMAND test_native_mouth)
+add_test(NAME plan_mouth         COMMAND test_plan_mouth)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")
