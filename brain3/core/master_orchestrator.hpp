@@ -39,6 +39,8 @@
 #include "ancient_modern_alignment_engine.hpp"
 #include "agentic_runtime_engine.hpp"
 #include "../crisp/engines/neural/native_mouth.hpp"
+#include "intent_router.hpp"
+#include "intent_route_extract.hpp"
 
 namespace brain3 {
 namespace core {
@@ -93,6 +95,11 @@ public:
         discovery_daemon_.set_conjecture_hunter(&conjecture_hunter_);
         agentic_runtime_engine_.set_brain(brain_.get());
         agentic_runtime_engine_.set_ancient_engine(&ancient_alignment_engine_);
+
+        // Warm the learned intent router at BOOT, not first-turn: its
+        // one-time training is an offline cost and must never land on a
+        // user's first message. (Caught by eval latency gate.)
+        IntentRouter::instance();
 
         // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
         // standard locations. Missing model ⇒ unavailable ⇒ pipeline runs
@@ -196,6 +203,18 @@ public:
         }
         if (lower.find("step discovery") != std::string::npos || lower == "step_discovery") {
             return "STEP_DISCOVERY";
+        }
+
+        // ── Learned Intent Router ────────────────────────────────────────────
+        // Classification is trained (paraphrase-robust); extraction is the
+        // mirrored deterministic regexes; low confidence or failed slot pull
+        // falls through to the legacy chain below, unchanged.
+        {
+            auto v = IntentRouter::instance().classify(clean_text);
+            if (v.confidence >= 0.55f) {
+                std::string routed;
+                if (route_extract(clean_text, v.family, routed)) return routed;
+            }
         }
 
         // Fast Invariant Math Expressions

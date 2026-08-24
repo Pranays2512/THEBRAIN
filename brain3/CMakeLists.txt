@@ -116,6 +116,10 @@ add_executable(exactness_scoreboard eval/exactness_scoreboard.cpp)
 target_include_directories(exactness_scoreboard PRIVATE .)
 target_link_libraries(exactness_scoreboard PRIVATE ${PLATFORM_LIBS})
 target_compile_options(exactness_scoreboard PRIVATE -O2)
+
+# ── Learned intent router (Sprint 4a) ─────────────────────────────────────────
+add_phase_test(test_intent_router test_intent_router.cpp)
+target_compile_options(test_intent_router PRIVATE -O2)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test_stamlat_streaming PRIVATE -O2)
     target_compile_options(demo_stamlat_mouth PRIVATE -O2)
@@ -223,6 +227,7 @@ add_test(NAME stamlat_voice      COMMAND test_stamlat_voice)
 add_test(NAME native_mouth       COMMAND test_native_mouth)
 add_test(NAME plan_mouth         COMMAND test_plan_mouth)
 add_test(NAME brain_eval         COMMAND brain_eval)
+add_test(NAME intent_router      COMMAND test_intent_router)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")

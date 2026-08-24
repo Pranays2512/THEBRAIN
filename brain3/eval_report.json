@@ -1,12 +1,12 @@
 {
   "gates_pass": true,
-  "wall_seconds": 621.5,
+  "wall_seconds": 358.4,
   "suites": {
     "intent": {
       "score": 1.0000,
       "gate_pass": true,
       "detail": {
-        "paraphrase_miss": "i wonder what happens if rain causes flooding -> instinct", "literal_accuracy": "16/16", "paraphrase_accuracy": "5/6 (baseline)"
+        "literal_accuracy": "16/16", "paraphrase_accuracy": "6/6 (baseline)"
       }
     },
     "retention": {
