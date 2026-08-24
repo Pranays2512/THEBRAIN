@@ -94,8 +94,21 @@ int main() {
               << " reply=\"" << resp.natural_reply << "\" latency="
               << resp.latency_ms << "ms\n";
     check(resp.engine_used == "native_mouth",
-          "chat routed through native mouth");
+          "chat routed through legacy mouth path (text model)");
     check(resp.latency_ms < 100.0, "end-to-end chat latency <100ms");
+
+    // ── amnesia in production: delete response templates -> plan dies ──
+    {
+        auto& facts = orch.get_brain()->brainql_engine.facts;
+        for (auto it = facts.begin(); it != facts.end(); ) {
+            if (it->subj == "act:greeting") it = facts.erase(it);
+            else ++it;
+        }
+        auto r2 = orch.process("hello");
+        std::cout << "    post-delete hello -> engine=" << r2.engine_used << "\n";
+        check(r2.engine_used != "native_mouth_plan",
+              "AMNESIA: deleted templates can no longer be spoken");
+    }
 
     // structured command must bypass the mouth entirely
     auto resp2 = orch.process("teach sky isa blue");
@@ -109,6 +122,42 @@ int main() {
     check(resp3.engine_used != "native_mouth",
           "low-confidence turn escalates to legacy pipeline");
     orch.get_native_mouth()->config().nll_confidence_gate = 2.2f;
+
+    // ── plan-conditioned production path (amnesia interface live) ──
+    {
+        const char* candidates[] = {"mouth_native.bin", "../mouth_native.bin"};
+        std::string found;
+        for (auto c : candidates) {
+            std::FILE* pf = std::fopen(c, "rb");
+            if (pf) { std::fclose(pf); found = c; break; }
+        }
+        if (!found.empty()) {
+            setenv("BRAIN_NATIVE_MOUTH_MODEL", found.c_str(), 1);
+            brain3::core::MasterOrchestrator porch;
+            if (porch.get_native_mouth()->plans_supported()) {
+                auto pr = porch.process("hello");
+                std::cout << "    plan hello -> engine=" << pr.engine_used
+                          << " reply=\"" << pr.natural_reply << "\"\n";
+                check(pr.engine_used == "native_mouth_plan",
+                      "plan-conditioned branch active in orchestrator");
+
+                // amnesia: wipe response templates -> plan cannot render
+                auto& fs = porch.get_brain()->brainql_engine.facts;
+                for (auto it = fs.begin(); it != fs.end(); ) {
+                    if (it->subj == "act:greeting") it = fs.erase(it);
+                    else ++it;
+                }
+                auto pr2 = porch.process("hello");
+                std::cout << "    post-wipe hello -> engine=" << pr2.engine_used << "\n";
+                check(pr2.engine_used != "native_mouth_plan",
+                      "AMNESIA LIVE: wiped templates unspoken in prod path");
+            } else {
+                check(false, "deployed binary lacks plan support");
+            }
+        } else {
+            std::cout << "  [skip] mouth_native.bin absent — run train_native_mouth --plan\n";
+        }
+    }
 
     std::cout << "=== passed " << g_pass << ", failed " << g_fail << " ===\n";
     return g_fail == 0 ? 0 : 1;

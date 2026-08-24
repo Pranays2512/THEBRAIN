@@ -118,6 +118,18 @@ public:
             }
         }
 
+        // Canonical social-response templates stored AS FACTS: the mouth's
+        // plan path renders from these; deleting one amnesia-proofs the act.
+        for (const auto& [act, resp] : std::vector<std::pair<std::string,std::string>>{
+                 {"greeting", "intent greeting style friendly"},
+                 {"greeting", "intent welcome target user"},
+                 {"identity", "identity system type cognitive"},
+                 {"identity", "name brain type ai"},
+                 {"status",   "status good energy high"},
+             }) {
+            brain_->brainql_engine.learn("act:" + act, "responds", resp);
+        }
+
         _seed_foundational_invariants();
     }
 
@@ -635,6 +647,41 @@ public:
         // (LOOKUP family) and calculator input must never be intercepted.
         if (native_mouth_.available() && _looks_like_chat(input_text) &&
             bql.rfind("INSTINCT", 0) == 0) {
+            // ── plan-conditioned branch (amnesia interface) ──
+            const std::string act = _chat_act(input_text);
+            if (native_mouth_.plans_supported() && !act.empty()) {
+                engines::neural::UtterancePlan plan; plan.act = act;
+                plan.reg = brain_->emotion.valence > 0.2f ? "warm" : "neutral";
+                const std::string subject = "act:" + act;
+                for (const auto& f : brain_->brainql_engine.facts)
+                    if (f.subj == subject && f.rel == "responds") {
+                        std::istringstream iss(f.obj);
+                        std::string w;
+                        while (iss >> w) plan.facts.push_back(w);
+                    }
+                if (!plan.facts.empty()) {
+                    auto mr = native_mouth_.respond_plan(
+                        plan, brain_->emotion.state(), &voice_mapper_);
+                    auto nm_end = std::chrono::high_resolution_clock::now();
+                    if (mr.confident) {
+                        resp.latency_ms =
+                            std::chrono::duration<double, std::milli>(
+                                nm_end - start_time).count();
+                        resp.verified = true;
+                        resp.engine_used = "native_mouth_plan";
+                        resp.natural_reply = mr.text;
+                        std::ostringstream oss;
+                        oss << "{\"nll\":" << mr.reply_nll
+                            << ",\"voice_ms\":" << mr.ms
+                            << ",\"tokens\":" << mr.tokens
+                            << ",\"plan\":true}";
+                        resp.raw_output = oss.str();
+                        return resp;
+                    }
+                    // unconfident plan render -> fall through to legacy mouth
+                }
+            }
+
             auto mr = native_mouth_.respond(input_text,
                                             brain_->emotion.state(),
                                             &voice_mapper_);
@@ -750,6 +797,23 @@ private:
     // Everything else belongs to the structured pipeline regardless of
     // mouth confidence. (Eval harness catch: "12*(3+4)" and knowledge
     // questions were being hijacked by the mouth before this gate existed.)
+    // Social-act detection for plan-conditioned responses. Empty => no act.
+    static std::string _chat_act(const std::string& text) {
+        std::string lower;
+        for (char c : text) lower += (char)std::tolower((unsigned char)c);
+        auto has = [&](std::initializer_list<const char*> ks){
+            for (auto k : ks) if (lower.find(k) != std::string::npos) return true;
+            return false;
+        };
+        if (has({"hello","hi ","hey","greetings","good morning","good evening"}))
+            return "greeting";
+        if (has({"who are you","what is your name","your name","what are you"}))
+            return "identity";
+        if (has({"how are you","how do you feel","your state","how is your day"}))
+            return "status";
+        return "";
+    }
+
     static bool _looks_like_chat(const std::string& text) {
         if (text.empty() || text.size() > 160) return false;
         if (text.front() == '{' || text.find("::") != std::string::npos) return false;

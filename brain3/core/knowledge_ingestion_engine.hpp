@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../crisp/engines/knowledge/fact_extractor.hpp"
+#include "../crisp/engines/knowledge/knowledge_base.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -49,6 +51,8 @@ struct IngestionStats {
 class KnowledgeIngestionEngine {
 private:
     brain2::Brain* brain_;
+    brain2::knowledge::FactExtractor fact_extractor_;
+    brain2::knowledge::KnowledgeBase kb_;
     std::unordered_map<std::string, std::vector<brain2::reasoning::DomainTriple>> pending_domain_triples_;
 
     static std::string trim(const std::string& str) {
@@ -249,6 +253,17 @@ private:
     }
 
     void extract_from_natural_text(const std::string& text, const std::string& domain, IngestionStats& stats) {
+        // ── Stage 1b: rich extractor (12 patterns) + KB dedup ──────────────
+        // The hand-rolled patterns below cover is-a/causes/produces with
+        // multiword subjects; FactExtractor adds has/lives_in/grows_on/
+        // eats/gives and generic 3-word forms. KnowledgeBase dedupes so
+        // repeated sentences don't re-learn duplicates.
+        for (const auto& t : fact_extractor_.extract(text)) {
+            const auto& [s2, r2, o2] = t;
+            if (!kb_.add(s2, r2, o2, "file:" + domain)) continue;   // dup
+            learn_triple(s2, r2, o2, domain, stats);
+        }
+
         std::string lower = to_lower(text);
 
         // Pattern 1: "X is a Y" / "X is an Y"

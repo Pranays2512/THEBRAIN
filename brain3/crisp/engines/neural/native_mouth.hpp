@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "crisp/engines/neural/stamlat_transformer.hpp"
+#include "crisp/engines/neural/utterance_plan.hpp"
 #include "crisp/engines/neural/mouth_voice.hpp"
 
 namespace brain3 {
@@ -54,10 +55,57 @@ public:
         if (!tmp.load(path)) return false;
         lm_ = std::move(tmp);
         available_ = true;
+        for (int id = lm_.char_vocab_size(); id < lm_.total_vocab_size(); ++id)
+            if (lm_.token_surface(id) == "<p>") { plans_supported_ = true; break; }
         return true;
     }
 
+    // Plan-conditioned response: content-locked to the plan's surfaces —
+    // structurally unable to speak beyond retrieved memory (amnesia).
+    Result respond_plan(const UtterancePlan& plan,
+                        const brain2::EmotionState& mood = {0.f, 0.f},
+                        const VoiceMapper* voice = nullptr) {
+        Result res;
+        if (!available_ || !plans_supported_) return res;
+        const auto t0 = std::chrono::steady_clock::now();
+        VoicePolicy pol;
+        pol.temperature = cfg_.temp;
+        if (cfg_.use_mood_temperature && voice)
+            pol = voice->policy(lm_, mood);
+        res.temp_used = pol.temperature;
+
+        const auto ids = lm_.encode(plan.linearize());
+        StamlatLM::StreamCache sc;
+        lm_.stream_start(ids, sc);
+        std::vector<int> utt;
+        bool terminated = false;
+        for (int n = 0; n < cfg_.max_reply_tokens; ++n) {
+            const int tok = lm_.stream_sample(sc, pol.temperature,
+                                              nullptr, nullptr);
+            utt.push_back(tok);
+            lm_.stream_step(tok, sc);
+            if (lm_.token_surface(tok) == "\n") { terminated = true; break; }
+        }
+        auto t1 = std::chrono::steady_clock::now();
+        res.ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        res.tokens = (int)utt.size();
+        if (terminated && !utt.empty()) {
+            res.text = lm_.decode(utt);
+            while (!res.text.empty() &&
+                   (res.text.back() == '\n' || res.text.back() == ' '))
+                res.text.pop_back();
+            res.reply_nll = reply_nll(ids, utt);
+            res.confident = !res.text.empty() &&
+                            res.reply_nll < cfg_.nll_confidence_gate;
+        }
+        return res;
+    }
+
     bool available() const { return available_; }
+    // plan-conditioned models carry the '<p>' scaffold token
+    bool plans_supported() const {
+        return available_ && plans_supported_;
+    }
 
     const StamlatLM& model() const { return lm_; }
     StamlatLM& model() { return lm_; }          // sleep-kernel training access
@@ -147,6 +195,7 @@ private:
     Config      cfg_;
     StamlatLM   lm_{default_cfg()};
     bool        available_ = false;
+    bool        plans_supported_ = false;
 };
 
 } // namespace neural

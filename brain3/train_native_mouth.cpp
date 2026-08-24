@@ -3,21 +3,106 @@
 // usage: train_native_mouth [out_path] [--quick]
 // default output: mouth_native.bin (picked up by MasterOrchestrator at boot)
 #include <cstdio>
+#include <random>
+#include <algorithm>
 #include <string>
+#include <iostream>
+#include <cstdlib>
 #include "crisp/engines/neural/stamlat_transformer.hpp"
+#include "crisp/engines/neural/utterance_plan.hpp"
 
 using namespace brain3::engines::neural;
 
 template <typename T, size_t N> constexpr size_t n_of(const T (&a)[N]) { return N; }
 
+// ── plan-curriculum mode: train the mouth as a pure renderer ─────────────
+// Targets are RANDOM own-class subsequences per act (unmemorizable), plan
+// carries exactly those surfaces + scaffold. Produces an amnesia-proof
+// plan-conditioned binary consumable via respond_plan().
+static int train_plan_mode(const std::string& out, bool quick) {
+    using namespace brain3::engines::neural;
+    struct Dom { const char* act; std::vector<std::string> clazz; };
+    static const Dom doms[] = {
+        {"greeting",{"intent","greeting","welcome","salutation","style",
+                    "friendly","emotion","happy","target","user"}},
+        {"identity",{"identity","name","self","system","brain","network",
+                    "type","cognitive","origin","artificial","ai","neural"}},
+        {"status",  {"status","state","feeling","good","great","positive",
+                    "optimal","energy","high","mode","ready","condition"}},
+    };
+    std::mt19937 rng(31);
+    auto pick = [&](auto& v){ return v[rng() % v.size()]; };
+
+    std::string train;
+    for (auto& d : doms)
+        for (int rep = 0; rep < (quick ? 160 : 320); ++rep) {
+            std::vector<std::string> truth = d.clazz;
+            std::shuffle(truth.begin(), truth.end(), rng);
+            truth.resize(3 + rng() % 2);
+            UtterancePlan p; p.act = d.act;
+            p.reg = (rep % 2 == 0) ? "warm" : "neutral";
+            p.facts = truth;
+            train += p.linearize() + " ";
+            for (size_t k = 0; k < truth.size(); ++k)
+                train += truth[k] + (k + 1 < truth.size() ? " " : "\n");
+        }
+
+    StamlatConfig cfg;
+    cfg.d_model = quick ? 64 : 96;
+    cfg.n_layers = 3; cfg.n_heads = 6;
+    cfg.d_ff = quick ? 128 : 256;
+    cfg.ctx = 64; cfg.depth_gamma = 0.f; cfg.depth_tau = 1.f; cfg.seed = 42;
+    StamlatLM lm(cfg);
+    lm.build_vocab(train);
+    std::printf("[plan] vocab=%d (%d words)\n", lm.total_vocab_size(),
+                lm.word_vocab_size());
+    lm.fit(train, quick ? 2600 : 6000, 4e-3f, 16, quick ? 650 : 1500);
+
+    // sanity: held-out random sequences render exactly
+    int ok = 0, tot = 0;
+    for (auto& d : doms)
+        for (int t2 = 0; t2 < 4; ++t2) {
+            std::vector<std::string> truth = d.clazz;
+            std::shuffle(truth.begin(), truth.end(), rng);
+            truth.resize(3 + rng() % 2);
+            UtterancePlan p; p.act = d.act; p.reg = "neutral";
+            p.facts = truth;
+            auto allowed = p.content_lock_ids(lm);
+            auto said = lm.stream_complete_ids(lm.encode(p.linearize()),
+                                               20, 0.f, true, &allowed);
+            if (std::getenv("PLAN_DEBUG") && tot < 3) {
+                std::cout << "PLAN '" << p.linearize() << "'\nSAID '" << said
+                          << "' WANT '";
+                for (size_t k2=0;k2<truth.size();++k2) std::cout<<truth[k2]<<(k2+1<truth.size()?" ":"");
+                std::cout << "'\n";
+            }
+            ++tot;
+            auto trim = [](std::string s){
+                size_t a = s.find_first_not_of(' ');
+                size_t b = s.find_last_not_of(' ');
+                return a == std::string::npos ? "" : s.substr(a, b - a + 1);
+            };
+            std::string want;
+            for (size_t k2 = 0; k2 < truth.size(); ++k2)
+                want += truth[k2] + (k2 + 1 < truth.size() ? " " : "");
+            if (trim(said) == trim(want)) ++ok;
+        }
+    std::printf("[plan] held-out exact %d/%d\n", ok, tot);
+    if (!lm.save(out)) { std::printf("save FAILED\n"); return 1; }
+    std::printf("saved %s\n", out.c_str());
+    return ok >= (tot * 3) / 4 ? 0 : 2;
+}
+
 int main(int argc, char** argv) {
     std::string out = "mouth_native.bin";
-    bool quick = false;
+    bool quick = false, plan = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--quick") quick = true;
+        else if (a == "--plan") plan = true;
         else out = a;
     }
+    if (plan) return train_plan_mode(out, quick);
 
     static const char* G[]  = {"hello", "hi", "hey there", "good morning",
                                "greetings", "good evening"};
