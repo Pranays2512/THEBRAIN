@@ -42,6 +42,8 @@
 #include "intent_router.hpp"
 #include "intent_route_extract.hpp"
 #include "sleep_kernel.hpp"
+#include "../fuzzy/engines/synthesis/unified_proposer.hpp"
+#include "../crisp/engines/math/neural_policy_value_prior_engine.hpp"
 
 namespace brain3 {
 namespace core {
@@ -70,6 +72,8 @@ private:
     AncientModernAlignmentEngine ancient_alignment_engine_;
     AgenticRuntimeEngine agentic_runtime_engine_;
     engines::neural::NativeMouth native_mouth_;
+    thebrain::neural_prior::NeuralPolicyValuePriorEngine prior_engine_;
+    engines::synthesis::UnifiedProposer proposer_;
     engines::neural::VoiceMapper voice_mapper_ = engines::neural::default_voice_mapper();
 
 public:
@@ -101,6 +105,8 @@ public:
         // one-time training is an offline cost and must never land on a
         // user's first message. (Caught by eval latency gate.)
         IntentRouter::instance();
+        proposer_.load_weights("intuition_weights.bin");
+        prior_engine_.load("prior_engine.bin");
 
         // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
         // standard locations. Missing model ⇒ unavailable ⇒ pipeline runs
@@ -771,7 +777,8 @@ public:
     // graph re-embedding over today's facts, verification gates with
     // rollback, structured report. Degrades gracefully per-phase.
     std::string sleep_consolidate() {
-        SleepKernel kernel(native_mouth_, brain_->brainql_engine, voice_mapper_);
+        SleepKernel kernel(native_mouth_, brain_->brainql_engine, voice_mapper_,
+                           prior_engine_);
         kernel.set_probes(default_sleep_probes(), default_floor_probes());
         const auto rep = kernel.run_cycle();
 
@@ -817,6 +824,10 @@ public:
     AncientModernAlignmentEngine* get_ancient_alignment_engine() { return &ancient_alignment_engine_; }
     AgenticRuntimeEngine* get_agentic_engine() { return &agentic_runtime_engine_; }
     engines::neural::NativeMouth* get_native_mouth() { return &native_mouth_; }
+    engines::synthesis::UnifiedProposer* get_proposer() { return &proposer_; }
+    thebrain::neural_prior::NeuralPolicyValuePriorEngine* get_prior_engine() {
+        return &prior_engine_;
+    }
 
 private:
     // Conversational-turn heuristic: short free text with no BQL verbs,

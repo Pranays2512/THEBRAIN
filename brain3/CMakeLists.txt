@@ -127,6 +127,12 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test_curiosity_diet PRIVATE -O2)
 endif()
 
+# ── Intuition fixes falsifiers ────────────────────────────────────────────────
+add_phase_test(test_intuition_fixed test_intuition_fixed.cpp)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_intuition_fixed PRIVATE -O2)
+endif()
+
 # ── Fuzzy ingestion pipeline (Sprint 5) ───────────────────────────────────────
 add_phase_test(test_fuzzy_ingestion test_fuzzy_ingestion.cpp)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")

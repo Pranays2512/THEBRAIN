@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cmath>
 #include <chrono>
+#include <random>
+#include <cstdint>
 #include "../../../crisp/engines/math/math_engine.hpp"
 #include "../../../crisp/engines/math/algebra_engine.hpp"
 #include "../../../crisp/engines/math/math_parser.hpp"
@@ -110,12 +112,19 @@ struct RecurrentIntuitionBlock {
     int    total_updates  = 0;  // Tracks training iterations (for decay)
 
     RecurrentIntuitionBlock() {
-        W_in.resize(hidden_dim * input_dim, 0.08);
-        W_rec.resize(hidden_dim * hidden_dim, 0.08);
-        W_out.resize(output_dim * hidden_dim, 0.08);
-        b_in.resize(hidden_dim, 0.05);
-        b_rec.resize(hidden_dim, 0.05);
-        b_out.resize(output_dim, 0.0);
+        // Symmetry-breaking random init: constant init collapsed ALL hidden
+        // units into identical activations (empirically below-chance).
+        std::mt19937 g(1234);
+        auto rnd = [&](std::vector<double>& v, double s){
+            std::normal_distribution<double> nd(0.0, s);
+            for (auto& x : v) x = nd(g);
+        };
+        W_in.resize(hidden_dim * input_dim);  rnd(W_in,  0.30);
+        W_rec.resize(hidden_dim * hidden_dim); rnd(W_rec, 0.20);
+        W_out.resize(output_dim * hidden_dim); rnd(W_out, 0.10);
+        b_in.assign(hidden_dim, 0.05);
+        b_rec.assign(hidden_dim, 0.05);
+        b_out.assign(output_dim, 0.0);
     }
 
     double relu(double x) const { return x > 0 ? x : 0.01 * x; } // Leaky ReLU
@@ -212,6 +221,35 @@ struct RecurrentIntuitionBlock {
             b_in[i] -= deep_lr * d_h[i];
             for (int j = 0; j < input_dim && j < (int)features.size(); ++j)
                 W_in[i * input_dim + j] -= deep_lr * d_h[i] * features[j];
+        }
+
+        // ── Train the RECURRENT weights (previously frozen at init — the
+        // dynamic-expansion mechanism was decorative). BPTT-lite sweep
+        // through recorded states, newest first:
+        //   ∂L/∂W_rec[i,j] += gc[i] * h_prev[j]
+        //   carry: gc_prev[j] = Σ_i W_rec[i,j]·gc[i]·drelu(h_cur[i])
+        const double rec_lr = eff_lr * 0.5;
+        std::vector<double> gc(hidden_dim, 0.0);
+        for (int j = 0; j < hidden_dim; ++j)
+            for (int i = 0; i < output_dim; ++i)
+                gc[j] += W_out[i * hidden_dim + j] * d_logits[i];
+        for (int k = (int)h_states.size() - 1; k >= 1; --k) {
+            const auto& h_prev = h_states[k - 1];
+            const auto& h_cur  = h_states[k];
+            for (int i = 0; i < hidden_dim; ++i) {
+                double g = gc[i] * d_relu(h_cur[i]);
+                b_rec[i] -= rec_lr * g;
+                for (int j = 0; j < hidden_dim; ++j)
+                    W_rec[i * hidden_dim + j] -= rec_lr * g * h_prev[j];
+            }
+            std::vector<double> next_gc(hidden_dim, 0.0);
+            for (int j = 0; j < hidden_dim; ++j) {
+                double s = 0.;
+                for (int i = 0; i < hidden_dim; ++i)
+                    s += W_rec[i * hidden_dim + j] * gc[i] * d_relu(h_cur[i]);
+                next_gc[j] = s;
+            }
+            gc.swap(next_gc);
         }
     }
 

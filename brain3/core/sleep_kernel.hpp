@@ -28,6 +28,7 @@
 #include "crisp/engines/neural/mouth_style_loop.hpp"
 #include "crisp/engines/reasoning/graph_attention_reasoner.hpp"
 #include "crisp/engines/math/math_engine.hpp"
+#include "crisp/engines/math/neural_policy_value_prior_engine.hpp"
 #include "crisp/engines/reasoning/reasoning_engine.hpp"
 
 namespace brain3 {
@@ -60,8 +61,9 @@ public:
 
     SleepKernel(engines::neural::NativeMouth& mouth,
                 brain2::reasoning::ReasoningEngine& facts,
-                engines::neural::VoiceMapper& voice)
-        : mouth_(mouth), facts_(facts), voice_(voice) {}
+                engines::neural::VoiceMapper& voice,
+                thebrain::neural_prior::NeuralPolicyValuePriorEngine& prior)
+        : mouth_(mouth), facts_(facts), voice_(voice), prior_engine_(prior) {}
 
     void set_probes(const std::vector<Probe>& style_probes,
                     const std::vector<Probe>& floor_probes) {
@@ -149,6 +151,10 @@ private:
         }
         pr.metrics.push_back({"cas_exact", std::to_string(ok) + "/" + std::to_string(n)});
         if (ok != n) { pr.status = "regressed"; rep.phases.push_back(pr); return; }
+
+        // consolidate prior-engine learning from today's recorded outcomes
+        const int pu = prior_engine_.train_pass(2, 0.05);
+        pr.metrics.push_back({"prior_updates", std::to_string(pu)});
         pr.status = "ok";
         rep.phases.push_back(pr);
     }
@@ -156,6 +162,7 @@ private:
     engines::neural::NativeMouth& mouth_;
     brain2::reasoning::ReasoningEngine& facts_;
     engines::neural::VoiceMapper& voice_;
+    thebrain::neural_prior::NeuralPolicyValuePriorEngine prior_engine_;
     Config cfg_;
     std::vector<Probe> style_probes_, floor_probes_;
     double pre_cycle_graph_mrr_ = -1.0;
