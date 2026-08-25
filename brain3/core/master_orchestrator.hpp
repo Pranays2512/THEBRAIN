@@ -76,6 +76,7 @@ private:
     thebrain::neural_prior::NeuralPolicyValuePriorEngine prior_engine_;
     engines::synthesis::UnifiedProposer proposer_;
     engines::reasoning::GraphAttentionReasoner graph_reasoner_;
+    bool graph_dirty_ = false;
     engines::neural::VoiceMapper voice_mapper_ = engines::neural::default_voice_mapper();
 
 public:
@@ -709,13 +710,22 @@ public:
             }
         }
 
-        // ── Multi-hop graph reasoning for knowledge queries ────────────────
-        if (bql.rfind("LOOKUP ", 0) == 0) {
-            std::istringstream iss(bql.substr(7));
-            std::string subj_str;
-            iss >> subj_str;
+        // Lazy retrain: if facts were taught since last training, refresh
+        if (graph_dirty_) {
+            for (const auto& f : brain_->brainql_engine.facts)
+                graph_reasoner_.load_from_facts({{f.subj, f.rel, f.obj}});
+            graph_reasoner_.train(engines::reasoning::GraphAttentionReasoner::TrainConfig{1500, 16, 2, 5, 0.02, 42});
+            graph_dirty_ = false;
+        }
+
+        // ── Graph reasoner: multi-hop knowledge queries ───────────────────
+        if (graph_reasoner_.trained() &&
+            (bql.rfind("LOOKUP ", 0) == 0 || bql.rfind("WHAT_IS ", 0) == 0)) {
+            std::istringstream iss(bql);
+            std::string op, subj_str;
+            iss >> op >> subj_str;
             int src_id = graph_reasoner_.entity_id(subj_str);
-            if (src_id >= 0 && graph_reasoner_.trained()) {
+            if (src_id >= 0) {
                 auto qr = graph_reasoner_.query_stages(src_id, {-1}, 1.0);
                 if (!qr.ranked.empty() && qr.ranked.front().mass > 0.01) {
                     auto nm_end = std::chrono::high_resolution_clock::now();
@@ -723,10 +733,10 @@ public:
                     resp.verified = true;
                     resp.engine_used = "graph_attention";
                     std::ostringstream oss;
-                    oss << "🔗 Multi-hop from '" << subj_str << "':\n";
+                    oss << "🔗 '" << subj_str << "' connects to:\n";
                     for (size_t i = 0; i < std::min(size_t(5), qr.ranked.size()); ++i)
                         oss << "  • " << graph_reasoner_.entity_name(qr.ranked[i].entity)
-                            << " (mass=" << qr.ranked[i].mass << ")\n";
+                            << " (support=" << qr.ranked[i].mass << ")\n";
                     resp.natural_reply = oss.str();
                     resp.raw_output = "{}";
                     return resp;
@@ -734,7 +744,7 @@ public:
             }
         }
 
-        // ── Native Mouth fast-path ──────────────────────────────────────────
+        // ── Native Mouth fast-path ──────────────────────────────────────────────────────────────────────────────────
         // Anything that reaches this point is unstructured (chat-like) text.
         // The mouth may only take INSTINCT-family turns that ALSO pass the
         // chat heuristic (alphabetic, operator-free) — knowledge questions

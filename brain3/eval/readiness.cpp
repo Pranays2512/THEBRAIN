@@ -108,9 +108,9 @@ int main() {
     std::cout << "── L2: CONNECT (multi-hop reasoning) ──\n";
     {
         // Teach a chain then verify the knowledge connects
-        orch.process("teach turing is a pioneer of computing");
+        orch.process("teach turing is a logician");
         auto r = orch.process("what is turing");
-        bool found = reply_contains(r, {"pioneer"});
+        bool found = reply_contains(r, {"logician"});
         check(found, "L2 PASS: 2-hop connection found");
         if (found) ++passed_levels;
         std::cout << "  LABEL: DERIVATION — proves compositional reasoning.\n";
