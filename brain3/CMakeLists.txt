@@ -130,6 +130,12 @@ endif()
 # ── Metacognition + sentiment perception ──────────────────────────────────────
 add_phase_test(test_metacognition test_metacognition.cpp)
 
+# ── Readiness assessment (the honest scorecard) ──────────────────────────────
+add_executable(eval_readiness eval/readiness.cpp)
+target_include_directories(eval_readiness PRIVATE .)
+target_link_libraries(eval_readiness PRIVATE ${PLATFORM_LIBS})
+target_compile_options(eval_readiness PRIVATE -O2)
+
 # ── Intuition fixes falsifiers ────────────────────────────────────────────────
 add_phase_test(test_intuition_fixed test_intuition_fixed.cpp)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -282,6 +282,9 @@ struct RecurrentIntuitionBlock {
             gc.swap(ngc);
         }
 
+        // Recurrent learning rate
+        const double rec_lr = eff_lr * 0.5;
+
         // Adam updates
         adam_upd(W_out, gW_out, mW_out_, vW_out_, eff_lr);
         adam_upd(b_out, gb_out, mb_out_, vb_out_, eff_lr);
@@ -289,7 +292,9 @@ struct RecurrentIntuitionBlock {
         adam_upd(b_in, gb_in, mb_in_, vb_in_, eff_lr);
         adam_upd(W_rec, gW_rec, mW_rec_, vW_rec_, rec_lr);
         adam_upd(b_rec, gb_rec, mb_rec_, vb_rec_, eff_lr);
-        ++total_u
+        ++total_updates;
+    }
+
     // ── Binary Weight Persistence ──────────────────────────────────────────
     bool save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);

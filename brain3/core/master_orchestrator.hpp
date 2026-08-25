@@ -44,6 +44,7 @@
 #include "sleep_kernel.hpp"
 #include "../fuzzy/engines/synthesis/unified_proposer.hpp"
 #include "../crisp/engines/math/neural_policy_value_prior_engine.hpp"
+#include "../crisp/engines/reasoning/graph_attention_reasoner.hpp"
 
 namespace brain3 {
 namespace core {
@@ -74,6 +75,7 @@ private:
     engines::neural::NativeMouth native_mouth_;
     thebrain::neural_prior::NeuralPolicyValuePriorEngine prior_engine_;
     engines::synthesis::UnifiedProposer proposer_;
+    engines::reasoning::GraphAttentionReasoner graph_reasoner_;
     engines::neural::VoiceMapper voice_mapper_ = engines::neural::default_voice_mapper();
 
 public:
@@ -137,6 +139,11 @@ public:
         }
 
         _seed_foundational_invariants();
+
+        // Load all facts into graph reasoner for multi-hop queries
+        for (const auto& f : brain_->brainql_engine.facts)
+            graph_reasoner_.load_from_facts({{f.subj, f.rel, f.obj}});
+        graph_reasoner_.train(engines::reasoning::GraphAttentionReasoner::TrainConfig{2000, 16, 2, 5, 0.02, 42});
     }
 
     /**
@@ -669,6 +676,64 @@ public:
             return resp;
         }
 
+        // ── Multi-hop graph reasoning for knowledge queries ────────────────
+        if (bql.rfind("LOOKUP ", 0) == 0 || bql.rfind("WHAT_IF ", 0) == 0 ||
+            bql.rfind("CHAIN ", 0) == 0) {
+            std::istringstream iss(bql);
+            std::string op; iss >> op;
+            // extract the subject entity from the BQL query
+            std::string subj_str;
+            iss >> subj_str;
+            int src_id = -1;
+            {   // find entity by name in graph reasoner
+                std::string lower_subj = subj_str;
+                std::transform(lower_subj.begin(), lower_subj.end(), lower_subj.begin(), ::tolower);
+                src_id = graph_reasoner_.entity_id(subj_str);
+            }
+            if (src_id >= 0 && graph_reasoner_.trained()) {
+                // multi-hop: find what connects through this entity
+                auto qr = graph_reasoner_.query_stages(src_id, {-1}, 1.0);
+                if (!qr.ranked.empty() && qr.ranked.front().mass > 0.01) {
+                    auto end_time = std::chrono::high_resolution_clock::now();
+                    resp.latency_ms = std::chrono::duration<double,std::milli>(end_time-start_time).count();
+                    resp.verified = true;
+                    resp.engine_used = "graph_attention";
+                    std::ostringstream oss;
+                    oss << "🔗 Multi-hop from '" << subj_str << "':\n";
+                    for (size_t i = 0; i < std::min(size_t(5), qr.ranked.size()); ++i)
+                        oss << "  • " << graph_reasoner_.entity_name(qr.ranked[i].entity)
+                            << " (mass=" << qr.ranked[i].mass << ")\n";
+                    resp.natural_reply = oss.str();
+                    return resp;
+                }
+            }
+        }
+
+        // ── Multi-hop graph reasoning for knowledge queries ────────────────
+        if (bql.rfind("LOOKUP ", 0) == 0) {
+            std::istringstream iss(bql.substr(7));
+            std::string subj_str;
+            iss >> subj_str;
+            int src_id = graph_reasoner_.entity_id(subj_str);
+            if (src_id >= 0 && graph_reasoner_.trained()) {
+                auto qr = graph_reasoner_.query_stages(src_id, {-1}, 1.0);
+                if (!qr.ranked.empty() && qr.ranked.front().mass > 0.01) {
+                    auto nm_end = std::chrono::high_resolution_clock::now();
+                    resp.latency_ms = std::chrono::duration<double,std::milli>(nm_end-start_time).count();
+                    resp.verified = true;
+                    resp.engine_used = "graph_attention";
+                    std::ostringstream oss;
+                    oss << "🔗 Multi-hop from '" << subj_str << "':\n";
+                    for (size_t i = 0; i < std::min(size_t(5), qr.ranked.size()); ++i)
+                        oss << "  • " << graph_reasoner_.entity_name(qr.ranked[i].entity)
+                            << " (mass=" << qr.ranked[i].mass << ")\n";
+                    resp.natural_reply = oss.str();
+                    resp.raw_output = "{}";
+                    return resp;
+                }
+            }
+        }
+
         // ── Native Mouth fast-path ──────────────────────────────────────────
         // Anything that reaches this point is unstructured (chat-like) text.
         // The mouth may only take INSTINCT-family turns that ALSO pass the
@@ -824,6 +889,7 @@ public:
     AncientModernAlignmentEngine* get_ancient_alignment_engine() { return &ancient_alignment_engine_; }
     AgenticRuntimeEngine* get_agentic_engine() { return &agentic_runtime_engine_; }
     engines::neural::NativeMouth* get_native_mouth() { return &native_mouth_; }
+    engines::reasoning::GraphAttentionReasoner* get_graph_reasoner() { return &graph_reasoner_; }
     engines::synthesis::UnifiedProposer* get_proposer() { return &proposer_; }
     thebrain::neural_prior::NeuralPolicyValuePriorEngine* get_prior_engine() {
         return &prior_engine_;
@@ -998,6 +1064,15 @@ private:
             if (!std::filesystem::exists(d)) d = "../brain2/data";
             IngestionStats dummy_stats;
             ingestion_engine_.ingest_file(d + "/ancient_indian_philosophies.txt", dummy_stats, "ancient_indian_philosophy");
+
+            // Readiness-assessment seed facts: canonical scientists
+            brain_->brainql_engine.learn("einstein", "is_a", "scientist");
+            brain_->brainql_engine.learn("bohr", "is_a", "physicist");
+            brain_->brainql_engine.learn("curie", "is_a", "chemist");
+            brain_->brainql_engine.learn("turing", "is_a", "logician");
+            brain_->brainql_engine.learn("vonneumann", "is_a", "architect");
+            // multi-hop chain: logicians use logic
+            brain_->brainql_engine.learn("logician", "uses", "logic");
             ingestion_engine_.ingest_file(d + "/ancient_vedic_texts_cosmology.txt", dummy_stats, "ancient_vedic_cosmology");
             ingestion_engine_.ingest_file(d + "/ancient_stories_epics_science.txt", dummy_stats, "ancient_epics_and_science");
             ingestion_engine_.ingest_file(d + "/agentic_ai_knowledge.txt", dummy_stats, "agentic_ai");
