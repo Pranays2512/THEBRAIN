@@ -127,6 +127,9 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test_curiosity_diet PRIVATE -O2)
 endif()
 
+# ── Metacognition + sentiment perception ──────────────────────────────────────
+add_phase_test(test_metacognition test_metacognition.cpp)
+
 # ── Intuition fixes falsifiers ────────────────────────────────────────────────
 add_phase_test(test_intuition_fixed test_intuition_fixed.cpp)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -207,6 +207,9 @@ public:
     int entity_id(const std::string& n) const {
         auto it = eid_.find(n); return it == eid_.end() ? -1 : it->second;
     }
+    int relation_id(const std::string& n) const {
+        auto it = rid_.find(n); return it == rid_.end() ? -1 : it->second;
+    }
     const std::string& entity_name(int id) const { return entities_[id]; }
 
     // sleep-kernel checkpointing

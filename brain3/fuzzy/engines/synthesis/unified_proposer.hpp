@@ -109,7 +109,40 @@ struct RecurrentIntuitionBlock {
     std::vector<double> b_out;
 
     double learning_rate = 0.08;
+    double rec_lr_scale = 0.5;   // recurrent lr = learning_rate * this
     int    total_updates  = 0;  // Tracks training iterations (for decay)
+
+    // Adam optimizer state (per-parameter adaptive learning rates)
+    std::vector<double> mW_in_, vW_in_, mW_rec_, vW_rec_, mW_out_, vW_out_;
+    std::vector<double> mb_in_, vb_in_, mb_rec_, vb_rec_, mb_out_, vb_out_;
+    long long adam_t_ = 0;
+    static constexpr double adam_b1 = 0.9, adam_b2 = 0.999, adam_eps = 1e-8;
+
+    void init_adam() {
+        if (!mW_in_.empty()) return;   // already initialized
+        mW_in_.assign(W_in.size(), 0.0);  vW_in_.assign(W_in.size(), 0.0);
+        mW_rec_.assign(W_rec.size(), 0.0); vW_rec_.assign(W_rec.size(), 0.0);
+        mW_out_.assign(W_out.size(), 0.0); vW_out_.assign(W_out.size(), 0.0);
+        mb_in_.assign(b_in.size(), 0.0);  vb_in_.assign(b_in.size(), 0.0);
+        mb_rec_.assign(b_rec.size(), 0.0); vb_rec_.assign(b_rec.size(), 0.0);
+        mb_out_.assign(b_out.size(), 0.0); vb_out_.assign(b_out.size(), 0.0);
+        adam_t_ = 0;
+    }
+
+    // Adam step on one parameter set
+    void adam_upd(std::vector<double>& P, const std::vector<double>& G,
+                  std::vector<double>& M, std::vector<double>& Vv,
+                  double lr) {
+        ++const_cast<long long&>(adam_t_);
+        long long t = adam_t_;
+        double bc1 = 1.0 - std::pow(adam_b1, t);
+        double bc2 = 1.0 - std::pow(adam_b2, t);
+        for (size_t i = 0; i < P.size(); ++i) {
+            M[i] = adam_b1 * M[i] + (1 - adam_b1) * G[i];
+            Vv[i] = adam_b2 * Vv[i] + (1 - adam_b2) * G[i] * G[i];
+            P[i] -= lr * (M[i] / bc1) / (std::sqrt(Vv[i] / bc2) + adam_eps);
+        }
+    }
 
     RecurrentIntuitionBlock() {
         // Symmetry-breaking random init: constant init collapsed ALL hidden
@@ -192,67 +225,71 @@ struct RecurrentIntuitionBlock {
                   int target_idx, double reward) {
         total_updates++;
 
-        // Effective learning rate decays slowly over time
-        double eff_lr = learning_rate / (1.0 + 0.0001 * total_updates);
+        init_adam();
+        double eff_lr = learning_rate;
 
         std::vector<double> d_logits = probs;
-        d_logits[target_idx] -= reward; // Cross-entropy gradient
+        d_logits[target_idx] -= reward;
 
         const auto& h_final = h_states.back();
 
-        // Update output layer
-        for (int i = 0; i < output_dim; ++i) {
-            b_out[i] -= eff_lr * d_logits[i];
-            for (int j = 0; j < hidden_dim; ++j)
-                W_out[i * hidden_dim + j] -= eff_lr * d_logits[i] * h_final[j];
-        }
-
-        // Propagate gradient to hidden layer
+        // Accumulate gradients
+        std::vector<double> gW_out(output_dim * hidden_dim, 0.0);
+        std::vector<double> gb_out(output_dim, 0.0);
         std::vector<double> d_h(hidden_dim, 0.0);
+
+        for (int i = 0; i < output_dim; ++i) {
+            gb_out[i] += d_logits[i];
+            for (int j = 0; j < hidden_dim; ++j)
+                gW_out[i * hidden_dim + j] += d_logits[i] * h_final[j];
+        }
         for (int j = 0; j < hidden_dim; ++j)
             for (int i = 0; i < output_dim; ++i)
                 d_h[j] += W_out[i * hidden_dim + j] * d_logits[i];
-        for (int j = 0; j < hidden_dim; ++j)
-            d_h[j] *= d_relu(h_final[j]);
+        for (int j = 0; j < hidden_dim; ++j) d_h[j] *= d_relu(h_final[j]);
 
-        // Update input layer (deeper feature learning)
-        double deep_lr = eff_lr * 0.15;
+        std::vector<double> gW_in(hidden_dim * input_dim, 0.0);
+        std::vector<double> gb_in(hidden_dim, 0.0);
         for (int i = 0; i < hidden_dim; ++i) {
-            b_in[i] -= deep_lr * d_h[i];
+            gb_in[i] += d_h[i];
             for (int j = 0; j < input_dim && j < (int)features.size(); ++j)
-                W_in[i * input_dim + j] -= deep_lr * d_h[i] * features[j];
+                gW_in[i * input_dim + j] += d_h[i] * features[j];
         }
 
-        // ── Train the RECURRENT weights (previously frozen at init — the
-        // dynamic-expansion mechanism was decorative). BPTT-lite sweep
-        // through recorded states, newest first:
-        //   ∂L/∂W_rec[i,j] += gc[i] * h_prev[j]
-        //   carry: gc_prev[j] = Σ_i W_rec[i,j]·gc[i]·drelu(h_cur[i])
-        const double rec_lr = eff_lr * 0.5;
+        // Recurrent weight gradients (BPTT-lite sweep)
+        std::vector<double> gW_rec(hidden_dim * hidden_dim, 0.0);
+        std::vector<double> gb_rec(hidden_dim, 0.0);
         std::vector<double> gc(hidden_dim, 0.0);
         for (int j = 0; j < hidden_dim; ++j)
             for (int i = 0; i < output_dim; ++i)
                 gc[j] += W_out[i * hidden_dim + j] * d_logits[i];
         for (int k = (int)h_states.size() - 1; k >= 1; --k) {
-            const auto& h_prev = h_states[k - 1];
-            const auto& h_cur  = h_states[k];
+            const auto& hp = h_states[k - 1];
+            const auto& hc = h_states[k];
             for (int i = 0; i < hidden_dim; ++i) {
-                double g = gc[i] * d_relu(h_cur[i]);
-                b_rec[i] -= rec_lr * g;
+                double g = gc[i] * d_relu(hc[i]);
+                gb_rec[i] += g;
                 for (int j = 0; j < hidden_dim; ++j)
-                    W_rec[i * hidden_dim + j] -= rec_lr * g * h_prev[j];
+                    gW_rec[i * hidden_dim + j] += g * hp[j];
             }
-            std::vector<double> next_gc(hidden_dim, 0.0);
+            std::vector<double> ngc(hidden_dim, 0.0);
             for (int j = 0; j < hidden_dim; ++j) {
                 double s = 0.;
                 for (int i = 0; i < hidden_dim; ++i)
-                    s += W_rec[i * hidden_dim + j] * gc[i] * d_relu(h_cur[i]);
-                next_gc[j] = s;
+                    s += W_rec[i * hidden_dim + j] * gc[i] * d_relu(hc[i]);
+                ngc[j] = s;
             }
-            gc.swap(next_gc);
+            gc.swap(ngc);
         }
-    }
 
+        // Adam updates
+        adam_upd(W_out, gW_out, mW_out_, vW_out_, eff_lr);
+        adam_upd(b_out, gb_out, mb_out_, vb_out_, eff_lr);
+        adam_upd(W_in, gW_in, mW_in_, vW_in_, eff_lr);
+        adam_upd(b_in, gb_in, mb_in_, vb_in_, eff_lr);
+        adam_upd(W_rec, gW_rec, mW_rec_, vW_rec_, rec_lr);
+        adam_upd(b_rec, gb_rec, mb_rec_, vb_rec_, eff_lr);
+        ++total_u
     // ── Binary Weight Persistence ──────────────────────────────────────────
     bool save(const std::string& path) const {
         std::ofstream f(path, std::ios::binary);
