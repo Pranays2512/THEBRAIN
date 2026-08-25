@@ -180,7 +180,8 @@ public:
             return "INSTINCT poison_invariants";
         }
 
-        // Direct BrainQL pass-through
+        // Direct BrainQL pass-through (responds-teaches excluded: they must
+        // reach the quarantine funnel, not bypass it)
         std::vector<std::string> bql_ops = {
             "LOOKUP", "CHAIN", "INHERIT", "DERIVE", "TEACH_RULE", "TEACH",
             "COMPUTE", "EXPLAIN", "SOLVE", "SYNTH", "PERCEIVE_IMAGE", "VISION",
@@ -195,7 +196,7 @@ public:
             "ANCIENT_MODERN_ALIGN", "AGENTIC_GOAL"
         };
         if (upper.rfind("TEACH ME ", 0) != 0 && upper.rfind("TEACH THAT ", 0) != 0 &&
-            (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos)) &&
+            (upper.rfind("TEACH ", 0) != 0 || (clean_text.find(" is ") == std::string::npos && clean_text.find(" is a ") == std::string::npos && clean_text.find(" is an ") == std::string::npos && clean_text.find(" responds ") == std::string::npos)) &&
             upper.rfind("EXPLAIN SIMPLY", 0) != 0 && upper.rfind("EXPLAIN HOW", 0) != 0 && upper.rfind("EXPLAIN WHY", 0) != 0 &&
             upper.rfind("DERIVE A ", 0) != 0 && upper.rfind("DERIVE NEW", 0) != 0 && upper.rfind("DERIVE LAW", 0) != 0 && upper.rfind("DERIVE CONCEPT", 0) != 0) {
             for (const auto& op : bql_ops) {
@@ -315,11 +316,16 @@ public:
         }
 
         // Knowledge Consolidation / Epistemic Teaching
-        std::regex teach_regex(R"((?:teach|remember|learn that|store that)\s+([\w\s]+?)\s+(?:is a|is an|has|can|causes)\s+([\w\s]+))", std::regex_constants::icase);
+        std::regex teach_regex(R"((?:teach|remember|learn that|store that)\s+([\w\s:]+?)\s+(is a|is an|has|can|causes|responds)\s+([\w\s]+))", std::regex_constants::icase);
         std::smatch teach_match;
         if (std::regex_search(clean_text, teach_match, teach_regex)) {
             std::string s = teach_match[1].str();
-            std::string o = teach_match[2].str();
+            std::string verb = teach_match[2].str();
+            std::string o = teach_match[3].str();
+            std::transform(verb.begin(), verb.end(), verb.begin(), ::tolower);
+            // responds is FUNCTIONAL: routed to the quarantine funnel
+            if (verb == "responds")
+                return "TEACH_QUARANTINE " + s + " " + o;
             return "TEACH " + s + " is_a " + o;
         }
 
@@ -640,11 +646,32 @@ public:
             return resp;
         }
 
+        // ── Functional-relation quarantine path ─────────────────────────────
+        if (bql.rfind("TEACH_QUARANTINE ", 0) == 0) {
+            std::istringstream iss(bql.substr(17));
+            std::string s, o;
+            iss >> s;
+            size_t sp = bql.find(' ', 17);
+            o = trim_copy_hpp(bql.substr(sp + 1));
+            IngestionStats qstats;
+            ingestion_engine_.learn_triple(s, "responds", o, "quarantine", qstats);
+            auto q_end = std::chrono::high_resolution_clock::now();
+            resp.latency_ms = std::chrono::duration<double, std::milli>(q_end - start_time).count();
+            resp.verified = true;
+            resp.engine_used = "contradiction_quarantine";
+            resp.natural_reply = "⚠️ Conflicting response template quarantined for review.";
+            return resp;
+        }
+
         // ── Native Mouth fast-path ──────────────────────────────────────────
         // Anything that reaches this point is unstructured (chat-like) text.
         // The mouth may only take INSTINCT-family turns that ALSO pass the
         // chat heuristic (alphabetic, operator-free) — knowledge questions
         // (LOOKUP family) and calculator input must never be intercepted.
+        if (std::getenv("MOUTH_DEBUG"))
+            std::cerr << "[mouth-dbg] bql='" << bql << "' chat_like="
+                      << _looks_like_chat(input_text)
+                      << " plans=" << native_mouth_.plans_supported() << "\n";
         if (native_mouth_.available() && _looks_like_chat(input_text) &&
             bql.rfind("INSTINCT", 0) == 0) {
             // ── plan-conditioned branch (amnesia interface) ──
@@ -798,6 +825,12 @@ private:
     // mouth confidence. (Eval harness catch: "12*(3+4)" and knowledge
     // questions were being hijacked by the mouth before this gate existed.)
     // Social-act detection for plan-conditioned responses. Empty => no act.
+    static std::string trim_copy_hpp(const std::string& s) {
+        size_t a = s.find_first_not_of(" \t");
+        size_t b = s.find_last_not_of(" \t");
+        return a == std::string::npos ? "" : s.substr(a, b - a + 1);
+    }
+
     static std::string _chat_act(const std::string& text) {
         std::string lower;
         for (char c : text) lower += (char)std::tolower((unsigned char)c);

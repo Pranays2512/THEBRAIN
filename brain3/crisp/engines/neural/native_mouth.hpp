@@ -77,11 +77,12 @@ public:
         const auto ids = lm_.encode(plan.linearize());
         StamlatLM::StreamCache sc;
         lm_.stream_start(ids, sc);
+        const auto locked = plan.content_lock_ids(lm_);
         std::vector<int> utt;
         bool terminated = false;
         for (int n = 0; n < cfg_.max_reply_tokens; ++n) {
             const int tok = lm_.stream_sample(sc, pol.temperature,
-                                              nullptr, nullptr);
+                                              &locked, nullptr);
             utt.push_back(tok);
             lm_.stream_step(tok, sc);
             if (lm_.token_surface(tok) == "\n") { terminated = true; break; }

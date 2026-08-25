@@ -58,10 +58,46 @@ private:
     double last_novelty_ = 0.0;
     long long stats_novel_flagged_ = 0;
     long long stats_predictable_ = 0;
+    // contradiction policy: functional relations hold AT MOST one object;
+    // conflicting candidates are quarantined (never silently co-exist)
+    std::set<std::string> functional_rels_ = {"responds", "born_in",
+                                              "capital_of", "spouse"};
+    struct Quarantine { std::string subj, rel, obj_new, obj_old; };
+    std::vector<Quarantine> quarantine_;
+
+public:
+    const std::vector<Quarantine>& quarantine() const { return quarantine_; }
+    void add_functional_rel(const std::string& r) {
+        functional_rels_.insert(r);
+    }
+    // resolution: apply a quarantined candidate (replacing the old value)
+    bool resolve_quarantine(size_t idx) {
+        if (idx >= quarantine_.size()) return false;
+        const auto& q = quarantine_[idx];
+        auto& F = brain_->brainql_engine.facts;
+        for (auto it = F.begin(); it != F.end(); ) {
+            if (it->subj == q.subj && it->rel == q.rel) it = F.erase(it);
+            else ++it;
+        }
+        F.insert({q.subj, q.rel, q.obj_new});
+        quarantine_.erase(quarantine_.begin() + (long)idx);
+        return true;
+    }
+
+private:
+    std::set<brain2::reasoning::Fact>& facts_ref() {
+        return brain_->brainql_engine.facts;
+    }
     std::unordered_map<std::string, std::vector<brain2::reasoning::DomainTriple>> pending_domain_triples_;
 
 public:
     FuzzyIngestionPipeline* fuzzy() { return fuzzy_.get(); }
+    // expose single-word observation so external tools can pre-warm the
+    // concept map (used by the curiosity scheduler's baseline)
+    void observe_word(const std::string& w) {
+        if (!fuzzy_) fuzzy_ = std::make_unique<FuzzyIngestionPipeline>();
+        fuzzy_->observe_entity(w);
+    }
     double last_novelty() const { return last_novelty_; }
     long long novel_flagged() const { return stats_novel_flagged_; }
     long long predictable_count() const { return stats_predictable_; }
@@ -259,8 +295,20 @@ public:
         commit_domains(stats);
     }
 
-private:
+public:
     void learn_triple(const std::string& s, const std::string& r, const std::string& o, const std::string& domain, IngestionStats& stats) {
+        // ── contradiction quarantine: functional relations never silently
+        // co-exist two objects. Conflict = maximally surprising episode.
+        if (functional_rels_.count(r)) {
+            for (const auto& f : brain_->brainql_engine.facts) {
+                if (f.subj == s && f.rel == r && f.obj != o) {
+                    quarantine_.push_back({s, r, o, f.obj});
+                    ++stats.contradictions_quarantined;
+                    if (brain_) brain_->commit_episode(0.95f, {});
+                    return;   // keep old value until resolved
+                }
+            }
+        }
         fuzzy_observe(s, r, o);
         // Learn in crisp BrainQL knowledge engine
         brain_->brainql_engine.learn(s, r, o);

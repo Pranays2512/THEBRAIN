@@ -146,6 +146,12 @@ public:
         return out;
     }
 
+    // text-level novelty: BMU distance of the line's bigram embedding
+    // against the concept map built from REAL ingestion
+    double text_novelty(const std::string& line) const {
+        return som_.bmu_distance(char_embed(line));
+    }
+
     // batch boundary: mean novelty since last commit (episodic error signal)
     double flush_batch() {
         double m = 0.;

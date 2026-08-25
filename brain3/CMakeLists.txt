@@ -121,6 +121,12 @@ target_compile_options(exactness_scoreboard PRIVATE -O2)
 add_phase_test(test_intent_router test_intent_router.cpp)
 target_compile_options(test_intent_router PRIVATE -O2)
 
+# ── Curiosity diet + contradiction quarantine (Sprint 5b) ─────────────────────
+add_phase_test(test_curiosity_diet test_curiosity_diet.cpp)
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test_curiosity_diet PRIVATE -O2)
+endif()
+
 # ── Fuzzy ingestion pipeline (Sprint 5) ───────────────────────────────────────
 add_phase_test(test_fuzzy_ingestion test_fuzzy_ingestion.cpp)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -247,6 +253,7 @@ add_test(NAME plan_mouth         COMMAND test_plan_mouth)
 add_test(NAME brain_eval         COMMAND brain_eval)
 add_test(NAME intent_router      COMMAND test_intent_router)
 add_test(NAME fuzzy_ingestion    COMMAND test_fuzzy_ingestion)
+add_test(NAME curiosity_diet     COMMAND test_curiosity_diet)
 add_test(NAME graph_reasoner     COMMAND test_graph_reasoner)
 add_test(NAME sleep_kernel       COMMAND test_sleep_kernel)
 
