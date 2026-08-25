@@ -138,6 +138,10 @@ target_compile_options(eval_readiness PRIVATE -O2)
 
 # ── Intuition fixes falsifiers ────────────────────────────────────────────────
 add_phase_test(test_intuition_fixed test_intuition_fixed.cpp)
+add_executable(swarm_train tools/swarm_train.cpp)
+target_include_directories(swarm_train PRIVATE .)
+target_link_libraries(swarm_train PRIVATE ${PLATFORM_LIBS})
+target_compile_options(swarm_train PRIVATE -O2)
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(test_intuition_fixed PRIVATE -O2)
 endif()
