@@ -29,7 +29,7 @@ class BrainLog {
 public:
     enum Level { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3 };
 private:
-    std::ostream* out = &std::cout;
+    std::ostream* out = &std::cerr;
     std::ofstream file_stream;
     Level min_level = INFO;
 
