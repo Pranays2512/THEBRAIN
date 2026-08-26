@@ -122,11 +122,21 @@ class TestBrainMCPServer(unittest.TestCase):
             text=True
         )
 
-        time.sleep(0.5) # Allow socket to bind
-
+        s = None
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(("127.0.0.1", port))
+            connected = False
+            for _ in range(25):
+                try:
+                    time.sleep(0.2)
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.connect(("127.0.0.1", port))
+                    connected = True
+                    break
+                except (ConnectionRefusedError, OSError):
+                    if s:
+                        s.close()
+                        s = None
+            self.assertTrue(connected, "Failed to connect to MCP TCP socket server")
 
             # 1. Initialize over TCP Socket
             req = json.dumps({

@@ -195,7 +195,7 @@ public:
                  // Tool 7: brain_action_execute
                  << "{"
                  << "\"name\":\"brain_action_execute\","
-                 << "\"description\":\"Execute an action on an external environment or connected system.\","
+                 << "\"description\":\"Execute a real action through the Brain: 'sleep' runs sleep consolidation with rollback gates; any other string is processed as a natural-language query/teach/command by the Master Orchestrator (returns reply, engine used, verified flag).\","
                  << "\"inputSchema\":{\"type\":\"object\",\"properties\":{\"action\":{\"type\":\"string\"},\"parameters\":{\"type\":\"object\"}},\"required\":[\"action\"]}"
                  << "},"
                  // Tool 8: brain_align_ancient_modern
@@ -285,7 +285,21 @@ public:
                 }
             } else if (tool_name == "brain_action_execute") {
                 std::string act = extract_json_field(arguments_raw, "action");
-                tool_output = "⚡ [Brain Action Engine]: Executed action '" + act + "' successfully.";
+                if (act.empty()) {
+                    tool_output = "Error: missing required 'action' argument. No action taken.";
+                } else if (act == "sleep" || act == "sleep_consolidate") {
+                    tool_output = "🌙 [Sleep Consolidation]\n" + orchestrator_.sleep_consolidate();
+                } else {
+                    // Everything else is a genuine cognitive request routed
+                    // through the Master Orchestrator's dispatch ladder.
+                    auto r = orchestrator_.process(act);
+                    std::ostringstream ss;
+                    ss << "⚡ [Brain Action] engine=" << r.engine_used
+                       << " verified=" << (r.verified ? "true" : "false")
+                       << " latency_ms=" << r.latency_ms << "\n"
+                       << r.natural_reply;
+                    tool_output = ss.str();
+                }
             } else {
                 tool_output = "Error: Unknown tool name '" + tool_name + "'";
             }
