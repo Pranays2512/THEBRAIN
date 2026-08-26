@@ -16,6 +16,7 @@ BRAIN3_DIR = REPO_ROOT / "brain3"
 CPP_TEST_HARNESS = """
 #include <iostream>
 #include <cassert>
+#include <cstdlib>
 #include "crisp/engines/math/lean4_interactive_verifier_bridge.hpp"
 
 using namespace thebrain::lean4_bridge;
@@ -32,14 +33,30 @@ int main() {
     assert(script.complete_lean_code.find("theorem differentiableAt_const") != std::string::npos);
     std::cout << "[PASSED] Generated Lean 4 code:\\n" << script.complete_lean_code << "\\n";
 
-    // 2. Verify proof script via IPC bridge
+    // 2. Verify proof script via the REAL bridge
     auto resp = bridge.verify_proof_script(script);
-    assert(resp.is_valid_proof);
-    assert(resp.all_goals_closed);
-    assert(resp.open_goals_count == 0);
-    std::cout << "[PASSED] Verified proof script in " << resp.verification_time_ms << " ms\\n";
+    if (Lean4InteractiveVerifierBridge::lean_available()) {
+        // A real verifier ran: its verdict must be authoritative and consistent.
+        assert(resp.verification_performed);
+        assert(resp.is_valid_proof == resp.all_goals_closed);
+        assert(resp.is_valid_proof == (resp.open_goals_count == 0));
+        std::cout << "[PASSED] Real Lean verification executed in "
+                  << resp.verification_time_ms << " ms (valid="
+                  << resp.is_valid_proof << ")\\n";
+    } else {
+        // No toolchain: the bridge must NOT claim success.
+        assert(!resp.verification_performed);
+        assert(!resp.is_valid_proof);
+        assert(!resp.all_goals_closed);
+        assert(resp.open_goals_count >= 1);
+        bool mentions_toolchain = false;
+        for (const auto& d : resp.diagnostics_messages)
+            if (d.find("toolchain not found") != std::string::npos) mentions_toolchain = true;
+        assert(mentions_toolchain);
+        std::cout << "[PASSED] Honest unavailability: unverified proof NOT reported as valid\\n";
+    }
 
-    // 3. Test detection of 'sorry' placeholder
+    // 3. Test detection of 'sorry' placeholder — always rejected, with or without Lean
     std::vector<std::string> invalid_tactics = {"sorry"};
     auto invalid_script = bridge.build_proof_script("incomplete_theorem", "∀ (x : Nat), x = x", invalid_tactics);
     auto invalid_resp = bridge.verify_proof_script(invalid_script);

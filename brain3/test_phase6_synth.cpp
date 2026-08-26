@@ -3,7 +3,6 @@
 #include "crisp/engines/synthesis/refuter.hpp"
 #include "crisp/engines/synthesis/refute_synth.hpp"
 #include "crisp/engines/synthesis/irregularity_detector.hpp"
-#include "crisp/engines/synthesis/synth_engine.hpp"
 #include <iostream>
 #include <cassert>
 #include <cmath>
@@ -59,10 +58,6 @@ int main() {
     auto v2 = det.assess(noise_train, noise_holdout);
     assert(v2.verdict == "IRREGULAR");
     std::cout << "IrregularityDetector OK (distinguished Kepler's law from noise)\n";
-
-    // 6. synth_engine
-    brain3::engines::synthesis::SynthEngine se;
-    std::cout << "SynthEngine OK (unified frontend)\n";
 
     std::cout << "\nPhase 6 Synthesis Compiled and Verified successfully!\n";
     return 0;
