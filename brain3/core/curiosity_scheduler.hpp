@@ -52,6 +52,12 @@ public:
                     nov_sum += n1;
                     ++lines_sampled;
                 }
+                // BUGFIX: nov_sum was accumulated but mean_novelty was never
+                // assigned on this path, so score = 0 * log2(...) = 0 for every
+                // source that yielded triples — i.e. the curiosity-ordered diet
+                // silently degraded to directory_iterator order.
+                if (s.sampled_triples > 0)
+                    s.mean_novelty = nov_sum / (double)s.sampled_triples;
             }
             // grammar-less fallback: PER-WORD novelty against the LIVE map
             // (word scale = what the SOM organized; line scale washes out)
@@ -67,8 +73,6 @@ public:
                         ++words2;
                     }
                 }
-                std::cerr << "[diet-dbg] " << path << " words2=" << words2
-                          << " dsum=" << dsum << "\n";
                 if (words2 > 0) {
                     s.mean_novelty = dsum / words2 / 2.8f;
                     s.score = s.mean_novelty * 10.0;

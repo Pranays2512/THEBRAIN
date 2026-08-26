@@ -167,6 +167,48 @@ public:
         return nullptr;
     }
 
+    // ── Goodness-of-fit, actually computed ───────────────────────────────────
+    // Every branch that claims `verified` must pass its candidate through
+    // this first. r2_score/mse used to be assigned as literal constants, so a
+    // structureless 5-point dataset was reported as a verified scientific law
+    // with r2 = 0.999. Measured false-discovery rate on pure noise was 100%
+    // (200/200), see eval/heldout_probe.cpp section L.
+    struct FitStats { double r2 = 0.0, mse = 0.0, max_rel_resid = 0.0; };
+
+    template <typename Pred>
+    static FitStats fit_stats(const std::vector<ObservationPoint>& data, Pred predict) {
+        FitStats fs;
+        if (data.empty()) return fs;
+        double mean = 0.0;
+        for (const auto& pt : data) mean += pt.output;
+        mean /= (double)data.size();
+
+        double ss_res = 0.0, ss_tot = 0.0;
+        for (const auto& pt : data) {
+            const double pred = predict(pt);
+            if (!std::isfinite(pred)) {
+                fs.r2 = -1.0; fs.mse = INFINITY; fs.max_rel_resid = INFINITY;
+                return fs;
+            }
+            const double r = pt.output - pred;
+            ss_res += r * r;
+            ss_tot += (pt.output - mean) * (pt.output - mean);
+            fs.max_rel_resid = std::max(fs.max_rel_resid,
+                std::abs(r) / std::max(1e-12, std::abs(pt.output)));
+        }
+        fs.mse = ss_res / (double)data.size();
+        fs.r2  = (ss_tot > 1e-12) ? (1.0 - ss_res / ss_tot)
+                                  : (ss_res < 1e-12 ? 1.0 : 0.0);
+        return fs;
+    }
+
+    // A law is only a law if it reproduces the observations it was induced from.
+    static constexpr double kMinR2        = 0.9995;
+    static constexpr double kMaxRelResid  = 0.02;
+    static bool fit_acceptable(const FitStats& fs) {
+        return std::isfinite(fs.mse) && fs.r2 >= kMinR2 && fs.max_rel_resid <= kMaxRelResid;
+    }
+
     // Main Law Discovery Routine (BACON / Kepler / Empirical Induction)
     DiscoveredLaw discover_from_data(const std::string& target_var, const std::vector<std::string>& input_vars, const std::vector<ObservationPoint>& data, const std::string& hint_domain = "") {
         DiscoveredLaw res;
@@ -208,8 +250,13 @@ public:
                 std::ostringstream eq;
                 eq << target_var << " = " << std::setprecision(4) << avg_prod << " / " << iv;
                 res.equation = eq.str();
-                res.r2_score = 1.0;
-                res.mse = 0.0;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        return avg_prod / pt.inputs.at(iv);
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Discovered constant product invariant: " + iv + " * " + target_var + " = " + std::to_string(avg_prod));
                 steps.push_back("✓ Synthesized scientific law: " + res.equation);
                 res.discovery_steps = steps;
@@ -241,8 +288,13 @@ public:
                     eq << target_var << "^2 = " << std::setprecision(4) << avg_kep << " * " << iv << "^3";
                 }
                 res.equation = eq.str();
-                res.r2_score = 0.9999;
-                res.mse = 0.0001;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        return std::sqrt(avg_kep * std::pow(pt.inputs.at(iv), 3.0));
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Detected Keplerian harmonic ratio: (" + target_var + "^2) / (" + iv + "^3) = " + std::to_string(avg_kep));
                 steps.push_back("✓ Derived harmonic equation: " + res.equation);
                 res.discovery_steps = steps;
@@ -273,28 +325,44 @@ public:
                     double intercept = (s_lny - slope * s_lnx) / n;
                     double k = std::exp(intercept);
 
-                    res.verified = true;
-                    res.law_name = "Empirical Power Law";
-                    std::ostringstream eq;
-                    // Round slope to common fractions if close
+                    // Snap the exponent to a common fraction BEFORE scoring, so
+                    // the reported equation is the one that gets validated.
                     if (std::abs(slope - 1.5) < 0.05) slope = 1.5;
                     else if (std::abs(slope - 2.0) < 0.05) slope = 2.0;
                     else if (std::abs(slope - 0.5) < 0.05) slope = 0.5;
                     else if (std::abs(slope - 1.0) < 0.05) slope = 1.0;
 
-                    if (std::abs(k - 1.0) < 0.05) {
-                        eq << target_var << " = " << iv << "^" << slope;
-                    } else {
-                        eq << target_var << " = " << std::setprecision(4) << k << " * " << iv << "^" << slope;
+                    // A least-squares line through log-log space ALWAYS exists.
+                    // It is only a law if it predicts the data. Verify first.
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        return k * std::pow(pt.inputs.at(iv), slope);
+                    });
+
+                    if (fit_acceptable(fs)) {
+                        res.verified = true;
+                        res.law_name = "Empirical Power Law";
+                        std::ostringstream eq;
+                        if (std::abs(k - 1.0) < 0.05) {
+                            eq << target_var << " = " << iv << "^" << slope;
+                        } else {
+                            eq << target_var << " = " << std::setprecision(4) << k << " * " << iv << "^" << slope;
+                        }
+                        res.equation = eq.str();
+                        res.r2_score = fs.r2;
+                        res.mse = fs.mse;
+                        steps.push_back("✓ Log-log regression determined power index p = " + std::to_string(slope) + " (constant k = " + std::to_string(k) + ")");
+                        steps.push_back("✓ Residual check passed: R^2 = " + std::to_string(fs.r2) + ", MSE = " + std::to_string(fs.mse) + ", max relative residual = " + std::to_string(fs.max_rel_resid));
+                        steps.push_back("✓ Formulated empirical power law: " + res.equation);
+                        res.discovery_steps = steps;
+                        res.explanation = "Empirically discovered " + res.law_name + ": " + res.equation;
+                        return res;
                     }
-                    res.equation = eq.str();
-                    res.r2_score = 0.999;
-                    res.mse = 0.001;
-                    steps.push_back("✓ Log-log regression determined power index p = " + std::to_string(slope) + " (constant k = " + std::to_string(k) + ")");
-                    steps.push_back("✓ Formulated empirical power law: " + res.equation);
-                    res.discovery_steps = steps;
-                    res.explanation = "Empirically discovered " + res.law_name + ": " + res.equation;
-                    return res;
+                    // Rejected: report the attempt so the failure is legible.
+                    steps.push_back("✗ Power-law candidate " + target_var + " = " +
+                                    std::to_string(k) + " * " + iv + "^" + std::to_string(slope) +
+                                    " REJECTED (R^2 = " + std::to_string(fs.r2) +
+                                    ", max relative residual = " + std::to_string(fs.max_rel_resid) +
+                                    "); data is not a power law.");
                 }
             }
         }
@@ -343,6 +411,13 @@ public:
                 res.equation = eq.str();
                 res.r2_score = 1.0;
                 res.mse = 0.0;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        return avg_k * pt.inputs.at(v1) * pt.inputs.at(v2);
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Discovered bilinear product invariant: " + target_var + " / (" + v1 + " * " + v2 + ") = " + std::to_string(avg_k));
                 steps.push_back("✓ Synthesized scientific law: " + res.equation);
                 res.discovery_steps = steps;
@@ -379,6 +454,14 @@ public:
                 res.equation = eq.str();
                 res.r2_score = 1.0;
                 res.mse = 0.0;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        const double a = pt.inputs.at(v1), b = pt.inputs.at(v2);
+                        return k_quad1 * a * b * b;
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Detected quadratic power invariance on variable '" + v2 + "': constant k = " + std::to_string(k_quad1));
                 steps.push_back("✓ Synthesized scientific law: " + res.equation);
                 res.discovery_steps = steps;
@@ -400,6 +483,15 @@ public:
                 res.equation = target_var + " = 1 - Tc / Th";
                 res.r2_score = 1.0;
                 res.mse = 0.0;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        const double tc = pt.inputs.count("Tc") ? pt.inputs.at("Tc") : pt.inputs.at(v1);
+                        const double th = pt.inputs.count("Th") ? pt.inputs.at("Th") : pt.inputs.at(v2);
+                        return 1.0 - tc / th;
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Discovered thermal reservoir ratio invariant: " + target_var + " = 1 - Tc / Th");
                 steps.push_back("✓ Synthesized scientific law: " + res.equation);
                 res.discovery_steps = steps;
@@ -432,6 +524,15 @@ public:
                 res.equation = eq.str();
                 res.r2_score = 1.0;
                 res.mse = 0.0;
+                {
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                        const double rv = pt.inputs.count("r") ? pt.inputs.at("r") : pt.inputs.at(v1);
+                        const double dp = pt.inputs.count("dP") ? pt.inputs.at("dP") : pt.inputs.at(v2);
+                        return k_r4 * std::pow(rv, 4.0) * dp;
+                    });
+                    res.r2_score = fs.r2;
+                    res.mse = fs.mse;
+                }
                 steps.push_back("✓ Discovered 4th-power radius invariance: " + res.equation);
                 steps.push_back("✓ Synthesized scientific law: " + res.equation);
                 res.discovery_steps = steps;
@@ -472,6 +573,16 @@ public:
                     res.equation = eq.str();
                     res.r2_score = 1.0;
                     res.mse = 0.0;
+                    {
+                        const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                            const double rv = pt.inputs.at("r");
+                            double prod_q2 = 1.0;
+                            for (const auto& kv : pt.inputs) if (kv.first != "r") prod_q2 *= kv.second;
+                            return avg_k * prod_q2 / (rv * rv);
+                        });
+                        res.r2_score = fs.r2;
+                        res.mse = fs.mse;
+                    }
                     steps.push_back("✓ Discovered electrostatic constant k = " + std::to_string(avg_k));
                     steps.push_back("✓ Synthesized scientific law: " + res.equation);
                     res.discovery_steps = steps;
@@ -509,6 +620,16 @@ public:
                     res.equation = eq.str();
                     res.r2_score = 1.0;
                     res.mse = 0.0;
+                    {
+                        const FitStats fs = fit_stats(data, [&](const ObservationPoint& pt) {
+                            const double vv = pt.inputs.at("V");
+                            double prod_nt2 = 1.0;
+                            for (const auto& kv : pt.inputs) if (kv.first != "V") prod_nt2 *= kv.second;
+                            return avg_R * prod_nt2 / vv;
+                        });
+                        res.r2_score = fs.r2;
+                        res.mse = fs.mse;
+                    }
                     steps.push_back("✓ Discovered ideal gas constant R = " + std::to_string(avg_R));
                     steps.push_back("✓ Synthesized scientific law: " + res.equation);
                     res.discovery_steps = steps;

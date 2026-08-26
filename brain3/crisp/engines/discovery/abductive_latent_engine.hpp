@@ -807,7 +807,15 @@ public:
                 oss << "\n";
             }
             oss << "  • Synthesized Universal Law: " << goal_state.current_hypothesis << "\n";
-            oss << "  • Residual Error: 0.00000000 (Validated in Sandboxed Physics/Algebra Kernel)";
+            // Report the residual the sandbox verifier actually returned, and
+            // state what that verifier is. It is a per-anomaly acceptance
+            // predicate over minted symbol names, NOT a numeric physics check —
+            // printing "0.00000000 (Validated in Sandboxed Physics Kernel)" as a
+            // literal overstated this considerably.
+            oss << "  • Residual Error: " << std::fixed << std::setprecision(8)
+                << goal_state.residual_error
+                << " (scored by this anomaly's symbolic acceptance predicate;"
+                   " not a numeric simulation)";
             res.proof_explanation = oss.str();
 
             for (const auto& step : mcts_res.path) {

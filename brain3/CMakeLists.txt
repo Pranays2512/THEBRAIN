@@ -130,6 +130,12 @@ endif()
 # ── Metacognition + sentiment perception ──────────────────────────────────────
 add_phase_test(test_metacognition test_metacognition.cpp)
 
+# ── Held-out capability probe (measures generalization, not recall) ──────────
+add_executable(heldout_probe eval/heldout_probe.cpp)
+target_include_directories(heldout_probe PRIVATE .)
+target_link_libraries(heldout_probe PRIVATE ${PLATFORM_LIBS})
+target_compile_options(heldout_probe PRIVATE -O2)
+
 # ── Readiness assessment (the honest scorecard) ──────────────────────────────
 add_executable(eval_readiness eval/readiness.cpp)
 target_include_directories(eval_readiness PRIVATE .)
