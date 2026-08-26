@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include "crisp/engines/neural/stamlat_transformer.hpp"
 #include "crisp/engines/neural/utterance_plan.hpp"
 
@@ -93,15 +95,158 @@ static int train_plan_mode(const std::string& out, bool quick) {
     return ok >= (tot * 3) / 4 ? 0 : 2;
 }
 
+// ── corpus distillation mode ─────────────────────────────────────────────
+// Trains from an external teacher corpus of `user:/brain:` blocks
+// (e.g. data/distill/mouth_distill_v1.txt). Replies keep their contract
+// prefix ("intent greeting style friendly — ...") so sleep-floor probes
+// stay green while the English tail teaches fluent grounded rendering.
+static int train_corpus_mode(const std::string& corpus_path,
+                             const std::string& out, bool quick,
+                             const std::string& probes_path = {}) {
+    std::ifstream f(corpus_path);
+    if (!f) { std::printf("corpus not found: %s\n", corpus_path.c_str()); return 1; }
+    std::ostringstream ss;
+    ss << f.rdbuf();
+    std::string train = ss.str();
+    if (train.find("user:") == std::string::npos ||
+        train.find("brain:") == std::string::npos) {
+        // Reader-style corpora (read:/triple:) are also valid LM food.
+        if (train.find("read:") == std::string::npos &&
+            train.find("triple:") == std::string::npos) {
+            std::printf("corpus missing user:/brain: or read:/triple: blocks\n");
+            return 1;
+        }
+    }
+
+    StamlatConfig cfg;
+    cfg.d_model = quick ? 64 : 96;
+    cfg.n_layers = 3; cfg.n_heads = 6;
+    cfg.d_ff = quick ? 128 : 256;
+    cfg.ctx = 96; cfg.depth_gamma = 0.f; cfg.depth_tau = 1.f; cfg.seed = 42;
+
+    StamlatLM lm(cfg);
+    lm.build_vocab(train);
+    std::printf("[corpus] params=%zu vocab=%d(%d words)\n",
+                lm.param_count(), lm.total_vocab_size(),
+                lm.word_vocab_size());
+    lm.fit(train, quick ? 1500 : 5000, 4e-3f, 12, quick ? 300 : 1000);
+
+    auto trim = [](std::string s) {
+        size_t a = s.find_first_not_of(' ');
+        size_t b = s.find_last_not_of(' ');
+        return a == std::string::npos ? "" : s.substr(a, b - a + 1);
+    };
+    int gates_ok = 0, gates_tot = 0;
+
+    // ── Gate A: chat floor (mirrors sleep-kernel contract checks) ──────────
+    struct Probe { const char* q; const char* must_a; const char* must_b; };
+    static const Probe probes[] = {
+        {"hello", "intent", "greeting"},
+        {"who are you", "identity", "brain"},
+        {"how are you", "status", "good"},
+        {"who was shakespeare", "unknown", nullptr},
+    };
+    bool has_chat = train.find("user:") != std::string::npos;
+    if (has_chat) {
+        for (const auto& p : probes) {
+            ++gates_tot;
+            const std::string r = lm.stream_complete_ids(
+                lm.encode(std::string("user: ") + p.q + "\nbrain: "), 40, 0.f);
+            const bool a = r.find(p.must_a) != std::string::npos;
+            const bool b = !p.must_b || r.find(p.must_b) != std::string::npos;
+            const bool good = a && b;
+            gates_ok += good;
+            std::printf("  chat %-20s -> %-52s [%s]\n", p.q, r.c_str(),
+                        good ? "ok" : "MISS");
+        }
+    }
+
+    // ── Gate B: plan rendering (when corpus carries <p> scaffold) ──────────
+    bool has_plans = false;
+    for (int id = lm.char_vocab_size(); id < lm.total_vocab_size(); ++id)
+        if (lm.token_surface(id) == "<p>") { has_plans = true; break; }
+    if (has_plans && has_chat) {
+        using brain3::engines::neural::UtterancePlan;
+        struct Dom { const char* act; std::vector<std::string> clazz; };
+        static const Dom doms[] = {
+            {"greeting",{"intent","greeting","welcome","salutation","style",
+                        "friendly","emotion","happy","target","user"}},
+            {"identity",{"identity","name","self","system","brain","network",
+                        "type","cognitive","origin","artificial","ai","neural"}},
+            {"status",  {"status","state","feeling","good","great","positive",
+                        "optimal","energy","high","mode","ready","condition"}},
+        };
+        std::mt19937 prng(77);
+        int pok = 0, ptot = 0;
+        for (auto& d : doms)
+            for (int t = 0; t < 4; ++t) {
+                std::vector<std::string> truth = d.clazz;
+                std::shuffle(truth.begin(), truth.end(), prng);
+                truth.resize(3 + prng() % 2);
+                UtterancePlan p; p.act = d.act; p.reg = "neutral";
+                p.facts = truth;
+                auto allowed = p.content_lock_ids(lm);
+                auto said = lm.stream_complete_ids(lm.encode(p.linearize()),
+                                                   20, 0.f, true, &allowed);
+                std::string want;
+                for (size_t k = 0; k < truth.size(); ++k)
+                    want += truth[k] + (k + 1 < truth.size() ? " " : "");
+                ++ptot;
+                if (trim(said) == trim(want)) ++pok;
+            }
+        std::printf("  plan held-out exact %d/%d\n", pok, ptot);
+        ++gates_tot;
+        gates_ok += (pok >= (ptot * 3) / 4);
+    }
+
+    // ── Gate C: optional external probe file (reader exact-match) ──────────
+    if (!probes_path.empty()) {
+        std::ifstream pf(probes_path);
+        if (!pf) { std::printf("probes not found: %s\n", probes_path.c_str()); return 1; }
+        std::ostringstream pss; pss << pf.rdbuf();
+        std::string txt = pss.str();
+        int rok = 0, rtot = 0;
+        size_t pos = 0;
+        while ((pos = txt.find("read:", pos)) != std::string::npos) {
+            size_t lend = txt.find('\n', pos);
+            if (lend == std::string::npos) break;
+            std::string sent = trim(txt.substr(pos + 5, lend - pos - 5));
+            size_t tstart = txt.find("triple:", lend);
+            if (tstart == std::string::npos) break;
+            size_t tend = txt.find('\n', tstart);
+            std::string want = trim(txt.substr(tstart + 7,
+                                               (tend == std::string::npos ? txt.size() : tend) - tstart - 7));
+            pos = (tend == std::string::npos) ? txt.size() : tend;
+            const std::string r = lm.stream_complete_ids(
+                lm.encode("read: " + sent + "\ntriple: "), 16, 0.f);
+            ++rtot;
+            if (trim(r) == want) ++rok;
+            else std::printf("  reader MISS '%s' -> '%s' (want '%s')\n",
+                             sent.c_str(), trim(r).c_str(), want.c_str());
+        }
+        std::printf("  reader exact %d/%d\n", rok, rtot);
+        ++gates_tot;
+        gates_ok += (rtot > 0 && rok >= (rtot * 3) / 4);
+    }
+
+    if (!lm.save(out)) { std::printf("save FAILED\n"); return 1; }
+    std::printf("saved %s (gates %d/%d)\n", out.c_str(), gates_ok, gates_tot);
+    return gates_ok >= (gates_tot * 3 + 3) / 4 ? 0 : 2;
+}
+
 int main(int argc, char** argv) {
     std::string out = "mouth_native.bin";
     bool quick = false, plan = false;
+    std::string corpus, probes;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--quick") quick = true;
         else if (a == "--plan") plan = true;
-        else out = a;
+        else if (a == "--corpus" && i + 1 < argc) corpus = argv[++i];
+        else if (a == "--probes" && i + 1 < argc) probes = argv[++i];
+        else out = argv[i];
     }
+    if (!corpus.empty()) return train_corpus_mode(corpus, out, quick, probes);
     if (plan) return train_plan_mode(out, quick);
 
     static const char* G[]  = {"hello", "hi", "hey there", "good morning",
@@ -144,12 +289,12 @@ int main(int argc, char** argv) {
 
     // sanity probes before shipping the voice
     struct Probe { const char* q; const char* must; };
-    static const Probe probes[] = {
+    static const Probe legacy_probes[] = {
         {"hello", "intent"}, {"who are you", "identity"},
         {"how are you", "status"}, {"what do you do", nullptr},
     };
     int ok = 0, total = 0;
-    for (const auto& p : probes) {
+    for (const auto& p : legacy_probes) {
         if (!p.must) continue;
         ++total;
         const std::string r = lm.stream_complete_ids(

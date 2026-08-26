@@ -1,0 +1,467 @@
+read: every falcon is a raptor
+triple: falcon is_a raptor
+
+read: the whale is a mammal
+triple: whale is_a mammal
+
+read: whale is a mammal
+triple: whale is_a mammal
+
+read: each bird has wings
+triple: bird has wings
+
+read: the oak is a tree
+triple: oak is_a tree
+
+read: the logician uses logic
+triple: logician uses logic
+
+read: the bird has wings
+triple: bird has wings
+
+read: a scientist studies physics
+triple: scientist studies physics
+
+read: a falcon is a raptor
+triple: falcon is_a raptor
+
+read: the water freezes at zero
+triple: water freezes_at zero
+
+read: the bee is a insect
+triple: bee is_a insect
+
+read: a cheetah is a feline
+triple: cheetah is_a feline
+
+read: the salmon is a fish
+triple: salmon is_a fish
+
+read: oak is a tree
+triple: oak is_a tree
+
+read: the wings produce lift
+triple: wings produce lift
+
+read: a whale is a mammal
+triple: whale is_a mammal
+
+read: a gold is a metal
+triple: gold is_a metal
+
+read: fire is hot true
+triple: fire is_hot true
+
+read: gold is a metal
+triple: gold is_a metal
+
+read: the bohr is a physicist
+triple: bohr is_a physicist
+
+read: a whale is a mammal
+triple: whale is_a mammal
+
+read: bird has wings
+triple: bird has wings
+
+read: a salmon is a fish
+triple: salmon is_a fish
+
+read: the fire is hot true
+triple: fire is_hot true
+
+read: the gravity causes acceleration
+triple: gravity causes acceleration
+
+read: the bird has wings
+triple: bird has wings
+
+read: every cheetah is a feline
+triple: cheetah is_a feline
+
+read: every salmon is a fish
+triple: salmon is_a fish
+
+read: gravity causes acceleration
+triple: gravity causes acceleration
+
+read: every bee is a insect
+triple: bee is_a insect
+
+read: a einstein is a scientist
+triple: einstein is_a scientist
+
+read: every whale is a mammal
+triple: whale is_a mammal
+
+read: the sun is a star
+triple: sun is_a star
+
+read: a acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: a oak is a tree
+triple: oak is_a tree
+
+read: a sun is a star
+triple: sun is_a star
+
+read: bohr is a physicist
+triple: bohr is_a physicist
+
+read: a salmon is a fish
+triple: salmon is_a fish
+
+read: every bird is a animal
+triple: bird is_a animal
+
+read: a bohr is a physicist
+triple: bohr is_a physicist
+
+read: a feline is a mammal
+triple: feline is_a mammal
+
+read: the salmon is a fish
+triple: salmon is_a fish
+
+read: the cheetah is a feline
+triple: cheetah is_a feline
+
+read: a water freezes at zero
+triple: water freezes_at zero
+
+read: acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: the scientist studies physics
+triple: scientist studies physics
+
+read: a raptor is a bird
+triple: raptor is_a bird
+
+read: bee is a insect
+triple: bee is_a insect
+
+read: every raptor is a bird
+triple: raptor is_a bird
+
+read: every feline is a mammal
+triple: feline is_a mammal
+
+read: falcon is a raptor
+triple: falcon is_a raptor
+
+read: every einstein is a scientist
+triple: einstein is_a scientist
+
+read: each logician uses logic
+triple: logician uses logic
+
+read: raptor is a bird
+triple: raptor is_a bird
+
+read: dog is a mammal
+triple: dog is_a mammal
+
+read: a curie is a chemist
+triple: curie is_a chemist
+
+read: a oak is a tree
+triple: oak is_a tree
+
+read: every gold is a metal
+triple: gold is_a metal
+
+read: the bee is a insect
+triple: bee is_a insect
+
+read: the einstein is a scientist
+triple: einstein is_a scientist
+
+read: water freezes at zero
+triple: water freezes_at zero
+
+read: every turing is a logician
+triple: turing is_a logician
+
+read: a gold is a metal
+triple: gold is_a metal
+
+read: a raptor is a bird
+triple: raptor is_a bird
+
+read: the mammal is a animal
+triple: mammal is_a animal
+
+read: each gravity causes acceleration
+triple: gravity causes acceleration
+
+read: a fire is hot true
+triple: fire is_hot true
+
+read: the mammal is a animal
+triple: mammal is_a animal
+
+read: the sparrow is a bird
+triple: sparrow is_a bird
+
+read: a dog is a mammal
+triple: dog is_a mammal
+
+read: every curie is a chemist
+triple: curie is_a chemist
+
+read: every mammal is a animal
+triple: mammal is_a animal
+
+read: a dog is a mammal
+triple: dog is_a mammal
+
+read: the curie is a chemist
+triple: curie is_a chemist
+
+read: each wings produce lift
+triple: wings produce lift
+
+read: a sparrow is a bird
+triple: sparrow is_a bird
+
+read: a falcon is a raptor
+triple: falcon is_a raptor
+
+read: the bohr is a physicist
+triple: bohr is_a physicist
+
+read: each fire is hot true
+triple: fire is_hot true
+
+read: every bohr is a physicist
+triple: bohr is_a physicist
+
+read: each water freezes at zero
+triple: water freezes_at zero
+
+read: a cheetah is a feline
+triple: cheetah is_a feline
+
+read: a bird has wings
+triple: bird has wings
+
+read: the raptor is a bird
+triple: raptor is_a bird
+
+read: the oak is a tree
+triple: oak is_a tree
+
+read: the dog is a mammal
+triple: dog is_a mammal
+
+read: a wings produce lift
+triple: wings produce lift
+
+read: the scientist studies physics
+triple: scientist studies physics
+
+read: a water freezes at zero
+triple: water freezes_at zero
+
+read: a sun is a star
+triple: sun is_a star
+
+read: a acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: logician uses logic
+triple: logician uses logic
+
+read: cheetah is a feline
+triple: cheetah is_a feline
+
+read: a sparrow is a bird
+triple: sparrow is_a bird
+
+read: turing is a logician
+triple: turing is_a logician
+
+read: a gravity causes acceleration
+triple: gravity causes acceleration
+
+read: the feline is a mammal
+triple: feline is_a mammal
+
+read: the falcon is a raptor
+triple: falcon is_a raptor
+
+read: each scientist studies physics
+triple: scientist studies physics
+
+read: a scientist studies physics
+triple: scientist studies physics
+
+read: the bird is a animal
+triple: bird is_a animal
+
+read: einstein is a scientist
+triple: einstein is_a scientist
+
+read: a turing is a logician
+triple: turing is_a logician
+
+read: every sun is a star
+triple: sun is_a star
+
+read: the sparrow is a bird
+triple: sparrow is_a bird
+
+read: the dog is a mammal
+triple: dog is_a mammal
+
+read: scientist studies physics
+triple: scientist studies physics
+
+read: the gold is a metal
+triple: gold is_a metal
+
+read: mammal is a animal
+triple: mammal is_a animal
+
+read: a bird is a animal
+triple: bird is_a animal
+
+read: a mammal is a animal
+triple: mammal is_a animal
+
+read: the wings produce lift
+triple: wings produce lift
+
+read: a curie is a chemist
+triple: curie is_a chemist
+
+read: the gold is a metal
+triple: gold is_a metal
+
+read: a feline is a mammal
+triple: feline is_a mammal
+
+read: each acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: the acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: feline is a mammal
+triple: feline is_a mammal
+
+read: wings produce lift
+triple: wings produce lift
+
+read: the whale is a mammal
+triple: whale is_a mammal
+
+read: the einstein is a scientist
+triple: einstein is_a scientist
+
+read: the sun is a star
+triple: sun is_a star
+
+read: salmon is a fish
+triple: salmon is_a fish
+
+read: the curie is a chemist
+triple: curie is_a chemist
+
+read: a logician uses logic
+triple: logician uses logic
+
+read: a gravity causes acceleration
+triple: gravity causes acceleration
+
+read: every oak is a tree
+triple: oak is_a tree
+
+read: the turing is a logician
+triple: turing is_a logician
+
+read: a turing is a logician
+triple: turing is_a logician
+
+read: a bee is a insect
+triple: bee is_a insect
+
+read: the raptor is a bird
+triple: raptor is_a bird
+
+read: a logician uses logic
+triple: logician uses logic
+
+read: a bee is a insect
+triple: bee is_a insect
+
+read: the cheetah is a feline
+triple: cheetah is_a feline
+
+read: the gravity causes acceleration
+triple: gravity causes acceleration
+
+read: bird is a animal
+triple: bird is_a animal
+
+read: the bird is a animal
+triple: bird is_a animal
+
+read: a bird is a animal
+triple: bird is_a animal
+
+read: a wings produce lift
+triple: wings produce lift
+
+read: sparrow is a bird
+triple: sparrow is_a bird
+
+read: the falcon is a raptor
+triple: falcon is_a raptor
+
+read: curie is a chemist
+triple: curie is_a chemist
+
+read: the feline is a mammal
+triple: feline is_a mammal
+
+read: a bohr is a physicist
+triple: bohr is_a physicist
+
+read: a fire is hot true
+triple: fire is_hot true
+
+read: every dog is a mammal
+triple: dog is_a mammal
+
+read: a einstein is a scientist
+triple: einstein is_a scientist
+
+read: a mammal is a animal
+triple: mammal is_a animal
+
+read: a bird has wings
+triple: bird has wings
+
+read: every sparrow is a bird
+triple: sparrow is_a bird
+
+read: the acceleration causes velocity_change
+triple: acceleration causes velocity_change
+
+read: the logician uses logic
+triple: logician uses logic
+
+read: the turing is a logician
+triple: turing is_a logician
+
+read: the water freezes at zero
+triple: water freezes_at zero
+
+read: the fire is hot true
+triple: fire is_hot true
+
+read: sun is a star
+triple: sun is_a star
