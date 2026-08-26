@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <stdexcept>
@@ -20,14 +21,25 @@ struct PredictiveCodingLayer {
         : n_dims(n), threshold(thr), lr(lr_),
           prediction(n, 0.f), error(n, 0.f) {}
 
-    // Compute error = actual - prediction; returns error vector reference
+    // Compute error = actual - prediction; returns error vector reference.
+    //
+    // BOUNDS FIX: this loop used to run to n_dims unconditionally and index
+    // actual[i] with no size check. Callers legitimately hand it shorter
+    // vectors — Brain::daydream() feeds 128-dim imagination frames into
+    // pc_som, which is sized som_rows*som_cols (256) — so the old loop read
+    // past the end of the caller's vector. Dimensions beyond the supplied
+    // input are treated as "unobserved" and contribute zero error, which is
+    // the correct semantics for a partially-observed percept and keeps
+    // error_norm comparable across input widths.
     const std::vector<float>& compute(const std::vector<float>& actual) {
+        const int n = std::min(n_dims, (int)actual.size());
         float norm = 0.f;
-        for (int i = 0; i < n_dims; i++) {
+        for (int i = 0; i < n; i++) {
             error[i] = actual[i] - prediction[i];
             norm += error[i] * error[i];
         }
-        error_norm = std::sqrt(norm / (float)(n_dims > 0 ? n_dims : 1));
+        for (int i = n; i < n_dims; i++) error[i] = 0.f;   // unobserved ⇒ no error
+        error_norm = std::sqrt(norm / (float)(n > 0 ? n : 1));
         return error;
     }
 

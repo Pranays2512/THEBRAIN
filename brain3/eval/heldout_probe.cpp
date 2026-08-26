@@ -25,6 +25,7 @@
 #include <random>
 
 #include "crisp/engines/reasoning/brainql.hpp"
+#include "core/master_orchestrator.hpp"
 
 using namespace brain2::reasoning;
 
@@ -419,6 +420,92 @@ int main() {
                        o.value.find("conflict") != std::string::npos;
         record("K oneshot", "flags contradictory redefinition", flagged,
                "silently returned '" + o.value + "'", false, true);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    H("M. BICAMERAL INTEGRATION — do all three subsystems run on one turn?");
+    // brain3 used to be three subsystems that never met at runtime: the fuzzy
+    // hemisphere (~1M trainable params) was constructed and never stepped, the
+    // crisp engines were the only thing that ran, and the learned router had its
+    // weights loaded at boot but solve() was never called. These probes assert
+    // the join actually happens, on the real orchestrator, not in isolation.
+    {
+        using brain3::core::MasterOrchestrator;
+        using brain3::core::CognitiveResponse;
+        MasterOrchestrator orch;
+
+        // M1: the sub-symbolic hemisphere runs on a live query at all.
+        CognitiveResponse r1 = orch.process("TEACH quorvex isa mineral");
+        record("M integration", "fuzzy hemisphere runs on a live turn",
+               r1.fuzzy_ran, "fuzzy_ran=false (Brain still inert)", false, false);
+
+        // M2: it produced a real loss, not a sentinel.
+        record("M integration", "LM produced a real cross-entropy",
+               r1.fuzzy_ran && r1.fuzzy_ce > 0.f && std::isfinite(r1.fuzzy_ce),
+               "ce=" + std::to_string(r1.fuzzy_ce), false, false);
+
+        // M3: a crisp-verified fact reached fuzzy associative memory.
+        record("M integration", "verified crisp fact written back to fuzzy memory",
+               r1.fuzzy_writeback, "writeback=false (hemispheres still disjoint)",
+               false, false);
+
+        // M4: vocabulary grows from live input (the LM head cache re-syncs).
+        CognitiveResponse r2 = orch.process("TEACH zelphir isa alloy");
+        record("M integration", "vocabulary grows across turns",
+               r2.fuzzy_vocab > r1.fuzzy_vocab,
+               std::to_string(r1.fuzzy_vocab) + " -> " + std::to_string(r2.fuzzy_vocab),
+               false, false);
+
+        // M5: replay buffer accumulates, so sleep consolidation has material.
+        record("M integration", "replay buffer accumulates for consolidation",
+               r2.fuzzy_replay > r1.fuzzy_replay,
+               std::to_string(r1.fuzzy_replay) + " -> " + std::to_string(r2.fuzzy_replay),
+               false, false);
+
+        // M6: the learned router is consulted on a SOLVE (was unreachable).
+        CognitiveResponse r3 = orch.process("SOLVE 6*x + 18 = 42");
+        record("M integration", "learned router consulted on SOLVE",
+               !r3.proposer_policy.empty(),
+               "proposer_policy empty (solve() still never called)", false, false);
+
+        // M7: integration must NOT regress crisp correctness. Same problem the
+        // algebra section solves standalone; the answer must still be 2.
+        double v = 0;
+        const bool crisp_ok = r3.verified &&
+                              first_num(r3.raw_output, v) && std::fabs(v - 4.0) < 1e-6;
+        record("M integration", "crisp answer unchanged by integration", crisp_ok,
+               "got '" + r3.raw_output + "' (want x = 4)", false, false);
+
+        // M8: episodic memory commits something over a run of turns.
+        for (int i = 0; i < 12; ++i)
+            orch.process("TEACH thing" + std::to_string(i) + " isa widget");
+        CognitiveResponse r4 = orch.process("LOOKUP thing3 isa");
+        record("M integration", "episodic memory commits over a session",
+               r4.fuzzy_episodes > 0,
+               "episodes=" + std::to_string(r4.fuzzy_episodes), false, false);
+
+        // M9: THE ONE THAT MATTERS. Does the integrated brain actually LEARN
+        // from live traffic? Repeat one utterance and require the LM's loss on
+        // it to fall. If this fails, the fuzzy pass is running but not learning,
+        // and the integration is decorative.
+        const std::string drill = "the quorvex mineral resists thermal shock";
+        float first_ce = -1.f, last_ce = -1.f;
+        for (int i = 0; i < 40; ++i) {
+            CognitiveResponse d = orch.process(drill);
+            if (!d.fuzzy_ran) continue;
+            if (first_ce < 0.f) first_ce = d.fuzzy_ce;
+            last_ce = d.fuzzy_ce;
+        }
+        const bool learned = first_ce > 0.f && last_ce > 0.f && last_ce < first_ce;
+        std::cout << "  repeated-utterance CE: " << std::fixed << std::setprecision(4)
+                  << first_ce << " -> " << last_ce
+                  << (learned ? "  (decreasing: LM is learning from live input)"
+                              : "  (NOT decreasing)") << "\n";
+        record("M integration", "LM loss falls on repeated live input", learned,
+               "CE " + std::to_string(first_ce) + " -> " + std::to_string(last_ce),
+               false, false);
+
+        std::cout << "  integration_status: " << orch.integration_status() << "\n";
     }
 
     // ══════════════════════════════════════════════════════════════════════

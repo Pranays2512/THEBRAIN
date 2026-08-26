@@ -359,7 +359,14 @@ public:
     // When an input is poorly covered (BMU distance > threshold) and we're under the cap,
     // mint a neuron at that input — relieving the ceiling instead of stalling. Bounded so it
     // can't grow without limit. Off unless enabled to keep benchmarks deterministic.
-    bool  som_autogrow_     = true;
+    // DEFAULT CHANGED TO false. attention, working_mem, episodic, global_ws,
+    // pc_som, pc_hpred, pc_wm and h_predictor are all sized at
+    // som_rows*som_cols in the constructor and are NEVER resized when a neuron
+    // is minted. With autogrow on, the first growth makes act_map longer than
+    // every downstream consumer expects, so the new neurons' activations are
+    // silently invisible and every consumer truncates. Re-enable only after
+    // add_neuron() propagates a resize to those organs.
+    bool  som_autogrow_     = false;
     float som_grow_thresh_  = 1.5f;
     int   som_max_neurons_  = 0;      // 0 => set to 3x initial in ctor
 
@@ -403,6 +410,7 @@ private:
     std::vector<float>          last_act_map_;   // last SOM activation for grounding
     std::string                 last_word_;      // [Fix C] last symbolically-known word perceived
     bool                        pending_daydream_ = false; // [Fix A] consumed by tick()
+    std::vector<int>            episode_ops_;    // ops executed since last end_episode()
 
     // σ-gating: online EWMA of CE errors for self-calibrating thresholds
     // WM gate fires at err > mu + 1*sigma (~16% rate), episodic at mu + 2*sigma (~2.5%)
@@ -483,7 +491,11 @@ public:
           pc_som(som_rows * som_cols, 0.05f, 0.01f),
           pc_hpred(som_rows * som_cols, 0.05f, 0.01f),
           pc_wm(som_rows * som_cols, 0.001f, 0.1f),
-          pc_bg(1, 0.001f, 0.1f),
+          // pc_bg was constructed with n_dims=1, so pc_bg.propagate(ctx_summary)
+          // returned a ONE-element vector and the basal ganglia's op selection
+          // ran on a single scalar padded into a 5*n_dims input of zeros. It must
+          // match the working-memory context it wraps, exactly like pc_wm.
+          pc_bg(som_rows * som_cols, 0.001f, 0.1f),
           binding(n_dims, 2000),    // fuzzy-recall cache cap; small ON PURPOSE — the exact
                                     // fact GRAPH keeps ALL facts and is what reasoning uses.
                                     // Raising this slows bulk ingest ~6x (256-bucket LSH fills);
@@ -494,6 +506,11 @@ public:
           procedures(n_dims),
           logic_engine(n_dims, language, symbolic, binding, episodic, som, working_mem, analogy, pc_wm, spoken_words),
           h_predictor(som_rows * som_cols, 128, 64, seed),
+          // decoder was declared but NEVER initialized, leaving input_size /
+          // hidden_size / output_size as uninitialized ints that save_components()
+          // then wrote to decoder.bin. Give it real dims so the member is
+          // well-formed and its serialized header is meaningful.
+          decoder(n_dims, hidden_dim, n_dims, 0.01f),
           step_(0),
           mtx_(std::make_unique<std::mutex>()) {
         symbolic.seed_math_symbols();
@@ -817,6 +834,10 @@ public:
                 auto bg_act = bg_controller.select_op(pc4_err, goal_vec, /*greedy=*/false);
                 selected_op = bg_act.op;
             }
+            // Track this episode's executed op-chain so end_episode() can
+            // consolidate verified sequences into procedural memory.
+            if (selected_op != Op::HALT && episode_ops_.size() < 64)
+                episode_ops_.push_back((int)selected_op);
         }
         scratchpad.write("last_op", std::vector<float>{(float)(int)selected_op}, "bg");
         t1 = std::chrono::high_resolution_clock::now();
@@ -1213,6 +1234,19 @@ public:
         }
         if (!trigger.empty()) procedures.consolidate(ops, trigger, name);
     }
+
+    // End the current skill episode. On a VERIFIED success, the executed
+    // op-chain is consolidated into ProceduralMemory so that similar future
+    // contexts retrieve it (perceive step 12). Without this call the skill
+    // store can never grow — retrieval alone was wired, learning was not.
+    void end_episode(bool success, const std::string& skill_name = "") {
+        if (success && episode_ops_.size() >= 3)
+            consolidate_procedure(episode_ops_, skill_name);
+        episode_ops_.clear();
+    }
+
+    size_t episode_ops_pending() const { return episode_ops_.size(); }
+
 
     // Reset sequence boundary (call between unrelated sequences)
     /**

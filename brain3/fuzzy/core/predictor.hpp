@@ -297,8 +297,26 @@ public:
         K(K), lr_(lr), mtx_(std::make_unique<std::mutex>()) {
     std::mt19937 rng(seed);
     // Use 256 active neurons per layer for sparsity
-    lstm1_ = SparseLSTMLayer(input_dim, hidden_dim, 256, rng);
-    lstm2_ = SparseLSTMLayer(hidden_dim, hidden_dim, 256, rng);
+    // k_active was hardcoded to 256. When hidden_dim < 256 (the orchestrator
+    // builds hidden_dim=128) each LSH bucket drew 256 neuron ids out of a range
+    // of hidden_dim and then sort+unique'd them, so effectively EVERY neuron was
+    // active on every step: the "sparse" LSTM was dense and the LSH routing was
+    // dead weight. Clamp so the request is at least representable, and say so
+    // once rather than pretending sparsity is in effect.
+    const int k_req = 256;
+    const int k_eff = std::min(k_req, hidden_dim);
+    if (k_eff >= hidden_dim) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            std::fprintf(stderr,
+                "[predictor] note: k_active=%d >= hidden_dim=%d — LSH sparsity is "
+                "INACTIVE (all neurons active per step). Use hidden_dim > %d for "
+                "genuine sparse routing.\n", k_eff, hidden_dim, k_req);
+        }
+    }
+    lstm1_ = SparseLSTMLayer(input_dim, hidden_dim, k_eff, rng);
+    lstm2_ = SparseLSTMLayer(hidden_dim, hidden_dim, k_eff, rng);
     head_ = LMHead(hidden_dim, target_dim, rng); // target_dim is embed_dim
   }
 

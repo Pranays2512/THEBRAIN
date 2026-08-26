@@ -24,6 +24,8 @@
 #include <regex>
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <fstream>
 #include <filesystem>
 
 #include "../fuzzy/core/brain.hpp"
@@ -43,6 +45,8 @@
 #include "intent_router.hpp"
 #include "intent_route_extract.hpp"
 #include "sleep_kernel.hpp"
+#include "curiosity_scheduler.hpp"
+#include "metacognition.hpp"
 #include "../fuzzy/engines/synthesis/unified_proposer.hpp"
 #include "../crisp/engines/math/neural_policy_value_prior_engine.hpp"
 #include "../crisp/engines/reasoning/graph_attention_reasoner.hpp"
@@ -59,6 +63,27 @@ struct CognitiveResponse {
     bool alarm_triggered;
     std::string raw_output;
     std::vector<std::string> proof_chain;
+
+    // ── Sub-symbolic telemetry ───────────────────────────────────────────────
+    // Populated when the fuzzy hemisphere actually ran on this turn. Before
+    // integration the orchestrator constructed Brain and then touched only
+    // emotion.valence, so the SOM / LSTM LM / predictive coding / working
+    // memory / episodic store were never stepped on a live query. These fields
+    // exist so "the fuzzy half ran" is an observable fact rather than an
+    // assumption — eval/heldout_probe.cpp asserts on them.
+    bool   fuzzy_ran        = false;
+    float  fuzzy_ce         = -1.f;   // mean cross-entropy over the utterance
+    float  fuzzy_perplexity = -1.f;
+    int    fuzzy_tokens     = 0;      // in-vocabulary tokens actually trained on
+    int    fuzzy_vocab      = 0;
+    int    fuzzy_replay     = 0;      // replay-buffer occupancy
+    int    fuzzy_episodes   = 0;
+    float  fuzzy_self_drift = -1.f;   // self-model identity drift
+    // Which policy the learned router picked, and whether it worked. Empty when
+    // the proposer was not applicable to this turn.
+    std::string proposer_policy;
+    bool   proposer_agreed  = false;
+    bool   fuzzy_writeback  = false;  // a verified crisp fact reached fuzzy memory
 };
 
 class MasterOrchestrator {
@@ -80,6 +105,20 @@ private:
     engines::reasoning::GraphAttentionReasoner graph_reasoner_;
     bool graph_dirty_ = false;
     engines::neural::VoiceMapper voice_mapper_ = engines::neural::default_voice_mapper();
+    MetacognitionEngine meta_engine_;
+    std::vector<TraceStep> meta_history_;
+
+    // ── Bicameral integration state ──────────────────────────────────────────
+    // The LM head caches a frozen embedding matrix (E_active_), but a live query
+    // stream keeps introducing words. last_lm_vocab_ tracks the vocabulary size
+    // the cache was built against so we only pay the rebuild when it actually
+    // grew. BRAIN_NO_FUZZY=1 disables the sub-symbolic pass entirely, which
+    // restores the exact pre-integration behaviour for A/B comparison.
+    int    last_lm_vocab_   = -1;
+    bool   fuzzy_enabled_   = (std::getenv("BRAIN_NO_FUZZY") == nullptr);
+    long   fuzzy_turns_     = 0;
+    long   proposer_turns_  = 0;
+    long   proposer_hits_   = 0;
 
 public:
     MasterOrchestrator() {
@@ -162,6 +201,10 @@ public:
             brain_->brainql_engine.learn("act:" + act, "responds", resp);
         }
 
+        // Restore yesterday's knowledge before seeding: taught facts used to
+        // evaporate at process exit. Snapshot is written by sleep_consolidate().
+        _load_facts_snapshot();
+
         _seed_foundational_invariants();
 
         // Load all facts into graph reasoner for multi-hop queries
@@ -170,10 +213,61 @@ public:
         graph_reasoner_.train(engines::reasoning::GraphAttentionReasoner::TrainConfig{2000, 16, 2, 5, 0.02, 42});
     }
 
+    static std::string trim_copy_hpp(const std::string& s) {
+        size_t a = s.find_first_not_of(" \t");
+        size_t b = s.find_last_not_of(" \t");
+        return a == std::string::npos ? "" : s.substr(a, b - a + 1);
+    }
+
+    static std::string _chat_act(const std::string& text) {
+        std::string lower;
+        for (char c : text) lower += (char)std::tolower((unsigned char)c);
+        auto has = [&](std::initializer_list<const char*> ks){
+            for (auto k : ks) if (lower.find(k) != std::string::npos) return true;
+            return false;
+        };
+        if (has({"hello","hi ","hey","greetings","good morning","good evening"}))
+            return "greeting";
+        if (has({"who are you","what is your name","your name","what are you"}))
+            return "identity";
+        if (has({"how are you","how do you feel","your state","how is your day"}))
+            return "status";
+        return "";
+    }
+
+    static bool _looks_like_chat(const std::string& text) {
+        if (text.empty() || text.size() > 160) return false;
+        if (text.front() == '{' || text.find("::") != std::string::npos) return false;
+        std::string lower;
+        lower.reserve(text.size());
+        int alpha = 0;
+        for (char c : text) {
+            lower += (char)std::tolower((unsigned char)c);
+            if (std::isalpha((unsigned char)c)) ++alpha;
+        }
+        if (alpha < 3) return false;                       // needs real words
+        static const std::string kMathChars = "+-*/^=";
+        for (char c : lower)
+            if (kMathChars.find(c) != std::string::npos) return false;
+        static const char* kVerbs[] = {
+            "lookup", "explain", "derive", "teach", "solve", "compute",
+            "what if", "counterfactual", "intervene", "analogy", "learn",
+            "compare", "predict", "plan", "verify", "refute", "prove",
+            "ingest", "codeforces", "cross domain", "cross-domain",
+            "policy", "finance", "trade", "portfolio", "mcts", "invent",
+            "discover", "sleep", "status", "hunt"
+        };
+        for (const auto* v : kVerbs)
+            if (lower.find(v) != std::string::npos) return false;
+        int words = 1;
+        for (char c : lower) if (c == ' ') ++words;
+        return words <= 12;
+    }
+
     /**
      * Sub-microsecond native Natural Language Perception to BrainQL
      */
-    std::string parse_intent_to_bql(const std::string& text) {
+    static std::string parse_intent_to_bql(const std::string& text, engines::neural::NativeReader* reader = nullptr) {
         std::string clean_text = text;
         clean_text.erase(clean_text.begin(), std::find_if(clean_text.begin(), clean_text.end(), [](unsigned char ch) { return !std::isspace(ch); }));
         clean_text.erase(std::find_if(clean_text.rbegin(), clean_text.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), clean_text.end());
@@ -354,18 +448,26 @@ public:
 
         // ── NATIVE READER (the eyes): learned sentence→triple parsing.
         // Confidence-gated proposal path; crisp quarantine downstream still
-        // disposes. Runs BEFORE regex extraction so arbitrary phrasings
-        // ("every bird lays eggs") parse without pattern-per-pattern rules.
-        if (reader_.available() && clean_text.size() <= 160) {
-            const auto pr = reader_.parse(clean_text);
-            if (pr.confident) {
-                if (std::getenv("READER_DEBUG"))
-                    std::cerr << "[reader-dbg] '" << clean_text << "' -> "
-                              << pr.subj << " " << pr.rel << " " << pr.obj
-                              << " (nll=" << pr.reply_nll << ")\n";
-                if (pr.rel == "responds")
-                    return "TEACH_QUARANTINE " + pr.subj + " " + pr.obj;
-                return "TEACH " + pr.subj + " " + pr.rel + " " + pr.obj;
+        // disposes. Runs on non-chat multi-word declarative sentences.
+        if (reader && reader->available() && !_looks_like_chat(clean_text) &&
+            _chat_act(clean_text).empty() && clean_text.size() <= 160) {
+            int words = 0;
+            for (size_t i = 0; i < clean_text.size(); ++i) {
+                if (!std::isspace((unsigned char)clean_text[i]) &&
+                    (i == 0 || std::isspace((unsigned char)clean_text[i - 1])))
+                    ++words;
+            }
+            if (words >= 3) {
+                const auto pr = reader->parse(clean_text);
+                if (pr.confident) {
+                    if (std::getenv("READER_DEBUG"))
+                        std::cerr << "[reader-dbg] '" << clean_text << "' -> "
+                                  << pr.subj << " " << pr.rel << " " << pr.obj
+                                  << " (nll=" << pr.reply_nll << ")\n";
+                    if (pr.rel == "responds")
+                        return "TEACH_QUARANTINE " + pr.subj + " " + pr.obj;
+                    return "TEACH " + pr.subj + " " + pr.rel + " " + pr.obj;
+                }
             }
         }
 
@@ -427,37 +529,139 @@ public:
     }
 
     /**
-     * Master Cognitive Process Entrypoint
+     * Master Cognitive Process Entrypoint — wraps the core dispatch with
+     * metacognition: every turn is traced, audited cross-turn for
+     * contradictions/circularity, logged to disk, and downgraded when the
+     * audit fails. The brain watches itself think.
      */
     CognitiveResponse process(const std::string& input_text) {
+        CognitiveResponse resp = process_core(input_text);
+
+        // Audit THIS turn's trace against the rolling cross-turn history.
+        meta_engine_.load_history(meta_history_);
+        auto findings = meta_engine_.full_audit_cross_turn();
+
+        // Merge this turn's steps into history (cap 64), then reset trace.
+        for (const auto& s : meta_engine_.trace()) {
+            meta_history_.push_back(s);
+            if (meta_history_.size() > 64) meta_history_.erase(meta_history_.begin());
+        }
+        meta_engine_.begin_trace(input_text);
+
+        // persist one telemetry line per turn
+        {
+            std::error_code ec;
+            std::filesystem::create_directories("data", ec);
+            std::ofstream mf("data/metacognition_log.jsonl", std::ios::app);
+            if (mf) {
+                auto now = std::chrono::system_clock::now();
+                std::time_t t = std::chrono::system_clock::to_time_t(now);
+                char ts[32];
+                std::strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%S", std::localtime(&t));
+                mf << "{\"ts\":\"" << ts << "\",\"context\":\"";
+                for (char ch : input_text)
+                    if ((unsigned char)ch >= 32 && ch != '"' && ch != '\\') mf << ch;
+                mf << "\",\"engine\":\"" << resp.engine_used
+                   << "\",\"verified\":" << (resp.verified ? "true" : "false")
+                   << ",\"contradiction\":" << (findings.has_contradiction ? "true" : "false")
+                   << ",\"circular\":" << (findings.has_circular ? "true" : "false")
+                   << ",\"unsupported\":" << (findings.has_unsupported ? "true" : "false")
+                   << "}\n";
+            }
+        }
+
+        if (!findings.clean() && resp.engine_used != "native_mouth" && resp.engine_used != "native_mouth_plan") {
+            resp.verified = false;
+            resp.natural_reply =
+                std::string("⚠️ [Metacognition] This turn failed self-audit (") +
+                (findings.has_contradiction ? "contradiction"
+                 : findings.has_circular ? "circular reasoning"
+                 : "unsupported claim") +
+                "). Reply withheld pending re-verification.\n\n" + resp.natural_reply;
+        }
+        return resp;
+    }
+
+    CognitiveResponse process_core(const std::string& input_text) {
         auto start_time = std::chrono::high_resolution_clock::now();
-        std::string bql = parse_intent_to_bql(input_text);
+        std::string bql = parse_intent_to_bql(input_text, &reader_);
 
         CognitiveResponse resp;
         resp.bql_query = bql;
         resp.alarm_triggered = false;
         resp.verified = false;
 
-        // Mass Knowledge Ingestion Pipeline
+        // ── Stage 0: sub-symbolic percept ────────────────────────────────────
+        // Runs BEFORE symbolic resolution, which is the point: the fuzzy
+        // hemisphere sees the raw utterance and updates its topology, LM,
+        // working memory, episodic store and affect from it, so the symbolic
+        // pass happens inside a brain that has already been changed by the
+        // input. This is the seam that was missing — Brain was constructed and
+        // then only emotion.valence was ever read.
+        _fuzzy_pass(input_text, resp);
+
+        // Mass Knowledge Ingestion Pipeline — curiosity-ordered: the brain
+        // samples each candidate source, ranks by expected information gain
+        // (novelty × fact density), and reads the most unfamiliar,
+        // fact-dense material first.
         if (bql == "INGEST_ALL" || bql.rfind("INGEST_ALL", 0) == 0) {
             std::string data_dir = "brain2/data";
             if (!std::filesystem::exists(data_dir)) {
                 data_dir = "../brain2/data";
             }
-            IngestionStats stats = ingestion_engine_.ingest_directory(data_dir);
+            std::vector<std::string> candidates;
+            std::error_code ec;
+            for (const auto& entry : std::filesystem::directory_iterator(data_dir, ec))
+                if (entry.is_regular_file() && entry.path().extension() == ".txt")
+                    candidates.push_back(entry.path().string());
+
+            CuriosityScheduler scheduler(ingestion_engine_.fuzzy());
+            const auto ranked = candidates.size() >= 2
+                                    ? scheduler.rank(candidates)
+                                    : std::vector<CuriosityScheduler::Scored>{};
+
+            IngestionStats stats;
+            size_t files_processed = 0;
+            std::string read_order;
+            if (!ranked.empty()) {
+                for (const auto& s : ranked) {
+                    IngestionStats one;
+                    ingestion_engine_.ingest_file(s.path, one);
+                    stats.files_processed += one.files_processed;
+                    stats.lines_read      += one.lines_read;
+                    stats.facts_ingested  += one.facts_ingested;
+                    stats.isa_relations_ingested += one.isa_relations_ingested;
+                    stats.domains_registered     += one.domains_registered;
+                    ++files_processed;
+                    char buf[128];
+                    std::snprintf(buf, sizeof(buf), "%.3f", s.score);
+                    read_order += "\n  • " + std::to_string(files_processed) + ". "
+                                + std::filesystem::path(s.path).filename().string()
+                                + " (gain=" + buf + ")";
+                }
+                stats.elapsed_ms = std::chrono::duration<double, std::milli>(
+                                       std::chrono::high_resolution_clock::now() - start_time).count();
+                stats.throughput_facts_per_sec =
+                    stats.elapsed_ms > 0 ? stats.facts_ingested / (stats.elapsed_ms / 1000.0) : 0.0;
+            } else {
+                stats = ingestion_engine_.ingest_directory(data_dir);
+            }
             auto end_time = std::chrono::high_resolution_clock::now();
             resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             resp.verified = true;
             resp.engine_used = "knowledge_ingestion_engine";
             std::ostringstream oss;
-            oss << "⚡ **The Brain Mass Knowledge Ingestion Complete**:\n"
-                << "  • Files Processed: " << stats.files_processed << "\n"
+            oss << "⚡ **The Brain Mass Knowledge Ingestion Complete**"
+                << (ranked.empty() ? "" : " (curiosity-ordered diet)") << ":\n"
+                << "  • Files Processed: " << files_processed << "\n"
                 << "  • Lines Read: " << stats.lines_read << "\n"
                 << "  • Facts Ingested: " << stats.facts_ingested << "\n"
                 << "  • Is-A Ontologies: " << stats.isa_relations_ingested << "\n"
                 << "  • Conceptual Domains Registered: " << stats.domains_registered << "\n"
                 << "  • Ingestion Throughput: " << std::fixed << std::setprecision(0) << stats.throughput_facts_per_sec << " facts/sec\n"
                 << "  • Total Ingestion Time: " << std::setprecision(2) << stats.elapsed_ms << " ms";
+            if (!read_order.empty())
+                oss << "\n  📖 Reading order by expected information gain:" << read_order;
             resp.natural_reply = oss.str();
             resp.raw_output = stats.to_json();
             return resp;
@@ -875,6 +1079,23 @@ public:
             brain2::reasoning::BrainQLQuery query = brain2::reasoning::parse_bql(bql);
             brain2::reasoning::BrainQLResult bql_res = executor_->run(query);
 
+            // ── Stage 2: let the learned router learn from this turn ──────────
+            _consult_proposer(query, bql_res.verified, resp);
+
+            // ── Stage 3: verified crisp fact → fuzzy associative memory ───────
+            // Truth flows both ways. Previously TEACH wrote only to the symbolic
+            // fact graph, so binding memory and the SOM never learned anything
+            // the crisp side proved.
+            if (bql_res.verified) {
+                if (query.op == "TEACH") {
+                    resp.fuzzy_writeback = _fuzzy_writeback(query.subj, query.rel, query.obj);
+                } else if (query.op == "LOOKUP" || query.op == "INHERIT" ||
+                           query.op == "SOLVE") {
+                    const std::string& val = bql_res.value.empty() ? bql_res.obj : bql_res.value;
+                    resp.fuzzy_writeback = _fuzzy_writeback(query.subj, query.rel, val);
+                }
+            }
+
             auto end_time = std::chrono::high_resolution_clock::now();
             resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
             resp.verified = bql_res.verified;
@@ -916,7 +1137,32 @@ public:
         SleepKernel kernel(native_mouth_, brain_->brainql_engine, voice_mapper_,
                            prior_engine_);
         kernel.set_probes(default_sleep_probes(), default_floor_probes());
+        // Nightly replay for the eyes too (was frozen after distillation).
+        {
+            const char* rc[] = {"data/distill/reader_corpus.txt",
+                                "brain3/data/distill/reader_corpus.txt",
+                                "../data/distill/reader_corpus.txt"};
+            const char* rp[] = {"data/distill/reader_probes.txt",
+                                "brain3/data/distill/reader_probes.txt",
+                                "../data/distill/reader_probes.txt"};
+            auto exists = [](const char* p) {
+                std::error_code ec; return std::filesystem::exists(p, ec);
+            };
+            for (int i = 0; i < 3; ++i)
+                if (exists(rc[i]) && exists(rp[i])) {
+                    kernel.set_reader(&reader_, rc[i], rp[i]);
+                    break;
+                }
+        }
         const auto rep = kernel.run_cycle();
+
+        // Persist today's knowledge so tomorrow's brain wakes up with it.
+        const size_t saved_facts = _save_facts_snapshot();
+
+        // Persist the learned router. The orchestrator loaded intuition_weights.bin
+        // at boot and never saved it, so every routing lesson learned during a
+        // session was discarded at exit. Sleep is the right place to commit it.
+        const bool router_saved = proposer_.save_weights("intuition_weights.bin");
 
         std::ostringstream oss;
         oss << "🌙 [Brain3 Sleep Kernel] Consolidation cycle complete\n";
@@ -934,7 +1180,60 @@ public:
         oss << "  └─ " << (rep.all_ok ? "🧠 All consolidation gates passed."
                                    : "⚠️ One or more phases degraded; "
                                      "parameters rolled back safely.") << "\n";
+        oss << "  └─ 💾 facts_snapshot=" << saved_facts
+            << " (data/facts_snapshot.tsv)\n";
         return oss.str();
+    }
+
+private:
+    // ── knowledge persistence: taught facts survive restarts ────────────────
+    static std::string _facts_snapshot_path() {
+        for (const char* p : {"data/facts_snapshot.tsv",
+                              "brain3/data/facts_snapshot.tsv"}) {
+            std::error_code ec;
+            if (std::filesystem::exists(p, ec)) return p;
+        }
+        return "data/facts_snapshot.tsv";
+    }
+
+    size_t _save_facts_snapshot() {
+        const std::string path = "data/facts_snapshot.tsv";
+        std::error_code ec;
+        std::filesystem::create_directories("data", ec);
+        std::ofstream f(path, std::ios::trunc);
+        if (!f) return 0;
+        size_t n = 0;
+        for (const auto& fact : brain_->brainql_engine.facts) {
+            bool bad = false;
+            for (const std::string* s : {&fact.subj, &fact.rel, &fact.obj}) {
+                for (char ch : *s)
+                    if (ch == '\t' || ch == '\n' || ch == '\r') { bad = true; break; }
+                if (bad) break;
+            }
+            if (bad || fact.subj.empty() || fact.rel.empty() || fact.obj.empty()) continue;
+            f << fact.subj << '\t' << fact.rel << '\t' << fact.obj << '\n';
+            ++n;
+        }
+        return n;
+    }
+
+    void _load_facts_snapshot() {
+        std::ifstream f(_facts_snapshot_path());
+        if (!f) return;
+        std::string line;
+        size_t restored = 0;
+        while (std::getline(f, line)) {
+            if (line.empty()) continue;
+            std::istringstream iss(line);
+            std::string s, r, o;
+            if (!std::getline(iss, s, '\t') ||
+                !std::getline(iss, r, '\t') ||
+                !std::getline(iss, o)) continue;
+            brain_->brainql_engine.learn(s, r, o);
+            ++restored;
+        }
+        if (restored > 0)
+            std::fprintf(stderr, "[orchestrator] restored %zu facts from snapshot\n", restored);
     }
 
 private:
@@ -953,6 +1252,203 @@ private:
 
 public:
 
+    // ════════════════════════════════════════════════════════════════════════
+    // BICAMERAL INTEGRATION
+    // ════════════════════════════════════════════════════════════════════════
+    // Before this, brain3 was three subsystems that never met at runtime:
+    //   1. the fuzzy hemisphere (~1M trainable params: SOM, 2-layer sparse LSTM
+    //      LM with exact attention gradients, predictive coding, working memory,
+    //      episodic store, emotion, basal ganglia) — constructed, never stepped;
+    //   2. the crisp hemisphere (BrainQL engines) — the only thing that ran;
+    //   3. the learned UnifiedProposer router — weights loaded at boot, solve()
+    //      never called, weights never saved.
+    // The three methods below join them on every turn: percept → sub-symbolic
+    // pass → symbolic resolution → verified facts written BACK into associative
+    // memory, with the router learning which engine was right.
+
+    // Keep the LM head's cached embedding matrix in sync with a growing
+    // vocabulary. Words must be registered while UNFROZEN (encode() returns a
+    // zero vector for unknown words once frozen, and register_word/hear() are
+    // no-ops), then the cache is rebuilt and the language re-frozen — the
+    // predictor throws if its E_active_ cache is live while language is
+    // unfrozen, and that guard is correct: a moving E would silently invalidate
+    // every logit. Rebuild happens only on actual growth.
+    // Register words only. Cheap: a mutex + a hash insert per new word. Callers
+    // that merely need encode() to return a real vector (rather than the
+    // all-zeros an unknown word yields once frozen) want this, NOT the full
+    // cache rebuild below.
+    void _register_words(const std::vector<std::string>& tokens) {
+        auto& lang = brain_->language;
+        lang.freeze_vocabulary(false);
+        for (const auto& w : tokens) {
+            if (w.empty()) continue;
+            if (!lang.knows(w)) {
+                lang.register_word(w);
+                brain_->symbolic.bind(w);
+            }
+        }
+        lang.freeze_vocabulary(true);
+    }
+
+    // Register, then rebuild the LM head's cached embedding matrix if the
+    // vocabulary actually grew. The rebuild is O(V·d), so it is deliberately
+    // gated on growth and only performed on the path that is about to run the
+    // predictor. Note a real cost of a growing vocabulary: LMHead::adam_bias
+    // reinitializes its moment estimates whenever the active size changes, so
+    // every new word resets the bias optimizer state. That is a known
+    // limitation of mounting a cached head on an open vocabulary, not a bug
+    // here, and it is why CE recovers rather than falling monotonically when
+    // unfamiliar words arrive.
+    void _sync_lm_vocab(const std::vector<std::string>& tokens) {
+        _register_words(tokens);
+        const int v = brain_->language.vocab_size();
+        if (v <= 0 || v == last_lm_vocab_) return;
+        std::vector<int> ids((size_t)v);
+        for (int i = 0; i < v; ++i) ids[(size_t)i] = i;
+        brain_->set_active_vocab(ids);   // rebuilds E_active_ / bias_active_
+        last_lm_vocab_ = v;
+    }
+
+    static std::vector<std::string> _tokenize(const std::string& text) {
+        std::vector<std::string> out;
+        std::string cur;
+        for (char c : text) {
+            if (c == ' ' || c == '\n' || c == '\t' || c == '\r') {
+                if (!cur.empty()) { out.push_back(cur); cur.clear(); }
+            } else cur += c;
+        }
+        if (!cur.empty()) out.push_back(cur);
+        return out;
+    }
+
+    // Run the sub-symbolic hemisphere on this percept.
+    //
+    // Deliberately routed through train_lm_sequence_fused() rather than
+    // perceive_text(). Both exist and they are NOT equivalent: perceive()'s
+    // predictor.step() drops the attention gradient entirely and sends
+    // everything down the residual, while train_lm_sequence_per_token()
+    // computes the exact attention backward (softmax Jacobian, value path and
+    // score path). Training two different models depending on entry point makes
+    // results irreproducible, so the live path uses the correct one. The fused
+    // variant also runs the σ-calibrated cognitive pass per word (SOM update
+    // scaled by z-scored surprise, predictive coding, working memory, episodic
+    // commit, global workspace, emotion) and maintains the reservoir replay
+    // buffer with interleaved consolidation.
+    //
+    // Never allowed to affect correctness: any failure is swallowed and the
+    // crisp path proceeds exactly as before.
+    void _fuzzy_pass(const std::string& input_text, CognitiveResponse& resp) {
+        if (!fuzzy_enabled_) return;
+        const auto tokens = _tokenize(input_text);
+        if (tokens.empty()) return;
+        try {
+            _sync_lm_vocab(tokens);
+
+            int in_vocab = 0;
+            for (const auto& w : tokens) if (brain_->language.knows(w)) ++in_vocab;
+            if (in_vocab == 0) return;
+
+            const float ce = brain_->train_lm_sequence_fused(input_text);
+
+            resp.fuzzy_ran        = true;
+            resp.fuzzy_ce         = ce;
+            resp.fuzzy_perplexity = brain_->predictor.perplexity();
+            resp.fuzzy_tokens     = in_vocab;
+            resp.fuzzy_vocab      = brain_->language.vocab_size();
+            resp.fuzzy_replay     = brain_->replay_size();
+            resp.fuzzy_episodes   = brain_->episodic.episode_count();
+            resp.fuzzy_self_drift = brain_->self_model.drift(brain_->build_internal_state());
+            ++fuzzy_turns_;
+
+            // Close the loop the other way: sub-symbolic surprise drives the
+            // crisp curiosity engine. A high-CE utterance is exactly what the
+            // epistemic gap-finder should be looking at.
+            brain_->curiosity_engine.observe(tokens);
+        } catch (const std::exception& e) {
+            B2DEBUG("[integration] fuzzy pass skipped: %s\n", e.what());
+        } catch (...) {
+            B2DEBUG("[integration] fuzzy pass skipped (unknown)\n");
+        }
+    }
+
+    // Push a crisp-verified fact into the fuzzy hemisphere so the two halves
+    // share ground truth instead of maintaining disjoint worlds. Numeric objects
+    // go through learn_from_crisp (audited scalar store + binding memory + SOM
+    // hebbian nudge); symbolic objects are bound as an encoded triple.
+    bool _fuzzy_writeback(const std::string& subj, const std::string& rel,
+                          const std::string& obj) {
+        if (!fuzzy_enabled_ || subj.empty() || rel.empty() || obj.empty()) return false;
+        try {
+            // Registration only — writeback never invokes the predictor, so it
+            // must not pay (or trigger) an LM head cache rebuild.
+            _register_words({subj, rel, obj});
+            char* endp = nullptr;
+            const double num = std::strtod(obj.c_str(), &endp);
+            if (endp && *endp == '\0' && endp != obj.c_str()) {
+                brain_->learn_from_crisp(subj, rel, num);
+            } else {
+                brain_->bind_triple(brain_->language.encode(subj),
+                                    brain_->language.encode(rel),
+                                    brain_->language.encode(obj));
+            }
+            return true;
+        } catch (...) { return false; }
+    }
+
+    // Consult the learned router. UnifiedProposer::solve() picks a policy from a
+    // real 20-D feature vector via a trained recurrent MLP, runs it, and calls
+    // intuition.backward() with the outcome — including on the fallback path, so
+    // being wrong is itself a training signal. This is the only closed
+    // learn-from-refutation loop in brain3 and it was previously unreachable
+    // (weights loaded at boot, solve() never called).
+    //
+    // Advisory only: the crisp executor remains authoritative for the answer.
+    // We consult the router so it keeps learning, and record whether it agreed.
+    void _consult_proposer(const brain2::reasoning::BrainQLQuery& query,
+                           bool crisp_verified, CognitiveResponse& resp) {
+        if (!fuzzy_enabled_) return;
+        if (query.op != "SOLVE" && query.op != "SYNTH" && query.op != "DISCOVER") return;
+        try {
+            engines::synthesis::Problem p;
+            if (query.op == "SYNTH")            p.type = "synthesize";
+            else if (query.op == "DISCOVER")    p.type = "conjecture";
+            else if (query.obj.rfind("diff", 0) == 0)  p.type = "differentiate";
+            else if (query.obj.rfind("int", 0) == 0)   p.type = "integrate";
+            else if (query.obj.find('=') != std::string::npos) p.type = "equation";
+            else                                p.type = "physics";
+            p.data_str = query.obj;
+            p.expr_str = query.obj;
+            if (p.type == "equation") {
+                const size_t eq = query.obj.find('=');
+                p.lhs = query.obj.substr(0, eq);
+                p.rhs = query.obj.substr(eq + 1);
+            }
+            ++proposer_turns_;
+            const bool ok = proposer_.solve(p);
+            if (!proposer_.policies.empty()) {
+                // solve() logs its own pick; surface the routing outcome.
+                resp.proposer_agreed = (ok == crisp_verified);
+                if (resp.proposer_agreed) ++proposer_hits_;
+                resp.proposer_policy = ok ? "routed" : "fallback";
+            }
+        } catch (...) { /* advisory path must never affect the answer */ }
+    }
+
+    std::string integration_status() const {
+        std::ostringstream oss;
+        oss << "{\"fuzzy_enabled\":" << (fuzzy_enabled_ ? "true" : "false")
+            << ",\"fuzzy_turns\":" << fuzzy_turns_
+            << ",\"lm_vocab\":" << last_lm_vocab_
+            << ",\"proposer_turns\":" << proposer_turns_
+            << ",\"proposer_agreement\":"
+            << (proposer_turns_ ? (double)proposer_hits_ / (double)proposer_turns_ : 0.0)
+            << ",\"replay\":" << brain_->replay_size()
+            << ",\"episodes\":" << brain_->episodic.episode_count()
+            << ",\"perplexity\":" << brain_->predictor.perplexity()
+            << "}";
+        return oss.str();
+    }
+
     brain2::Brain* get_brain() { return brain_.get(); }
     brain2::reasoning::BrainQLExecutor* get_executor() { return executor_.get(); }
     KnowledgeIngestionEngine* get_ingestion_engine() { return &ingestion_engine_; }
@@ -966,63 +1462,7 @@ public:
         return &prior_engine_;
     }
 
-private:
-    // Conversational-turn heuristic: short free text with no BQL verbs,
-    // no JSON, no command syntax, no calculator-style characters.
-    // Everything else belongs to the structured pipeline regardless of
-    // mouth confidence. (Eval harness catch: "12*(3+4)" and knowledge
-    // questions were being hijacked by the mouth before this gate existed.)
-    // Social-act detection for plan-conditioned responses. Empty => no act.
-    static std::string trim_copy_hpp(const std::string& s) {
-        size_t a = s.find_first_not_of(" \t");
-        size_t b = s.find_last_not_of(" \t");
-        return a == std::string::npos ? "" : s.substr(a, b - a + 1);
-    }
 
-    static std::string _chat_act(const std::string& text) {
-        std::string lower;
-        for (char c : text) lower += (char)std::tolower((unsigned char)c);
-        auto has = [&](std::initializer_list<const char*> ks){
-            for (auto k : ks) if (lower.find(k) != std::string::npos) return true;
-            return false;
-        };
-        if (has({"hello","hi ","hey","greetings","good morning","good evening"}))
-            return "greeting";
-        if (has({"who are you","what is your name","your name","what are you"}))
-            return "identity";
-        if (has({"how are you","how do you feel","your state","how is your day"}))
-            return "status";
-        return "";
-    }
-
-    static bool _looks_like_chat(const std::string& text) {
-        if (text.empty() || text.size() > 160) return false;
-        if (text.front() == '{' || text.find("::") != std::string::npos) return false;
-        std::string lower;
-        lower.reserve(text.size());
-        int alpha = 0;
-        for (char c : text) {
-            lower += (char)std::tolower((unsigned char)c);
-            if (std::isalpha((unsigned char)c)) ++alpha;
-        }
-        if (alpha < 3) return false;                       // needs real words
-        static const std::string kMathChars = "+-*/^=";
-        for (char c : lower)
-            if (kMathChars.find(c) != std::string::npos) return false;
-        static const char* kVerbs[] = {
-            "lookup", "explain", "derive", "teach", "solve", "compute",
-            "what if", "counterfactual", "intervene", "analogy", "learn",
-            "compare", "predict", "plan", "verify", "refute", "prove",
-            "ingest", "codeforces", "cross domain", "cross-domain",
-            "policy", "finance", "trade", "portfolio", "mcts", "invent",
-            "discover", "sleep", "status", "hunt"
-        };
-        for (const auto* v : kVerbs)
-            if (lower.find(v) != std::string::npos) return false;
-        int words = 1;
-        for (char c : lower) if (c == ' ') ++words;
-        return words <= 12;
-    }
 
     std::string _ground_via_web(const std::string& term, bool& found_out) {
         found_out = false;
@@ -1147,6 +1587,18 @@ private:
     }
 
     std::string _articulate_broca_response(const brain2::reasoning::BrainQLQuery& q, const brain2::reasoning::BrainQLResult& res) {
+        // Metacognition hook: every fact the brain commits (or asserts as a
+        // verified truth) becomes a trace step. Cross-turn contradiction
+        // detection runs over this rolling history in process().
+        if (q.op == "TEACH" || q.op == "TEACH_RULE") {
+            TraceStep ts;
+            ts.engine = "long_term_memory";
+            ts.operation = q.subj + " " + q.rel + " " + q.obj;
+            ts.subject = q.subj; ts.relation = q.rel; ts.object = q.obj;
+            ts.verified = true;
+            meta_engine_.add_step(ts);
+        }
+
         std::ostringstream oss;
 
         if (q.op == "INSTINCT" || q.op == "INSTINCT_FIRE") {
@@ -1235,7 +1687,18 @@ public:
                  << "\"latency_ms\": " << std::fixed << std::setprecision(4) << resp.latency_ms << ","
                  << "\"verified\": " << (resp.verified ? "true" : "false") << ","
                  << "\"alarm_triggered\": " << (resp.alarm_triggered ? "true" : "false") << ","
-                 << "\"raw_output\": \"" << escape_json(resp.raw_output) << "\""
+                 << "\"raw_output\": \"" << escape_json(resp.raw_output) << "\","
+                 // Sub-symbolic telemetry: makes "both hemispheres ran" auditable
+                 // from the outside instead of being a claim in a README.
+                 << "\"fuzzy_ran\": " << (resp.fuzzy_ran ? "true" : "false") << ","
+                 << "\"fuzzy_ce\": " << resp.fuzzy_ce << ","
+                 << "\"fuzzy_perplexity\": " << resp.fuzzy_perplexity << ","
+                 << "\"fuzzy_tokens\": " << resp.fuzzy_tokens << ","
+                 << "\"fuzzy_vocab\": " << resp.fuzzy_vocab << ","
+                 << "\"fuzzy_replay\": " << resp.fuzzy_replay << ","
+                 << "\"fuzzy_episodes\": " << resp.fuzzy_episodes << ","
+                 << "\"fuzzy_writeback\": " << (resp.fuzzy_writeback ? "true" : "false") << ","
+                 << "\"proposer_policy\": \"" << escape_json(resp.proposer_policy) << "\""
                  << "}";
         return json_out.str();
     }
