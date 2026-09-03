@@ -42,6 +42,7 @@ public:
                 double at = 1.3, double tol = 1e-4) const {
         if (!antideriv) return false;
         auto d = CalculusEngine::diff(antideriv, var);
+        if (!d) return false;   // no rule differentiates the candidate — unverifiable, so not verified
         try {
             std::map<std::string, double> env = {{var, at}};
             return std::abs(CalculusEngine::eval(d, env) - CalculusEngine::eval(integrand, env)) < tol;

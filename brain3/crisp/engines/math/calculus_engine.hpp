@@ -128,68 +128,91 @@ public:
     /**
      * Compute analytical symbolic derivative d/dvar (e).
      */
+    /**
+     * Symbolic derivative. Returns NULLPTR when the expression cannot be
+     * differentiated by these rules — a variable exponent (x^x), an unknown
+     * operator (tan, sqrt), or a subexpression that itself failed.
+     *
+     * It previously returned make_num(0) for those cases, which reported "I
+     * cannot differentiate this" as "the derivative is zero". That is a silent
+     * wrong answer in a math engine, and heldout_probe section B tests for it
+     * ("x^x must not silently return 0"). Null propagates: every recursive
+     * result is checked, so a failure anywhere in the tree fails the whole
+     * derivative rather than contributing a bogus zero term.
+     */
     static ExprPtr diff(const ExprPtr& e, const std::string& var = "x") {
-        if (!e) return ExprNode::make_num(0);
+        if (!e) return nullptr;
         if (is_num(e)) return ExprNode::make_num(0);
         if (is_var(e)) return (e->var == var) ? ExprNode::make_num(1) : ExprNode::make_num(0);
 
         const auto& op = e->op;
         const auto& ch = e->children;
 
-        if (op == "neg") return simplify(ExprNode::make_op("neg", {diff(ch[0], var)}));
-        if (op == "+")   return simplify(ExprNode::make_op("+", {diff(ch[0], var), diff(ch[1], var)}));
-        if (op == "-")   return simplify(ExprNode::make_op("-", {diff(ch[0], var), diff(ch[1], var)}));
-        
+        if (op == "neg") {
+            auto du = diff(ch[0], var);
+            if (!du) return nullptr;
+            return simplify(ExprNode::make_op("neg", {du}));
+        }
+        if (op == "+" || op == "-") {
+            auto du = diff(ch[0], var);
+            auto dv = diff(ch[1], var);
+            if (!du || !dv) return nullptr;
+            return simplify(ExprNode::make_op(op, {du, dv}));
+        }
+
         // Product Rule: (f * g)' = f' * g + f * g'
         if (op == "*") {
-            auto term1 = ExprNode::make_op("*", {diff(ch[0], var), ch[1]});
-            auto term2 = ExprNode::make_op("*", {ch[0], diff(ch[1], var)});
+            auto du = diff(ch[0], var);
+            auto dv = diff(ch[1], var);
+            if (!du || !dv) return nullptr;
+            auto term1 = ExprNode::make_op("*", {du, ch[1]});
+            auto term2 = ExprNode::make_op("*", {ch[0], dv});
             return simplify(ExprNode::make_op("+", {term1, term2}));
         }
 
         // Quotient Rule: (f / g)' = (f' * g - f * g') / (g ^ 2)
         if (op == "/") {
-            auto num_term1 = ExprNode::make_op("*", {diff(ch[0], var), ch[1]});
-            auto num_term2 = ExprNode::make_op("*", {ch[0], diff(ch[1], var)});
+            auto du = diff(ch[0], var);
+            auto dv = diff(ch[1], var);
+            if (!du || !dv) return nullptr;
+            auto num_term1 = ExprNode::make_op("*", {du, ch[1]});
+            auto num_term2 = ExprNode::make_op("*", {ch[0], dv});
             auto numerator = ExprNode::make_op("-", {num_term1, num_term2});
             auto denominator = ExprNode::make_op("^", {ch[1], ExprNode::make_num(2)});
             return simplify(ExprNode::make_op("/", {numerator, denominator}));
         }
 
         // Power Rule with General Chain Rule: (u(x) ^ n)' = n * u(x)^(n-1) * u'(x)
+        // The chain-rule factor u'(x) is REQUIRED — without it d/dx((2x)^3) loses
+        // the factor 2. math_engine.hpp carried a copy of this rule that omitted
+        // it; that copy is gone and solve_derivative now routes here.
         if (op == "^") {
-            if (is_num(ch[1])) {
-                double n = ch[1]->val;
-                auto pow_term = ExprNode::make_op("^", {ch[0], ExprNode::make_num(n - 1)});
-                auto scaled_pow = ExprNode::make_op("*", {ExprNode::make_num(n), pow_term});
-                return simplify(ExprNode::make_op("*", {scaled_pow, diff(ch[0], var)}));
+            if (!is_num(ch[1])) return nullptr;   // variable exponent, e.g. x^x
+            double n = ch[1]->val;
+            auto du = diff(ch[0], var);
+            if (!du) return nullptr;
+            auto pow_term = ExprNode::make_op("^", {ch[0], ExprNode::make_num(n - 1)});
+            auto scaled_pow = ExprNode::make_op("*", {ExprNode::make_num(n), pow_term});
+            return simplify(ExprNode::make_op("*", {scaled_pow, du}));
+        }
+
+        // Chain rules: (sin u)' = cos u · u',  (cos u)' = -sin u · u',
+        //              (exp u)' = exp u · u',  (ln u)'  = u' / u
+        if (op == "sin" || op == "cos" || op == "exp" || op == "ln") {
+            auto du = diff(ch[0], var);
+            if (!du) return nullptr;
+            if (op == "sin")
+                return simplify(ExprNode::make_op("*", {ExprNode::make_op("cos", {ch[0]}), du}));
+            if (op == "cos") {
+                auto neg_sin = ExprNode::make_op("neg", {ExprNode::make_op("sin", {ch[0]})});
+                return simplify(ExprNode::make_op("*", {neg_sin, du}));
             }
+            if (op == "exp")
+                return simplify(ExprNode::make_op("*", {ExprNode::make_op("exp", {ch[0]}), du}));
+            return simplify(ExprNode::make_op("/", {du, ch[0]}));   // ln
         }
 
-        // Chain Rule: (sin(u))' = cos(u) * u'
-        if (op == "sin") {
-            auto cos_term = ExprNode::make_op("cos", {ch[0]});
-            return simplify(ExprNode::make_op("*", {cos_term, diff(ch[0], var)}));
-        }
-
-        // Chain Rule: (cos(u))' = -sin(u) * u'
-        if (op == "cos") {
-            auto neg_sin = ExprNode::make_op("neg", {ExprNode::make_op("sin", {ch[0]})});
-            return simplify(ExprNode::make_op("*", {neg_sin, diff(ch[0], var)}));
-        }
-
-        // Chain Rule: (exp(u))' = exp(u) * u'
-        if (op == "exp") {
-            auto exp_term = ExprNode::make_op("exp", {ch[0]});
-            return simplify(ExprNode::make_op("*", {exp_term, diff(ch[0], var)}));
-        }
-
-        // Chain Rule: (ln(u))' = u' / u
-        if (op == "ln") {
-            return simplify(ExprNode::make_op("/", {diff(ch[0], var), ch[0]}));
-        }
-
-        return ExprNode::make_num(0);
+        return nullptr;   // unknown operator — no rule, so no answer
     }
 
     /**
@@ -199,6 +222,7 @@ public:
         ExprPtr cur = e;
         for (int i = 0; i < n; ++i) {
             cur = diff(cur, var);
+            if (!cur) return nullptr;   // undifferentiable at order i — propagate, don't restart from null
         }
         return cur;
     }

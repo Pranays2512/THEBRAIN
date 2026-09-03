@@ -179,6 +179,7 @@ private:
         auto f = brain2::math::ExprNode::make_op("/", {num, den});
 
         auto f_prime = brain2::math::CalculusEngine::diff(f, "x");
+        if (!f_prime) return false;   // undifferentiable — no lemma, and no claim of one
         double test_x = 1.5 + (seed % 5) * 0.3;
         bool verified = brain2::math::CalculusEngine::verify_derivative(f, f_prime, "x", test_x, 1e-4);
 

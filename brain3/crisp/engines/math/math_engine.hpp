@@ -50,40 +50,16 @@ inline double numerical_diff(std::shared_ptr<ExprNode> e, double x, double h = 1
     return (eval_expr(e, x + h) - eval_expr(e, x - h)) / (2 * h);
 }
 
-// Symbolic differentiation
-inline std::shared_ptr<ExprNode> diff(const std::shared_ptr<ExprNode>& e, const std::string& var = "x") {
-    if (!e) return ExprNode::make_num(0);
-    if (is_num(e)) return ExprNode::make_num(0);
-    if (is_var(e)) return (e->var == var) ? ExprNode::make_num(1) : ExprNode::make_num(0);
-
-    const auto& op = e->op;
-    auto& ch = e->children;
-
-    if (op == "neg") return ExprNode::make_op("neg", {diff(ch[0], var)});
-    if (op == "+") return ExprNode::make_op("+", {diff(ch[0], var), diff(ch[1], var)});
-    if (op == "-") return ExprNode::make_op("-", {diff(ch[0], var), diff(ch[1], var)});
-    if (op == "*")
-        return ExprNode::make_op("+",
-            {ExprNode::make_op("*", {diff(ch[0], var), ch[1]}),
-             ExprNode::make_op("*", {ch[0], diff(ch[1], var)})});
-    if (op == "/")
-        return ExprNode::make_op("/",
-            {ExprNode::make_op("-",
-                {ExprNode::make_op("*", {diff(ch[0], var), ch[1]}),
-                 ExprNode::make_op("*", {ch[0], diff(ch[1], var)})}),
-             ExprNode::make_op("*", {ch[1], ch[1]})});
-    if (op == "^" && is_num(ch[1])) {
-        double n = ch[1]->val;
-        return ExprNode::make_op("*",
-            {ExprNode::make_num(n),
-             ExprNode::make_op("^", {ch[0], ExprNode::make_num(n - 1)})});
-    }
-    if (op == "sin") return ExprNode::make_op("*", {ExprNode::make_op("cos", {ch[0]}), diff(ch[0], var)});
-    if (op == "cos") return ExprNode::make_op("*", {ExprNode::make_op("neg", {ExprNode::make_op("sin", {ch[0]})}), diff(ch[0], var)});
-    if (op == "exp") return ExprNode::make_op("*", {ExprNode::make_op("exp", {ch[0]}), diff(ch[0], var)});
-    if (op == "ln")  return ExprNode::make_op("/", {diff(ch[0], var), ch[0]});
-    return ExprNode::make_num(0);
-}
+// Symbolic differentiation lives in ONE place: CalculusEngine::diff
+// (crisp/engines/math/calculus_engine.hpp). A second implementation used to sit
+// here, and the two were not equivalent — this one omitted the chain-rule factor
+// from the power rule, so d/dx((2x)^3) came back as 3*(2x)^2 instead of
+// 6*(2x)^2, and it never called simplify(). solve_derivative called this copy,
+// which meant the engine's public derivative entry point returned wrong values
+// for every composite base. Deleted rather than repaired: two entry points
+// computing different things is the defect, not the specific arithmetic.
+// See crisp/engines/math/calculus_diff_test.cpp, which pins both to a
+// central-difference oracle.
 
 // Unified Math & Physics Problem Solving Result
 struct MathSolveResult {
@@ -254,14 +230,20 @@ public:
         res.op = "diff";
         try {
             auto expr = parse(expr_str);
-            auto diff_expr = diff(expr, var);
+            // The single differentiation implementation. Returns nullptr when no
+            // rule applies (variable exponent, unsupported function) rather than
+            // a zero node, so "cannot differentiate" is reported as failure
+            // instead of as a derivative of 0.
+            auto diff_expr = CalculusEngine::diff(expr, var);
             if (diff_expr) {
                 res.success = true;
                 res.symbolic_val = render(diff_expr);
                 res.explanation = "d/d" + var + "(" + expr_str + ") = " + res.symbolic_val;
             } else {
                 res.success = false;
-                res.explanation = "Could not differentiate expression";
+                res.explanation = "No differentiation rule applies to '" + expr_str +
+                                  "' (variable exponent or unsupported function). "
+                                  "Refusing to report an unknown derivative as 0.";
             }
         } catch (const std::exception& e) {
             res.success = false;

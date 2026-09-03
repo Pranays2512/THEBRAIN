@@ -191,6 +191,9 @@ add_phase_test(test_math_engines
 add_phase_test(test_algebra_poly
     crisp/engines/math/algebra_poly_test.cpp)
 
+add_phase_test(test_calculus_diff
+    crisp/engines/math/calculus_diff_test.cpp)
+
 add_phase_test(code_engine_test
     crisp/engines/code/code_engine_test.cpp)
 
@@ -292,6 +295,7 @@ add_test(NAME graph_reasoner     COMMAND test_graph_reasoner)
 add_test(NAME sleep_kernel       COMMAND test_sleep_kernel)
 add_test(NAME gradcheck          COMMAND gradcheck)
 add_test(NAME algebra_poly       COMMAND test_algebra_poly)
+add_test(NAME calculus_diff      COMMAND test_calculus_diff)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")
