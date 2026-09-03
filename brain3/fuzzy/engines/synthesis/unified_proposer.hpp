@@ -130,10 +130,15 @@ struct RecurrentIntuitionBlock {
     }
 
     // Adam step on one parameter set
+    // NOTE: adam_t_ is advanced ONCE PER STEP by backward(), not here. It used
+    // to be incremented inside this function, which backward() calls six times
+    // (one per parameter group), so the timestep raced ahead 6x per update and
+    // the bias-correction denominators 1-b1^t / 1-b2^t were evaluated at the
+    // wrong t. Early steps are exactly where bias correction matters, so this
+    // mis-scaled the first several updates of every fresh router.
     void adam_upd(std::vector<double>& P, const std::vector<double>& G,
                   std::vector<double>& M, std::vector<double>& Vv,
                   double lr) {
-        ++const_cast<long long&>(adam_t_);
         long long t = adam_t_;
         double bc1 = 1.0 - std::pow(adam_b1, t);
         double bc2 = 1.0 - std::pow(adam_b2, t);
@@ -226,6 +231,7 @@ struct RecurrentIntuitionBlock {
         total_updates++;
 
         init_adam();
+        ++adam_t_;               // one optimizer step, six parameter groups
         double eff_lr = learning_rate;
 
         std::vector<double> d_logits = probs;
@@ -292,7 +298,8 @@ struct RecurrentIntuitionBlock {
         adam_upd(b_in, gb_in, mb_in_, vb_in_, eff_lr);
         adam_upd(W_rec, gW_rec, mW_rec_, vW_rec_, rec_lr);
         adam_upd(b_rec, gb_rec, mb_rec_, vb_rec_, eff_lr);
-        ++total_updates;
+        // total_updates was incremented at the top of this function as well, so
+        // every reported training-step count was 2x the real number.
     }
 
     // ── Binary Weight Persistence ──────────────────────────────────────────

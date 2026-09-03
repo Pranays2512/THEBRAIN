@@ -167,18 +167,46 @@ public:
     ) {
         AuditReport report;
         report.claim_name = problem_name + " Empirical Search Scope Audit";
-        report.passed_adversarial_scrutiny = true;
-        report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
-        report.verdict_label = "MICRO_SANITY_CHECK (Properly Contextualized Against Literature)";
-
-        double pct = (static_cast<double>(tested_bound) / literature_record_val) * 100.0;
-        std::ostringstream oss;
-        oss << "Local Test Bound: N = " << tested_bound 
-            << " vs Literature Record: " << literature_record_str 
-            << " (Exact Fraction: " << std::scientific << std::setprecision(2) << pct << "% of established bound).";
-
-        report.correct_mathematical_formulation = oss.str();
         report.historical_context_and_literature = "Collatz: Barina (2020) verified up to 2^68 ≈ 2.95e20. Goldbach: Oliveira e Silva et al. (2014) verified up to 4e18.";
+
+        // REAL scope check: a local search can only support claims about the
+        // range it actually covered. Anything short of the literature record
+        // is an instance-level result, never a universal one.
+        if (literature_record_val <= 0.0 || tested_bound == 0) {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::TRIVIAL_RANGE_OVERCLAIM;
+            report.verdict_label = "DEGENERATE_SCOPE (search bound or literature record is zero)";
+            report.adversarial_refutations.push_back(
+                "SCOPE ERROR: tested_bound=" + std::to_string(tested_bound) +
+                " with literature_record=" + std::to_string(literature_record_val) +
+                " supports no claim at all.");
+            return report;
+        }
+
+        double ratio = static_cast<double>(tested_bound) / literature_record_val;
+        std::ostringstream oss;
+        oss << "Local Test Bound: N = " << tested_bound
+            << " vs Literature Record: " << literature_record_str
+            << " (Exact Fraction: " << std::scientific << std::setprecision(2)
+            << (ratio * 100.0) << "% of established bound).";
+
+        if (ratio >= 0.999) {
+            report.passed_adversarial_scrutiny = true;
+            report.verdict = AuditVerdict::SOUND_AND_VERIFIED;
+            report.verdict_label = "LITERATURE_MATCHING_SCOPE (local search covers the published bound)";
+            report.correct_mathematical_formulation = oss.str();
+        } else {
+            report.passed_adversarial_scrutiny = false;
+            report.verdict = AuditVerdict::TRIVIAL_RANGE_OVERCLAIM;
+            report.verdict_label = "INSTANCE_LEVEL_ONLY (local search covers " +
+                                   std::to_string((int)(ratio * 100.0)) + "% of the literature record)";
+            report.adversarial_refutations.push_back(
+                "SCOPE OVERCLAIM: local search reached N=" + std::to_string(tested_bound) +
+                " but the literature record stands at " + literature_record_str +
+                ". Any universal claim beyond the local bound is unsupported by this run.");
+            report.correct_mathematical_formulation =
+                "Claim must be scoped to n <= " + std::to_string(tested_bound) + ". " + oss.str();
+        }
         return report;
     }
 

@@ -317,13 +317,15 @@ private:
     bool _explore_cross_domain_hunter(std::string& out_msg) {
         if (!conjecture_hunter_ref_) return false;
         auto disc = conjecture_hunter_ref_->step_hunt();
-        // HONESTY NOTE: the hunter marks a pairing "verified" on a bare
-        // Gentner systematicity threshold (score >= 0.30) and then emits a
+        // HONESTY NOTE: the hunter accepts a pairing on a bare Gentner
+        // systematicity threshold (score >= 0.30) and then emits a
         // string-substitution "invariant". Nothing is checked against data or
         // a proof, so this is a structural ALIGNMENT, not a verified lemma.
         // Persisted for provenance; excluded from the verified-lemma count,
         // same convention as the Lyapunov and formal-tactic domains below.
-        if (disc.verified) {
+        // The hunter's field is now named `aligned` rather than `verified` so
+        // this distinction is enforced by the type, not by this comment.
+        if (disc.aligned) {
             std::ostringstream oss;
             oss << "Cross-Domain Structural Alignment (UNVERIFIED — SME score only) ["
                 << disc.source_domain << " <-> " << disc.target_domain

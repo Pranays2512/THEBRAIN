@@ -217,18 +217,67 @@ struct BasalGanglia {
     void apply_grad(int op_idx, const std::vector<float>& h1,
                     const std::vector<float>& inp, float td_error) {
         td_error = std::max(-2.0f, std::min(2.0f, td_error));   // clip for stability
-        int in = 5 * n_dims;
+        const int in = 5 * n_dims;
+
+        // ── Policy at the current weights ────────────────────────────────────
+        // The objective being ascended is F = td * ( log pi(a|s) + V(s) ), with
+        // td held constant. The actor term therefore needs the SOFTMAX gradient
+        //     d log pi(a) / d logit_i = 1{i == a} - p_i
+        // which requires p. Trace does not carry it, so recompute from h1 —
+        // O(n_ops * hidden) ~ 8k flops, negligible beside the W1 update below.
+        std::vector<float> p((size_t)n_ops);
+        {
+            float mx = -1e30f;
+            for (int i = 0; i < n_ops; i++) {
+                float s = b2[i];
+                const float* row = W2.data() + (size_t)i * hidden;
+                for (int j = 0; j < hidden; j++) s += row[j] * h1[j];
+                p[(size_t)i] = s;
+                if (s > mx) mx = s;
+            }
+            float z = 0.f;
+            for (int i = 0; i < n_ops; i++) { p[(size_t)i] = std::exp(p[(size_t)i] - mx); z += p[(size_t)i]; }
+            const float inv = 1.f / (z + 1e-9f);
+            for (int i = 0; i < n_ops; i++) p[(size_t)i] *= inv;
+        }
+
+        // The hidden-layer gradient must use the actor/critic weights from
+        // BEFORE this step's update. The previous code read W2 and W_v after
+        // mutating them in place, so dF/dW1 was contaminated by this very step.
+        const std::vector<float> W2_pre  = W2;
+        const std::vector<float> W_v_pre = W_v;
+
+        // ── Critic ───────────────────────────────────────────────────────────
         b_v[0] += lr_ * td_error;
         for (int j = 0; j < hidden; j++)
             W_v[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * W_v[j];
-        float* row2 = W2.data() + op_idx * hidden;
-        for (int j = 0; j < hidden; j++)
-            row2[j] += lr_ * td_error * h1[j] - 0.005f * lr_ * row2[j];
-        b2[op_idx] += lr_ * td_error;
+
+        // ── Actor: every op, not just the chosen one ──────────────────────────
+        // Previously only row `op_idx` was updated, with a coefficient of
+        // td*1 instead of td*(1 - p_a), and the -td*p_i push-down on the
+        // non-chosen logits was absent altogether. Two consequences: the chosen
+        // row was over-driven by 1/(1 - p_a), which does NOT decay as the policy
+        // becomes confident (the correct gradient vanishes as p_a -> 1, so the
+        // old form could never settle); and the rival logits were never
+        // suppressed, so preference could only be expressed in a common mode
+        // the softmax is invariant to.
+        for (int i = 0; i < n_ops; i++) {
+            const float gi = td_error * ((i == op_idx ? 1.f : 0.f) - p[(size_t)i]);
+            float* row = W2.data() + (size_t)i * hidden;
+            for (int j = 0; j < hidden; j++)
+                row[j] += lr_ * gi * h1[j] - 0.005f * lr_ * row[j];
+            b2[i] += lr_ * gi;
+        }
+
+        // ── Shared hidden layer (both heads backprop into h1) ────────────────
         for (int j = 0; j < hidden; j++) {
-            float d = (td_error * W2[op_idx * hidden + j] + td_error * W_v[j]) * (1.f - h1[j] * h1[j]);
+            float actor_j = 0.f;
+            for (int i = 0; i < n_ops; i++)
+                actor_j += td_error * ((i == op_idx ? 1.f : 0.f) - p[(size_t)i])
+                         * W2_pre[(size_t)i * hidden + (size_t)j];
+            const float d = (actor_j + td_error * W_v_pre[j]) * (1.f - h1[j] * h1[j]);
             b1[j] += lr_ * d;
-            float* row1 = W1.data() + j * in;
+            float* row1 = W1.data() + (size_t)j * in;
             for (int k = 0; k < in; k++)
                 row1[k] += lr_ * d * inp[k] - 0.005f * lr_ * row1[k];
         }

@@ -6,6 +6,10 @@
 #include <deque>
 #include <algorithm>
 #include <iostream>
+// save()/load() use std::ofstream/std::ifstream. This header previously relied
+// on a translation unit including <fstream> before it, so including it first in
+// a new TU was a hard compile error.
+#include <fstream>
 
 #include "cuda_math.cuh"
 
@@ -243,7 +247,24 @@ struct SparseLSTMLayer {
         if (steps == 0) return {};
 
         std::vector<float> delta_h(H, 0.f);
+        // CELL-STATE GRADIENT CARRY.
+        //
+        // This was missing entirely. dC was computed from delta_h alone, i.e.
+        //     dC_t = dh_t * o_t * (1 - tanh^2(c_t))
+        // dropping the recurrent cell term of LSTM BPTT,
+        //     dC_t += dC_{t+1} * f_{t+1}
+        // Consequence: the gradient was correct only at the FINAL timestep of a
+        // sequence, because that is the only step with no successor to carry
+        // from. train_lm_sequence_per_token() backpropagates chunks of up to
+        // T=128, so 127 of every 128 steps were being trained on a wrong
+        // gradient. It was invisible in the loss curve (the last step's gradient
+        // alone still descends) and invisible to a 1-step check; caught by the
+        // 2-step probe in eval/gradcheck.cpp, where Wh passed and Wx/b failed —
+        // Wh's step-0 gradient is identically zero after reset_state(), so it
+        // was the one matrix the bug could not touch.
+        std::vector<float> delta_c(H, 0.f);
         std::vector<std::vector<float>> delta_x_seq(steps, std::vector<float>(I, 0.f));
+        std::vector<char> is_active(H, 0);
 
         for (int s = steps - 1; s >= 0; s--) {
             int hist_idx = hist - steps + s;
@@ -253,21 +274,30 @@ struct SparseLSTMLayer {
                 for (int k = 0; k < H; k++) delta_h[k] += delta_h_seq[s][k];
             }
 
+            std::fill(is_active.begin(), is_active.end(), (char)0);
+            for (int n : snap.active_neurons) is_active[n] = 1;
+
             const float* fg = snap.gates.data();
             const float* ig = snap.gates.data() + H;
             const float* gg = snap.gates.data() + 2 * H;
             const float* og = snap.gates.data() + 3 * H;
 
             std::vector<float> dpre(4 * H, 0.f);
-            
+            // Inactive neurons pass their cell gradient straight through: the
+            // forward pass copies c_new[n] = c_prev[n] for them, so the local
+            // derivative is exactly 1. Active neurons overwrite this below.
+            std::vector<float> delta_c_prev = delta_c;
+
             // Only backpropagate through the neurons that were ACTIVE at this step
             for (int n : snap.active_neurons) {
                 float tanh_c = std::tanh(snap.c_new[n]);
                 float dO = delta_h[n] * tanh_c;
-                float dC = delta_h[n] * og[n] * (1.f - tanh_c * tanh_c);
+                float dC = delta_h[n] * og[n] * (1.f - tanh_c * tanh_c) + delta_c[n];
                 float dI = dC * gg[n];
                 float dG = dC * ig[n];
                 float dF = dC * snap.c_prev[n];
+                // carry into step s-1 through this step's forget gate
+                delta_c_prev[n] = dC * fg[n];
 
                 dpre[n] = dF * fg[n] * (1.f - fg[n]);
                 dpre[H + n] = dI * ig[n] * (1.f - ig[n]);
@@ -300,6 +330,14 @@ struct SparseLSTMLayer {
                                        Wh[(3 * H + n) * H + j] * dpre[3 * H + n];
                 }
             }
+            // Same pass-through argument as delta_c: the forward pass copies
+            // h_new[n] = h_prev[n] for an inactive neuron, so its incoming
+            // gradient must survive to the previous step instead of being
+            // dropped. No-op when k_active >= hidden_dim (every neuron active),
+            // which is the current orchestrator configuration — but wrong the
+            // moment genuine LSH sparsity is switched on.
+            for (int n = 0; n < H; ++n)
+                if (!is_active[n]) delta_h_prev[n] += delta_h[n];
 
             // Weight updates ONLY for the active rows!
             // Decoupled weight decay (AdamW-style): shrink active rows toward 0
@@ -328,6 +366,7 @@ struct SparseLSTMLayer {
 
             delta_x_seq[s] = delta_x;
             delta_h = delta_h_prev;
+            delta_c = delta_c_prev;   // carry the cell gradient to step s-1
         }
 
         return delta_x_seq;

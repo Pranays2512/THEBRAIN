@@ -33,9 +33,23 @@ void print_invention(const UnsolvedInvention& inv) {
                   << " (Residual: " << std::scientific << std::setprecision(8) << s.residual_error << ")\n\n";
     }
 
-    std::cout << "🔬 MACHINE PROOF & VERIFICATION METRICS:\n";
-    std::cout << "   • Numerical Residual Tolerance : " << std::scientific << std::setprecision(8) << inv.max_numerical_residual << "\n";
-    std::cout << "   • Verification Status          : " << (inv.machine_proven ? "✅ MACHINE VERIFIED" : "❌ FAILED") << "\n";
+    // "machine_proven" means a COMPUTED quantity passed a stated numeric gate. Only
+    // the Collatz drift model does that (residual < 0.015 over 50k sampled trajectories).
+    // The other three formulate an invariant and a proof sketch and compute nothing, so
+    // the honest label is UNPROVEN — not "FAILED", and emphatically not "MACHINE VERIFIED",
+    // which is what this line printed unconditionally for all four before.
+    std::cout << "🔬 NUMERICAL GATE STATUS (NOT a proof certificate):\n";
+    if (std::isnan(inv.max_numerical_residual)) {
+        std::cout << "   • Numerical Residual           : not measured\n";
+    } else {
+        std::cout << "   • Numerical Residual           : " << std::scientific
+                  << std::setprecision(8) << inv.max_numerical_residual << "\n";
+    }
+    std::cout << "   • Status                       : "
+              << (inv.machine_proven
+                      ? "✅ NUMERICALLY GATED (heuristic model — NOT a proof)"
+                      : "⚠️  UNPROVEN — formulation + proof sketch only; nothing computed")
+              << "\n";
     std::cout << "🌟 SCIENTIFIC VALUE:\n";
     std::cout << "   " << inv.scientific_implication << "\n";
     std::cout << "⚠️ HONEST EPISTEMIC BOUNDARY & OPEN GAP:\n";
@@ -70,7 +84,9 @@ int main() {
     double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
     std::cout << "\n" << std::string(80, '=') << "\n";
-    std::cout << "🏆 ALL 4 FRONTIER UNSOLVED PROBLEM THEOREMS DERIVED & PROVEN!\n";
+    std::cout << "📋 4 FRONTIER PROBLEM FORMULATIONS EMITTED.\n";
+    std::cout << "   1 numerically gated (Collatz drift, heuristic). 3 unproven sketches.\n";
+    std::cout << "   None of these is a proof. All 4 remain open.\n";
     std::cout << "   Total Execution Time: " << std::fixed << std::setprecision(4) << ms << " ms\n";
     std::cout << std::string(80, '=') << "\n\n";
 

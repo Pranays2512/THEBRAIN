@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <iomanip>
 #include <regex>
+#include <fstream>
+#include <filesystem>
 
 #include "../fuzzy/core/brain.hpp"
 #include "../crisp/engines/reasoning/brainql.hpp"
@@ -138,7 +140,11 @@ public:
             traj.trajectory_trace.push_back("👁️ Observation " + std::to_string(i + 1) + ": " + obs);
 
             // Verify Observation Quality & Trigger Reflexion if necessary
-            if (obs.empty() || obs.find("Error") != std::string::npos || obs.find("Unknown") != std::string::npos) {
+            auto bad_obs = [](const std::string& o) {
+                return o.empty() || o.find("[UNVERIFIED]") != std::string::npos ||
+                       o.find("Error") != std::string::npos || o.find("Unknown") != std::string::npos;
+            };
+            if (bad_obs(obs)) {
                 task.status = TaskStatus::RETRIED;
                 task.retry_count++;
                 task.reflection = "Reflexion: Observation was insufficient or encountered error. Adapting tool parameters.";
@@ -154,7 +160,16 @@ public:
 
             auto t1 = std::chrono::high_resolution_clock::now();
             task.execution_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-            task.status = TaskStatus::COMPLETED;
+            // A task that STILL has a degraded observation after retry FAILED.
+            // goal_achieved used to be structurally always true — that made
+            // every success metric meaningless.
+            if (bad_obs(task.observation)) {
+                task.status = TaskStatus::FAILED;
+                all_tasks_successful = false;
+                traj.trajectory_trace.push_back("❌ Task " + task.task_id + " FAILED after retry.");
+            } else {
+                task.status = TaskStatus::COMPLETED;
+            }
         }
 
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -171,6 +186,7 @@ public:
 
         // Archive into Episodic Store
         episodic_trajectories_.push_back(traj);
+        persist_trajectory(traj);
 
         return traj;
     }
@@ -298,10 +314,13 @@ private:
             return "Verdict [" + scrutiny.scientific_verdict_label + "]: " + scrutiny.grounded_explanation;
         }
         if (tool == "web_ground") {
-            return "Epistemically grounded concept in verified knowledge corpus.";
+            // No live grounder is wired into this engine; claiming verified
+            // grounding here was fabricated success. State it honestly so
+            // the Reflexion loop can reroute to brainql_query.
+            return "[UNVERIFIED] web grounding unavailable in this runtime; no grounder wired.";
         }
         if (tool == "abductive_invent") {
-            return "MCTS abductive search completed: synthesized latent operator reducing residual tension.";
+            return "[UNVERIFIED] abductive MCTS not wired to this engine; no latent entity synthesized.";
         }
 
         return "Tool '" + tool + "' executed successfully with return code 0.";
@@ -309,10 +328,31 @@ private:
 
     std::string _synthesize_goal_outcome(const AgenticTrajectory& traj) {
         std::ostringstream oss;
-        oss << "The Brain autonomously planned, executed, and validated all " << traj.plan.size()
-            << " subtasks for goal: \"" << traj.goal << "\". ";
-        oss << "Every intermediate state was verified against epistemic invariants with zero unhandled exceptions.";
+        if (traj.goal_achieved) {
+            oss << "The Brain autonomously planned, executed, and validated all " << traj.plan.size()
+                << " subtasks for goal: \"" << traj.goal << "\". ";
+            oss << "Every intermediate state passed observation-quality checks.";
+        } else {
+            size_t failed = 0;
+            for (const auto& t : traj.plan)
+                if (t.status == TaskStatus::FAILED) ++failed;
+            oss << "Goal \"" << traj.goal << "\" NOT fully achieved: " << failed
+                << " of " << traj.plan.size() << " subtasks failed after retry. "
+                << "Partial results above are unverified and must not be reported as solved.";
+        }
         return oss.str();
+    }
+
+    // Append-only telemetry: every trajectory lands on disk so agentic
+    // performance is measurable across runs instead of dying with the process.
+    void persist_trajectory(const AgenticTrajectory& traj,
+                            const std::string& path = "data/agentic_trajectories.jsonl") {
+        std::error_code ec;
+        std::filesystem::path p(path);
+        if (p.has_parent_path()) std::filesystem::create_directories(p.parent_path(), ec);
+        std::ofstream f(path, std::ios::app);
+        if (!f) return;
+        f << traj.to_json() << "\n";
     }
 };
 

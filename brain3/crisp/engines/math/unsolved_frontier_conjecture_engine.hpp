@@ -25,6 +25,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <random>
 #include <map>
@@ -171,8 +172,15 @@ public:
         s3.is_verified = true;
         inv.proof_trace.push_back(s3);
 
-        inv.max_numerical_residual = 0.00000000;
-        inv.machine_proven = true;
+        // NOT PROVEN. This function formulates an invariant and writes down a proof
+        // sketch; it computes nothing and checks nothing. `machine_proven` was
+        // previously the literal `true` and `max_numerical_residual` the literal
+        // 0.00000000, which made the CLI print "✅ MACHINE VERIFIED" for a Millennium
+        // Prize problem on every run, unconditionally. See `open_mathematical_gap`
+        // below — this struct already documented its own gap while claiming proof.
+        // Only derive_collatz_lyapunov_invariant() gates on a computed quantity.
+        inv.max_numerical_residual = std::numeric_limits<double>::quiet_NaN();  // not measured
+        inv.machine_proven = false;
         inv.scientific_implication = "Provides an explicit differential phase-curvature equation that governs real-line zero crossings between consecutive Gram points.";
         inv.open_mathematical_gap = "CRITICAL GAP: Gram's Law fails for infinitely many Gram points (Gram defects / Hutchinson violations); phase-curvature does not rule out zeros off the critical line.";
         return inv;
@@ -214,8 +222,15 @@ public:
         s3.is_verified = true;
         inv.proof_trace.push_back(s3);
 
-        inv.max_numerical_residual = 0.00000000;
-        inv.machine_proven = true;
+        // NOT PROVEN. This function formulates an invariant and writes down a proof
+        // sketch; it computes nothing and checks nothing. `machine_proven` was
+        // previously the literal `true` and `max_numerical_residual` the literal
+        // 0.00000000, which made the CLI print "✅ MACHINE VERIFIED" for a Millennium
+        // Prize problem on every run, unconditionally. See `open_mathematical_gap`
+        // below — this struct already documented its own gap while claiming proof.
+        // Only derive_collatz_lyapunov_invariant() gates on a computed quantity.
+        inv.max_numerical_residual = std::numeric_limits<double>::quiet_NaN();  // not measured
+        inv.machine_proven = false;
         inv.scientific_implication = "Establishes a non-perturbative finite-enstrophy basin where vortex blow-up is mathematically impossible, ensuring global smooth C^infinity solutions.";
         inv.open_mathematical_gap = "CRITICAL GAP: For arbitrarily large initial energy/enstrophy Omega(0) >= (2nu/C_GN)^4, vortex stretching can theoretically outpace viscous dissipation in finite time (the core Millennium Prize difficulty).";
         return inv;
@@ -257,8 +272,15 @@ public:
         s3.is_verified = true;
         inv.proof_trace.push_back(s3);
 
-        inv.max_numerical_residual = 0.00000000;
-        inv.machine_proven = true;
+        // NOT PROVEN. This function formulates an invariant and writes down a proof
+        // sketch; it computes nothing and checks nothing. `machine_proven` was
+        // previously the literal `true` and `max_numerical_residual` the literal
+        // 0.00000000, which made the CLI print "✅ MACHINE VERIFIED" for a Millennium
+        // Prize problem on every run, unconditionally. See `open_mathematical_gap`
+        // below — this struct already documented its own gap while claiming proof.
+        // Only derive_collatz_lyapunov_invariant() gates on a computed quantity.
+        inv.max_numerical_residual = std::numeric_limits<double>::quiet_NaN();  // not measured
+        inv.machine_proven = false;
         inv.scientific_implication = "Provides a non-relativizing information-theoretic spectral discrepancy separating polynomial circuits from NP-complete search spaces.";
         inv.open_mathematical_gap = "CRITICAL GAP: Natural Proofs Barrier (Razborov-Rudich 1997) shows generic combinatorial properties cannot easily prove general non-uniform circuit lower bounds without cryptographic assumptions.";
         return inv;

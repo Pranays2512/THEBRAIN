@@ -509,6 +509,75 @@ int main() {
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    H("N. FUZZY PROPOSES / CRISP DISPOSES — the outbound path");
+    // Every other integration path feeds INTO the fuzzy hemisphere. This is the
+    // only one that lets it influence an answer, and it is gated on adversarial
+    // refutation. The negative control (N3) is the point of the section: a
+    // proposal the refuter kills must NOT surface. Without that, this path would
+    // just be a hallucination channel.
+    {
+        using brain3::core::MasterOrchestrator;
+        using brain3::core::CognitiveResponse;
+        MasterOrchestrator orch;
+
+        // Register the symbols on the fuzzy side the normal way — a turn of
+        // input — then plant an association that the SYMBOLIC store does not
+        // have. This is the real situation the miss path exists for: the fuzzy
+        // half learned something that never became a discrete fact.
+        orch.process("blorf habitat tundra");
+        auto* B = orch.get_brain();
+        B->bind_triple(B->language.encode("blorf"),
+                       B->language.encode("habitat"),
+                       B->language.encode("tundra"));
+
+        CognitiveResponse r = orch.process("LOOKUP blorf habitat");
+
+        // N1: the proposal happened at all.
+        record("N proposeverify", "associative recall proposes on a symbolic miss",
+               r.fuzzy_proposal == "tundra",
+               "proposal='" + r.fuzzy_proposal + "' conf=" +
+               std::to_string(r.fuzzy_proposal_conf), false, false);
+
+        // N2: a surviving proposal is surfaced, but explicitly NOT as verified
+        // truth. Conflating "the refuter did not kill it" with "it is verified"
+        // is precisely the error the Python dreamers make.
+        record("N proposeverify", "survivor surfaces but verified stays false",
+               r.engine_used == "fuzzy_propose_crisp_verify" && !r.verified,
+               "engine=" + r.engine_used + " verified=" +
+               std::string(r.verified ? "true" : "false"), false, false);
+
+        // N3: NEGATIVE CONTROL. Plant a recall the refuter must kill — the mass
+        // positivity invariant — and require that it never reaches the reply.
+        orch.process("mass val -5");
+        B->bind_triple(B->language.encode("mass"),
+                       B->language.encode("val"),
+                       B->language.encode("-5"));
+        CognitiveResponse bad = orch.process("LOOKUP mass val");
+        const bool suppressed =
+            bad.fuzzy_proposal_refuted &&
+            bad.natural_reply.find("-5") == std::string::npos;
+        record("N proposeverify", "refuted proposal is suppressed, not surfaced",
+               suppressed,
+               "refuted=" + std::string(bad.fuzzy_proposal_refuted ? "1" : "0") +
+               " reply='" + bad.natural_reply + "'", false, false);
+
+        // N4: a proposal must never become a stored fact. Re-asking must go
+        // through the propose path again rather than returning a verified hit.
+        CognitiveResponse again = orch.process("LOOKUP blorf habitat");
+        record("N proposeverify", "proposal never committed to the fact store",
+               !again.verified,
+               "second lookup reported verified=true (recall leaked into truth)",
+               false, false);
+
+        // N5: the guard holds for symbols the fuzzy side has never seen.
+        CognitiveResponse unk = orch.process("LOOKUP wugglethorpe habitat");
+        record("N proposeverify", "no proposal for unseen symbols",
+               unk.fuzzy_proposal.empty(),
+               "proposed '" + unk.fuzzy_proposal + "' for an unknown subject",
+               false, false);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // Scorecard
     // ══════════════════════════════════════════════════════════════════════
     std::cout << "\n==========================================================\n"

@@ -24,7 +24,11 @@ struct CrossDomainDiscovery {
     std::string abstract_formula;
     std::vector<std::string> mappings;
     std::vector<std::string> candidate_projections;
-    bool verified;
+    // A structural alignment was found (Gentner systematicity >= 0.30). This is explicitly
+    // NOT verification: no data is fitted and no proof is checked on this path. Named
+    // `aligned` rather than `verified` so that no caller can mistake one for the other —
+    // the previous name is why CROSS_DOMAIN_HUNT told users a hypothesis was a result.
+    bool aligned;
     std::string timestamp;
 
     std::string to_json() const {
@@ -35,7 +39,10 @@ struct CrossDomainDiscovery {
         oss << "  \"structural_score\": " << structural_score << ",\n";
         oss << "  \"generalized_law\": \"" << generalized_law_name << "\",\n";
         oss << "  \"abstract_formula\": \"" << abstract_formula << "\",\n";
-        oss << "  \"verified\": " << (verified ? "true" : "false") << ",\n";
+        oss << "  \"structural_alignment\": " << (aligned ? "true" : "false") << ",\n";
+        oss << "  \"verified\": false,\n";
+        oss << "  \"verification_status\": \"UNVERIFIED — structural alignment only; "
+               "no data fit, no proof check\",\n";
         oss << "  \"mappings\": [";
         for (size_t i = 0; i < mappings.size(); ++i) {
             oss << "\"" << mappings[i] << "\"" << (i + 1 < mappings.size() ? ", " : "");
@@ -72,7 +79,7 @@ public:
     CrossDomainDiscovery step_hunt() {
         total_scans_++;
         CrossDomainDiscovery disc;
-        disc.verified = false;
+        disc.aligned = false;
         disc.structural_score = 0.0;
 
         if (!analogy_engine_) return disc;
@@ -115,13 +122,25 @@ public:
             disc.candidate_projections.push_back(inf.to_string());
         }
 
-        // 2. Perform AST Anti-Unification across equations if structural isomorphism is strong
+        // 2. Perform AST Anti-Unification across equations if structural isomorphism is strong.
+        //
+        // WHAT score >= 0.30 ACTUALLY MEANS: at least 30% of the smaller domain's relation
+        // triples found a consistent 1-to-1 partner in the other domain. That is a Gentner
+        // systematicity overlap and NOTHING ELSE. No data was fitted, no residual computed,
+        // no proof checked. A structural alignment is a HYPOTHESIS, not a result.
+        //
+        // This field was previously named `verified` and set true here, and the CROSS_DOMAIN_HUNT
+        // command reported it to the user as a verified discovery "crystallized into the policy
+        // store (O(1) verified)". That is the same class of defect commit 838880e removed from
+        // the discovery engine, and self_play_discovery_daemon.hpp:320-325 already refuses to
+        // count this signal for exactly this reason. The daemon's accounting was patched; this,
+        // the user-facing source, was not. It is now.
         if (res.score >= 0.30 && !res.entity_map.empty()) {
             total_isomorphisms_found_++;
             auto anti_uni = synthesize_cross_domain_invariant(d1, d2, res);
             disc.generalized_law_name = anti_uni.first;
             disc.abstract_formula = anti_uni.second;
-            disc.verified = true;
+            disc.aligned = true;       // structural alignment found — NOT verification
 
             // Register into AlgorithmicPolicyEngine
             if (policy_engine_) {
@@ -130,6 +149,7 @@ public:
                 policy.paradigm = "Cross-Domain Structural Isomorphism";
                 policy.mathematical_invariant = disc.abstract_formula;
                 policy.transition_recurrence = disc.generalized_law_name;
+                policy.paradigm = "Cross-Domain Structural Isomorphism (UNVERIFIED conjecture)";
                 policy.time_complexity_budget = "O(1) Isomorphic Projection";
                 policy.space_complexity_budget = "O(1) Dual Mapping";
                 policy.io_policy = "Standard I/O";

@@ -130,6 +130,12 @@ endif()
 # ── Metacognition + sentiment perception ──────────────────────────────────────
 add_phase_test(test_metacognition test_metacognition.cpp)
 
+# ── Gradient validation for the fuzzy learners ───────────────────────────────
+add_executable(gradcheck eval/gradcheck.cpp)
+target_include_directories(gradcheck PRIVATE .)
+target_link_libraries(gradcheck PRIVATE ${PLATFORM_LIBS})
+target_compile_options(gradcheck PRIVATE -O2)
+
 # ── Held-out capability probe (measures generalization, not recall) ──────────
 add_executable(heldout_probe eval/heldout_probe.cpp)
 target_include_directories(heldout_probe PRIVATE .)
@@ -181,6 +187,9 @@ endif()
 # ── Per-engine test targets ───────────────────────────────────────────────────
 add_phase_test(test_math_engines
     crisp/engines/math/math_full_test.cpp)
+
+add_phase_test(test_algebra_poly
+    crisp/engines/math/algebra_poly_test.cpp)
 
 add_phase_test(code_engine_test
     crisp/engines/code/code_engine_test.cpp)
@@ -281,6 +290,8 @@ add_test(NAME fuzzy_ingestion    COMMAND test_fuzzy_ingestion)
 add_test(NAME curiosity_diet     COMMAND test_curiosity_diet)
 add_test(NAME graph_reasoner     COMMAND test_graph_reasoner)
 add_test(NAME sleep_kernel       COMMAND test_sleep_kernel)
+add_test(NAME gradcheck          COMMAND gradcheck)
+add_test(NAME algebra_poly       COMMAND test_algebra_poly)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")

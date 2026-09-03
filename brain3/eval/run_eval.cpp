@@ -286,17 +286,42 @@ static fe::SuiteResult suite_plan_grid() {
     return s;
 }
 
-int main() {
+int main(int argc, char** argv) {
     const auto t0 = std::chrono::steady_clock::now();
     std::cout << "=== brain3 evaluation scoreboard ===\n";
 
+    // plan_grid trains a StamlatLM from scratch (260 reps x 3 acts) and takes
+    // minutes. Its own header describes it as "machinery warmth, informational"
+    // and its gate is a 0.50 floor, so it is not a correctness gate — but its
+    // cost is what made this whole suite take over ten minutes, which meant it
+    // was never run at all. A gate suite nobody can afford to run stops being a
+    // gate and becomes a file. The three real gates now always run; the slow
+    // informational tier is opt-in via --full or BRAIN_EVAL_FULL=1.
+    bool full = std::getenv("BRAIN_EVAL_FULL") != nullptr;
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--full") full = true;
+
+    auto timed = [](const char* label, auto&& fn) {
+        const auto s = std::chrono::steady_clock::now();
+        auto r = fn();
+        const double ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s).count();
+        std::cout << "  ... " << label << " took " << std::fixed << std::setprecision(1)
+                  << ms << " ms\n";
+        return r;
+    };
+
     std::vector<fe::SuiteResult> suites;
-    suites.push_back(suite_intent());
+    suites.push_back(timed("intent",    [&]{ return suite_intent(); }));
 
     brain3::core::MasterOrchestrator orch;    // heavy: constructed once
-    suites.push_back(suite_retention(orch));
-    suites.push_back(suite_mouth());
-    suites.push_back(suite_plan_grid());
+    suites.push_back(timed("retention", [&]{ return suite_retention(orch); }));
+    suites.push_back(timed("mouth",     [&]{ return suite_mouth(); }));
+    if (full) {
+        suites.push_back(timed("plan_grid", [&]{ return suite_plan_grid(); }));
+    } else {
+        std::cout << "  ... plan_grid SKIPPED (informational; --full to include)\n";
+    }
 
     bool gates = true;
     for (const auto& s : suites) {

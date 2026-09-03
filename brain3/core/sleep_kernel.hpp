@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "crisp/engines/neural/native_mouth.hpp"
+#include "crisp/engines/neural/native_reader.hpp"
 #include "crisp/engines/neural/mouth_voice.hpp"
 #include "crisp/engines/neural/mouth_style_loop.hpp"
 #include "crisp/engines/reasoning/graph_attention_reasoner.hpp"
@@ -71,9 +72,21 @@ public:
         floor_probes_ = floor_probes;
     }
 
+    // Mount the eyes for nightly replay: the reader retrains on today's
+    // corpus with exact-match gates and snapshot rollback, exactly like the
+    // mouth. Without this the reader stayed frozen after distillation.
+    void set_reader(engines::neural::NativeReader* reader,
+                    const std::string& corpus_path,
+                    const std::string& probes_path) {
+        reader_ = reader;
+        reader_corpus_path_ = corpus_path;
+        reader_probes_path_ = probes_path;
+    }
+
     Report run_cycle() {
         Report rep;
         run_style_phase(rep);
+        run_reader_phase(rep);
         run_graph_phase(rep);
         run_verify_phase(rep);
         for (auto& p : rep.phases)
@@ -108,6 +121,103 @@ private:
         else pr.status = "ok";
 
         rep.phases.push_back(pr);
+    }
+
+    // ── Phase 1b: reader replay ─────────────────────────────────────────────
+    struct ReaderPair { std::string sentence, triple; };
+
+    static std::vector<ReaderPair> _load_reader_blocks(const std::string& path, size_t cap) {
+        std::vector<ReaderPair> out;
+        std::ifstream f(path);
+        if (!f) return out;
+        std::string txt((std::istreambuf_iterator<char>(f)),
+                        std::istreambuf_iterator<char>());
+        auto trim = [](std::string s) {
+            size_t a = s.find_first_not_of(' ');
+            size_t b = s.find_last_not_of(' ');
+            return a == std::string::npos ? "" : s.substr(a, b - a + 1);
+        };
+        size_t pos = 0;
+        while (out.size() < cap && (pos = txt.find("read:", pos)) != std::string::npos) {
+            size_t lend = txt.find('\n', pos);
+            if (lend == std::string::npos) break;
+            size_t tstart = txt.find("triple:", lend);
+            if (tstart == std::string::npos) break;
+            size_t tend = txt.find('\n', tstart);
+            ReaderPair p;
+            p.sentence = trim(txt.substr(pos + 5, lend - pos - 5));
+            p.triple   = trim(txt.substr(tstart + 7,
+                          (tend == std::string::npos ? txt.size() : tend) - tstart - 7));
+            if (!p.sentence.empty() && !p.triple.empty()) out.push_back(p);
+            pos = (tend == std::string::npos) ? txt.size() : tend;
+        }
+        return out;
+    }
+
+    void run_reader_phase(Report& rep) {
+        PhaseReport pr; pr.name = "reader_replay";
+        rep.phases.push_back(pr);
+        if (!reader_ || !reader_->available()) { pr.status = "skipped"; return; }
+        if (reader_corpus_path_.empty()) { pr.status = "skipped"; return; }
+
+        const int train_n = 40, probe_n = 6;
+        auto train_pairs = _load_reader_blocks(reader_corpus_path_, (size_t)train_n * 2);
+        auto probe_pairs = _load_reader_blocks(reader_probes_path_, (size_t)probe_n);
+        if (train_pairs.empty() || probe_pairs.empty()) { pr.status = "skipped"; return; }
+        train_pairs.resize((size_t)std::min(train_n, (int)train_pairs.size()));
+        probe_pairs.resize((size_t)std::min(probe_n, (int)probe_pairs.size()));
+
+        auto& lm = reader_->model();
+        auto exact = [&](const ReaderPair& p) {
+            const auto ids = lm.encode("read: " + p.sentence + "\ntriple: ");
+            engines::neural::StamlatLM::StreamCache sc;
+            lm.stream_start(ids, sc);
+            std::vector<int> got;
+            for (int k = 0; k < 16; ++k) {
+                const int tok = lm.stream_sample(sc, 0.f, nullptr, nullptr);
+                lm.stream_step(tok, sc);
+                if (lm.token_surface(tok) == "\n") break;
+                got.push_back(tok);
+            }
+            std::string said;
+            for (size_t k = 0; k < got.size(); ++k) {
+                said += lm.token_surface(got[k]);
+                if (k + 1 < got.size()) said += " ";
+            }
+            // normalize whitespace before compare
+            std::string a, b;
+            for (char c : said) if (c != ' ' || (!a.empty() && a.back() != ' ')) a += c;
+            for (char c : p.triple) if (c != ' ' || (!b.empty() && b.back() != ' ')) b += c;
+            while (!a.empty() && a.back() == ' ') a.pop_back();
+            while (!b.empty() && b.back() == ' ') b.pop_back();
+            return a == b;
+        };
+        auto score = [&]() {
+            int ok = 0;
+            for (const auto& p : probe_pairs) ok += exact(p);
+            return ok;
+        };
+
+        const int pre = score();
+        const auto snap = lm.snapshot_params();
+        std::string train_text;
+        for (const auto& p : train_pairs)
+            train_text += "read: " + p.sentence + "\ntriple: " + p.triple + "\n";
+        lm.fit(train_text, 200, 1e-3f, 8, 200);          // gentle nightly pass
+        const int post = score();
+
+        pr.metrics.push_back({"pairs", std::to_string(train_pairs.size())});
+        pr.metrics.push_back({"pre_exact", std::to_string(pre) + "/" + std::to_string((int)probe_pairs.size())});
+        pr.metrics.push_back({"post_exact", std::to_string(post) + "/" + std::to_string((int)probe_pairs.size())});
+
+        // Rollback gate: never wake up with worse eyes.
+        if (post >= pre && post >= ((int)probe_pairs.size() / 2)) {
+            pr.status = "ok";
+        } else {
+            lm.restore_params(snap);
+            pr.status = post < pre ? "rolled_back" : "ok";
+            if (post < pre) pr.metrics.push_back({"action", "rolled_back_to_pre_sleep_params"});
+        }
     }
 
     // ── Phase 2 ─────────────────────────────────────────────────────────────
@@ -160,6 +270,8 @@ private:
     }
 
     engines::neural::NativeMouth& mouth_;
+    engines::neural::NativeReader* reader_ = nullptr;   // optional: the eyes
+    std::string reader_corpus_path_, reader_probes_path_;
     brain2::reasoning::ReasoningEngine& facts_;
     engines::neural::VoiceMapper& voice_;
     thebrain::neural_prior::NeuralPolicyValuePriorEngine prior_engine_;

@@ -79,7 +79,7 @@ public:
         Findings f;
         if (trace_.empty()) return f;
         const auto& last = trace_.back();
-        if (!last.verified) return f;  // not claimed as verified, fine
+        if (!last.verified || last.engine == "long_term_memory" || last.engine == "axiom") return f;  // axioms / direct teachings need no prior premise
         bool has_premise = false;
         for (const auto& s : trace_) {
             if (&s == &trace_.back()) continue;
@@ -131,9 +131,31 @@ public:
     const std::vector<TraceStep>& trace() const { return trace_; }
     const std::string& context() const { return current_context_; }
 
+    // Cross-turn memory: the orchestrator keeps a rolling window of recent
+    // steps so detectors can fire ACROSS turns (e.g. a fact taught on Monday
+    // contradicted on Tuesday). Load before auditing; dump after appending.
+    void load_history(const std::vector<TraceStep>& prior) {
+        history_ = prior;
+    }
+
+    std::vector<TraceStep> combined_trace() const {
+        std::vector<TraceStep> all = history_;
+        all.insert(all.end(), trace_.begin(), trace_.end());
+        return all;
+    }
+
 private:
     std::string current_context_;
     std::vector<TraceStep> trace_;
+    std::vector<TraceStep> history_;
+
+public:
+    // Audit over the COMBINED (history + current) trace.
+    Findings full_audit_cross_turn() const {
+        MetacognitionEngine tmp;
+        tmp.trace_ = combined_trace();
+        return tmp.full_audit();
+    }
 };
 
 // ── SENTIMENT PERCEPTION ─────────────────────────────────────────────────────

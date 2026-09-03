@@ -240,6 +240,126 @@ public:
         return n ? mrr / n : 0.0;
     }
 
+    // ── persistence ────────────────────────────────────────────────────────
+    // train() is 2000 optimizer steps over random walks. Every construction of
+    // MasterOrchestrator was paying that cost from scratch, which is the single
+    // reason the gate suite in eval/run_eval.cpp took over ten minutes and
+    // therefore never actually got run. A gate nobody can afford to run is not
+    // a gate. The embeddings are a pure function of (fact set, config, seed), so
+    // they cache cleanly; the fingerprint below is what makes the cache safe.
+
+    // Order-independent hash of a fact set. Uses addition over per-fact hashes
+    // so that std::set iteration order (or any future reordering) cannot change
+    // the result, and mixes each triple's fields with distinct multipliers so
+    // that permuting subj/rel/obj is not a collision.
+    static uint64_t fact_fingerprint(const std::set<brain2::reasoning::Fact>& facts) {
+        auto h64 = [](const std::string& s) {
+            uint64_t x = 1469598103934665603ULL;          // FNV-1a offset basis
+            for (unsigned char c : s) { x ^= c; x *= 1099511628211ULL; }
+            return x;
+        };
+        uint64_t acc = 0xC0FFEEULL + facts.size() * 0x9E3779B97F4A7C15ULL;
+        for (const auto& f : facts)
+            acc += h64(f.subj) * 3ULL + h64(f.rel) * 5ULL + h64(f.obj) * 7ULL;
+        return acc;
+    }
+
+    bool save(const std::string& path, uint64_t fingerprint) const {
+        if (E_.empty() || R_.empty()) return false;      // nothing trained yet
+        std::FILE* f = std::fopen(path.c_str(), "wb");
+        if (!f) return false;
+        auto wr  = [&](const void* p, size_t n) { std::fwrite(p, 1, n, f); };
+        auto wi  = [&](int v)      { wr(&v, sizeof(int)); };
+        auto wu  = [&](uint64_t v) { wr(&v, sizeof(uint64_t)); };
+        auto ws  = [&](const std::string& s) { wi((int)s.size()); wr(s.data(), s.size()); };
+
+        wr("GARv1", 5);
+        wu(fingerprint);
+        wi(dim_);
+        wi((int)entities_.size());  for (const auto& e : entities_)  ws(e);
+        wi((int)relations_.size()); for (const auto& r : relations_) ws(r);
+        wi((int)edges_.size());
+        for (const auto& e : edges_) { wi(e.head); wi(e.rel); wi(e.tail); }
+        wu((uint64_t)E_.size()); wr(E_.data(), E_.size() * sizeof(double));
+        wu((uint64_t)R_.size()); wr(R_.data(), R_.size() * sizeof(double));
+        std::fclose(f);
+        return true;
+    }
+
+    // Returns false — leaving the object untouched — on a missing file, a magic
+    // or dim mismatch, a fingerprint mismatch (the knowledge base changed), or
+    // any short read. Callers treat false as "train from scratch", so a stale or
+    // corrupt cache degrades to the old behaviour rather than to a wrong model.
+    bool load(const std::string& path, uint64_t expect_fingerprint) {
+        std::FILE* f = std::fopen(path.c_str(), "rb");
+        if (!f) return false;
+        bool ok = true;
+        auto rd = [&](void* p, size_t n) { if (ok && std::fread(p, 1, n, f) != n) ok = false; };
+        auto ri = [&]() { int v = 0; rd(&v, sizeof(int)); return v; };
+        auto ru = [&]() { uint64_t v = 0; rd(&v, sizeof(uint64_t)); return v; };
+        auto rs = [&]() {
+            const int n = ri();
+            if (!ok || n < 0 || n > (1 << 20)) { ok = false; return std::string(); }
+            std::string s((size_t)n, '\0');
+            if (n) rd(&s[0], (size_t)n);
+            return s;
+        };
+
+        char magic[5] = {0};
+        rd(magic, 5);
+        if (!ok || std::string(magic, 5) != "GARv1") { std::fclose(f); return false; }
+        if (ru() != expect_fingerprint)             { std::fclose(f); return false; }
+        if (ri() != dim_)                           { std::fclose(f); return false; }
+
+        std::vector<std::string> ents, rels;
+        std::vector<Edge> eds;
+        const int ne = ri();
+        if (!ok || ne < 0) { std::fclose(f); return false; }
+        for (int i = 0; i < ne && ok; ++i) ents.push_back(rs());
+        const int nr = ri();
+        if (!ok || nr < 0) { std::fclose(f); return false; }
+        for (int i = 0; i < nr && ok; ++i) rels.push_back(rs());
+        const int nedg = ri();
+        if (!ok || nedg < 0) { std::fclose(f); return false; }
+        for (int i = 0; i < nedg && ok; ++i) {
+            Edge e{}; e.head = ri(); e.rel = ri(); e.tail = ri();
+            eds.push_back(e);
+        }
+        std::vector<double> E, R;
+        const uint64_t nE = ru();
+        if (ok && nE <= (1ULL << 28)) { E.resize((size_t)nE); rd(E.data(), (size_t)nE * sizeof(double)); }
+        else ok = false;
+        const uint64_t nR = ru();
+        if (ok && nR <= (1ULL << 28)) { R.resize((size_t)nR); rd(R.data(), (size_t)nR * sizeof(double)); }
+        else ok = false;
+        std::fclose(f);
+        if (!ok) return false;
+
+        // Consistency: the embedding tables must match the declared graph.
+        if (E.size() != (size_t)ents.size() * d2_size()) return false;
+        if (R.size() != (size_t)2 * rels.size() * d2_size()) return false;
+        for (const auto& e : eds)
+            if (e.head < 0 || e.head >= (int)ents.size() ||
+                e.tail < 0 || e.tail >= (int)ents.size() ||
+                e.rel  < 0 || e.rel  >= (int)rels.size()) return false;
+
+        // Commit: rebuild the derived indices rather than serializing them.
+        entities_.clear(); relations_.clear(); edges_.clear();
+        eid_.clear(); rid_.clear(); adj_out_.clear(); true_keys_.clear();
+        for (const auto& e : ents) add_entity(e);
+        for (const auto& r : rels) add_relation(r);
+        for (const auto& e : eds)  add_edge(e.head, e.rel, e.tail);
+        E_ = std::move(E);
+        R_ = std::move(R);
+        // Adam moments are training-only state; a loaded model that is later
+        // retrained gets them reinitialized by train() anyway.
+        mE_.assign(E_.size(), 0.0); vE_.assign(E_.size(), 0.0);
+        mR_.assign(R_.size(), 0.0); vR_.assign(R_.size(), 0.0);
+        gradE_.assign(E_.size(), 0.0); gradR_.assign(R_.size(), 0.0);
+        adam_t_ = 0;
+        return true;
+    }
+
 private:
     static constexpr int dim_ = 128;
     size_t d2_size() const { return (size_t)2 * dim_; }

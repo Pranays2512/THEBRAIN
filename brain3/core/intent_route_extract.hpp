@@ -49,11 +49,19 @@ inline bool route_extract(const std::string& clean_text,
     }
     else if (family == "TEACH") {
         static const std::regex r(
-            R"((?:teach(?: that)?|remember|learn that|store that|note that|commit to memory|record|save fact|add knowledge|absorb|keep in mind|ingest fact)\s+([\w\s]+?)\s+(?:is a|is an|has|can|causes)\s+([\w\s]+))",
+            R"((?:teach(?: that)?|remember|learn that|store that|note that|commit to memory|record|save fact|add knowledge|absorb|keep in mind|ingest fact)\s+([\w\s:]+?)\s+(is a|is an|has|can|causes|responds)\s+([\w\s]+))",
             std::regex_constants::icase);
         std::smatch m;
         if (std::regex_search(clean_text, m, r)) {
-            out = "TEACH " + m[1].str() + " is_a " + m[2].str();
+            std::string s = m[1].str();
+            std::string verb = m[2].str();
+            std::string o = m[3].str();
+            std::transform(verb.begin(), verb.end(), verb.begin(), ::tolower);
+            std::string rel = (verb == "is a" || verb == "is an") ? "is_a" : verb;
+            if (rel == "responds")
+                out = "TEACH_QUARANTINE " + s + " " + o;
+            else
+                out = "TEACH " + s + " " + rel + " " + o;
             return true;
         }
     }

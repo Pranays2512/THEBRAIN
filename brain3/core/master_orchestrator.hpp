@@ -84,6 +84,15 @@ struct CognitiveResponse {
     std::string proposer_policy;
     bool   proposer_agreed  = false;
     bool   fuzzy_writeback  = false;  // a verified crisp fact reached fuzzy memory
+
+    // ── Fuzzy proposes, crisp disposes ───────────────────────────────────────
+    // Set when a symbolic retrieval MISSED and associative recall offered a
+    // candidate. fuzzy_proposal_refuted records the adversarial verdict: a
+    // proposal that the refuter killed is reported here but never surfaced to
+    // the user and never written to the fact store.
+    std::string fuzzy_proposal;
+    float  fuzzy_proposal_conf   = -1.f;
+    bool   fuzzy_proposal_refuted = false;
 };
 
 class MasterOrchestrator {
@@ -207,10 +216,31 @@ public:
 
         _seed_foundational_invariants();
 
-        // Load all facts into graph reasoner for multi-hop queries
-        for (const auto& f : brain_->brainql_engine.facts)
-            graph_reasoner_.load_from_facts({{f.subj, f.rel, f.obj}});
-        graph_reasoner_.train(engines::reasoning::GraphAttentionReasoner::TrainConfig{2000, 16, 2, 5, 0.02, 42});
+        // Load all facts into the graph reasoner for multi-hop queries.
+        //
+        // The embeddings are a deterministic function of (fact set, config,
+        // seed), so they are cached. Previously every construction retrained
+        // from scratch — 2000 optimizer steps over random walks — and since the
+        // gate suite constructs several orchestrators, eval/run_eval.cpp took
+        // over ten minutes and consequently was never run. The fingerprint
+        // covers the fact set; a mismatch, a missing file, or a corrupt one all
+        // fall through to a full retrain, so the cache can never serve a model
+        // that disagrees with the knowledge base. BRAIN_NO_GAR_CACHE=1 forces
+        // the retrain path.
+        {
+            using GAR = engines::reasoning::GraphAttentionReasoner;
+            const auto cfg = GAR::TrainConfig{2000, 16, 2, 5, 0.02, 42};
+            const uint64_t fp = GAR::fact_fingerprint(brain_->brainql_engine.facts);
+            const std::string cache = _gar_cache_path();
+            const bool no_cache = std::getenv("BRAIN_NO_GAR_CACHE") != nullptr;
+
+            if (no_cache || !graph_reasoner_.load(cache, fp)) {
+                for (const auto& f : brain_->brainql_engine.facts)
+                    graph_reasoner_.load_from_facts({{f.subj, f.rel, f.obj}});
+                graph_reasoner_.train(cfg);
+                if (!no_cache) graph_reasoner_.save(cache, fp);
+            }
+        }
     }
 
     static std::string trim_copy_hpp(const std::string& s) {
@@ -702,18 +732,26 @@ public:
             auto disc = conjecture_hunter_.step_hunt();
             auto end_time = std::chrono::high_resolution_clock::now();
             resp.latency_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-            resp.verified = disc.verified;
+            // The hunter accepts on a Gentner systematicity score >= 0.30 — a structural
+            // overlap, with no data fitted and no proof checked. That is a conjecture, so
+            // resp.verified stays FALSE and the reply says so. Reporting an alignment as a
+            // verified discovery is the defect 838880e removed elsewhere; it is not
+            // reintroduced here just because this path talks to a human.
+            resp.verified = false;
             resp.engine_used = "cross_domain_conjecture_hunter";
-            if (disc.verified) {
+            if (disc.aligned) {
                 std::ostringstream oss;
-                oss << "🔬 **Cross-Domain Isomorphism Discovered!**\n"
+                oss << "🔬 **Cross-Domain Structural Alignment Found** (UNVERIFIED conjecture)\n"
                     << "  • Alignment: **" << disc.source_domain << "** ⟷ **" << disc.target_domain << "**\n"
                     << "  • Structural Systematicity Score: " << std::fixed << std::setprecision(3) << disc.structural_score << "\n"
-                    << "  • Synthesized Invariant: **" << disc.generalized_law_name << "**\n"
-                    << "  • Abstract Universal Formula: `" << disc.abstract_formula << "`\n"
+                    << "  • Proposed Invariant: **" << disc.generalized_law_name << "**\n"
+                    << "  • Abstract Formula: `" << disc.abstract_formula << "`\n"
                     << "  • Mappings:\n";
                 for (const auto& m : disc.mappings) oss << "      - " << m << "\n";
-                oss << "  • Crystallized into Long-Term Invariant Policy Store (O(1) verified).";
+                oss << "  ⚠️  Status: this is a HYPOTHESIS, not a result. The score measures how\n"
+                    << "      many relation triples aligned 1-to-1 between the two domains —\n"
+                    << "      no data was fitted and no proof was checked. Recorded in the\n"
+                    << "      policy store as UNVERIFIED pending a data or proof test.";
                 resp.natural_reply = oss.str();
             } else {
                 resp.natural_reply = "⚪ Explored cross-domain pairs. No high-confidence structural isomorphism found in this cycle.";
@@ -977,10 +1015,16 @@ public:
 
         // Lazy retrain: if facts were taught since last training, refresh
         if (graph_dirty_) {
+            using GAR = engines::reasoning::GraphAttentionReasoner;
             for (const auto& f : brain_->brainql_engine.facts)
                 graph_reasoner_.load_from_facts({{f.subj, f.rel, f.obj}});
-            graph_reasoner_.train(engines::reasoning::GraphAttentionReasoner::TrainConfig{1500, 16, 2, 5, 0.02, 42});
+            graph_reasoner_.train(GAR::TrainConfig{1500, 16, 2, 5, 0.02, 42});
             graph_dirty_ = false;
+            // Refresh the cache so the next boot loads embeddings that match the
+            // knowledge base as it now stands, instead of retraining.
+            if (std::getenv("BRAIN_NO_GAR_CACHE") == nullptr)
+                graph_reasoner_.save(_gar_cache_path(),
+                                     GAR::fact_fingerprint(brain_->brainql_engine.facts));
         }
 
         // ── Graph reasoner: multi-hop knowledge queries ───────────────────
@@ -1102,6 +1146,25 @@ public:
             resp.proof_chain = bql_res.chain;
             resp.raw_output = bql_res.value;
             resp.engine_used = bql_res.op;
+
+            // ── Stage 4: symbolic miss → let the fuzzy hemisphere propose ─────
+            // Runs BEFORE the web grounder: what the brain already associates is
+            // cheaper and more auditable than a network fetch, and unlike the
+            // grounder this path cannot write an unverified string into the fact
+            // store. If a proposal survives refutation we answer from it and
+            // stop; otherwise we fall through unchanged.
+            if (!bql_res.verified &&
+                (query.op == "LOOKUP" || query.op == "INHERIT" ||
+                 query.op == "EXPLAIN" || query.op == "DERIVE")) {
+                _fuzzy_propose_verify(query, resp);
+                if (!resp.natural_reply.empty() &&
+                    resp.engine_used == "fuzzy_propose_crisp_verify") {
+                    auto t_end = std::chrono::high_resolution_clock::now();
+                    resp.latency_ms =
+                        std::chrono::duration<double, std::milli>(t_end - start_time).count();
+                    return resp;
+                }
+            }
 
             // Epistemic Web Grounder Fallback
             if (!bql_res.verified && (query.op == "LOOKUP" || query.op == "EXPLAIN" || query.op == "DERIVE")) {
@@ -1273,6 +1336,17 @@ public:
     // predictor throws if its E_active_ cache is live while language is
     // unfrozen, and that guard is correct: a moving E would silently invalidate
     // every logit. Rebuild happens only on actual growth.
+    // Where the graph-reasoner embedding cache lives. Kept beside the other
+    // model artifacts so it is covered by the same gitignore rules; falls back
+    // to the working directory when brain3/data is not present.
+    static std::string _gar_cache_path() {
+        std::error_code ec;
+        for (const char* d : {"data", "brain3/data", "../data"})
+            if (std::filesystem::is_directory(d, ec))
+                return std::string(d) + "/gar_embeddings.bin";
+        return "gar_embeddings.bin";
+    }
+
     // Register words only. Cheap: a mutex + a hash insert per new word. Callers
     // that merely need encode() to return a real vector (rather than the
     // all-zeros an unknown word yields once frozen) want this, NOT the full
@@ -1432,6 +1506,83 @@ public:
                 resp.proposer_policy = ok ? "routed" : "fallback";
             }
         } catch (...) { /* advisory path must never affect the answer */ }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // FUZZY PROPOSES, CRISP DISPOSES
+    // ════════════════════════════════════════════════════════════════════════
+    // Until now every path was INBOUND to the fuzzy hemisphere: percepts trained
+    // it, verified crisp facts were written back to it, surprise fed curiosity.
+    // Nothing flowed OUT. The SOM, the LM and binding memory accumulated
+    // knowledge that could never influence an answer, which made the two halves
+    // two learners sharing a fact store rather than one system.
+    //
+    // This is the outbound path, and it is deliberately the MISS path. When
+    // symbolic retrieval finds nothing, associative recall proposes a candidate
+    // and the metacognitive refuter adversarially checks it. Only survivors
+    // surface, and they surface LABELLED — an unverified recall is never
+    // presented as a stored fact and is never committed to the fact graph.
+    // Rejected proposals are recorded so the rejection is auditable.
+    //
+    // "fuzzy proposes, crisp disposes" is the architecture's own stated thesis;
+    // before this it was implemented in exactly one place, the mouth's
+    // content-locked decoding.
+    void _fuzzy_propose_verify(const brain2::reasoning::BrainQLQuery& query,
+                               CognitiveResponse& resp) {
+        if (!fuzzy_enabled_ || query.subj.empty() || query.rel.empty()) return;
+        try {
+            auto& lang = brain_->language;
+            // Only propose over symbols the fuzzy side has actually seen; an
+            // unknown word encodes to zeros once frozen and would make the
+            // cosine recall meaningless.
+            if (!lang.knows(query.subj) || !lang.knows(query.rel)) return;
+
+            const auto subj_v = lang.encode(query.subj);
+            const auto rel_v  = lang.encode(query.rel);
+
+            // Associative recall. 0.35 is above the engine's own 0.3 default so
+            // that near-noise matches never even reach the refuter.
+            auto [obj_v, conf] = brain_->binding.query(subj_v, rel_v,
+                                                       /*want_object=*/true, 0.35f);
+            if (conf <= 0.f || obj_v.empty()) return;
+
+            // Decode the recalled vector back to a symbol. min_sim guards
+            // against naming a region of embedding space that is not a word.
+            const auto words = lang.speak({obj_v}, 0.55f);
+            if (words.empty() || words.front().empty()) return;
+            const std::string cand = words.front();
+            if (cand == query.subj || cand == query.rel) return;   // degenerate
+
+            resp.fuzzy_proposal      = cand;
+            resp.fuzzy_proposal_conf = conf;
+
+            // Crisp disposes: the same adversarial refuter the REFUTE verb uses.
+            const auto verdict = brain_->metacognitive_engine.refute(
+                query.subj, query.rel, cand,
+                &brain_->brainql_engine, &brain_->causal_engine);
+
+            if (verdict.is_refuted) {
+                resp.fuzzy_proposal_refuted = true;
+                // Deliberately NOT surfaced and NOT stored. The trace is kept so
+                // a rejected recall can be inspected rather than vanishing.
+                resp.proof_chain = verdict.proof_trace;
+                resp.engine_used = "fuzzy_proposal_refuted";
+                return;
+            }
+
+            // Survived. Report as a recall with provenance, not as a fact.
+            std::ostringstream oss;
+            oss << "🔎 [Associative recall, refuter-checked]: " << query.subj
+                << " " << query.rel << " " << cand
+                << "  (confidence " << std::fixed << std::setprecision(2) << conf
+                << "; survived adversarial refutation, NOT a stored fact)";
+            resp.natural_reply = oss.str();
+            resp.proof_chain   = verdict.proof_trace;
+            resp.engine_used   = "fuzzy_propose_crisp_verify";
+            // resp.verified stays false: the refuter failing to kill a claim is
+            // not proof of it. Conflating "not refuted" with "verified" is the
+            // exact error the Python dreamers make.
+        } catch (...) { /* never allowed to affect the crisp answer */ }
     }
 
     std::string integration_status() const {
@@ -1698,7 +1849,11 @@ public:
                  << "\"fuzzy_replay\": " << resp.fuzzy_replay << ","
                  << "\"fuzzy_episodes\": " << resp.fuzzy_episodes << ","
                  << "\"fuzzy_writeback\": " << (resp.fuzzy_writeback ? "true" : "false") << ","
-                 << "\"proposer_policy\": \"" << escape_json(resp.proposer_policy) << "\""
+                 << "\"proposer_policy\": \"" << escape_json(resp.proposer_policy) << "\","
+                 << "\"fuzzy_proposal\": \"" << escape_json(resp.fuzzy_proposal) << "\","
+                 << "\"fuzzy_proposal_conf\": " << resp.fuzzy_proposal_conf << ","
+                 << "\"fuzzy_proposal_refuted\": "
+                 << (resp.fuzzy_proposal_refuted ? "true" : "false")
                  << "}";
         return json_out.str();
     }

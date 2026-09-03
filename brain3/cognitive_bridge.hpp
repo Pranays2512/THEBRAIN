@@ -434,6 +434,12 @@ public:
                }() + "]");
         info("Bridge", "══════════════════════════════════════════════════════════");
 
+        // SKILL CONSOLIDATION: a verified solve ends the episode — the
+        // op-chain the basal ganglia executed during perception is
+        // consolidated into ProceduralMemory so similar problems retrieve it
+        // next time. Failed episodes are cleared without teaching.
+        brain_.end_episode(solved, solved ? problem.type : "");
+
         return result;
     }
 
