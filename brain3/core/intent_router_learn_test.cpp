@@ -120,6 +120,97 @@ int main() {
         }
     }
 
+    // ── KNOWN GAP: reported, deliberately not gated ────────────────────────
+    // Section 5 measures a defect that is real, characterised, and NOT fixed.
+    // The junk half reports without failing the suite — the same convention
+    // heldout_probe uses for its documented gaps. A permanently red test
+    // teaches nothing, but deleting the measurement would hide a live problem.
+    // The "real utterances" half DOES gate: whatever fixes calibration must not
+    // cost the router the utterances it currently gets right.
+    //
+    // THE DEFECT: confidence is saturated. Every input scores ~1.0, gibberish
+    // included ("hello there" -> REFUTE at 1.000000), so the 0.55 gate in
+    // parse_intent_to_bql never falls through and the documented legacy-parser
+    // fallback is unreachable.
+    //
+    // MEASURED AND FAILED, recorded so they are not retried blind:
+    //   L2 decay 0.003..0.02    real paraphrases drop below the gate before junk
+    //                           does; no value separates them (held-out 6/6->3/6)
+    //   raw max logit           overlaps, scales with utterance length
+    //   logit / feature count   overlaps, short junk tokens score high
+    //   OTHER family, ~46 hand-written seeds
+    //                           junk rejection 0/8 -> 8/8, but its prior
+    //                           swallowed real utterances ("outline strategy for
+    //                           market entry" -> OTHER at 1.000000)
+    //   OTHER, corpus-balanced, bias unlearned, seeds curated
+    //                           junk 7/8, but boundaries between the REAL
+    //                           families shifted and held-out fell 6/6 -> 5/6
+    //
+    // WHAT THAT SHOWED: OTHER is directionally right — the only approach that
+    // moved junk rejection at all — but hand-picked seeds cannot converge.
+    // Arbitrary gibberish has unbounded trigram coverage, and short generic
+    // negatives ("ok", "lol") collide with short generic op phrasings. The next
+    // attempt should GENERATE the negative corpus systematically and re-tune the
+    // router as a whole, rather than bolting a seventh class onto weights fitted
+    // for six.
+    //
+    // WHY IT MATTERS BEYOND ROUTING: a confidence that is always 1.0 cannot
+    // serve as a bid, so predictive competition among engines is blocked on this.
+    std::printf("\n5. CALIBRATION — KNOWN GAP, reported not gated\n");
+    {
+        IntentRouter r;
+        // Real utterances the router is SUPPOSED to claim, with the family the
+        // existing held-out suite expects.
+        struct C { const char* text; const char* want; };
+        const std::vector<C> real = {
+            {"silently wonder if deforestation causes droughts", "WHAT_IF"},
+            {"please remember that whales are mammals",          "TEACH"},
+            {"can you describe photosynthesis",                  "LOOKUP"},
+            {"kindly map neurons to transistors",                "ANALOGY"},
+            {"maybe falsify every prime is odd",                 "REFUTE"},
+            {"outline strategy for market entry",                "EXPLAIN"},
+        };
+        // Things that must NOT be claimed: nonsense, social turns, bare maths.
+        // Each of these has somewhere better to go (the mouth, INSTINCT, the
+        // legacy chain) and the router hijacking them is the failure.
+        const std::vector<std::string> junk = {
+            "zorp the blimflarg quixotically", "asdf qwerty zxcv",
+            "xyzzy plugh frotz", "blorp glim wug", "the the the and and",
+            "hello there", "thanks so much", "lol ok",
+        };
+
+        int claimed = 0;
+        float min_real = 1.f;
+        std::string missed;
+        for (const auto& c : real) {
+            auto v = r.classify(c.text);
+            const bool ok_ = (v.family == c.want && v.confidence >= 0.55f);
+            if (ok_) { ++claimed; min_real = std::min(min_real, v.confidence); }
+            else missed += std::string(c.text) + "->" + v.family + "(" +
+                           std::to_string(v.confidence) + ") ";
+        }
+        ok(claimed == (int)real.size(), "real utterances still claimed above the gate",
+           claimed == (int)real.size() ? "6/6" : missed);
+
+        int deferred = 0;
+        std::string hijacked;
+        for (const auto& j : junk) {
+            auto v = r.classify(j);
+            // Deferring means either landing in OTHER or scoring below the gate.
+            // Both route the utterance to the legacy chain, which is the point.
+            const bool defers = (v.family == "OTHER" || v.confidence < 0.55f);
+            if (defers) ++deferred;
+            else hijacked += j + "->" + v.family + "(" + std::to_string(v.confidence) + ") ";
+        }
+        // Reported, not gated — see the block above. When this reaches 8/8 the
+        // printf becomes an ok() and the gap is closed.
+        std::printf("  %s  %-44s %d/%d deferred%s\n",
+                    deferred == (int)junk.size() ? "PASS" : "GAP ",
+                    "junk and chatter defer to the legacy chain",
+                    deferred, (int)junk.size(),
+                    deferred == (int)junk.size() ? "" : ("  | hijacked: " + hijacked).c_str());
+    }
+
     std::printf("\n=== %d passed, %d failed ===\n\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }
