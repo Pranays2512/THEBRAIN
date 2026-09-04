@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <string>
+#include <set>
 #include <vector>
 #include <memory>
 #include <chrono>
@@ -628,6 +629,24 @@ public:
         // pass happens inside a brain that has already been changed by the
         // input. This is the seam that was missing — Brain was constructed and
         // then only emotion.valence was ever read.
+        // Which symbols did the fuzzy side already know BEFORE this turn's
+        // percept? This MUST be captured here, ahead of _fuzzy_pass.
+        //
+        // _fuzzy_pass calls _sync_lm_vocab -> _register_words on every input
+        // token, so by the time Stage 4 runs, language.knows() is true for words
+        // this very turn invented. Stage 4's guard ("only propose over symbols
+        // the fuzzy side has actually seen") was therefore testing a fact the
+        // pipeline had already invalidated three stages earlier: asking about a
+        // never-seen subject registered it, then associative recall ran on a
+        // freshly-initialized vector and returned whatever happened to sit
+        // nearest in binding memory. That is precisely the hallucination the
+        // propose/verify path exists to prevent.
+        std::set<std::string> known_before;
+        if (fuzzy_enabled_) {
+            for (const auto& t : _tokenize(input_text))
+                if (brain_->language.knows(t)) known_before.insert(t);
+        }
+
         _fuzzy_pass(input_text, resp);
 
         // Mass Knowledge Ingestion Pipeline — curiosity-ordered: the brain
@@ -1156,7 +1175,7 @@ public:
             if (!bql_res.verified &&
                 (query.op == "LOOKUP" || query.op == "INHERIT" ||
                  query.op == "EXPLAIN" || query.op == "DERIVE")) {
-                _fuzzy_propose_verify(query, resp);
+                _fuzzy_propose_verify(query, resp, known_before);
                 if (!resp.natural_reply.empty() &&
                     resp.engine_used == "fuzzy_propose_crisp_verify") {
                     auto t_end = std::chrono::high_resolution_clock::now();
@@ -1545,13 +1564,24 @@ public:
     // before this it was implemented in exactly one place, the mouth's
     // content-locked decoding.
     void _fuzzy_propose_verify(const brain2::reasoning::BrainQLQuery& query,
-                               CognitiveResponse& resp) {
+                               CognitiveResponse& resp,
+                               const std::set<std::string>& known_before) {
         if (!fuzzy_enabled_ || query.subj.empty() || query.rel.empty()) return;
         try {
             auto& lang = brain_->language;
-            // Only propose over symbols the fuzzy side has actually seen; an
-            // unknown word encodes to zeros once frozen and would make the
-            // cosine recall meaningless.
+            // Only propose over symbols the fuzzy side had seen BEFORE this turn.
+            //
+            // Testing lang.knows() here always passed: Stage 0's _fuzzy_pass
+            // registers every input token, so the act of ASKING about an unknown
+            // subject is what made it "known" by the time this guard ran. Recall
+            // then proceeded on a freshly-initialized vector and returned
+            // whatever sat nearest in binding memory — a confident answer about a
+            // word the brain first encountered one millisecond earlier, in the
+            // same turn. known_before is snapshotted in process_core ahead of
+            // _fuzzy_pass, so it reflects the vocabulary as it stood before the
+            // percept. The knows() check is kept as well: a word can be in
+            // known_before and still be unusable if the language was frozen.
+            if (!known_before.count(query.subj) || !known_before.count(query.rel)) return;
             if (!lang.knows(query.subj) || !lang.knows(query.rel)) return;
 
             const auto subj_v = lang.encode(query.subj);
