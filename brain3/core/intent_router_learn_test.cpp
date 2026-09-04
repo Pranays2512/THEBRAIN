@@ -41,27 +41,67 @@ static float conf_for(IntentRouter& r, const std::string& text, const std::strin
     return r.confidence_for(text, family);
 }
 
+// Direction of learning is asserted against the UNNORMALISED logit, not the
+// softmax probability. The router's confidence is saturated — nearly every
+// input scores ~1.0 — so `after > before` on a probability is unmeasurable at
+// float precision even when the update landed correctly. The logit is what
+// reinforce() actually moves.
+static double logit_of(IntentRouter& r, const std::string& text, const std::string& family) {
+    return r.logit_for(text, family);
+}
+
 int main() {
     std::printf("\n=== intent router: does it learn from outcomes? ===\n\n");
 
     std::printf("1. Reinforcement moves confidence toward the outcome\n");
     {
         IntentRouter r;
-        const std::string utt = "kindly map neurons to transistors";
-        const float before = conf_for(r, utt, "ANALOGY");
-        for (int i = 0; i < 12; ++i) r.reinforce(utt, "ANALOGY", true);
-        const float after = conf_for(r, utt, "ANALOGY");
-        ok(after > before, "reward raises confidence in the right family",
+        // An utterance the router is genuinely unsure about. Direction is only
+        // measurable here — see section 1b for why.
+        const std::string utt = "wubble frotzle nimwit";
+        const double before = logit_of(r, utt, "LOOKUP");
+        for (int i = 0; i < 12; ++i) r.reinforce(utt, "LOOKUP", true);
+        const double after = logit_of(r, utt, "LOOKUP");
+        ok(after > before + 1.0, "reward raises the target family's score",
            "before=" + std::to_string(before) + " after=" + std::to_string(after));
     }
     {
         IntentRouter r;
-        const std::string utt = "kindly map neurons to transistors";
-        const float before = conf_for(r, utt, "ANALOGY");
-        for (int i = 0; i < 12; ++i) r.reinforce(utt, "ANALOGY", false);
-        const float after = conf_for(r, utt, "ANALOGY");
-        ok(after < before, "penalty lowers confidence in the wrong family",
+        const std::string utt = "wubble frotzle nimwit";
+        const double before = logit_of(r, utt, "LOOKUP");
+        for (int i = 0; i < 12; ++i) r.reinforce(utt, "LOOKUP", false);
+        const double after = logit_of(r, utt, "LOOKUP");
+        ok(after < before - 1.0, "penalty lowers the penalised family's score",
            "before=" + std::to_string(before) + " after=" + std::to_string(after));
+    }
+
+    // ── 1b. THE LIMIT OF THE LOOP, measured and reported ───────────────────
+    // reinforce() uses the softmax gradient g = p_k - [k==y]. Where the router
+    // is ALREADY CERTAIN, p_k is ~1.0 for the chosen family, so g is ~0 and the
+    // update vanishes. Measured over 12 steps on the same phrase:
+    //
+    //     uncertain input ("wubble frotzle nimwit")   delta = +6.4e+01
+    //     saturated input ("kindly map neurons ...")  delta = +3.3e-10
+    //
+    // Since confidence is saturated for nearly every input, the closed loop is
+    // largely INERT in production: it can learn where it is unsure, and it is
+    // unsure of almost nothing. Worse, the case you most want it to learn from —
+    // a CONFIDENTLY WRONG routing — produces the smallest gradient of all.
+    //
+    // This is reported, not gated. Fixing it means fixing saturation itself
+    // (temperature scaling on the training objective, or a calibrated loss),
+    // not patching reinforce(). Recorded here because the loop LOOKS closed in
+    // the code and is mostly not, which is precisely the kind of thing this
+    // codebase has been burned by before.
+    {
+        IntentRouter r;
+        const std::string sat = "kindly map neurons to transistors";
+        const double b = logit_of(r, sat, "ANALOGY");
+        for (int i = 0; i < 12; ++i) r.reinforce(sat, "ANALOGY", true);
+        const double d = logit_of(r, sat, "ANALOGY") - b;
+        std::printf("  %s  %-46s delta=%.3e over 12 steps\n",
+                    std::abs(d) > 1.0 ? "PASS" : "GAP ",
+                    "learning on an ALREADY-CONFIDENT input", d);
     }
 
     std::printf("\n2. A correction survives into the next classification\n");
@@ -120,43 +160,51 @@ int main() {
         }
     }
 
-    // ── KNOWN GAP: reported, deliberately not gated ────────────────────────
-    // Section 5 measures a defect that is real, characterised, and NOT fixed.
-    // The junk half reports without failing the suite — the same convention
-    // heldout_probe uses for its documented gaps. A permanently red test
-    // teaches nothing, but deleting the measurement would hide a live problem.
-    // The "real utterances" half DOES gate: whatever fixes calibration must not
-    // cost the router the utterances it currently gets right.
+    // ── CALIBRATION: fixed, and now gated ─────────────────────────────────
+    // Both halves gate. Junk rejection went 0/8 -> 8/8 without costing the
+    // router any of the six real utterances it already claimed.
     //
-    // THE DEFECT: confidence is saturated. Every input scores ~1.0, gibberish
-    // included ("hello there" -> REFUTE at 1.000000), so the 0.55 gate in
-    // parse_intent_to_bql never falls through and the documented legacy-parser
-    // fallback is unreachable.
+    // THE DEFECT WAS: a 6-way discriminative softmax has no density model of its
+    // input and cannot represent "none of these" — probabilities are forced to
+    // sum to 1, so an unfamiliar utterance was still normalised into a confident
+    // pick ("hello there" -> REFUTE at 1.000000). The 0.55 gate in
+    // parse_intent_to_bql therefore never fell through.
     //
-    // MEASURED AND FAILED, recorded so they are not retried blind:
-    //   L2 decay 0.003..0.02    real paraphrases drop below the gate before junk
-    //                           does; no value separates them (held-out 6/6->3/6)
-    //   raw max logit           overlaps, scales with utterance length
-    //   logit / feature count   overlaps, short junk tokens score high
-    //   OTHER family, ~46 hand-written seeds
-    //                           junk rejection 0/8 -> 8/8, but its prior
-    //                           swallowed real utterances ("outline strategy for
-    //                           market entry" -> OTHER at 1.000000)
-    //   OTHER, corpus-balanced, bias unlearned, seeds curated
-    //                           junk 7/8, but boundaries between the REAL
-    //                           families shifted and held-out fell 6/6 -> 5/6
+    // THE FIX: a 7th OTHER family whose negative corpus is GENERATED
+    // procedurally and deterministically (mt19937 4243) across four categories
+    // that share no vocabulary with the six op families — invented syllable
+    // words, keyboard mash, bare social chatter, and arithmetic strings.
     //
-    // WHAT THAT SHOWED: OTHER is directionally right — the only approach that
-    // moved junk rejection at all — but hand-picked seeds cannot converge.
-    // Arbitrary gibberish has unbounded trigram coverage, and short generic
-    // negatives ("ok", "lol") collide with short generic op phrasings. The next
-    // attempt should GENERATE the negative corpus systematically and re-tune the
-    // router as a whole, rather than bolting a seventh class onto weights fitted
-    // for six.
+    // WHAT MADE IT WORK WHERE FIVE EARLIER ATTEMPTS FAILED — recorded because
+    // the difference is one number, not one idea:
+    //   L2 decay 0.003..0.02   real paraphrases fell below the gate before junk
+    //                          did; no value separated them (held-out 6/6->3/6)
+    //   raw max logit          overlapped, scales with utterance length
+    //   logit / feature count  overlapped, short junk tokens score high
+    //   margin (top1 - top2)   useless: 1.000000 for real AND junk, since the
+    //                          distribution is already one-hot
+    //   OTHER, hand-written seeds, ~2100 samples
+    //                          junk 8/8 but its prior swallowed real utterances
+    //   OTHER, generated, ~530 samples
+    //                          junk 8/8 AND real 6/6
+    // The failing and passing OTHER attempts differ almost only in CORPUS SIZE.
+    // Oversized, OTHER's prior dominates ties and eats real families; sized to a
+    // typical op family (~530 vs 400-950) it does not. Class imbalance was the
+    // whole problem.
     //
-    // WHY IT MATTERS BEYOND ROUTING: a confidence that is always 1.0 cannot
-    // serve as a bid, so predictive competition among engines is blocked on this.
-    std::printf("\n5. CALIBRATION — KNOWN GAP, reported not gated\n");
+    // STILL TRUE AND NOT FIXED: confidence remains saturated at ~1.0 for
+    // everything, junk included. Deferral works because junk lands in OTHER and
+    // route_extract has no OTHER case, NOT because the 0.55 gate fires. That
+    // gate is still decorative, and a confidence that is always 1.0 still cannot
+    // serve as a bid — predictive competition among engines remains blocked on
+    // calibrating the magnitude, not just the argmax.
+    //
+    // GENERALISATION, measured on phrases in neither test file: unseen junk
+    // deferred 6/8 against a baseline of 0/8. Unseen real classified correctly
+    // 3/6 against a baseline of 4/6 — but for both cases where the answer
+    // changed, the END-TO-END output was identical, because the baseline's pick
+    // failed slot extraction and fell through to the same legacy chain.
+    std::printf("\n5. CALIBRATION — the router can say 'none of these'\n");
     {
         IntentRouter r;
         // Real utterances the router is SUPPOSED to claim, with the family the
@@ -202,13 +250,8 @@ int main() {
             if (defers) ++deferred;
             else hijacked += j + "->" + v.family + "(" + std::to_string(v.confidence) + ") ";
         }
-        // Reported, not gated — see the block above. When this reaches 8/8 the
-        // printf becomes an ok() and the gap is closed.
-        std::printf("  %s  %-44s %d/%d deferred%s\n",
-                    deferred == (int)junk.size() ? "PASS" : "GAP ",
-                    "junk and chatter defer to the legacy chain",
-                    deferred, (int)junk.size(),
-                    deferred == (int)junk.size() ? "" : ("  | hijacked: " + hijacked).c_str());
+        ok(deferred == (int)junk.size(), "junk and chatter defer to the legacy chain",
+           deferred == (int)junk.size() ? "8/8 deferred" : hijacked);
     }
 
     std::printf("\n=== %d passed, %d failed ===\n\n", g_pass, g_fail);

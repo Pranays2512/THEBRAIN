@@ -161,7 +161,15 @@ public:
         // user's first message. (Caught by eval latency gate.)
         IntentRouter::instance();
         proposer_.load_weights(_intuition_weights_path());
-        IntentRouter::instance().load(_intent_router_path());
+        // Router weights are LIVE state: reinforce() mutates them every turn and
+        // sleep persists them. That is correct in production and poison in a
+        // test suite — a test that routes anything leaves weights behind, and the
+        // next test loads them, so outcomes depend on execution ORDER. ctest runs
+        // from the build directory, which grew its own build_cmake/data/
+        // intent_router.bin trained by earlier cases; test_curiosity_diet then
+        // passed standalone and failed in-suite. Tests opt out; production does not.
+        if (!_router_persistence_disabled())
+            IntentRouter::instance().load(_intent_router_path());
         prior_engine_.load("prior_engine.bin");
 
         // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
@@ -1268,7 +1276,8 @@ public:
         // at boot and never saved it, so every routing lesson learned during a
         // session was discarded at exit. Sleep is the right place to commit it.
         const bool router_saved = proposer_.save_weights(_intuition_weights_path());
-        IntentRouter::instance().save(_intent_router_path());
+        if (!_router_persistence_disabled())
+            IntentRouter::instance().save(_intent_router_path());
 
         std::ostringstream oss;
         oss << "🌙 [Brain3 Sleep Kernel] Consolidation cycle complete\n";
@@ -1407,6 +1416,10 @@ public:
     static RouteMemo& _last_route() {
         static thread_local RouteMemo memo;
         return memo;
+    }
+
+    static bool _router_persistence_disabled() {
+        return std::getenv("BRAIN_NO_ROUTER_PERSIST") != nullptr;
     }
 
     static std::string _intent_router_path() {

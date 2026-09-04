@@ -313,6 +313,14 @@ add_test(NAME discovery_fit      COMMAND test_discovery_fit)
 add_test(NAME discovery_search   COMMAND test_discovery_search)
 add_test(NAME intent_router_learn COMMAND test_intent_router_learn)
 
+# ── Test hermeticity ─────────────────────────────────────────────────────────
+# The intent router persists learned weights (load at boot, save at sleep). That
+# is correct in production and breaks tests: ctest runs from the build directory,
+# so cases that route anything leave weights behind for later cases to load, and
+# results start depending on execution order. Every test opts out.
+get_property(_brain3_tests DIRECTORY PROPERTY TESTS)
+set_tests_properties(${_brain3_tests} PROPERTIES ENVIRONMENT "BRAIN_NO_ROUTER_PERSIST=1")
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")
 message(STATUS "  Include root: ${CMAKE_SOURCE_DIR}")

@@ -167,6 +167,22 @@ public:
         return feats.empty() ? 0.0 : best / (double)feats.size();
     }
 
+    // Unnormalised score for one family. The softmax saturates — essentially
+    // every input scores ~1.0 — so a probability cannot show whether an update
+    // moved anything. The raw logit can: it is what reinforce() actually
+    // changes, and it is not squashed. Tests assert direction against this.
+    double logit_for(const std::string& text, const std::string& family) const {
+        int y = -1;
+        for (size_t k = 0; k < families_.size(); ++k)
+            if (families_[k] == family) { y = (int)k; break; }
+        if (y < 0) return 0.0;
+        const auto feats = featurize(text);
+        std::lock_guard<std::mutex> lock(mu_);
+        double acc = bias_[y];
+        for (int f : feats) acc += W_[y][f];
+        return acc;
+    }
+
     size_t updates() const { return updates_; }
 
     bool save(const std::string& path) const {
@@ -309,12 +325,106 @@ public:
         };
         for (const auto& s : specs)
             families_.push_back(s.name);
+        families_.push_back("OTHER");
 
         build_corpus(specs, 6);
+        build_other_corpus((int)families_.size() - 1);
         train(22, 0.30);
     }
 
 private:
+
+    // Systematically generated negative corpus for the OTHER family. Hand-
+    // written junk seeds don't converge (measured: see kL2 comment) because
+    // arbitrary gibberish has unbounded trigram coverage. Instead generate
+    // volume + diversity deterministically across categories that don't share
+    // vocabulary with the six op families, so OTHER's weights occupy the
+    // hash bins that gibberish actually lands on rather than a hand-picked
+    // subset of them.
+    static constexpr int kOtherNonsense = 175;   // invented syllable words
+    static constexpr int kOtherMash     = 90;    // keyboard-mash strings
+    static constexpr int kOtherChatter  = 90;   // greetings/thanks/filler-only
+    static constexpr int kOtherArith    = 90;    // bare arithmetic
+
+    void build_other_corpus(int label) {
+        std::mt19937 rng(4242u + 1u);
+        static const char consonants[] = "bcdfgjklmnpqrstvwxz";
+        static const char vowels[]     = "aeiou";
+        const int n_cons = (int)(sizeof(consonants) - 1);
+        const int n_vow  = (int)(sizeof(vowels) - 1);
+
+        auto rand_syllable = [&](std::string& out) {
+            out += consonants[rng() % n_cons];
+            out += vowels[rng() % n_vow];
+            if (rng() % 3 == 0) out += consonants[rng() % n_cons];
+        };
+        auto rand_word = [&]() {
+            std::string w;
+            int syl = 1 + (int)(rng() % 3);
+            for (int i = 0; i < syl; ++i) rand_syllable(w);
+            return w;
+        };
+
+        // 1. invented nonsense words ("zorp blimflarg", "xyzzy plugh frotz")
+        for (int i = 0; i < kOtherNonsense; ++i) {
+            int nw = 2 + (int)(rng() % 4);
+            std::string line;
+            for (int w = 0; w < nw; ++w) {
+                if (w) line += ' ';
+                line += rand_word();
+            }
+            corpus_.push_back({featurize(line), label});
+        }
+
+        // 2. keyboard-mash ("asdf qwerty zxcv")
+        static const char mash_pool[] = "qwertyuiopasdfghjklzxcvbnm";
+        const int n_mash = (int)(sizeof(mash_pool) - 1);
+        for (int i = 0; i < kOtherMash; ++i) {
+            int nw = 2 + (int)(rng() % 3);
+            std::string line;
+            for (int w = 0; w < nw; ++w) {
+                if (w) line += ' ';
+                int len = 3 + (int)(rng() % 4);
+                for (int c = 0; c < len; ++c) line += mash_pool[rng() % n_mash];
+            }
+            corpus_.push_back({featurize(line), label});
+        }
+
+        // 3. template-free chatter/social turns ("hello there", "thanks so
+        //    much", "lol ok") — generic words with no task content attached.
+        static const char* chatter_words[] = {
+            "hello", "hi", "hey", "yo", "sup", "thanks", "thank", "you", "so",
+            "much", "appreciated", "cool", "nice", "awesome", "great", "ok",
+            "okay", "sure", "yes", "no", "maybe", "lol", "haha", "lmao",
+            "there", "friend", "good", "morning", "bye", "goodbye", "later",
+            "welcome", "worries", "sounds", "cheers", "yep", "nah", "fine",
+            "alright", "the", "and", "and",
+        };
+        const int n_chatter = (int)(sizeof(chatter_words) / sizeof(*chatter_words));
+        for (int i = 0; i < kOtherChatter; ++i) {
+            int nw = 1 + (int)(rng() % 4);
+            std::string line;
+            for (int w = 0; w < nw; ++w) {
+                if (w) line += ' ';
+                line += chatter_words[rng() % n_chatter];
+            }
+            corpus_.push_back({featurize(line), label});
+        }
+
+        // 4. bare arithmetic ("12 + 45 - 3")
+        static const char ops[] = {'+', '-', '*', '/'};
+        for (int i = 0; i < kOtherArith; ++i) {
+            int n_terms = 2 + (int)(rng() % 4);
+            std::string line = std::to_string(rng() % 1000);
+            for (int t = 1; t < n_terms; ++t) {
+                line += ' ';
+                line += ops[rng() % 4];
+                line += ' ';
+                line += std::to_string(rng() % 1000);
+            }
+            corpus_.push_back({featurize(line), label});
+        }
+    }
 
     void build_corpus(const FamilySpec* specs, size_t n_specs) {
         static const char* fills[] = {
