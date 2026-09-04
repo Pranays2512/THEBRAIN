@@ -197,6 +197,9 @@ add_phase_test(test_calculus_diff
 add_phase_test(test_metacog_invariant
     crisp/engines/reasoning/metacog_invariant_test.cpp)
 
+add_phase_test(test_discovery_fit
+    crisp/engines/discovery/discovery_fit_test.cpp)
+
 add_phase_test(code_engine_test
     crisp/engines/code/code_engine_test.cpp)
 
@@ -300,6 +303,7 @@ add_test(NAME gradcheck          COMMAND gradcheck)
 add_test(NAME algebra_poly       COMMAND test_algebra_poly)
 add_test(NAME calculus_diff      COMMAND test_calculus_diff)
 add_test(NAME metacog_invariant  COMMAND test_metacog_invariant)
+add_test(NAME discovery_fit      COMMAND test_discovery_fit)
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 message(STATUS "Brain3 configured.")

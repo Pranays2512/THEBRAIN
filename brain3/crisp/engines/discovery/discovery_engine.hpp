@@ -8,6 +8,9 @@
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
+#include <functional>
+#include <optional>
+#include <cstdio>
 
 namespace brain2 {
 namespace discovery {
@@ -639,10 +642,246 @@ public:
             }
         }
 
+        // ── Fallback: the linear family ──────────────────────────────────────
+        // Runs LAST, only after every multiplicative/power template has declined,
+        // so nothing that already resolved can change its answer. Covers the
+        // forms that had no template at all: affine, additive, polynomial,
+        // exponential.
+        {
+            auto lin = _try_linear_family(target_var, input_vars, data);
+            if (lin.has_value()) return *lin;
+        }
+
         res.verified = false;
         res.explanation = "Could not converge on a zero-residual scientific invariant.";
         return res;
     }
+
+private:
+    // Least squares via normal equations with partial pivoting.
+    // A is n x k (basis functions evaluated per observation), y is n.
+    static bool _least_squares(const std::vector<std::vector<double>>& A,
+                               const std::vector<double>& y,
+                               std::vector<double>& coef) {
+        const size_t n = A.size();
+        if (n == 0) return false;
+        const size_t k = A[0].size();
+        if (k == 0 || n < k) return false;
+
+        std::vector<std::vector<double>> M(k, std::vector<double>(k + 1, 0.0));
+        for (size_t i = 0; i < k; ++i) {
+            for (size_t j = 0; j < k; ++j)
+                for (size_t p = 0; p < n; ++p) M[i][j] += A[p][i] * A[p][j];
+            for (size_t p = 0; p < n; ++p) M[i][k] += A[p][i] * y[p];
+        }
+
+        for (size_t c = 0; c < k; ++c) {
+            size_t piv = c;
+            for (size_t r = c + 1; r < k; ++r)
+                if (std::fabs(M[r][c]) > std::fabs(M[piv][c])) piv = r;
+            if (std::fabs(M[piv][c]) < 1e-12) return false;   // singular: no unique fit
+            std::swap(M[c], M[piv]);
+            for (size_t r = 0; r < k; ++r) {
+                if (r == c) continue;
+                const double f = M[r][c] / M[c][c];
+                for (size_t j = c; j <= k; ++j) M[r][j] -= f * M[c][j];
+            }
+        }
+        coef.assign(k, 0.0);
+        for (size_t i = 0; i < k; ++i) coef[i] = M[i][k] / M[i][i];
+        for (size_t i = 0; i < k; ++i) if (!std::isfinite(coef[i])) return false;
+        return true;
+    }
+
+    static std::string _fmt(double v) {
+        char b[32];
+        if (std::fabs(v - std::round(v)) < 1e-9) {
+            std::snprintf(b, sizeof(b), "%lld", (long long)std::llround(v));
+        } else {
+            std::snprintf(b, sizeof(b), "%.6g", v);
+        }
+        return std::string(b);
+    }
+
+    static double _in(const ObservationPoint& p, const std::string& v) {
+        auto it = p.inputs.find(v);
+        return it == p.inputs.end() ? 0.0 : it->second;
+    }
+
+    /**
+     * Fit the linear-in-parameters family, cheapest model first.
+     *
+     * PARSIMONY IS A CORRECTNESS REQUIREMENT HERE, not an aesthetic preference.
+     * An affine model has two free parameters and reproduces ANY two points
+     * exactly; a quadratic reproduces any three. Fitting the richest model first
+     * would therefore "discover" a law in pure noise — precisely the
+     * false-discovery defect commit 838880e removed from this engine, measured
+     * then at 200/200 on structureless data.
+     *
+     * Two defences:
+     *   1. Models are ordered by parameter count and the FIRST acceptable fit
+     *      wins, so a simpler explanation is never passed over for a richer one.
+     *   2. A model is attempted only when n >= params + 2, leaving at least two
+     *      degrees of freedom for the fit to fail on. Without this, any 2-point
+     *      dataset would yield a perfect affine "law".
+     *
+     * Acceptance is the same fit_acceptable used by every other branch in this
+     * file (R^2 >= 0.9995, max relative residual <= 0.02), computed from real
+     * residuals by fit_stats. Nothing here assigns a score it did not measure.
+     */
+    std::optional<DiscoveredLaw> _try_linear_family(
+            const std::string& target_var,
+            const std::vector<std::string>& input_vars,
+            const std::vector<ObservationPoint>& data) {
+        if (data.empty() || input_vars.empty()) return std::nullopt;
+        const size_t n = data.size();
+
+        struct Model {
+            std::string name;
+            std::vector<std::function<double(const ObservationPoint&)>> basis;
+            std::vector<std::string> terms;   // rendered form, parallel to basis
+        };
+        std::vector<Model> models;
+        const std::string v0 = input_vars[0];
+
+        if (input_vars.size() == 1) {
+            models.push_back({"affine",
+                {[v0](const ObservationPoint& p){ return _in(p, v0); },
+                 [](const ObservationPoint&){ return 1.0; }},
+                {v0, ""}});
+            models.push_back({"quadratic-through-origin",
+                {[v0](const ObservationPoint& p){ double x = _in(p, v0); return x * x; },
+                 [v0](const ObservationPoint& p){ return _in(p, v0); }},
+                {v0 + "^2", v0}});
+            models.push_back({"quadratic",
+                {[v0](const ObservationPoint& p){ double x = _in(p, v0); return x * x; },
+                 [v0](const ObservationPoint& p){ return _in(p, v0); },
+                 [](const ObservationPoint&){ return 1.0; }},
+                {v0 + "^2", v0, ""}});
+        } else {
+            const std::string v1 = input_vars[1];
+            models.push_back({"additive",
+                {[v0](const ObservationPoint& p){ return _in(p, v0); },
+                 [v1](const ObservationPoint& p){ return _in(p, v1); }},
+                {v0, v1}});
+            models.push_back({"affine-additive",
+                {[v0](const ObservationPoint& p){ return _in(p, v0); },
+                 [v1](const ObservationPoint& p){ return _in(p, v1); },
+                 [](const ObservationPoint&){ return 1.0; }},
+                {v0, v1, ""}});
+        }
+
+        for (size_t mi = 0; mi < models.size(); ++mi) {
+            const Model& m = models[mi];
+            const size_t k = m.basis.size();
+            if (n < k + 2) continue;              // not enough freedom to fail on
+
+            std::vector<std::vector<double>> A;
+            std::vector<double> yv;
+            A.reserve(n); yv.reserve(n);
+            for (size_t pi = 0; pi < n; ++pi) {
+                std::vector<double> row;
+                row.reserve(k);
+                for (size_t bi = 0; bi < k; ++bi) row.push_back(m.basis[bi](data[pi]));
+                A.push_back(row);
+                yv.push_back(data[pi].output);
+            }
+            std::vector<double> c;
+            if (!_least_squares(A, yv, c)) continue;
+
+            const FitStats fs = fit_stats(data, [&](const ObservationPoint& p) {
+                double s = 0.0;
+                for (size_t i = 0; i < k; ++i) s += c[i] * m.basis[i](p);
+                return s;
+            });
+            if (!fit_acceptable(fs)) continue;
+
+            std::string eq = target_var + " = ";
+            bool first = true;
+            for (size_t i = 0; i < k; ++i) {
+                if (std::fabs(c[i]) < 1e-9) continue;
+                if (!first)          eq += (c[i] < 0 ? " - " : " + ");
+                else if (c[i] < 0)   eq += "-";
+                const double a = std::fabs(c[i]);
+                if (m.terms[i].empty())                eq += _fmt(a);
+                else if (std::fabs(a - 1.0) < 1e-9)    eq += m.terms[i];
+                else                                   eq += _fmt(a) + "*" + m.terms[i];
+                first = false;
+            }
+            if (first) continue;                  // every coefficient vanished
+
+            DiscoveredLaw res;
+            res.verified   = true;
+            res.target_var = target_var;
+            res.equation   = eq;
+            res.law_name   = "Linear-Family Empirical Law (" + m.name + ")";
+            res.r2_score   = fs.r2;
+            res.mse        = fs.mse;
+            res.explanation = "Least-squares fit of the " + m.name + " model over " +
+                              std::to_string(n) + " observations, accepted at R^2=" +
+                              _fmt(fs.r2) + " with max relative residual " +
+                              _fmt(fs.max_rel_resid) + ".";
+            res.discovery_steps.push_back("Multiplicative and power templates declined.");
+            res.discovery_steps.push_back("Fitted " + m.name + " (" + std::to_string(k) +
+                                          " parameters over " + std::to_string(n) + " points).");
+            res.discovery_steps.push_back("Accepted: " + eq);
+            return res;
+        }
+
+        // Exponential y = a*b^x, fitted as a line in log space. Requires strictly
+        // positive outputs — log of a non-positive value is not real, and silently
+        // dropping such points would fit a different dataset than the one supplied.
+        if (input_vars.size() == 1 && n >= 4) {
+            bool all_pos = true;
+            for (size_t i = 0; i < n; ++i) if (data[i].output <= 0.0) { all_pos = false; break; }
+            if (all_pos) {
+                std::vector<std::vector<double>> A;
+                std::vector<double> ly;
+                for (size_t i = 0; i < n; ++i) {
+                    std::vector<double> row;
+                    row.push_back(_in(data[i], v0));
+                    row.push_back(1.0);
+                    A.push_back(row);
+                    ly.push_back(std::log(data[i].output));
+                }
+                std::vector<double> c;
+                if (_least_squares(A, ly, c)) {
+                    const double base = std::exp(c[0]);
+                    const double amp  = std::exp(c[1]);
+                    // Gated on residuals in the ORIGINAL space, not log space. A
+                    // good straight line through log(y) can still be a poor fit to
+                    // y, and y is what was actually observed.
+                    const FitStats fs = fit_stats(data, [&](const ObservationPoint& p) {
+                        return amp * std::pow(base, _in(p, v0));
+                    });
+                    if (fit_acceptable(fs)) {
+                        DiscoveredLaw res;
+                        res.verified   = true;
+                        res.target_var = target_var;
+                        res.equation   = (std::fabs(amp - 1.0) < 1e-6)
+                                           ? target_var + " = " + _fmt(base) + "^" + v0
+                                           : target_var + " = " + _fmt(amp) + " * " +
+                                             _fmt(base) + "^" + v0;
+                        res.law_name   = "Exponential Growth Law";
+                        res.r2_score   = fs.r2;
+                        res.mse        = fs.mse;
+                        res.explanation = "Log-linear regression over " + std::to_string(n) +
+                                          " observations, accepted on residuals in the "
+                                          "original space at R^2=" + _fmt(fs.r2) + ".";
+                        res.discovery_steps.push_back("Linear and polynomial models declined.");
+                        res.discovery_steps.push_back("ln(y) is linear in " + v0 +
+                                                      " => exponential form.");
+                        res.discovery_steps.push_back("Accepted: " + res.equation);
+                        return res;
+                    }
+                }
+            }
+        }
+
+        return std::nullopt;
+    }
+
+public:
 
     DiscoveredLaw discover_domain(const std::string& domain_name) {
         const auto* data = get_dataset(domain_name);
