@@ -118,6 +118,7 @@ private:
     MetacognitionEngine meta_engine_;
     std::vector<TraceStep> meta_history_;
 
+
     // ── Bicameral integration state ──────────────────────────────────────────
     // The LM head caches a frozen embedding matrix (E_active_), but a live query
     // stream keeps introducing words. last_lm_vocab_ tracks the vocabulary size
@@ -160,6 +161,7 @@ public:
         // user's first message. (Caught by eval latency gate.)
         IntentRouter::instance();
         proposer_.load_weights(_intuition_weights_path());
+        IntentRouter::instance().load(_intent_router_path());
         prior_engine_.load("prior_engine.bin");
 
         // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
@@ -389,7 +391,14 @@ public:
             auto v = IntentRouter::instance().classify(clean_text);
             if (v.confidence >= 0.55f) {
                 std::string routed;
-                if (route_extract(clean_text, v.family, routed)) return routed;
+                if (route_extract(clean_text, v.family, routed)) {
+                    // Remember what we committed to, so the turn's outcome can
+                    // be fed back. Without this the router never learns whether
+                    // its verdict produced a verified answer.
+                    _last_route().family = v.family;
+                    _last_route().text   = clean_text;
+                    return routed;
+                }
             }
         }
 
@@ -599,6 +608,20 @@ public:
                    << ",\"unsupported\":" << (findings.has_unsupported ? "true" : "false")
                    << "}\n";
             }
+        }
+
+        // ── Close the routing loop ───────────────────────────────────────────
+        // The router picked a family; the turn either produced a verified answer
+        // or it did not. Feeding that back is what makes the front door learn
+        // from live traffic rather than only from the synthetic corpus it was
+        // built with. Only turns the ROUTER decided are used as signal — turns
+        // that fell through to the legacy regex chain say nothing about the
+        // router's judgement.
+        if (!_last_route().family.empty()) {
+            IntentRouter::instance().reinforce(_last_route().text, _last_route().family,
+                                               resp.verified);
+            _last_route().family.clear();
+            _last_route().text.clear();
         }
 
         if (!findings.clean() && resp.engine_used != "native_mouth" && resp.engine_used != "native_mouth_plan") {
@@ -1245,6 +1268,7 @@ public:
         // at boot and never saved it, so every routing lesson learned during a
         // session was discarded at exit. Sleep is the right place to commit it.
         const bool router_saved = proposer_.save_weights(_intuition_weights_path());
+        IntentRouter::instance().save(_intent_router_path());
 
         std::ostringstream oss;
         oss << "🌙 [Brain3 Sleep Kernel] Consolidation cycle complete\n";
@@ -1375,6 +1399,24 @@ public:
     // "No saved weights (fresh start)" when the same binary is launched from the
     // repo root. Anchoring to the data directory makes the weights follow the
     // brain rather than the shell.
+    // What the learned router committed to on this thread's current turn.
+    // parse_intent_to_bql is static, and the self-play daemon routes on its own
+    // thread, so this is thread_local rather than a member: two concurrent turns
+    // must not grade each other's routing decision.
+    struct RouteMemo { std::string family; std::string text; };
+    static RouteMemo& _last_route() {
+        static thread_local RouteMemo memo;
+        return memo;
+    }
+
+    static std::string _intent_router_path() {
+        std::error_code ec;
+        for (const char* d : {"data", "brain3/data", "../data"})
+            if (std::filesystem::is_directory(d, ec))
+                return std::string(d) + "/intent_router.bin";
+        return "intent_router.bin";
+    }
+
     static std::string _intuition_weights_path() {
         std::error_code ec;
         for (const char* d : {"data", "brain3/data", "../data"})
