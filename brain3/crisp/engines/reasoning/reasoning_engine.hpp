@@ -85,20 +85,48 @@ private:
         if (depth <= 0 || seen.count({subj, rel})) return {"", ""};
         seen.insert({subj, rel});
         
-        // 1. Transitive
-        if (transitive_rels.count(rel)) {
-            auto paths = closure(subj, rel);
-            if (!paths.empty()) {
-                auto path = paths.begin()->second;
-                return {paths.begin()->first, "transitive chain"};
-            }
-        }
-        
-        // 2. Direct facts
+        // 1. Direct facts.
+        //
+        // These are checked FIRST. Previously the transitive branch below ran
+        // ahead of them, so an explicitly taught fact lost to an inferred one:
+        // with `zorblat isa quixel` in the store, ask("zorblat","isa") skipped
+        // it and answered from the closure instead. The most specific fact
+        // available must win, or teaching something has no effect on what the
+        // engine says about it.
         for (const auto& f : facts) {
             if (f.subj == subj && f.rel == rel) {
                 if (f.obj == "<EXCEPTION>") return {"", "direct exception"};
                 return {f.obj, subj + " " + rel + " " + f.obj + " (direct)"};
+            }
+        }
+
+        // 2. Transitive closure — the NEAREST ancestor, chosen deterministically.
+        //
+        // This used to return paths.begin()->first. closure() returns a
+        // std::map, so begin() is the LEXICOGRAPHICALLY SMALLEST ancestor, not
+        // the nearest or the most general. For the chain
+        //   zorblat -> quixel -> florn -> grunth -> wibbet -> thingamajig
+        // the ancestors sort to florn, grunth, quixel, thingamajig, wibbet, so
+        // "what is zorblat?" answered `florn` — a mid-chain node that is neither
+        // the parent nor the root. Inserting an ancestor named "aardvark" would
+        // have silently changed the answer. Callers cannot build on that.
+        //
+        // closure() already records the full path to each ancestor, so hop
+        // distance was available and simply unused. Nearest wins; ties break
+        // lexicographically so the result is stable rather than merely defined.
+        if (transitive_rels.count(rel)) {
+            auto paths = closure(subj, rel);
+            if (!paths.empty()) {
+                auto best = paths.begin();
+                for (auto it = paths.begin(); it != paths.end(); ++it) {
+                    if (it->second.size() < best->second.size() ||
+                        (it->second.size() == best->second.size() && it->first < best->first))
+                        best = it;
+                }
+                const size_t hops = best->second.empty() ? 0 : best->second.size() - 1;
+                return {best->first,
+                        subj + " " + rel + " " + best->first +
+                        " (transitive, " + std::to_string(hops) + " hops)"};
             }
         }
         
