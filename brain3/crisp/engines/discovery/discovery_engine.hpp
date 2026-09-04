@@ -652,6 +652,15 @@ public:
             if (lin.has_value()) return *lin;
         }
 
+        // ── Last resort: search, rather than select from a menu ──────────────
+        // Runs after every template AND the linear ladder have declined, so it
+        // can only widen what the engine reaches, never change an answer it
+        // already had.
+        {
+            auto searched = _try_basis_search(target_var, input_vars, data);
+            if (searched.has_value()) return *searched;
+        }
+
         res.verified = false;
         res.explanation = "Could not converge on a zero-residual scientific invariant.";
         return res;
@@ -874,6 +883,227 @@ private:
                         res.discovery_steps.push_back("Accepted: " + res.equation);
                         return res;
                     }
+                }
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    // ── Grammar search over generated basis terms ────────────────────────────
+    //
+    // Everything above this point resolves a dataset because someone wrote a
+    // template for its shape. The reachable set equals the enumerated set, so
+    // the engine can only rediscover forms its author already thought of.
+    //
+    // This searches instead. A GRAMMAR generates a pool of candidate terms, and
+    // the engine looks for a small SUBSET of them that reproduces the data:
+    //
+    //     y = c1*t1 + c2*t2 + ... + ck*tk
+    //
+    // The structure is searched; the coefficients are not. Keeping every
+    // hypothesis linear in its parameters means least squares solves the
+    // coefficients EXACTLY, so each candidate gets a real score with no inner
+    // optimiser and no local minima. That restriction is what makes the search
+    // tractable — a general tree search would have to fit constants numerically
+    // inside every rollout.
+    //
+    // Rational forms are reached by the standard linearisation: y = P(x)/Q(x)
+    // is fitted as y*Q(x) = P(x), which is again linear in the unknowns. That
+    // is how 1/(1+x^2) becomes reachable without leaving the linear world.
+    //
+    // OVERFITTING IS THE WHOLE RISK. Trying thousands of subsets means the best
+    // of them will look good on noise by chance alone — a multiple-comparisons
+    // problem the fixed ladder above does not have. Three defences:
+    //   1. subsets are tried in increasing size and the FIRST acceptable fit
+    //      wins, so a 1-term explanation is never passed over for a 3-term one;
+    //   2. n >= params + 4 (stricter than the ladder's +2) because many more
+    //      hypotheses are being tested against the same data;
+    //   3. the same fit_acceptable gate as everywhere else, on real residuals.
+    // discovery_search_test.cpp keeps structureless data in the refused column;
+    // if that section ever goes red this search is inventing laws.
+    std::optional<DiscoveredLaw> _try_basis_search(
+            const std::string& target_var,
+            const std::vector<std::string>& input_vars,
+            const std::vector<ObservationPoint>& data) {
+        if (data.empty() || input_vars.size() != 1) return std::nullopt;
+        const size_t n = data.size();
+        const std::string v = input_vars[0];
+
+        struct Term {
+            std::string render;
+            std::function<double(double)> f;
+        };
+
+        // The grammar. Level 0 are atoms; level 1 is their pairwise product,
+        // which is where x*sin(x) and x*ln(x) come from. Nothing here is a
+        // "model" — these are building blocks the search composes.
+        std::vector<Term> atoms = {
+            {"1",        [](double){ return 1.0; }},
+            {v,          [](double x){ return x; }},
+            {v + "^2",   [](double x){ return x * x; }},
+            {v + "^3",   [](double x){ return x * x * x; }},
+            {"sin(" + v + ")", [](double x){ return std::sin(x); }},
+            {"cos(" + v + ")", [](double x){ return std::cos(x); }},
+            {"exp(" + v + ")", [](double x){ return std::exp(x); }},
+            {"ln(" + v + ")",  [](double x){ return x > 0 ? std::log(x) : NAN; }},
+            {"1/" + v,   [](double x){ return x != 0 ? 1.0 / x : NAN; }},
+            {"sqrt(" + v + ")", [](double x){ return x >= 0 ? std::sqrt(x) : NAN; }},
+        };
+        std::vector<Term> pool = atoms;
+        for (size_t i = 1; i < atoms.size(); ++i)          // skip "1" * t == t
+            for (size_t j = i; j < atoms.size(); ++j) {
+                auto fi = atoms[i].f, fj = atoms[j].f;
+                pool.push_back({atoms[i].render + "*" + atoms[j].render,
+                                [fi, fj](double x){ return fi(x) * fj(x); }});
+            }
+
+        // Drop terms that are not finite over this dataset — ln of a negative
+        // sample, 1/x at zero. Carrying them would silently fit a subset of the
+        // observations rather than all of them.
+        std::vector<Term> usable;
+        std::vector<std::vector<double>> col;
+        for (size_t t = 0; t < pool.size(); ++t) {
+            std::vector<double> c;
+            bool good = true;
+            for (size_t i = 0; i < n; ++i) {
+                const double val = pool[t].f(_in(data[i], v));
+                if (!std::isfinite(val)) { good = false; break; }
+                c.push_back(val);
+            }
+            if (good) { usable.push_back(pool[t]); col.push_back(c); }
+        }
+        if (usable.empty()) return std::nullopt;
+
+        auto build_and_score = [&](const std::vector<size_t>& idx,
+                                   std::vector<double>& coef, FitStats& fs) -> bool {
+            const size_t k = idx.size();
+            if (n < k + 4) return false;              // margin against multiple comparisons
+            std::vector<std::vector<double>> A(n, std::vector<double>(k));
+            std::vector<double> yv(n);
+            for (size_t i = 0; i < n; ++i) {
+                for (size_t j = 0; j < k; ++j) A[i][j] = col[idx[j]][i];
+                yv[i] = data[i].output;
+            }
+            if (!_least_squares(A, yv, coef)) return false;
+            fs = fit_stats(data, [&](const ObservationPoint& p) {
+                const double x = _in(p, v);
+                double s = 0.0;
+                for (size_t j = 0; j < k; ++j) s += coef[j] * usable[idx[j]].f(x);
+                return s;
+            });
+            return fit_acceptable(fs);
+        };
+
+        auto render_combo = [&](const std::vector<size_t>& idx,
+                                const std::vector<double>& c) {
+            std::string eq = target_var + " = ";
+            bool first = true;
+            for (size_t j = 0; j < idx.size(); ++j) {
+                if (std::fabs(c[j]) < 1e-9) continue;
+                if (!first)        eq += (c[j] < 0 ? " - " : " + ");
+                else if (c[j] < 0) eq += "-";
+                const double a = std::fabs(c[j]);
+                const std::string& tr = usable[idx[j]].render;
+                if (tr == "1")                      eq += _fmt(a);
+                else if (std::fabs(a - 1.0) < 1e-9) eq += tr;
+                else                                eq += _fmt(a) + "*" + tr;
+                first = false;
+            }
+            return first ? std::string() : eq;
+        };
+
+        auto emit = [&](const std::vector<size_t>& idx, const std::vector<double>& c,
+                        const FitStats& fs, size_t k) -> std::optional<DiscoveredLaw> {
+            const std::string eq = render_combo(idx, c);
+            if (eq.empty()) return std::nullopt;
+            DiscoveredLaw res;
+            res.verified = true;
+            res.target_var = target_var;
+            res.equation = eq;
+            res.law_name = "Searched Empirical Law (" + std::to_string(k) + "-term basis)";
+            res.r2_score = fs.r2;
+            res.mse = fs.mse;
+            res.explanation = "Grammar search over " + std::to_string(usable.size()) +
+                              " generated terms found a " + std::to_string(k) +
+                              "-term fit over " + std::to_string(n) +
+                              " observations at R^2=" + _fmt(fs.r2) +
+                              ", max relative residual " + _fmt(fs.max_rel_resid) + ".";
+            res.discovery_steps.push_back("All templates and the linear ladder declined.");
+            res.discovery_steps.push_back("Generated " + std::to_string(usable.size()) +
+                                          " candidate terms from the grammar.");
+            res.discovery_steps.push_back("Smallest acceptable subset has " +
+                                          std::to_string(k) + " term(s).");
+            res.discovery_steps.push_back("Accepted: " + eq);
+            return res;
+        };
+
+        const size_t U = usable.size();
+        std::vector<double> coef;
+        FitStats fs;
+
+        // Increasing subset size — parsimony first.
+        for (size_t a = 0; a < U; ++a) {
+            std::vector<size_t> idx{a};
+            if (build_and_score(idx, coef, fs)) return emit(idx, coef, fs, 1);
+        }
+        for (size_t a = 0; a < U; ++a)
+            for (size_t b = a + 1; b < U; ++b) {
+                std::vector<size_t> idx{a, b};
+                if (build_and_score(idx, coef, fs)) return emit(idx, coef, fs, 2);
+            }
+        for (size_t a = 0; a < U; ++a)
+            for (size_t b = a + 1; b < U; ++b)
+                for (size_t c3 = b + 1; c3 < U; ++c3) {
+                    std::vector<size_t> idx{a, b, c3};
+                    if (build_and_score(idx, coef, fs)) return emit(idx, coef, fs, 3);
+                }
+
+        // Rational forms: y = P(x)/Q(x) fitted as y*Q(x) = P(x), i.e.
+        //   y*(1 + q1*x + q2*x^2) = p0 + p1*x
+        // which is linear in (p0, p1, q1, q2). Scored on residuals of the
+        // RECONSTRUCTED y, never on the linearised equation — a good fit to the
+        // rearranged form can still be a poor fit to the data.
+        if (n >= 8) {
+            std::vector<std::vector<double>> A(n, std::vector<double>(4));
+            std::vector<double> rhs(n);
+            for (size_t i = 0; i < n; ++i) {
+                const double x = _in(data[i], v), y = data[i].output;
+                A[i][0] = 1.0; A[i][1] = x;
+                A[i][2] = -y * x; A[i][3] = -y * x * x;
+                rhs[i] = y;
+            }
+            std::vector<double> c;
+            if (_least_squares(A, rhs, c)) {
+                auto predict = [&](const ObservationPoint& p) {
+                    const double x = _in(p, v);
+                    const double den = 1.0 + c[2] * x + c[3] * x * x;
+                    return std::fabs(den) < 1e-12 ? NAN : (c[0] + c[1] * x) / den;
+                };
+                const FitStats rfs = fit_stats(data, predict);
+                if (fit_acceptable(rfs)) {
+                    std::string num = _fmt(c[0]);
+                    if (std::fabs(c[1]) > 1e-9) num += (c[1] < 0 ? " - " : " + ") +
+                                                       _fmt(std::fabs(c[1])) + "*" + v;
+                    std::string den = "1";
+                    if (std::fabs(c[2]) > 1e-9) den += (c[2] < 0 ? " - " : " + ") +
+                                                       _fmt(std::fabs(c[2])) + "*" + v;
+                    if (std::fabs(c[3]) > 1e-9) den += (c[3] < 0 ? " - " : " + ") +
+                                                       _fmt(std::fabs(c[3])) + "*" + v + "^2";
+                    DiscoveredLaw res;
+                    res.verified = true;
+                    res.target_var = target_var;
+                    res.equation = target_var + " = (" + num + ") / (" + den + ")";
+                    res.law_name = "Searched Rational Law";
+                    res.r2_score = rfs.r2;
+                    res.mse = rfs.mse;
+                    res.explanation = "Rational form fitted by linearising y*Q(x) = P(x), "
+                                      "scored on residuals of the reconstructed y at R^2=" +
+                                      _fmt(rfs.r2) + ".";
+                    res.discovery_steps.push_back("Additive basis search declined.");
+                    res.discovery_steps.push_back("Linearised y*Q(x) = P(x) and solved.");
+                    res.discovery_steps.push_back("Accepted: " + res.equation);
+                    return res;
                 }
             }
         }
