@@ -158,7 +158,7 @@ public:
         // one-time training is an offline cost and must never land on a
         // user's first message. (Caught by eval latency gate.)
         IntentRouter::instance();
-        proposer_.load_weights("intuition_weights.bin");
+        proposer_.load_weights(_intuition_weights_path());
         prior_engine_.load("prior_engine.bin");
 
         // Native Mouth boot: BRAIN_NATIVE_MOUTH_MODEL env overrides, then
@@ -1225,7 +1225,7 @@ public:
         // Persist the learned router. The orchestrator loaded intuition_weights.bin
         // at boot and never saved it, so every routing lesson learned during a
         // session was discarded at exit. Sleep is the right place to commit it.
-        const bool router_saved = proposer_.save_weights("intuition_weights.bin");
+        const bool router_saved = proposer_.save_weights(_intuition_weights_path());
 
         std::ostringstream oss;
         oss << "🌙 [Brain3 Sleep Kernel] Consolidation cycle complete\n";
@@ -1345,6 +1345,23 @@ public:
             if (std::filesystem::is_directory(d, ec))
                 return std::string(d) + "/gar_embeddings.bin";
         return "gar_embeddings.bin";
+    }
+
+    // The learned router's weights, resolved the same way as the GAR cache and
+    // for the same reason. The path was a bare "intuition_weights.bin" — relative
+    // to the process's working directory. brain_master launched from brain3/,
+    // broca_bridge.py, and brain_mcp_server do not share a cwd, so each was
+    // training a SEPARATE router and none could see the others' progress.
+    // Measured: a router carrying 4 accumulated training steps in brain3/ reports
+    // "No saved weights (fresh start)" when the same binary is launched from the
+    // repo root. Anchoring to the data directory makes the weights follow the
+    // brain rather than the shell.
+    static std::string _intuition_weights_path() {
+        std::error_code ec;
+        for (const char* d : {"data", "brain3/data", "../data"})
+            if (std::filesystem::is_directory(d, ec))
+                return std::string(d) + "/intuition_weights.bin";
+        return "intuition_weights.bin";
     }
 
     // Register words only. Cheap: a mutex + a hash insert per new word. Callers
